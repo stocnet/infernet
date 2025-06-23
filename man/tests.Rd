@@ -3,3 +3,4 @@
 \name{tests}
 \alias{tests}
 \alias{test_random}
+\alias{test_configuration}
