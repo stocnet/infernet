@@ -1,0 +1,17 @@
+inst/doc
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+data-raw/*
+docs/
+working/*
+/doc/
+/Meta/
+tests/testthat/Rplots.pdf
+.DS_Store
+CRAN-SUBMISSION
+toadd/*
+.data.csv
+cache/*
