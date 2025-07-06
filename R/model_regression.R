@@ -93,46 +93,60 @@
 #' glance(model1)
 #' # if(require("autograph")) plot(model1)
 #' @export
-net_regression <- function(formula, .data,
-                        method = c("qap","qapy"),
-                        times = 1000,
-                        strategy = "sequential",
-                        verbose = FALSE) {
+net_regression <- function(formula, 
+                           .data,
+                           times = 1000,
+                           control = list(method = c("qap","qapy"),
+                                          strategy = "sequential",
+                                          family = "gaussian",
+                                          estimator = "auto",
+                                          seed = NULL,
+                                          groups = NULL,
+                                          ncores = NULL,
+                                          use_robust_errors = FALSE, 
+                                          error_file = NULL,
+                                          reference = NULL,
+                                          comparison = NULL)) { 
   
   # Setup ####
+  rand <- ifelse(any(grepl("\\|",formula)),TRUE,FALSE)
   matrixList <- convertToMatrixList(formula, .data)
-  convForm <- convertFormula(formula, matrixList)
+  formula <- matrixList$formula
   
-  method <- match.arg(method)
-
-  g <- matrixList
-  nx <- length(matrixList) - 1
-  n <- dim(matrixList[[1]])
   
-  directed <- ifelse(manynet::is_directed(matrixList[[1]]), "digraph", "graph")
-  valued <- manynet::is_weighted(matrixList[[1]])
-  diag <- manynet::is_complex(matrixList[[1]])
   
-  if (any(vapply(lapply(g, is.na), any, 
-                 FUN.VALUE = logical(1)))) 
-    stop("Missing data supplied; this may pose problems for certain null hypotheses.")
+  method <- match.arg(control$method, choices = c("qap","qapy"))
+  
+  g <- matrixList$mydata
+  nx <- length(g) - 1
+  n <- dim(g[[1]])
+  
+  directed <- ifelse(manynet::is_directed(g[[1]]), "digraph", "graph")
+  valued <- manynet::is_weighted(g[[1]])
+  diag <- manynet::is_complex(g[[1]])
+  
+  
+  base_data <- vectorise_list(g, simplex = !diag, 
+                              directed = (directed == "digraph"))
   
   # Base ####
-  if(valued){
+  if (valued) {
+    fit.base <- lm(convForm,base_data)
+    
+    
     fit.base <- nlmfit(g, 
                        directed = directed, 
                        diag = diag, 
                        rety = TRUE)
     fit <- list()
-    fit$coefficients <- qr.coef(fit.base[[1]], fit.base[[2]])
-    fit$fitted.values <- qr.fitted(fit.base[[1]], fit.base[[2]])
-    fit$residuals <- qr.resid(fit.base[[1]], fit.base[[2]])
-    fit$qr <- fit.base[[1]]
-    fit$rank <- fit.base[[1]]$rank
-    fit$n <- length(fit.base[[2]])
+    fit$coefficients <- coefficients(fit.base)
+    fit$fitted.values <- fitted.values(fit.base)
+    fit$residuals <- residuals(fit.base)
+    fit$qr <- fit.base$qr
+    fit$rank <- fit.base$rank
+    fit$n <- length(fit$fitted.values)
     fit$df.residual <- fit$n - fit$rank
-    fit$tstat <- fit$coefficients/sqrt(diag(chol2inv(fit$qr$qr)) * 
-                                         sum(fit$residuals^2)/(fit$n - fit$rank))
+    fit$tstat <- fit$coefficients / sqrt(diag(vcov(fit.base)))
   } else {
     fit.base <- nlgfit(g, 
                        directed = directed, 
@@ -163,29 +177,30 @@ net_regression <- function(formula, .data,
       rownames(fit$ctable) <- c("0", "1")
     }
   }
-
+  
   # Null ####
   # qapy for univariate ####
-  if (method == "qapy" | nx == 2){
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
-    if(valued){
-      repdist <- furrr::future_map_dfr(1:times, function(j){
+  if (method == "qapy" | nx == 2) {
+    oplan <- future::plan(strategy)
+    on.exit(future::plan(oplan), add = TRUE)
+    if (valued) {
+      repdist <- furrr::future_map_dfr(1:times, function(j) {
         nlmfit(c(list(manynet::generate_permutation(g[[1]], with_attr = FALSE)),
-                 g[2:(nx+1)]),
+                 g[2:(nx + 1)]),
                directed = directed, diag = diag,
                rety = FALSE)
-      }, .progress = verbose, .options = furrr::furrr_options(seed = T))
+      }, .progress = verbose, .options = furrr::furrr_options(seed = TRUE))
     } else {
       repdist <- furrr::future_map_dfr(1:times, function(j){
-        repfit <- nlgfit(c(list(manynet::generate_permutation(g[[1]], with_attr = FALSE)),
-                           g[2:(nx+1)]),
+        repfit <- nlgfit(c(list(manynet::generate_permutation(g[[1]], 
+                                                              with_attr = FALSE)),
+                           g[2:(nx + 1)]),
                          directed = directed, diag = diag)
         repfit$coef/sqrt(diag(chol2inv(repfit$qr$qr)))
-      }, .progress = verbose, .options = furrr::furrr_options(seed = T))
+      }, .progress = verbose, .options = furrr::furrr_options(seed = TRUE))
     }
     # qapspp for multivariate ####
-  } else if (method == "qap"){
+  } else if (method == "qap") {
     xsel <- matrix(TRUE, n[1], n[2])
     if (!diag) 
       diag(xsel) <- FALSE
@@ -199,29 +214,31 @@ net_regression <- function(formula, .data,
                      diag = diag, rety = TRUE)
       xres <- g[[1 + i]]
       xres[xsel] <- qr.resid(xfit[[1]], xfit[[2]])
-      if (directed == "graph")
+      if (directed == "graph") {
         xres[upper.tri(xres)] <- t(xres)[upper.tri(xres)]
+      }
       
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
-      if(valued){
+      oplan <- future::plan(strategy)
+      on.exit(future::plan(oplan), add = TRUE)
+      if (valued) {
         repdist[,i] <- furrr::future_map_dbl(1:times, function(j){
           nlmfit(c(g[-(1 + i)],
                    list(manynet::generate_permutation(xres, with_attr = FALSE))),
                  directed = directed, diag = diag,
                  rety = FALSE)[nx]
-        }, .progress = verbose, .options = furrr::furrr_options(seed = T))
+        }, .progress = verbose, .options = furrr::furrr_options(seed = TRUE))
       } else {
         repdist[,i] <- furrr::future_map_dbl(1:times, function(j){
           repfit <- nlgfit(c(g[-(1 + i)],
-                             list(manynet::generate_permutation(xres, with_attr = FALSE))),
+                             list(manynet::generate_permutation(xres, 
+                                                                with_attr = FALSE))),
                            directed = directed, diag = diag)
           repfit$coef[nx]/sqrt(diag(chol2inv(repfit$qr$qr)))[nx]
-        }, .progress = verbose, .options = furrr::furrr_options(seed = T))
+        }, .progress = verbose, .options = furrr::furrr_options(seed = TRUE))
       }
     }
   }
-
+  
   fit$dist <- repdist
   fit$pleeq <- apply(sweep(fit$dist, 2, fit$tstat, "<="), 
                      2, mean)
@@ -229,12 +246,12 @@ net_regression <- function(formula, .data,
                      2, mean)
   fit$pgreqabs <- apply(sweep(abs(fit$dist), 2, abs(fit$tstat), 
                               ">="), 2, mean)
-  if(method == "qapy" | nx == 2) 
+  if (method == "qapy" | nx == 2) 
     fit$nullhyp <- "QAPy"
   else fit$nullhyp <- "QAP-DSP"
   fit$names <- names(matrixList)[-1]
   fit$intercept <- TRUE
-  if(valued) 
+  if (valued) 
     class(fit) <- "netlm"
   else 
     class(fit) <- "netlogit"
@@ -242,7 +259,7 @@ net_regression <- function(formula, .data,
   
 }
 
-###################
+################### auxilliary ----
 
 gettval <- function(x, y, tol) {
   xqr <- qr(x, tol = tol)
@@ -276,102 +293,123 @@ nlgfit <- function(glist, directed, diag) {
                  family = stats::binomial(), intercept = FALSE)
 }
 
-vectorise_list <- function(glist, simplex, directed){
-  if(missing(simplex)) simplex <- !manynet::is_complex(glist[[1]])
-  if(missing(directed)) directed <- manynet::is_directed(glist[[1]])
-  if(simplex)
+vecto
+rise_list <- function(glist, simplex, directed){
+  if (missing(simplex)) {
+    simplex <- !manynet::is_complex(glist[[1]])
+  }
+  if (missing(directed)) {
+    directed <- manynet::is_directed(glist[[1]])
+  }
+  if (simplex) {
     diag(glist[[1]]) <- NA
-  if(!directed)
+  }
+  if (!directed) {
     glist[[1]][upper.tri(glist[[1]])] <- NA
-  suppressMessages(stats::na.omit(dplyr::bind_cols(furrr::future_map(glist, 
-                                                       function(x) c(x)))))
+  }
+  
+  furrr::future_map(
+    glist,function(x) c(x)) %>%
+    dplyr::bind_cols() %>%
+    stats::na.omit() %>%
+    suppressMessages()
+  
+  #suppressMessages(stats::na.omit(dplyr::bind_cols(furrr::future_map(
+  #  glist,function(x) c(x)))))
 }
 
 convertToMatrixList <- function(formula, .data){
   data <- manynet::as_tidygraph(.data)
-  if(manynet::is_weighted(data) & getDependentName(formula)=="weight"){
+  if (manynet::is_weighted(data) & getDependentName(formula) == "weight") {
     DV <- manynet::as_matrix(data) 
-  } else DV <- manynet::as_matrix(data)
-  IVnames <- getRHSNames(formula)
-  specificationAdvice(IVnames, data)
-  IVs <- lapply(IVnames, function(IV){
-    out <- lapply(seq_along(IV), function(elem){
+  } else {
+    DV <- manynet::as_matrix(data)
+  }
+  names_form <- getRHSNames(formula)
+  specificationAdvice(names_form$IVnames, data)
+  IVs <- lapply(names_form$IVnames, function(IV) {
+    out <- lapply(seq_along(IV), function(elem) {
       # ego ####
-      if(IV[[elem]][1] == "ego"){
+      if (IV[[elem]][1] == "ego") {
         vct <- manynet::node_attribute(data, IV[[elem]][2])
-        if(manynet::is_twomode(data)) vct <- vct[!manynet::node_attribute(data, "type")]
-        if(is.character(vct) | is.factor(vct)){
-          fct <- factor(vct)
-          if(length(levels(fct)) == 2){
-            out <- matrix(as.numeric(fct)-1,
-                          nrow(DV), ncol(DV))
-            names(out) <- paste(paste(IV[[elem]], collapse = " "),
-                                levels(fct)[2],
-                                paste0("[",levels(fct)[1],"]"))
-            out <- out
-          } else {
-            out <- lapply(2:length(levels(fct)),
-                          function (x) matrix((as.numeric(fct)==x)*1,
-                                              nrow(DV), ncol(DV)))
-            names(out) <- paste(paste(IV[[elem]], collapse = " "), 
-                                levels(fct)[2:length(levels(fct))],
-                                paste0("[",levels(fct)[1],"]"))
-            out <- out
-          }
-        } else {
+        if (manynet::is_twomode(data)) {
+          vct <- vct[!manynet::node_attribute(data, "type")]
+        }
+#        if (is.character(vct) | is.factor(vct)) {
+#          fct <- factor(vct)
+#          if (length(levels(fct)) == 2) {
+#            out <- matrix(as.numeric(fct) - 1,
+#                          nrow(DV), ncol(DV))
+#            names(out) <- paste(paste(IV[[elem]], collapse = " "),
+#                                levels(fct)[2],
+#                                paste0("[",levels(fct)[1],"]"))
+#            out <- out
+#          } else {
+#            out <- lapply(2:length(levels(fct)),
+#                          function(x) {
+#                            matrix((as.numeric(fct) == x)*1,
+#                                   nrow(DV), ncol(DV))})
+#            names(out) <- paste(paste(IV[[elem]], collapse = " "), 
+#                                levels(fct)[2:length(levels(fct))],
+#                                paste0("[",levels(fct)[1],"]"))
+#            out <- out
+#          }
+#        } else {
           out <- matrix(vct, nrow(DV), ncol(DV))
           out <- list(out)
           names(out) <- paste(IV[[elem]], collapse = " ")
           out <- out
-        }
+ #       }
         # alter ####
-      } else if (IV[[elem]][1] == "alter"){
-          vct <- manynet::node_attribute(data, IV[[elem]][2])
-          if(manynet::is_twomode(data)) vct <- vct[manynet::node_attribute(data, "type")]
-          if(is.character(vct) | is.factor(vct)){
-            fct <- factor(vct)
-            if(length(levels(fct)) == 2){
-              out <- matrix(as.numeric(fct)-1,
-                            nrow(DV), ncol(DV))
-              names(out) <- paste(paste(IV[[elem]], collapse = " "),
-                                  levels(fct)[2],
-                                  paste0("[",levels(fct)[1],"]"))
-              out <- out
-            } else {
-              out <- lapply(2:length(levels(fct)),
-                            function (x) matrix((as.numeric(fct)==x)*1,
-                                                nrow(DV), ncol(DV)))
-              names(out) <- paste(paste(IV[[elem]], collapse = " "), 
-                                  levels(fct)[2:length(levels(fct))],
-                                  paste0("[",levels(fct)[1],"]"))
-              out <- out
-            }
-          } else {
-            out <- matrix(vct, nrow(DV), ncol(DV), byrow = TRUE)
-            out <- list(out)
-            names(out) <- paste(IV[[elem]], collapse = " ")
-            out <- out
-          }
-          # same ####
-      } else if (IV[[elem]][1] == "same"){
+      } else if (IV[[elem]][1] == "alter") {
+        vct <- manynet::node_attribute(data, IV[[elem]][2])
+        if (manynet::is_twomode(data)) {
+          vct <- vct[manynet::node_attribute(data, "type")]
+        }
+  #      if (is.character(vct) | is.factor(vct)) {
+  #        fct <- factor(vct)
+  #        if (length(levels(fct)) == 2) {
+  #          out <- matrix(as.numeric(fct) - 1,
+  #                        nrow(DV), ncol(DV))
+  #          names(out) <- paste(paste(IV[[elem]], collapse = " "),
+  #                              levels(fct)[2],
+  #                              paste0("[",levels(fct)[1],"]"))
+  #          out <- out
+  #        } else {
+  #          out <- lapply(2:length(levels(fct)),
+  #                        function(x) {matrix((as.numeric(fct) == x)*1,
+  #                                            nrow(DV), ncol(DV))})
+  #          names(out) <- paste(paste(IV[[elem]], collapse = " "), 
+  #                              levels(fct)[2:length(levels(fct))],
+  #                              paste0("[",levels(fct)[1],"]"))
+  #          out <- out
+  #        }
+  #      } else {
+          out <- matrix(vct, nrow(DV), ncol(DV), byrow = TRUE)
+          out <- list(out)
+          names(out) <- paste(IV[[elem]], collapse = " ")
+          out <- out
+   #     }
+        # same ####
+      } else if (IV[[elem]][1] == "same") {
         attrib <- manynet::node_attribute(data, IV[[elem]][2])
-        if(manynet::is_twomode(.data)){
-          if(all(is.na(attrib[!manynet::node_is_mode(.data)]))){ # if 2nd mode
+        if (manynet::is_twomode(.data)) {
+          if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) { # if 2nd mode
             attrib <- attrib[manynet::node_is_mode(.data)]
             out <- vapply(1:length(attrib), function(x){
-              net <- manynet::as_matrix(manynet::delete_nodes(.data, 
-                                                              manynet::net_dims(.data)[1]+x))
-              rowSums(net * matrix((attrib[-x]==attrib[x])*1, 
-                                   nrow(DV), ncol(DV)-1, byrow = TRUE))/
+              net <- manynet::as_matrix(
+                manynet::delete_nodes(.data,manynet::net_dims(.data)[1] + x))
+              rowSums(net * matrix((attrib[-x] == attrib[x])*1, 
+                                   nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
                 rowSums(net)
             }, FUN.VALUE = numeric(nrow(DV)))
             out[is.nan(out)] <- 0
           } else { # or then attrib must be on first mode
             attrib <- attrib[!manynet::node_is_mode(.data)]
-            out <- t(vapply(1:length(attrib), function(x){
+            out <- t(vapply(1:length(attrib), function(x) {
               net <- manynet::as_matrix(manynet::delete_nodes(.data, x))
-              colSums(net * matrix((attrib[-x]==attrib[x])*1, 
-                                   nrow(DV)-1, ncol(DV)))/
+              colSums(net * matrix((attrib[-x] == attrib[x])*1, 
+                                   nrow(DV) - 1, ncol(DV))) /
                 colSums(net)
             }, FUN.VALUE = numeric(ncol(DV))))
             out[is.nan(out)] <- 0
@@ -379,15 +417,16 @@ convertToMatrixList <- function(formula, .data){
         } else {
           rows <- matrix(attrib, nrow(DV), ncol(DV))
           cols <- matrix(attrib, nrow(DV), ncol(DV), byrow = TRUE)
-          out <- (rows==cols)*1  
+          out <- (rows == cols)*1  
         }
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out <- out
         # dist ####
-      } else if (IV[[elem]][1] == "dist"){
-        if(is.character(manynet::node_attribute(data, IV[[elem]][2])))
+      } else if (IV[[elem]][1] == "dist") {
+        if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
           stop("Distance undefined for factors.")
+        }
         rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV))
         cols <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
@@ -397,79 +436,158 @@ convertToMatrixList <- function(formula, .data){
         names(out) <- paste(IV[[elem]], collapse = " ")
         out <- out
         # sim ####
-      } else if (IV[[elem]][1] == "sim"){
-        if(is.character(manynet::node_attribute(data, IV[[elem]][2])))
+      } else if (IV[[elem]][1] == "sim") {
+        if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
           stop("Similarity undefined for factors. Try `same()` instead.")
+        }
         rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV))
         cols <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV), byrow = TRUE)
-        out <- abs(1- abs(rows - cols)/max(abs(rows - cols)))
+        out <- abs(1 - abs(rows - cols)/max(abs(rows - cols)))
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out <- out
         # tertius ####
-      } else if (IV[[elem]][1] == "tertius"){
+      } else if (IV[[elem]][1] == "tertius") {
         vct <- manynet::node_attribute(data, IV[[elem]][2])
-        if(manynet::is_twomode(data)) vct <- vct[!manynet::node_attribute(data, "type")]
+        if (manynet::is_twomode(data)) {
+          vct <- vct[!manynet::node_attribute(data, "type")]
+        }
         val <- matrix(vct, nrow(DV), ncol(DV)) * DV
-        if(is.na(IV[[elem]][3])) IV[[elem]][3] <- "mean"
+        if (is.na(IV[[elem]][3])) {
+          IV[[elem]][3] <- "mean"
+        }
         out <- t(vapply(seq_len(nrow(DV)), 
-                        function(x){
-                          if(IV[[elem]][3] == "mean") 
+                        function(x) {
+                          if (IV[[elem]][3] == "mean") {
                             colMeans(val[-x,], na.rm = TRUE)
-                          else if(IV[[elem]][3] == "sum") colSums(val[-x,], na.rm = TRUE)
-                          else stop("tertius summary function not recognised")
+                          } else if (IV[[elem]][3] == "sum") {
+                            colSums(val[-x,], na.rm = TRUE)
+                          } else {
+                            stop("tertius summary function not recognised")
+                          }
                         }, 
                         FUN.VALUE = numeric(ncol(DV))))
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out <- out
       } else {
-        if (IV[[elem]][1] %in% manynet::network_tie_attributes(data)){
+        if (IV[[elem]][1] %in% manynet::network_tie_attributes(data)) {
           out <- manynet::as_matrix(manynet::to_uniplex(data, 
-                                      edge = IV[[elem]][1]))
+                                                        tie = IV[[elem]][1]))
           out <- list(out)
           names(out) <- IV[[elem]][1]
           out <- out
         }
       }
     })
-    if(length(out)==2){
+    if (length(out) == 2) {
       namo <- paste(vapply(out, names, FUN.VALUE = character(1)), 
                     collapse = ":")
       out <- list(out[[1]][[1]] * out[[2]][[1]])
       names(out) <- namo
       out
     } else {
-      if(is.list(out[[1]]))
-        out[[1]] else {
-          out <- list(out[[1]])
-          names(out) <- attr(out[[1]], "names")[1]
-          attr(out[[1]], "names") <- NULL
-          out
-        } 
+      if (is.list(out[[1]])) {
+        out[[1]]
+      } else {
+        out <- list(out[[1]])
+        names(out) <- attr(out[[1]], "names")[1]
+        attr(out[[1]], "names") <- NULL
+        out
+      } 
     }})
   IVs <- purrr::flatten(IVs)
-  out <- c(list(DV), list(matrix(1, dim(DV)[1], dim(DV)[2])), IVs)
+  out <- c(list(DV), IVs)
   # Getting the names right
   DVname <- formula[[2]]
-  if(DVname == ".") DVname <- "ties"
-  names(out)[1:2] <- c(DVname, "(intercept)")
-  out
+  if (DVname == ".") {
+    DVname <- "ties"
+  }
+  names(out)[1] <- as.character(DVname)
+  
+# OUT FIX
+  
+  return(list(mydata = out,
+              formula = names_form$formula))
 }
 
-convertFormula <- function(formula, new_names){
-  stats::as.formula(paste(paste(formula[[2]],"~"),
-                   paste(paste0("`", names(new_names)[-1], "`"), collapse = " + ")))
-}
+
+
+
 
 getRHSNames <- function(formula) {
   rhs <- c(attr(stats::terms(formula), "term.labels"))
   rhs <- strsplit(rhs, ":")
+  rhs <- lapply(rhs, function(term) {
+    strsplit(term,"\\|")})
   # embed single parameter models in list
-  if (!is.list(rhs)) rhs <- list(rhs)
-  lapply(rhs, function(term) strsplit(gsub("\\)", "", term), "\\(|,|, "))
+  if (!is.list(rhs)) {
+    rhs <- list(rhs)
+  }
+  if (any(grepl("\\|",formula))) { #are there random effects?
+    rand <- c(1:length(rhs))[unlist(lapply(rhs, function(term) {
+      length(term[[1]]) > 1}))] #where are they
+    # create object without random
+    rhs2 <- rhs[c(1:length(rhs))[-rand]]
+    rhsn <- lapply(rhs2, function(term) {
+      strsplit(gsub("\\)", "", term), "\\(|,|, ")})
+    term_names <- lapply(rhsn, function(term) {
+      paste0("`", term[[1]][1], " ", term[[1]][2],  "`")})
+    form <- paste(paste(formula[[2]],"~"),
+                  paste(term_names,
+                        collapse = " + "))
+    # loop through random effects
+    for (term in rand) {
+      form <- paste(form, "+", "(")
+      for (i in 1:length(rhs[[term]][[1]])) {
+        string <- gsub("[[:space:]]", "", rhs[[term]][[1]][[i]])
+        string <- strsplit(string, "\\+")[[1]]
+        
+        for (j in 1:length(string)) {
+          n <- strsplit(gsub("\\)", "", string[j]), "\\(|,|, ")
+          if (i == 1) { #identifies random intercept/slopes from level-> [i = 2] 
+            if (length(n[[1]]) == 1) {
+              #random intercept
+              form <- paste0(form,n)
+            } else {
+              #random slopes
+              n <- paste0("`", paste(n[[1]], collapse = " "),  "`")
+              form <- paste(form,n)
+            }
+            if (j < length(string)) {
+              # if more than one random intercept and or slope per level add +
+              form <- paste(form,"+")
+            }
+          } else {
+            # add level
+            n <- paste0("`", paste(n[[1]], collapse = " "),  "`")
+            form <- paste(form,"|",n)
+          }
+          # add variable name so that corresponding matrix is created
+          if (string[j] != "1" && !(string[j] %in% unlist(rhs2))) {
+            rhs2 <- append(rhs2,string[j])
+          }
+        }
+      }
+      form <- paste0(form, ")")
+    }
+    rhs <- rhs2
+  } 
+  # make all the names now
+  rhsn <- lapply(rhs, function(term) {
+    strsplit(gsub("\\)", "", term), "\\(|,|, ")})
+  
+  # if there are no random effects, formula needs to be made here
+  if (!any(grepl("\\|",formula))) {
+    form <- paste(paste(formula[[2]],"~"),
+                  paste( lapply(rhsn, function(term) {
+                    paste0("`", term[[1]][1], " ", term[[1]][2],  "`")}),
+                        collapse = " + "))
+  }
+  return(list(IVnames = rhsn,
+              formula = as.formula(form)))
 }
 
 getDependentName <- function(formula) {
@@ -477,26 +595,33 @@ getDependentName <- function(formula) {
   unlist(lapply(dep, deparse))
 }
 
-specificationAdvice <- function(formula, data){
+specificationAdvice <- function(formula, data) {
   formdf <- t(data.frame(formula))
-  if(any(formdf[,1] %in% c("sim","same"))){
+  if (any(formdf[,1] %in% c("sim","same"))) {
     vars <- formdf[formdf[,1] %in% c("sim","same"), 2]
     suggests <- vapply(vars, function(x){
-      incl <- unname(formdf[formdf[,2]==x, 1])
-      if(manynet::is_twomode(data)){
+      incl <- unname(formdf[formdf[,2] == x, 1])
+      if (manynet::is_twomode(data)) {
         excl <- setdiff(c("ego","tertius"), incl)
       } else excl <- setdiff(c("ego","alter"), incl)
-      if(length(excl)>0) paste0(excl, "(", x, ")", collapse = ", ") else NA_character_
+      if (length(excl) > 0) {
+        paste0(excl, "(", x, ")", collapse = ", ") 
+      } else {
+        NA_character_
+      }
       # incl
     }, FUN.VALUE = character(1))
     suggests <- suggests[!is.na(suggests)]
-    if(!manynet::is_directed(data)) suggests <- suggests[!grepl("ego\\(", suggests)]
-    if(length(suggests)>0){
-      if(length(suggests) > 1)
+    if (!manynet::is_directed(data)) {
+      suggests <- suggests[!grepl("ego\\(", suggests)]
+    }
+    if (length(suggests) > 0) {
+      if (length(suggests) > 1) {
         suggests <- paste0(suggests, collapse = ", ")
-      cat(paste("When testing for homophily,",
-                    "it is recommended to include all more fundamental effects.\n",
-                    "Try adding", suggests, "to the model specification.\n\n"))
       }
+      cat(paste("When testing for homophily,",
+                "it is recommended to include all more fundamental effects.\n",
+                "Try adding", suggests, "to the model specification.\n\n"))
+    }
   }
 }
