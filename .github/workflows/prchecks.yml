@@ -40,6 +40,7 @@ jobs:
             any::rcmdcheck
 
       - uses: r-lib/actions/check-r-package@v2
+        env:
           _R_CHECK_FORCE_SUGGESTS_: false
         with:
           upload-snapshots: true
