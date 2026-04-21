@@ -206,7 +206,7 @@ net_regression <- function(formula,
 
   for (i in seq_along(glist)) {
     res <- tryCatch(
-      convertToMatrixList(formula, glist[[i]]),
+      convertToMatrixList(formula, glist[[i]], advise = FALSE),
       error = function(e) list(error = conditionMessage(e))
     )
     if (!is.null(res$error)) {
@@ -259,10 +259,13 @@ net_regression <- function(formula,
     data[[nm]] <- lapply(kept_mls, function(ml) ml$mydata[[nm]])
   }
 
+  first_graph <- manynet::as_tidygraph(glist[[keep[1]]])
+  specificationAdvice(getRHSNames(formula)$IVnames, first_graph)
+
   list(
     data        = data,
     formula     = kept_mls[[1]]$formula,
-    first_graph = manynet::as_tidygraph(glist[[keep[1]]])
+    first_graph = first_graph
   )
 }
 
@@ -514,11 +517,12 @@ print.net_regression <- function(x, ...,
 
 #' @keywords internal
 #' @noRd
-convertToMatrixList <- function(formula, .data) {
+convertToMatrixList <- function(formula, .data, advise = TRUE) {
   data <- manynet::as_tidygraph(.data)
   DV <- manynet::as_matrix(data)
   names_form <- getRHSNames(formula)
-  specificationAdvice(names_form$IVnames, data)
+  .check_formula_vars(names_form$IVnames, data)
+  if (advise) specificationAdvice(names_form$IVnames, data)
   IVs <- lapply(names_form$IVnames, function(IV) {
     out <- lapply(seq_along(IV), function(elem) {
       if (IV[[elem]][1] == "ego") {
@@ -590,7 +594,9 @@ convertToMatrixList <- function(formula, .data) {
                        nrow(DV), ncol(DV))
         cols <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV), byrow = TRUE)
-        out <- abs(1 - abs(rows - cols) / max(abs(rows - cols)))
+        denom <- max(abs(rows - cols), na.rm = TRUE)
+        if (!is.finite(denom) || denom == 0) denom <- 1
+        out <- abs(1 - abs(rows - cols) / denom)
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
@@ -618,7 +624,7 @@ convertToMatrixList <- function(formula, .data) {
         names(out) <- paste(IV[[elem]][1:2], collapse = " ")
         out
       } else {
-        if (IV[[elem]][1] %in% manynet::network_tie_attributes(data)) {
+        if (IV[[elem]][1] %in% manynet::net_tie_attributes(data)) {
           out <- manynet::as_matrix(manynet::to_uniplex(data,
                                                        tie = IV[[elem]][1]))
           out <- list(out)
@@ -729,6 +735,48 @@ getRHSNames <- function(formula) {
   }
   return(list(IVnames = rhsn,
               formula = stats::as.formula(form)))
+}
+
+
+#' @keywords internal
+#' @noRd
+.check_formula_vars <- function(IVnames, data) {
+  node_fns <- c("ego", "alter", "same", "dist", "sim", "tertius")
+  node_attrs <- manynet::net_node_attributes(data)
+  tie_attrs  <- manynet::net_tie_attributes(data)
+
+  missing_node <- character(0)
+  missing_tie  <- character(0)
+
+  for (IV in IVnames) {
+    for (term in IV) {
+      fn  <- term[1]
+      arg <- term[2]
+      if (fn %in% node_fns) {
+        if (is.na(arg) || !(arg %in% node_attrs))
+          missing_node <- c(missing_node, arg)
+      } else {
+        if (!(fn %in% tie_attrs))
+          missing_tie <- c(missing_tie, fn)
+      }
+    }
+  }
+
+  if (length(missing_node) > 0) {
+    stop("Node attribute(s) not found: ",
+         paste(shQuote(unique(missing_node)), collapse = ", "),
+         ".\n  Available: ",
+         paste(shQuote(node_attrs), collapse = ", "),
+         call. = FALSE)
+  }
+  if (length(missing_tie) > 0) {
+    stop("Tie attribute / predictor(s) not found: ",
+         paste(shQuote(unique(missing_tie)), collapse = ", "),
+         ".\n  Available tie attributes: ",
+         paste(shQuote(tie_attrs), collapse = ", "),
+         call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 

@@ -209,6 +209,13 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
     x[[var]][!valid] <- NA
   }
 
+  if (sum(vv) == 0) {
+    stop("No valid dyads remain after removing NA and diagonal cells for ",
+         "network ", net, ". Check that your predictors and outcome have ",
+         "non-missing values for overlapping node pairs.",
+         call. = FALSE)
+  }
+
   pred <- data.frame(
     location = as.vector(matrix(seq_len(n^2), n, n))[vv],
     yv       = as.vector(y)[vv]
