@@ -1,7 +1,7 @@
 Package: infernet
 Title: Basic inferential models for many different types of networks
 Version: 0.1.0
-Date: 2025-06-23
+Date: 2026-04-23
 Description: TBD.
 URL: https://stocnet.github.io/infernet/
 BugReports: https://github.com/stocnet/infernet/issues
@@ -11,7 +11,8 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.3
 Depends: 
-    R (>= 3.6.0)
+    R (>= 3.6.0),
+    manynet
 Authors@R: 
     c(person(given = "James",
              family = "Hollway",
@@ -29,11 +30,8 @@ Imports:
     furrr,
     future,
     future.apply,
-    manynet,
     purrr,
-    reformulas,
-    stats,
-    utils
+    reformulas
 Suggests:
     lme4,
     nnet,
