@@ -12,7 +12,8 @@ LazyData: true
 RoxygenNote: 7.3.3
 Depends: 
     R (>= 3.6.0),
-    manynet
+    manynet,
+    netrics
 Authors@R: 
     c(person(given = "James",
              family = "Hollway",
