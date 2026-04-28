@@ -1,7 +1,7 @@
 # Tests of network measures ####
 
 #' Tests of network measures
-#' 
+#' @name tests
 #' @description
 #'   These functions conduct tests of any network-level statistic:
 #'   
@@ -12,8 +12,14 @@
 #'   of a measure against a distribution of measures on permutations 
 #'   of the original network.
 #'   
-#' @name tests
 #' @inheritParams regression
+#' @param strategy If `{furrr}` is installed, 
+#'   then multiple cores can be used to accelerate the function.
+#'   By default `"sequential"`, 
+#'   but if multiple cores available,
+#'   then `"multisession"` or `"multicore"` may be useful.
+#'   Generally this is useful only when `times` > 1000.
+#'   See [`{furrr}`](https://furrr.futureverse.org) for more.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
@@ -32,8 +38,8 @@ NULL
 #' @export
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
-                        strategy = "sequential", 
-                        verbose = FALSE){
+                        strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
