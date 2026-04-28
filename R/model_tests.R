@@ -82,8 +82,8 @@ test_random <- function(.data, FUN, ...,
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
-                        strategy = "sequential", 
-                        verbose = FALSE){
+                        strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
@@ -131,8 +131,8 @@ test_configuration <- function(.data, FUN, ...,
 #' @export
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
-                             strategy = "sequential", 
-                             verbose = FALSE){
+                             strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)

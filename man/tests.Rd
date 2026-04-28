@@ -9,23 +9,9 @@
 \usage{
 test_random(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_configuration(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_configuration(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_permutation(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
 }
 \arguments{
 \item{.data}{A manynet-consistent network (see

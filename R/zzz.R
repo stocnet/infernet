@@ -14,8 +14,7 @@
   # cran_version <- pkgs[pkgs$Package == "manynet","Version"]
 
   local_version <- utils::packageVersion("infernet")
-  cli::cli_inform("You are using {.pkg infernet} version {.version {local_version}}.", 
-                  class = "packageStartupMessage")
+  manynet::snet_info("You are using {.pkg infernet} version {.version {local_version}}.")
   old.list <- as.data.frame(utils::old.packages())
   behind_cran <- "infernet" %in% old.list$Package
   
@@ -32,7 +31,7 @@
       # "i" = "You can list all the tutorials available in {.pkg manynet} using {.fn run_tute}, and run them too!",
       "i" = "Discover all the {.emph stocnet} R packages at {.url https://github.com/stocnet/}."
     )
-    cli::cli_inform(sample(tips, 1), class = "packageStartupMessage")
+    manynet::snet_info(sample(tips, 1))
   }
 
   if (interactive()) {
