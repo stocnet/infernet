@@ -1,4 +1,4 @@
-#' @importFrom cli cli_div cli_inform cli_end
+#' @importFrom manynet snet_info
 .onAttach <- function(...) {
 
   # suppressMessages(suppressPackageStartupMessages(library("manynet", warn.conflicts = FALSE)))
