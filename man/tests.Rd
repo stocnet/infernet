@@ -5,6 +5,8 @@
 \alias{test_random}
 \alias{test_configuration}
 \alias{test_permutation}
+\alias{print.network_test}
+\alias{plot.network_test}
 \title{Tests of network measures}
 \usage{
 test_random(
@@ -33,20 +35,41 @@ test_permutation(
   strategy = "sequential",
   verbose = FALSE
 )
+
+\method{print}{network_test}(x, ..., max.length = 6, digits = 3)
+
+\method{plot}{network_test}(x, ..., main = NULL)
 }
 \arguments{
-\item{.data}{A manynet-consistent network (see
-\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
-supplied the model is fit jointly; graphs missing any predictor are
-dropped with a warning.}
+\item{.data}{A manynet-consistent network object (see
+\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}).}
 
-\item{FUN}{A graph-level statistic function to test.}
+\item{FUN}{A graph-level statistic function to test.  The function must
+accept a network as its first argument and return a scalar.  Any function
+from \pkg{manynet} (e.g. \code{manynet::net_density()},
+\code{manynet::net_heterophily()}) or \pkg{netrics} works here.}
 
 \item{...}{Additional arguments to be passed on to FUN,
 e.g. the name of the attribute.}
 
-\item{times}{Integer.  Number of permutations for the null distribution.
-1000 is the default; publication-ready work usually needs 1000-10000.}
+\item{times}{Integer.  Number of random networks or permutations to
+generate.  Default is 1000; publication-ready work usually needs
+1000-10000.}
+
+\item{strategy}{A \pkg{future} strategy string such as
+\code{"sequential"} (default) or \code{"multisession"}.}
+
+\item{verbose}{Logical; show a progress bar during simulation.
+Default \code{FALSE}.}
+
+\item{x}{A \code{network_test} object returned by \code{test_random()},
+\code{test_configuration()}, or \code{test_permutation()}.}
+
+\item{max.length}{Maximum number of distribution values to print.}
+
+\item{digits}{Number of digits to use in printed output.}
+
+\item{main}{Plot title.  Defaults to a description of the test type.}
 }
 \description{
 These functions conduct tests of any network-level statistic:
@@ -54,25 +77,34 @@ These functions conduct tests of any network-level statistic:
 \item \code{test_random()} performs a conditional uniform graph (CUG) test
 of a measure against a distribution of measures on random networks
 of the same dimensions.
-\item \code{test_permutation()} performs a quadratic assignment procedure (QAP) test
-of a measure against a distribution of measures on permutations
+\item \code{test_configuration()} performs a CUG test conditioning on the
+degree sequence of the observed network.
+\item \code{test_permutation()} performs a quadratic assignment procedure (QAP)
+test of a measure against a distribution of measures on permutations
 of the original network.
 }
+
+\code{FUN} can be any function from manynet, netrics, migraph, or any other
+package that accepts a network as its first argument and returns a
+scalar numeric value.
 }
 \examples{
-marvel_friends <- to_unsigned(ison_marvel_relationships)
-marvel_friends <- to_giant(marvel_friends) \%>\% 
-  to_subgraph(PowerOrigin == "Human")
-(cugtest <- test_random(marvel_friends, manynet::net_heterophily, attribute = "Attractive",
-   times = 200))
-# plot(cugtest)
-# (qaptest <- test_permutation(marvel_friends, 
-#                 manynet::net_heterophily, attribute = "Attractive",
-#                 times = 200))
-# plot(qaptest)
+marvel_friends <- manynet::to_unsigned(manynet::ison_marvel_relationships)
+marvel_friends <- manynet::to_giant(marvel_friends) |>
+  manynet::to_subgraph(PowerOrigin == "Human")
+(cugtest <- test_random(marvel_friends, manynet::net_heterophily,
+   attribute = "Attractive", times = 200))
+plot(cugtest)
+(qaptest <- test_permutation(marvel_friends, manynet::net_heterophily,
+   attribute = "Attractive", times = 200))
+plot(qaptest)
 }
 \seealso{
-Other models: 
+\code{\link[manynet]{generate_random}}, \code{\link[manynet]{generate_configuration}},
+\code{\link[manynet]{to_permuted}}, \code{\link{net_regression}}
+
+Other models:
 \code{\link{regression}}
 }
 \concept{models}
+

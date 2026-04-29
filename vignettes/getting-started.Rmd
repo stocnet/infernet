@@ -1,0 +1,219 @@
+---
+title: "Getting started with infernet"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with infernet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(infernet)
+library(manynet)
+```
+
+## Introduction
+
+**infernet** provides inferential tests and regression models for network data.
+It integrates with the **stocnet** ecosystem — accepting any
+[manynet](https://stocnet.github.io/manynet/)-compatible network object and
+any scalar network measure from **manynet**, **netrics**, or **migraph** as a
+test statistic.
+
+This vignette walks through a complete workflow:
+
+1. Load a network from **manynet**
+2. Run a conditional uniform graph (CUG) test with `test_random()`
+3. Run a quadratic assignment procedure (QAP) test with `test_permutation()`
+4. Run a network regression with `net_regression()`
+5. Interpret the output
+
+---
+
+## 1. Load a network
+
+We use the `ison_marvel_relationships` network bundled with **manynet**.
+It is a signed network of relationships among Marvel comic characters.
+We keep only the positive ("friend") ties and restrict to characters of
+human origin.
+
+```{r load-data}
+marvel_friends <- manynet::to_unsigned(manynet::ison_marvel_relationships)
+marvel_friends <- manynet::to_giant(marvel_friends) |>
+  manynet::to_subgraph(PowerOrigin == "Human")
+
+manynet::autographr(marvel_friends)
+```
+
+```{r network-summary}
+manynet::net_nodes(marvel_friends)
+manynet::net_ties(marvel_friends)
+manynet::net_density(marvel_friends)
+```
+
+---
+
+## 2. CUG test with `test_random()`
+
+A **conditional uniform graph (CUG) test** asks: is the observed value of a
+network statistic unusual compared to a distribution of values on random
+networks of the same size?
+
+Here we test whether the observed heterophily (tendency to tie to dissimilar
+others) with respect to the `Attractive` attribute is higher or lower than
+expected by chance.
+
+`FUN` can be any function from **manynet**, **netrics**, or any package that
+takes a network as its first argument and returns a scalar.
+
+```{r cug-test}
+set.seed(42)
+cug_result <- test_random(
+  marvel_friends,
+  manynet::net_heterophily,
+  attribute = "Attractive",
+  times = 200
+)
+print(cug_result)
+```
+
+`Pr(X >= Obs)` is the fraction of random networks whose heterophily was at
+least as large as the observed value.  A small value (e.g. < 0.05) suggests
+the observed network is unusually homophilous.
+
+```{r plot-cug}
+plot(cug_result)
+```
+
+---
+
+## 3. QAP test with `test_permutation()`
+
+A **QAP test** uses permutations of the actual network rather than random
+networks.  This is more conservative because it preserves the degree
+distribution of the original graph.
+
+```{r qap-test}
+set.seed(42)
+qap_result <- test_permutation(
+  marvel_friends,
+  manynet::net_heterophily,
+  attribute = "Attractive",
+  times = 200
+)
+print(qap_result)
+plot(qap_result)
+```
+
+---
+
+## 4. Network regression with `net_regression()`
+
+`net_regression()` fits a multiple regression QAP (MRQAP) model to explain
+tie weights or presence as a function of sender/receiver attributes and other
+networks.
+
+We use the `ison_networkers` dataset — a network of communication among
+network researchers — and model tie strength (`weight`) as a function of
+ego and alter citations and citation similarity.
+
+```{r network-regression}
+networkers <- manynet::ison_networkers |>
+  manynet::to_subgraph(Discipline == "Sociology")
+
+model1 <- net_regression(
+  weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+  networkers,
+  times = 200
+)
+print(model1)
+```
+
+### Reading the output
+
+- **Estimate**: the OLS coefficient from the observed data.
+- **Pr(<=t) / Pr(>=t) / Pr(>=|t|)**: permutation-based p-values.  The
+  `qapspp` method (Dekker's double semi-partialling plus) is the default;
+  these are reported in the `t`-statistic row.
+
+A **positive `sim(Citations)` coefficient** means that researchers with
+similar citation counts are more strongly connected.
+
+### Using `net_regression_control()`
+
+For advanced options, use `net_regression_control()` instead of writing a
+raw list — all parameters are tab-completable:
+
+```{r control-example, eval = FALSE}
+ctrl <- net_regression_control(
+  method  = "qapy",   # permute y only (faster, less conservative)
+  family  = "gaussian",
+  seed    = 123
+)
+
+model2 <- net_regression(
+  weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+  networkers,
+  times   = 200,
+  control = ctrl
+)
+```
+
+### Parallel execution
+
+For large networks or many permutations, use `strategy = "multisession"`:
+
+```{r parallel-example, eval = FALSE}
+ctrl_par <- net_regression_control(strategy = "multisession")
+model3   <- net_regression(
+  weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+  networkers,
+  times   = 1000,
+  control = ctrl_par
+)
+```
+
+---
+
+## 5. Suppressing specification advice
+
+When `sim()` or `same()` terms are present, **infernet** prints a reminder
+to also include `ego()` / `alter()` terms for interpretability.  You can
+silence this advice permanently with:
+
+```{r advice-option, eval = FALSE}
+options(infernet_advice = FALSE)
+```
+
+---
+
+## Further reading
+
+- See `?net_regression` and `?net_regression_control` for the full parameter
+  reference.
+- See `?test_random`, `?test_configuration`, and `?test_permutation` for the
+  test functions.
+- See `?net_from_edgelist` for converting long-format data to the matrix
+  format expected by `net_regression()`.
+- Visit the [stocnet GitHub organisation](https://github.com/stocnet/) for
+  related packages: **manynet**, **netrics**, **migraph**.
+
+## References
+
+Krackhardt, David. 1988.
+"Predicting with Networks: Nonparametric Multiple Regression Analysis of
+Dyadic Data."
+*Social Networks* 10(4): 359–381.
+<https://doi.org/10.1016/0378-8733(88)90004-4>
+
+Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
+"Sensitivity of MRQAP tests to collinearity and autocorrelation conditions."
+*Psychometrika* 72(4): 563–581.
+<https://doi.org/10.1007/s11336-007-9016-1>

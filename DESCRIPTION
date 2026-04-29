@@ -44,12 +44,14 @@ Imports:
     stats,
     utils
 Suggests:
+    knitr,
     lme4,
     nnet,
     fixest,
     gmm,
     MASS,
     pscl,
+    rmarkdown,
     testthat (>= 3.0.0),
     torch,
     glmmTMB
@@ -62,6 +64,9 @@ Config/Needs/check:
     lintr,
     spelling
 Config/Needs/website:
-    pkgdown
+    pkgdown,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
 Config/testthat/parallel: true
 Config/testthat/edition: 3

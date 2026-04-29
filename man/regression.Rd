@@ -6,7 +6,7 @@
 \alias{print.net_regression}
 \title{Regression for network data}
 \usage{
-net_regression(formula, .data, times = 1000, control = list())
+net_regression(formula, .data, times = 1000, control = list(), verbose = FALSE)
 
 \method{print}{net_regression}(x, ..., print_b = FALSE, print_random = FALSE)
 }
@@ -35,7 +35,9 @@ dropped with a warning.}
 1000 is the default; publication-ready work usually needs 1000-10000.}
 
 \item{control}{Named list of additional controls; unspecified entries fall
-back to the defaults below.
+back to the defaults below.  It is recommended to use
+\code{\link{net_regression_control}()} to build this list for tab-completion and
+inline documentation.
 \itemize{
 \item \code{method}: \code{"qap"} (double semi-partialling plus, default) or \code{"qapy"}
 (permute y only).
@@ -56,6 +58,9 @@ negbin/zip).
 \item \code{less_mem}: drop the baseline model object from the return.
 \item \code{use_gpu}: torch-based batch OLS (gaussian only).
 }}
+
+\item{verbose}{Logical; show permutation progress.  Default \code{FALSE}.
+Set \code{options(infernet_advice = FALSE)} to silence specification advice.}
 
 \item{x}{A \code{net_regression} object.}
 
@@ -95,14 +100,12 @@ dropped with a warning and the remaining networks are pooled.
 }
 }
 \examples{
-\dontrun{
-networkers <- manynet::ison_networkers \%>\%
+networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 model1 <- net_regression(
   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
   networkers, times = 20)
 print(model1)
-}
 }
 \references{
 Krackhardt, David. 1988.
@@ -118,7 +121,11 @@ conditions."
 \doi{10.1007/s11336-007-9016-1}.
 }
 \seealso{
+\code{\link{net_regression_control}}, \code{\link{tests}},
+\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}
+
 Other models: 
 \code{\link{tests}}
 }
 \concept{models}
+
