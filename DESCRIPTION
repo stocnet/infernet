@@ -1,8 +1,17 @@
 Package: infernet
-Title: Basic inferential models for many different types of networks
+Title: Inferential Models for Networks
 Version: 0.1.0
 Date: 2025-06-23
-Description: TBD.
+Description: Provides inferential tests and regression models for network
+    data.  Implements conditional uniform graph (CUG) tests, quadratic
+    assignment procedure (QAP) tests, and multiple regression QAP (MRQAP)
+    with Dekker's double semi-partialling, supporting a variety of model
+    families (gaussian, binomial, Poisson, negative binomial,
+    zero-inflated Poisson, and multinomial) and estimation methods
+    (OLS, GLM, mixed models via lme4 / glmmTMB, fixed effects via fixest,
+    and GMM).  The package integrates with the stocnet ecosystem, accepting
+    any manynet-compatible network object and any scalar network measure
+    from manynet, netrics, or migraph as a test statistic.
 URL: https://stocnet.github.io/infernet/
 BugReports: https://github.com/stocnet/infernet/issues
 License: MIT + file LICENSE
@@ -26,10 +35,10 @@ Authors@R:
 Imports:
     cli,
     dplyr,
-    furrr,
     future,
     future.apply,
-    manynet,
+    graphics,
+    manynet (>= 1.0.0),
     purrr,
     reformulas,
     stats,

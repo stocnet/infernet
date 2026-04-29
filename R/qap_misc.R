@@ -58,6 +58,59 @@ combine_qap_estimates <- function(res, res2 = NULL) {
 }
 
 
+#' Convert a long-format edge list to a named list of matrices
+#'
+#' @description
+#' A convenience function for users who have dyadic data in long format
+#' (one row per sender-receiver pair) and need to convert it into the
+#' named list of matrices expected by [net_regression()].
+#'
+#' @param df A data frame with one row per dyad.
+#' @param sender Name of the column identifying the sender node.
+#' @param receiver Name of the column identifying the receiver node.
+#' @param perceiver Optional name of a third dimension (perceiver) for
+#'   Cognitive Social Structure (CSS) data.  Default `NULL`.
+#' @param mode `"directed"` (default) or `"undirected"`.
+#' @param loops Logical; include self-loops (diagonal).  Default `FALSE`.
+#' @param multi_mode Logical; if `TRUE`, sender and receiver node sets
+#'   are treated as distinct (two-mode / bipartite).  Default `FALSE`.
+#' @param split_by Optional column name; if supplied, one matrix per
+#'   unique value of this column is returned (useful for building a
+#'   list-of-networks input).  Default `NULL`.
+#' @return A named list.  Each element corresponds to a non-structural
+#'   column of `df` and is either a matrix (when `perceiver = NULL`) or a
+#'   3-D array.  When `split_by` is set the result is a list of such
+#'   named lists.
+#' @family models
+#' @seealso [net_regression()]
+#' @examples
+#' df <- data.frame(
+#'   from  = c("A", "A", "B", "B", "C", "C"),
+#'   to    = c("B", "C", "A", "C", "A", "B"),
+#'   weight = c(1, 2, 3, 4, 5, 6)
+#' )
+#' mats <- net_from_edgelist(df, sender = "from", receiver = "to")
+#' mats$weight
+#' @export
+net_from_edgelist <- function(df,
+                              sender,
+                              receiver,
+                              perceiver  = NULL,
+                              mode       = c("directed", "undirected"),
+                              loops      = FALSE,
+                              multi_mode = FALSE,
+                              split_by   = NULL) {
+  df_to_mat(df,
+            sender    = sender,
+            receiver  = receiver,
+            perceiver = perceiver,
+            mode      = mode,
+            loops     = loops,
+            multi_mode = multi_mode,
+            split_by  = split_by)
+}
+
+
 #' @keywords internal
 #' @noRd
 df_to_mat <- function(df,

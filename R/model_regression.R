@@ -39,7 +39,9 @@
 #' @param times Integer.  Number of permutations for the null distribution.
 #'   1000 is the default; publication-ready work usually needs 1000-10000.
 #' @param control Named list of additional controls; unspecified entries fall
-#'   back to the defaults below.
+#'   back to the defaults below.  It is recommended to use
+#'   [net_regression_control()] to build this list for tab-completion and
+#'   inline documentation.
 #'   - `method`: `"qap"` (double semi-partialling plus, default) or `"qapy"`
 #'     (permute y only).
 #'   - `strategy`: future plan, e.g. `"sequential"` (default), `"multisession"`.
@@ -58,6 +60,8 @@
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `less_mem`: drop the baseline model object from the return.
 #'   - `use_gpu`: torch-based batch OLS (gaussian only).
+#' @param verbose Logical; show permutation progress.  Default `FALSE`.
+#'   Set `options(infernet_advice = FALSE)` to silence specification advice.
 #' @return An object of class `net_regression` inheriting from either
 #'   `QAPRegression` (gaussian) or `QAPGLM` (other families).  When the
 #'   outcome is binary -- either `family = "binomial"` or `"gaussian"` with
@@ -78,20 +82,21 @@
 #'   conditions."
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}.
+#' @seealso [test_random()], [test_permutation()], [net_regression_control()],
+#'   [manynet::as_tidygraph()]
 #' @examples
-#' \dontrun{
-#' networkers <- manynet::ison_networkers %>%
+#' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")
 #' model1 <- net_regression(
 #'   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
 #'   networkers, times = 20)
 #' print(model1)
-#' }
 #' @export
 net_regression <- function(formula,
                            .data,
                            times   = 1000,
-                           control = list()) {
+                           control = list(),
+                           verbose = FALSE) {
 
   ctrl <- .default_control()
   if (length(control) > 0) {
@@ -221,7 +226,8 @@ net_regression <- function(formula,
   keep <- setdiff(seq_along(glist), fail_idx)
   if (length(keep) == 0) {
     stop("None of the supplied networks could be converted for the given ",
-         "formula. Reasons:\n  ", paste(fail_reason, collapse = "\n  "))
+         "formula. Reasons:\n  ", paste(fail_reason, collapse = "\n  "),
+         call. = FALSE)
   }
 
   ref_names <- names(ml_list[[keep[1]]]$mydata)
@@ -247,7 +253,8 @@ net_regression <- function(formula,
             call. = FALSE)
   }
   if (length(keep) == 0) {
-    stop("All supplied networks were dropped due to missing predictors.")
+    stop("All supplied networks were dropped due to missing predictors.",
+         call. = FALSE)
   }
 
   kept_mls <- ml_list[keep]
@@ -576,7 +583,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         out
       } else if (IV[[elem]][1] == "dist") {
         if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
-          stop("Distance undefined for factors.")
+          stop("Distance undefined for factors.", call. = FALSE)
         }
         rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV))
@@ -588,7 +595,8 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         out
       } else if (IV[[elem]][1] == "sim") {
         if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
-          stop("Similarity undefined for factors. Try `same()` instead.")
+          stop("Similarity undefined for factors. Try `same()` instead.",
+               call. = FALSE)
         }
         rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
                        nrow(DV), ncol(DV))
@@ -616,7 +624,8 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
                           } else if (IV[[elem]][3] == "sum") {
                             colSums(val[-x, ], na.rm = TRUE)
                           } else {
-                            stop("tertius summary function not recognised")
+                            stop("tertius summary function not recognised",
+                                 call. = FALSE)
                           }
                         },
                         FUN.VALUE = numeric(ncol(DV))))
@@ -631,7 +640,8 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
           names(out) <- IV[[elem]][1]
           out
         } else {
-          stop("Predictor '", IV[[elem]][1], "' not found in the network.")
+          stop("Predictor '", IV[[elem]][1], "' not found in the network.",
+               call. = FALSE)
         }
       }
     })
@@ -791,6 +801,7 @@ getDependentName <- function(formula) {
 #' @keywords internal
 #' @noRd
 specificationAdvice <- function(formula, data) {
+  if (isFALSE(getOption("infernet_advice", TRUE))) return(invisible(NULL))
   formdf <- t(data.frame(formula))
   if (any(formdf[, 1] %in% c("sim", "same"))) {
     vars <- formdf[formdf[, 1] %in% c("sim", "same"), 2]
@@ -818,4 +829,102 @@ specificationAdvice <- function(formula, data) {
                 "Try adding", suggests, "to the model specification.\n\n"))
     }
   }
+}
+
+
+# ---- net_regression_control ------------------------------------------------
+
+#' Control parameters for net_regression
+#'
+#' @description
+#' Returns a named list of control parameters for [net_regression()].
+#' This is the recommended way to specify advanced options because all
+#' parameters are tab-completable and individually documented.
+#'
+#' Set `options(infernet_advice = FALSE)` to suppress the specification
+#' advice message that is printed when homophily terms are present.
+#'
+#' @param method `"qap"` (Dekker's double semi-partialling plus, default)
+#'   or `"qapy"` (permute y only).
+#' @param strategy A \pkg{future} strategy string, e.g. `"sequential"`
+#'   (default) or `"multisession"`.
+#' @param family Model family.  `"auto"` (default) resolves to
+#'   `"gaussian"` for weighted networks and `"binomial"` for binary
+#'   networks.  Other choices: `"gaussian"`, `"binomial"`, `"poisson"`,
+#'   `"negbin"`, `"zip"`, `"multinom"`.
+#' @param estimator `"standard"` (default, uses `lm`/`glm`) or `"gmm"`
+#'   (generalized method of moments; requires \pkg{gmm} and is available
+#'   for `"binomial"`, `"poisson"`, `"negbin"`, and `"zip"`).
+#' @param mode `"directed"` or `"undirected"`.  Default `NULL` means
+#'   auto-detected from `.data`.
+#' @param diag Logical; include diagonal (loop) ties in the estimation.
+#'   Default `NULL` means auto-detected.
+#' @param seed Integer random seed.  Default `NULL`.
+#' @param groups A vector (or list of vectors for multi-network fits)
+#'   assigning nodes to groups; permutations are performed within groups.
+#'   Default `NULL`.
+#' @param ncores Number of parallel workers.  Default `NULL` (uses
+#'   the `strategy` setting).
+#' @param use_robust_errors Logical; use HC3 heteroskedasticity-robust
+#'   standard errors.  Default `FALSE`.
+#' @param fixest_se_cluster Column name to use as a cluster variable for
+#'   \pkg{fixest} standard errors.  Default `NULL`.
+#' @param reference Reference category for `"multinom"` models.
+#'   Default `NULL`.
+#' @param comparison Named list of pairwise comparisons for multinomial
+#'   models.  Default `NULL`.
+#' @param random_intercept_nets Logical; include a random intercept for
+#'   network identity (requires \pkg{lme4}).  Default `FALSE`.
+#' @param random_intercept_sender Logical; include a random intercept for
+#'   sender node (requires \pkg{lme4}).  Default `FALSE`.
+#' @param random_intercept_receiver Logical; include a random intercept for
+#'   receiver node (requires \pkg{lme4}).  Default `FALSE`.
+#' @param less_mem Logical; drop the baseline model object from the
+#'   returned fit to save memory.  Default `FALSE`.
+#' @param use_gpu Logical; use torch-based batch OLS on the GPU
+#'   (gaussian family only; requires \pkg{torch}).  Default `FALSE`.
+#' @return A named list suitable for passing as the `control` argument of
+#'   [net_regression()].
+#' @seealso [net_regression()]
+#' @family models
+#' @export
+net_regression_control <- function(method    = "qap",
+                                   strategy  = "sequential",
+                                   family    = "auto",
+                                   estimator = "standard",
+                                   mode      = NULL,
+                                   diag      = NULL,
+                                   seed      = NULL,
+                                   groups    = NULL,
+                                   ncores    = NULL,
+                                   use_robust_errors = FALSE,
+                                   fixest_se_cluster = NULL,
+                                   reference  = NULL,
+                                   comparison = NULL,
+                                   random_intercept_nets     = FALSE,
+                                   random_intercept_sender   = FALSE,
+                                   random_intercept_receiver = FALSE,
+                                   less_mem  = FALSE,
+                                   use_gpu   = FALSE) {
+  method <- match.arg(method, choices = c("qap", "qapy"))
+  list(
+    method    = method,
+    strategy  = strategy,
+    family    = family,
+    estimator = estimator,
+    mode      = mode,
+    diag      = diag,
+    seed      = seed,
+    groups    = groups,
+    ncores    = ncores,
+    use_robust_errors = use_robust_errors,
+    fixest_se_cluster = fixest_se_cluster,
+    reference  = reference,
+    comparison = comparison,
+    random_intercept_nets     = random_intercept_nets,
+    random_intercept_sender   = random_intercept_sender,
+    random_intercept_receiver = random_intercept_receiver,
+    less_mem  = less_mem,
+    use_gpu   = use_gpu
+  )
 }

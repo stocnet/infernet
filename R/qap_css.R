@@ -1,8 +1,12 @@
 # CSS (Cognitive Social Structure) engine ------------------------------------
 #
-# 3D-array QAP engine.  Not currently exposed through net_regression() but
-# ported here so the machinery is available once manynet finalises its CSS
-# representation.  All functions internal.
+# 3D-array QAP engine ported from MrQAP.  This engine handles CSS data stored
+# as n x n x n arrays (sender × receiver × perceiver).
+#
+# STATUS: Internal / not yet wired to net_regression().
+# The engine will be exposed via control = list(css = TRUE) once manynet
+# provides a stable 3D CSS network representation.  Until then all functions
+# here are internal and subject to change.
 
 #' @keywords internal
 #' @noRd

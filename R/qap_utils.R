@@ -78,13 +78,13 @@ build_internal_formula <- function(formula,
 validate_qap_input <- function(data, parsed, css = FALSE) {
   dep <- parsed$dependent
   if (!(dep %in% names(data))) {
-    stop("Dependent variable '", dep, "' not found in data.")
+    stop("Dependent variable '", dep, "' not found in data.", call. = FALSE)
   }
   structural_vars <- c("sv", "rv", "nv", "pv")
   for (v in parsed$all_data_vars) {
     if (v %in% structural_vars) next
     if (!(v %in% names(data))) {
-      stop("Predictor '", v, "' not found in data.")
+      stop("Predictor '", v, "' not found in data.", call. = FALSE)
     }
   }
 
@@ -93,21 +93,25 @@ validate_qap_input <- function(data, parsed, css = FALSE) {
 
   if (!css) {
     if (!large) {
-      if (!is.matrix(y)) stop("data[['", dep, "']] must be a matrix.")
+      if (!is.matrix(y))
+        stop("data[['", dep, "']] must be a matrix.", call. = FALSE)
     } else {
       for (i in seq_along(y)) {
         if (!is.matrix(y[[i]]))
-          stop("data[['", dep, "']][[", i, "]] must be a matrix.")
+          stop("data[['", dep, "']][[", i, "]] must be a matrix.",
+               call. = FALSE)
       }
     }
   } else {
     if (!large) {
       if (length(dim(y)) != 3)
-        stop("data[['", dep, "']] must be a 3-dimensional array.")
+        stop("data[['", dep, "']] must be a 3-dimensional array.",
+             call. = FALSE)
     } else {
       for (i in seq_along(y)) {
         if (length(dim(y[[i]])) != 3)
-          stop("data[['", dep, "']][[", i, "]] must be a 3D array.")
+          stop("data[['", dep, "']][[", i, "]] must be a 3D array.",
+               call. = FALSE)
       }
     }
   }
@@ -280,7 +284,7 @@ fit_qap_model <- function(mod, pred, family,
       pred[[dep_var]] <- stats::relevel(pred[[dep_var]], ref = reference)
     }
     if (!requireNamespace("nnet", quietly = TRUE))
-      stop("Package 'nnet' is required for multinomial models.")
+      stop("Package 'nnet' is required for multinomial models.", call. = FALSE)
     base_model       <- nnet::multinom(mod, data = pred, trace = FALSE)
     fit$coefficients <- stats::coefficients(base_model)
     fit$t            <- stats::coefficients(base_model) /
@@ -291,7 +295,7 @@ fit_qap_model <- function(mod, pred, family,
 
   if (estimator == "gmm") {
     if (!requireNamespace("gmm", quietly = TRUE))
-      stop("Package 'gmm' is required for GMM estimation.")
+      stop("Package 'gmm' is required for GMM estimation.", call. = FALSE)
     y_vec <- pred[[dep_var]]
     x_mat <- cbind(1, as.matrix(pred[, main_vars, drop = FALSE]))
 
@@ -327,7 +331,7 @@ fit_qap_model <- function(mod, pred, family,
       has_extra_param <- TRUE
     } else {
       stop("GMM estimator is available for binomial, poisson, negbin, ",
-           "and zip families.")
+           "and zip families.", call. = FALSE)
     }
 
     all_coefs <- base_model$coefficients
@@ -361,7 +365,8 @@ fit_qap_model <- function(mod, pred, family,
   if (family == "zip" && estimator == "standard") {
     if (has_random) {
       if (!requireNamespace("glmmTMB", quietly = TRUE))
-        stop("Package 'glmmTMB' is required for mixed ZIP models.")
+        stop("Package 'glmmTMB' is required for mixed ZIP models.",
+             call. = FALSE)
       base_model <- glmmTMB::glmmTMB(mod, data = pred,
                                      family = stats::poisson(),
                                      ziformula = ~1)
@@ -377,7 +382,8 @@ fit_qap_model <- function(mod, pred, family,
       }
     } else {
       if (!requireNamespace("pscl", quietly = TRUE))
-        stop("Package 'pscl' is required for zero-inflated Poisson models.")
+        stop("Package 'pscl' is required for zero-inflated Poisson models.",
+             call. = FALSE)
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
       fit$coefficients <- base_model$coefficients$count
       resid <- stats::residuals(base_model, type = "response")
@@ -396,7 +402,8 @@ fit_qap_model <- function(mod, pred, family,
   if (!has_random) {
     if (use_fixest) {
       if (!requireNamespace("fixest", quietly = TRUE))
-        stop("Package 'fixest' is required when fixest_se_cluster or fixed effects with | ")
+        stop("Package 'fixest' is required when fixest_se_cluster or fixed effects with | ",
+             call. = FALSE)
       fe_family <- if (family == "negbin") "negbin" else family
       base_model <- fixest::feglm(mod, data = pred,
                                   family = fe_family,
@@ -429,7 +436,8 @@ fit_qap_model <- function(mod, pred, family,
         fit$adj.r.squared <- summary(base_model)$adj.r.squared
       } else if (family == "negbin") {
         if (!requireNamespace("MASS", quietly = TRUE))
-          stop("Package 'MASS' is required for negative binomial models.")
+          stop("Package 'MASS' is required for negative binomial models.",
+               call. = FALSE)
         base_model <- MASS::glm.nb(mod, data = pred)
         fit$theta  <- base_model$theta
       } else {
@@ -448,11 +456,12 @@ fit_qap_model <- function(mod, pred, family,
   } else {
     if (family == "gaussian") {
       if (!requireNamespace("lme4", quietly = TRUE))
-        stop("Package 'lme4' is required for random effects.")
+        stop("Package 'lme4' is required for random effects.", call. = FALSE)
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
       if (!requireNamespace("glmmTMB", quietly = TRUE))
-        stop("Package 'glmmTMB' is required for mixed negative binomial models.")
+        stop("Package 'glmmTMB' is required for mixed negative binomial models.",
+             call. = FALSE)
       base_model <- glmmTMB::glmmTMB(mod, data = pred,
                                      family = glmmTMB::nbinom2())
       fit$coefficients <- glmmTMB::fixef(base_model)$cond
@@ -474,7 +483,7 @@ fit_qap_model <- function(mod, pred, family,
       return(fit)
     } else {
       if (!requireNamespace("lme4", quietly = TRUE))
-        stop("Package 'lme4' is required for random effects.")
+        stop("Package 'lme4' is required for random effects.", call. = FALSE)
       base_model <- lme4::glmer(mod, data = pred, family = family,
                                 control = lme4::glmerControl(
                                   calc.derivs = FALSE,
@@ -540,7 +549,7 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
 aggregate_perm_results <- function(results, reps) {
   results <- Filter(Negate(is.null), results)
   n_valid <- length(results)
-  if (n_valid == 0) stop("All permutations failed to converge.")
+  if (n_valid == 0) stop("All permutations failed to converge.", call. = FALSE)
   if (n_valid < reps) {
     warning(reps - n_valid, " of ", reps,
             " permutations failed and were excluded.")
@@ -579,7 +588,7 @@ residualise_predictor <- function(xi, pred, main_vars,
     xm <- stats::lm(modx, data = pred)
   } else {
     if (!requireNamespace("lme4", quietly = TRUE))
-      stop("Package 'lme4' is required for random effects.")
+      stop("Package 'lme4' is required for random effects.", call. = FALSE)
     xm <- lme4::lmer(modx, data = pred)
   }
   stats::residuals(xm)
