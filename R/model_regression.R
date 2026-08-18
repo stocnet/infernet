@@ -72,7 +72,8 @@
 #' @importFrom purrr flatten
 #' @importFrom future plan
 #' @importFrom furrr future_map_dfr furrr_options
-#' @importFrom stats glm.fit as.formula df.residual pchisq
+#' @importFrom stats as.formula lm glm fitted.values residuals coefficients
+#' @importFrom lme4 lmer glmer deviance.merMod
 #' @references 
 #'   Krackhardt, David. 1988.
 #'   “Predicting with Networks: Nonparametric Multiple Regression Analysis of Dyadic Data.” 
@@ -98,7 +99,7 @@ net_regression <- function(formula,
                            times = 1000,
                            control = list(method = c("qap","qapy"),
                                           strategy = "sequential",
-                                          family = "gaussian",
+                                          family = "auto",
                                           estimator = "auto",
                                           seed = NULL,
                                           groups = NULL,
@@ -122,65 +123,76 @@ net_regression <- function(formula,
   n <- dim(g[[1]])
   
   directed <- ifelse(manynet::is_directed(g[[1]]), "digraph", "graph")
-  valued <- manynet::is_weighted(g[[1]])
   diag <- manynet::is_complex(g[[1]])
+  valued <- manynet::is_weighted(g[[1]]) && family == "auto"
   
   
   base_data <- vectorise_list(g, simplex = !diag, 
                               directed = (directed == "digraph"))
   
   # Base ####
+  fit <- list()
+  
   if (valued) {
-    fit.base <- lm(convForm,base_data)
-    
-    
-    fit.base <- nlmfit(g, 
-                       directed = directed, 
-                       diag = diag, 
-                       rety = TRUE)
-    fit <- list()
-    fit$coefficients <- coefficients(fit.base)
-    fit$fitted.values <- fitted.values(fit.base)
-    fit$residuals <- residuals(fit.base)
-    fit$qr <- fit.base$qr
-    fit$rank <- fit.base$rank
+    if (!rand) {
+      fit$base <- stats::lm(formula, data = base_data)
+      fit$coefficients <- stats::coefficients(fit$base)
+    } else {
+      fit$base <- lme4::lmer(formula, data = base_data)
+      fit$coefficients <- fit.base@beta
+    }
+  
+    fit$fitted.values <- stats::fitted.values(fit$base)
+    fit$residuals <- stats::residuals(fit$base)
+    fit$rank <- length(fit$coefficients)
     fit$n <- length(fit$fitted.values)
     fit$df.residual <- fit$n - fit$rank
-    fit$tstat <- fit$coefficients / sqrt(diag(vcov(fit.base)))
+    fit$tstat <- fit$coefficients / sqrt(diag(vcov(fit$base)))
   } else {
-    fit.base <- nlgfit(g, 
-                       directed = directed, 
-                       diag = diag)
-    fit <- list()
-    fit$coefficients <- fit.base$coefficients
-    fit$fitted.values <- fit.base$fitted.values
-    fit$residuals <- fit.base$residuals
-    fit$se <- sqrt(diag(chol2inv(fit.base$qr$qr)))
-    fit$tstat <- fit$coefficients/fit$se
-    fit$linear.predictors <- fit.base$linear.predictors
-    fit$n <- length(fit.base$y)
-    fit$df.model <- fit.base$rank
-    fit$df.residual <- fit.base$df.residual
-    fit$deviance <- fit.base$deviance
-    fit$null.deviance <- fit.base$null.deviance
-    fit$df.null <- fit.base$df.null
-    fit$rank <- fit.base$rank
-    fit$aic <- fit.base$aic
-    fit$bic <- fit$deviance + fit$df.model * log(fit$n)
-    fit$qr <- fit.base$qr
+    if (family == "auto") {
+      family <- "binomial"
+    }
+    if (!rand) {
+      fit$base <- stats::glm(formula, data = base_data, family = family)
+      fit$coefficients <- stats::coefficients(fit$base)
+      fit$deviance <- fit.base$deviance
+      fit$null.deviance <- fit.base$null.deviance
+      fit$df.null <- fit.base$df.null
+      fit$aic <- fit.base$aic
+      fit$bic <- fit$deviance + fit$rank * log(fit$n)
+    } else {
+      fit$base <- lme4::glmer(formula, data = base_data, family = family)
+      fit$coefficients <- fit.base@beta
+      fit.base.sum <- summary(fit$base)
+      fit$deviance <- lme4:::deviance.merMod(fit$base)
+      fit$aic <- fit.base.sum$AICtab["AIC"]
+      fit$bic <- fit.base.sum$AICtab["BIC"]
+      # null model stuff not directly defined for mixed models...
+    }
+    fit$fitted.values <- fitted.values(fit$base)
+    fit$residuals <- residuals(fit$base)
+    fit$tstat <- fit$coefficients / sqrt(diag(vcov(fit$base)))
+    fit$fitted.values <- stats::fitted.values(fit$base)
+    fit$n <- length(fit$fitted.values)
+    fit$rank <- length(fit$coefficients)
+    fit$df.residual <- fit$n - fit$rank
+
     fit$ctable <- table(as.numeric(fit$fitted.values >= 0.5), 
-                        fit.base$y, dnn = c("Predicted", "Actual"))
+                        base_data[[getDependentName(formula)]], 
+                        dnn = c("Predicted", "Actual"))
     if (NROW(fit$ctable) == 1) {
-      if (rownames(fit$ctable) == "0") 
+      if (rownames(fit$ctable) == "0")  {
         fit$ctable <- rbind(fit$ctable, c(0, 0))
-      else fit$ctable <- rbind(c(0, 0), fit$ctable)
+      } else {
+        fit$ctable <- rbind(c(0, 0), fit$ctable)
+      }
       rownames(fit$ctable) <- c("0", "1")
     }
   }
   
   # Null ####
   # qapy for univariate ####
-  if (method == "qapy" | nx == 2) {
+  if (method == "qapy" || nx == 1) { # why was nx == 2?
     oplan <- future::plan(strategy)
     on.exit(future::plan(oplan), add = TRUE)
     if (valued) {
@@ -244,19 +256,20 @@ net_regression <- function(formula,
                      2, mean)
   fit$pgreq <- apply(sweep(fit$dist, 2, fit$tstat, ">="), 
                      2, mean)
-  fit$pgreqabs <- apply(sweep(abs(fit$dist), 2, abs(fit$tstat), 
-                              ">="), 2, mean)
-  if (method == "qapy" | nx == 2) 
+  fit$pgreqabs <- apply(sweep(abs(fit$dist), 2, abs(fit$tstat), ">="), 2, mean)
+  if (method == "qapy" | nx == 2) {
     fit$nullhyp <- "QAPy"
-  else fit$nullhyp <- "QAP-DSP"
+  } else {
+    fit$nullhyp <- "QAP-DSP"
+  }
   fit$names <- names(matrixList)[-1]
   fit$intercept <- TRUE
-  if (valued) 
+  if (valued) {
     class(fit) <- "netlm"
-  else 
+  } else {
     class(fit) <- "netlogit"
-  fit  
-  
+  }
+  return(fit)  
 }
 
 ################### auxilliary ----
@@ -274,27 +287,26 @@ gettval <- function(x, y, tol) {
   coef/se
 }
 
-nlmfit <- function(glist, directed, diag, rety) {
-  z <- as.matrix(vectorise_list(glist, simplex = !diag, 
-                                directed = (directed == "digraph")))
-  if (!rety) {
-    gettval(z[,2:ncol(z)], z[,1], tol = 1e-07)
-  }
-  else {
-    list(qr(z[,2:ncol(z)], tol = 1e-07), z[,1])
-  }
-}
+#nlmfit <- function(glist, directed, diag, rety) {
+#  z <- as.matrix(vectorise_list(glist, simplex = !diag, 
+#                                directed = (directed == "digraph")))
+#  if (!rety) {
+#    gettval(z[,2:ncol(z)], z[,1], tol = 1e-07)
+#  }
+#  else {
+#    list(qr(z[,2:ncol(z)], tol = 1e-07), z[,1])
+#  }
+#}
+#
+##' @importFrom stats binomial
+#nlgfit <- function(glist, directed, diag) {
+#  z <- as.matrix(vectorise_list(glist, simplex = !diag, 
+#                                directed = (directed == "digraph")))
+#  stats::glm.fit(z[,2:ncol(z)], z[,1], 
+#                 family = stats::binomial(), intercept = FALSE)
+#}
 
-#' @importFrom stats binomial
-nlgfit <- function(glist, directed, diag) {
-  z <- as.matrix(vectorise_list(glist, simplex = !diag, 
-                                directed = (directed == "digraph")))
-  stats::glm.fit(z[,2:ncol(z)], z[,1], 
-                 family = stats::binomial(), intercept = FALSE)
-}
-
-vecto
-rise_list <- function(glist, simplex, directed){
+vectorise_list <- function(glist, simplex, directed){
   if (missing(simplex)) {
     simplex <- !manynet::is_complex(glist[[1]])
   }
@@ -308,8 +320,8 @@ rise_list <- function(glist, simplex, directed){
     glist[[1]][upper.tri(glist[[1]])] <- NA
   }
   
-  furrr::future_map(
-    glist,function(x) c(x)) %>%
+  furrr::future_map(glist,function(x) {
+    c(x)}) %>%
     dplyr::bind_cols() %>%
     stats::na.omit() %>%
     suppressMessages()
@@ -624,4 +636,21 @@ specificationAdvice <- function(formula, data) {
                 "Try adding", suggests, "to the model specification.\n\n"))
     }
   }
+}
+ 
+logit_moments <- function(theta, data) {
+  Y <- data$y
+  X <- data$x
+  prob <- 1 / (1 + exp(-1 * (X %*% theta)))
+  residuals <- as.vector(Y - prob)
+  g <- residuals * X
+  return(g)
+}
+ 
+logit_resid <- function(gmmo) {
+  Y <- gmmo$dat$y
+  X <- gmmo$dat$x
+  prob <- 1 / (1 + exp(-1 * (X %*% gmmo$coefficients)))
+  residuals <- as.vector(Y - prob)
+  return(residuals)
 }
