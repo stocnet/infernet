@@ -1,7 +1,7 @@
 # Tests of network measures ####
 
 #' Tests of network measures
-#' 
+#' @name tests
 #' @description
 #'   These functions conduct tests of any network-level statistic:
 #'   
@@ -12,8 +12,14 @@
 #'   of a measure against a distribution of measures on permutations 
 #'   of the original network.
 #'   
-#' @name tests
 #' @inheritParams regression
+#' @param strategy If `{furrr}` is installed, 
+#'   then multiple cores can be used to accelerate the function.
+#'   By default `"sequential"`, 
+#'   but if multiple cores available,
+#'   then `"multisession"` or `"multicore"` may be useful.
+#'   Generally this is useful only when `times` > 1000.
+#'   See [`{furrr}`](https://furrr.futureverse.org) for more.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
@@ -23,17 +29,17 @@ NULL
 #' @rdname tests 
 #' @importFrom manynet generate_random bind_node_attributes is_directed is_complex
 #' @examples 
-#' marvel_friends <- to_unsigned(ison_marvel_relationships)
-#' marvel_friends <- to_giant(marvel_friends) %>% 
+#' marvel_friends <- fict_marvel %>% to_uniplex("relationship") %>% 
+#'   to_unsigned() %>% to_giant() %>% 
 #'   to_subgraph(PowerOrigin == "Human")
-#' (cugtest <- test_random(marvel_friends, manynet::net_heterophily, attribute = "Attractive",
+#' (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
 #'    times = 200))
 #' # plot(cugtest)
 #' @export
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
-                        strategy = "sequential", 
-                        verbose = FALSE){
+                        strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
@@ -76,8 +82,8 @@ test_random <- function(.data, FUN, ...,
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
-                        strategy = "sequential", 
-                        verbose = FALSE){
+                        strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
@@ -86,7 +92,8 @@ test_configuration <- function(.data, FUN, ...,
   }
   oplan <- future::plan(strategy)
   on.exit(future::plan(oplan), add = TRUE)
-  rands <- furrr::future_map(1:times, manynet::generate_configuration, n = .data, 
+  rands <- furrr::future_map(1:times, 
+                             ~ manynet::generate_configuration(.data), 
                              .progress = verbose, 
                              .options = furrr::furrr_options(seed = T))
   if (length(args) > 0) {
@@ -118,14 +125,14 @@ test_configuration <- function(.data, FUN, ...,
 #' @rdname tests 
 #' @examples 
 #' # (qaptest <- test_permutation(marvel_friends, 
-#' #                 manynet::net_heterophily, attribute = "Attractive",
+#' #                 net_by_heterophily, attribute = "Attractive",
 #' #                 times = 200))
 #' # plot(qaptest)
 #' @export
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
-                             strategy = "sequential", 
-                             verbose = FALSE){
+                             strategy = "sequential"){
+  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
@@ -133,7 +140,7 @@ test_permutation <- function(.data, FUN, ...,
     obsd <- FUN(.data)
   }
   n <- manynet::net_dims(.data)
-  d <- manynet::net_density(.data)
+  d <- netrics::net_by_density(.data)
   oplan <- future::plan(strategy)
   on.exit(future::plan(oplan), add = TRUE)
   rands <- furrr::future_map(1:times, 

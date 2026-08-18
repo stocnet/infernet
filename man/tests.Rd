@@ -7,49 +7,25 @@
 \alias{test_permutation}
 \title{Tests of network measures}
 \usage{
-test_random(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_random(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_configuration(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_configuration(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_permutation(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
 }
 \arguments{
-\item{.data}{A manynet-consistent network.
-See e.g. \code{manynet::as_tidygraph()} for more details.}
+\item{.data}{A manynet-consistent network (see
+\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
+supplied the model is fit jointly; graphs missing any predictor are
+dropped with a warning.}
 
 \item{FUN}{A graph-level statistic function to test.}
 
 \item{...}{Additional arguments to be passed on to FUN,
 e.g. the name of the attribute.}
 
-\item{times}{Integer indicating number of simulations used for quantile estimation.
-(Relevant to the null hypothesis test only -
-the analysis itself is unaffected by this parameter.)
-Note that, as for all Monte Carlo procedures, convergence is slower for more
-extreme quantiles.
-By default, \code{times=1000}.
-1,000 - 10,000 repetitions recommended for publication-ready results.}
+\item{times}{Integer.  Number of permutations for the null distribution.
+1000 is the default; publication-ready work usually needs 1000-10000.}
 
 \item{strategy}{If \code{{furrr}} is installed,
 then multiple cores can be used to accelerate the function.
@@ -58,10 +34,6 @@ but if multiple cores available,
 then \code{"multisession"} or \code{"multicore"} may be useful.
 Generally this is useful only when \code{times} > 1000.
 See \href{https://furrr.futureverse.org}{\code{{furrr}}} for more.}
-
-\item{verbose}{Whether the function should report on its progress.
-By default FALSE.
-See \href{https://progressr.futureverse.org}{\code{{progressr}}} for more.}
 }
 \description{
 These functions conduct tests of any network-level statistic:
@@ -75,20 +47,19 @@ of the original network.
 }
 }
 \examples{
-marvel_friends <- to_unsigned(ison_marvel_relationships)
-marvel_friends <- to_giant(marvel_friends) \%>\% 
+marvel_friends <- fict_marvel \%>\% to_uniplex("relationship") \%>\% 
+  to_unsigned() \%>\% to_giant() \%>\% 
   to_subgraph(PowerOrigin == "Human")
-(cugtest <- test_random(marvel_friends, manynet::net_heterophily, attribute = "Attractive",
+(cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
    times = 200))
 # plot(cugtest)
 # (qaptest <- test_permutation(marvel_friends, 
-#                 manynet::net_heterophily, attribute = "Attractive",
+#                 net_by_heterophily, attribute = "Attractive",
 #                 times = 200))
 # plot(qaptest)
 }
 \seealso{
 Other models: 
-\code{\link{regression}},
-\code{\link{test_distributions}}
+\code{\link{regression}}
 }
 \concept{models}

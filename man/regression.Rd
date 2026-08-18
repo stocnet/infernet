@@ -3,118 +3,122 @@
 \name{regression}
 \alias{regression}
 \alias{net_regression}
-\title{Linear and logistic regression for network data}
+\alias{print.net_regression}
+\title{Regression for network data}
 \usage{
-net_regression(
-  formula,
-  .data,
-  method = c("qap", "qapy"),
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+net_regression(formula, .data, times = 1000, control = list())
+
+\method{print}{net_regression}(x, ..., print_b = FALSE, print_random = FALSE)
 }
 \arguments{
-\item{formula}{A formula describing the relationship being tested.
-Several additional terms are available to assist users investigate
-the effects they are interested in. These include:
+\item{formula}{A formula describing the model.  The left-hand side is the
+dependent network (e.g. \code{weight} for a weighted graph, or \code{.} for an
+unweighted graph).  The right-hand side accepts:
 \itemize{
-\item \code{ego()} constructs a matrix where the cells reflect the value of
-a named nodal attribute for an edge's sending node
-\item \code{alter()} constructs a matrix where the cells reflect the value of
-a named nodal attribute for an edge's receiving node
-\item \code{same()} constructs a matrix where a 1 reflects
-if two nodes' attribute values are the same
-\item \code{dist()} constructs a matrix where the cells reflect the
-absolute difference between the attribute's values
-for the sending and receiving nodes
-\item \code{sim()} constructs a matrix where the cells reflect the
-proportional similarity between the attribute's values
-for the sending and receiving nodes
-\item \code{tertius()} constructs a matrix where the cells reflect some
-aggregate of an attribute associated with a node's other ties.
-Currently "mean" and "sum" are available aggregating functions.
-'ego' is excluded from these calculations.
-See Haunss and Hollway (2023) for more on this effect.
-\item dyadic covariates (other networks) can just be named
+\item \code{ego(attr)} — matrix of the sender's value of a node attribute,
+\item \code{alter(attr)} — matrix of the receiver's value,
+\item \code{same(attr)} — 1 where sender and receiver share an attribute value,
+\item \code{dist(attr)} — absolute difference in a numeric attribute,
+\item \code{sim(attr)} — proportional similarity in a numeric attribute,
+\item \code{tertius(attr, fn)} — aggregate of an attribute across a node's
+other ties (\code{fn} is \code{"mean"} or \code{"sum"}),
+\item plain tie-attribute names, which pull in a second network as a
+dyadic covariate.
 }}
 
-\item{.data}{A manynet-consistent network.
-See e.g. \code{manynet::as_tidygraph()} for more details.}
+\item{.data}{A manynet-consistent network (see
+\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
+supplied the model is fit jointly; graphs missing any predictor are
+dropped with a warning.}
 
-\item{method}{A method for establishing the null hypothesis.
-Note that "qap" uses Dekker et al's (2007) double semi-partialling technique,
-whereas "qapy" permutes only the $y$ variable.
-"qap" is the default.}
+\item{times}{Integer.  Number of permutations for the null distribution.
+1000 is the default; publication-ready work usually needs 1000-10000.}
 
-\item{times}{Integer indicating number of simulations used for quantile estimation.
-(Relevant to the null hypothesis test only -
-the analysis itself is unaffected by this parameter.)
-Note that, as for all Monte Carlo procedures, convergence is slower for more
-extreme quantiles.
-By default, \code{times=1000}.
-1,000 - 10,000 repetitions recommended for publication-ready results.}
+\item{control}{Named list of additional controls; unspecified entries fall
+back to the defaults below.
+\itemize{
+\item \code{method}: \code{"qap"} (double semi-partialling plus, default) or \code{"qapy"}
+(permute y only).
+\item \code{strategy}: future plan, e.g. \code{"sequential"} (default), \code{"multisession"}.
+\item \code{family}: \code{"auto"} (default; gaussian for weighted networks, binomial
+for binary), \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"},
+\code{"zip"}, or \code{"multinom"}.
+\item \code{estimator}: \code{"standard"} (default) or \code{"gmm"} (binomial/poisson/
+negbin/zip).
+\item \code{mode}: \code{"directed"} / \code{"undirected"} (default auto-detected from
+\code{.data}).
+\item \code{diag}: logical, include loops (default auto-detected).
+\item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
+\item \code{use_robust_errors}: HC3 standard errors.
+\item \code{fixest_se_cluster}: cluster variable for fixest.
+\item \code{reference}, \code{comparison}: multinomial / pairwise-comparison options.
+\item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
+\item \code{less_mem}: drop the baseline model object from the return.
+\item \code{use_gpu}: torch-based batch OLS (gaussian only).
+}}
 
-\item{strategy}{If \code{{furrr}} is installed,
-then multiple cores can be used to accelerate the function.
-By default \code{"sequential"},
-but if multiple cores available,
-then \code{"multisession"} or \code{"multicore"} may be useful.
-Generally this is useful only when \code{times} > 1000.
-See \href{https://furrr.futureverse.org}{\code{{furrr}}} for more.}
+\item{x}{A \code{net_regression} object.}
 
-\item{verbose}{Whether the function should report on its progress.
-By default FALSE.
-See \href{https://progressr.futureverse.org}{\code{{progressr}}} for more.}
+\item{...}{Additional arguments passed to the underlying print helpers.}
+
+\item{print_b}{Logical; also print coefficient-based (not t-based)
+permutation p-values.}
+
+\item{print_random}{Logical; print random intercepts when present.}
+}
+\value{
+An object of class \code{net_regression} inheriting from either
+\code{QAPRegression} (gaussian) or \code{QAPGLM} (other families).  When the
+outcome is binary -- either \code{family = "binomial"} or \code{"gaussian"} with
+a 0/1 dependent -- a probabilistic confusion matrix is attached as
+\verb{$confusion_matrix}; for the gaussian-binary case the linear
+probability fitted values are clamped to 0/1 before sampling.
 }
 \description{
-This function provides an implementation of
-the multiple regression quadratic assignment procedure (MRQAP)
-for both one-mode and two-mode network linear models.
-It offers several advantages:
+Fits a regression model to one (or a list of) manynet-compatible network(s)
+using the multiple regression quadratic assignment procedure (MRQAP).
+
+The formula front-end is the familiar
+\code{y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) + tertius(attr, fn)} syntax, plus plain references to other networks in the
+object. Internally the response and predictors are packed into matrices
+and handed to a QAP engine (ported from MrQAP) that supports:
 \itemize{
-\item it works with combined graph/network objects such as igraph and network objects
-by constructing the various dependent and independent matrices for the user.
-\item it uses a more intuitive formula-based system for specifying the model,
-with several ways to specify how nodal attributes should be handled.
-\item it can handle categorical variables (factors/characters) and
-interactions intuitively, naming the reference variable where appropriate.
-\item it relies on \href{https://furrr.futureverse.org}{\code{{furrr}}} for parallelising
-and \href{https://progressr.futureverse.org}{\code{{progressr}}}
-for reporting progress to the user,
-which can be useful when many simulations are required.
-\item results are \href{https://broom.tidymodels.org}{\code{{broom}}}-compatible,
-with \code{tidy()} and \code{glance()} reports to facilitate comparison
-with results from different models.
-Note that a \emph{t}- or \emph{z}-value is always used as the test statistic,
-and properties of the dependent network
--- modes, directedness, loops, etc --
-will always be respected in permutations and analysis.
+\item gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
+multinomial families;
+\item \code{"qap"} (Dekker's double semi-partialling plus) and \code{"qapy"}
+(permute-y-only) null hypotheses;
+\item random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+\item robust (HC3) standard errors;
+\item optional torch-based batch OLS on the GPU;
+\item lists of networks, in which graphs that are missing any predictor are
+dropped with a warning and the remaining networks are pooled.
 }
 }
 \examples{
-networkers <- ison_networkers \%>\% to_subgraph(Discipline == "Sociology")
-model1 <- net_regression(weight ~ ego(Citations) + alter(Citations) + sim(Citations), 
-                      networkers, times = 20)
-# Should be run many more `times` for publication-ready results
-tidy(model1)
-glance(model1)
-# if(require("autograph")) plot(model1)
+\dontrun{
+networkers <- manynet::ison_networkers \%>\%
+  manynet::to_subgraph(Discipline == "Sociology")
+model1 <- net_regression(
+  weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+  networkers, times = 20)
+print(model1)
+}
 }
 \references{
 Krackhardt, David. 1988.
-“Predicting with Networks: Nonparametric Multiple Regression Analysis of Dyadic Data.”
-\emph{Social Networks} 10(4):359–81.
+"Predicting with Networks: Nonparametric Multiple Regression Analysis
+of Dyadic Data."
+\emph{Social Networks} 10(4):359-81.
 \doi{10.1016/0378-8733(88)90004-4}.
 
-Dekker, David, David Krackhard, and Tom A. B. Snijders. 2007.
-“Sensitivity of MRQAP tests to collinearity and autocorrelation conditions.”
+Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
+"Sensitivity of MRQAP tests to collinearity and autocorrelation
+conditions."
 \emph{Psychometrika} 72(4): 563-581.
 \doi{10.1007/s11336-007-9016-1}.
 }
 \seealso{
 Other models: 
-\code{\link{test_distributions}},
 \code{\link{tests}}
 }
 \concept{models}
