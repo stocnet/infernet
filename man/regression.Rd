@@ -52,7 +52,6 @@ to i. Read from \code{.data} unless given, and reported when read.
 \item \code{diag}: logical, include loops (default auto-detected).
 \item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
 \item \code{use_robust_errors}: HC3 standard errors.
-\item \code{fixest_se_cluster}: cluster variable for fixest.
 \item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
 \item \code{less_mem}: drop the baseline model object from the return.
 }}
@@ -87,7 +86,7 @@ and handed to a QAP engine (ported from MrQAP) that supports:
 Poisson families;
 \item two permutation schemes: \code{"predictor"} (Dekker's double semi-partialling)
 and \code{"outcome"};
-\item random intercepts (lme4) and fixed effects (fixest);
+\item random intercepts (lme4);
 \item robust (HC3) standard errors;
 \item lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.

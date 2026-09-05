@@ -8,46 +8,25 @@
 #' Parse a QAP formula into its components
 #' @keywords internal
 #' @noRd
-parse_qap_formula <- function(formula, fixest_se_cluster = NULL) {
+parse_qap_formula <- function(formula) {
   dependent <- all.vars(formula)[1]
 
+  # A bar in the formula means one thing: an {lme4} random-effect term. The
+  # front end always writes it inside parentheses, and {fixest} -- which read a
+  # bare bar as a fixed effect -- is on feature/fixest-fixed-effects.
   formula_str <- paste(deparse(formula, width.cutoff = 500), collapse = " ")
-  has_pipe  <- grepl("\\|", formula_str)
-  has_paren <- grepl("\\(", formula_str)
+  has_random <- grepl("\\|", formula_str)
 
-  if (has_pipe && has_paren) {
-    main <- all.vars(reformulas::nobars(formula))[-1]
-    fixed_effects <- NULL
-    use_fixest    <- FALSE
-    has_random    <- TRUE
-    all_data_vars <- main
-  } else if (has_pipe && !has_paren) {
-    main          <- all.vars(formula[[3]][[2]])
-    fixed_effects <- all.vars(formula[[3]][[3]])
-    has_random    <- FALSE
-    use_fixest    <- TRUE
-    all_data_vars <- c(main, fixed_effects)
+  main <- if (has_random) {
+    all.vars(reformulas::nobars(formula))[-1]
   } else {
-    main          <- all.vars(formula[-1])
-    fixed_effects <- NULL
-    has_random    <- FALSE
-    use_fixest    <- !is.null(fixest_se_cluster)
-    all_data_vars <- main
-  }
-
-  if (!is.null(fixest_se_cluster)) {
-    use_fixest <- TRUE
-    if (!(fixest_se_cluster %in% all_data_vars)) {
-      all_data_vars <- c(all_data_vars, fixest_se_cluster)
-    }
+    all.vars(formula[-1])
   }
 
   list(dependent     = dependent,
        main          = main,
-       fixed_effects = fixed_effects,
        has_random    = has_random,
-       use_fixest    = use_fixest,
-       all_data_vars = all_data_vars)
+       all_data_vars = main)
 }
 
 
@@ -319,8 +298,6 @@ fit_qap_model <- function(...) {
 #' @keywords internal
 #' @noRd
 .fit_qap_model <- function(mod, pred, family,
-                          use_fixest = FALSE,
-                          fixest_se_cluster = NULL,
                           use_robust_errors = FALSE,
                           main_vars = NULL,
                           has_random = FALSE) {
@@ -352,70 +329,25 @@ fit_qap_model <- function(...) {
   }
 
   if (!has_random) {
-    if (use_fixest) {
-      thisRequires("fixest", "for fixed effects and clustered standard errors")
-      fe_family <- if (family == "negbin") "negbin" else family
-      base_model <- fixest::feglm(mod, data = pred,
-                                  family = fe_family,
-                                  cluster = fixest_se_cluster)
-      # {fixest} reports an intercept where no fixed effect is absorbed, and
-      # none where one is. Add the placeholder only in the second case;
-      # otherwise the coefficient vector carries two intercepts.
-      fe_coefs <- base_model$coefficients
-      fit$coefficients <- if ("(Intercept)" %in% names(fe_coefs)) {
-        fe_coefs
-      } else {
-        c("(Intercept)" = NA, fe_coefs)
-      }
-      resid <- stats::residuals(base_model)
-
-      # `HC3()` and `vcov()` both return one standard error per estimated
-      # coefficient, so the placeholder is needed only where the intercept was
-      # absorbed and `fit$coefficients` carries an NA for it.
-      absorbed <- !("(Intercept)" %in% names(fe_coefs))
-      if (use_robust_errors) {
-        xv   <- as.matrix(pred[, main_vars, drop = FALSE])
-        hc   <- HC3(xv, resid)
-        fit$t <- if (absorbed) {
-          fit$coefficients / c(NA, hc[-1])
-        } else {
-          fit$coefficients / hc
-        }
-      } else {
-        fe_se <- sqrt(diag(stats::vcov(base_model)))
-        fe_t  <- fe_coefs / fe_se
-        fit$t <- if (absorbed) c("(Intercept)" = NA, fe_t) else fe_t
-      }
-      names(fit$t) <- names(fit$coefficients)
-
-      if (family == "gaussian") {
-        r2s <- tryCatch(fixest::r2(base_model), error = function(e) NULL)
-        if (!is.null(r2s)) {
-          fit$r.squared     <- r2s[["r2"]]
-          fit$adj.r.squared <- r2s[["ar2"]]
-        }
-      }
+    if (family == "gaussian") {
+      base_model        <- stats::lm(mod, data = pred)
+      fit$r.squared     <- summary(base_model)$r.squared
+      fit$adj.r.squared <- summary(base_model)$adj.r.squared
+    } else if (family == "negbin") {
+      thisRequires("MASS", "for negative binomial models")
+      base_model <- MASS::glm.nb(mod, data = pred)
+      fit$theta  <- base_model$theta
     } else {
-      if (family == "gaussian") {
-        base_model        <- stats::lm(mod, data = pred)
-        fit$r.squared     <- summary(base_model)$r.squared
-        fit$adj.r.squared <- summary(base_model)$adj.r.squared
-      } else if (family == "negbin") {
-        thisRequires("MASS", "for negative binomial models")
-        base_model <- MASS::glm.nb(mod, data = pred)
-        fit$theta  <- base_model$theta
-      } else {
-        base_model <- stats::glm(mod, data = pred, family = family)
-      }
-      fit$coefficients <- base_model$coefficients
-      resid <- stats::residuals(base_model)
+      base_model <- stats::glm(mod, data = pred, family = family)
+    }
+    fit$coefficients <- base_model$coefficients
+    resid <- stats::residuals(base_model)
 
-      if (use_robust_errors) {
-        xv <- as.matrix(pred[, main_vars, drop = FALSE])
-        fit$t <- fit$coefficients / HC3(xv, resid)
-      } else {
-        fit$t <- summary(base_model)$coefficients[, 3]
-      }
+    if (use_robust_errors) {
+      xv <- as.matrix(pred[, main_vars, drop = FALSE])
+      fit$t <- fit$coefficients / HC3(xv, resid)
+    } else {
+      fit$t <- summary(base_model)$coefficients[, 3]
     }
   } else {
     if (family == "gaussian") {

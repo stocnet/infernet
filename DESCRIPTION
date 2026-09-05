@@ -39,7 +39,6 @@ Imports:
     reformulas
 Suggests:
     lme4,
-    fixest,
     MASS,
     pscl,
     testthat (>= 3.0.0)

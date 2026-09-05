@@ -18,7 +18,6 @@ QAPglm <- function(formula,
                    groups    = NULL,
                    strategy  = "sequential",
                    ncores    = NULL,
-                   fixest_se_cluster = NULL,
                    random_intercept_nets     = FALSE,
                    random_intercept_sender   = FALSE,
                    random_intercept_receiver = FALSE,
@@ -27,7 +26,7 @@ QAPglm <- function(formula,
 
   if (!is.null(seed)) set.seed(seed)
 
-  parsed <- parse_qap_formula(formula, fixest_se_cluster)
+  parsed <- parse_qap_formula(formula)
   dep        <- parsed$dependent
   main       <- parsed$main
   data_vars  <- intersect(parsed$all_data_vars, names(matlist))
@@ -43,13 +42,6 @@ QAPglm <- function(formula,
   mod <- build_internal_formula(formula, rin = rin, ris = ris, rir = rir)
   mod_str <- paste(deparse(mod, width.cutoff = 500), collapse = " ")
   has_random <- grepl("\\(", mod_str) || parsed$has_random
-  use_fixest <- parsed$use_fixest
-  if (has_random && use_fixest) {
-    manynet::snet_warn(
-      c("Cannot combine {.pkg fixest} fixed effects with {.pkg lme4} random effects.",
-        i = "Using the random effects only."))
-    use_fixest <- FALSE
-  }
 
   mod <- stats::as.formula(mod_str)
 
@@ -92,8 +84,6 @@ QAPglm <- function(formula,
   fit$base <- fit_qap_model(mod          = mod,
                             pred         = pred,
                             family       = family,
-                            use_fixest   = use_fixest,
-                            fixest_se_cluster = fixest_se_cluster,
                             use_robust_errors = use_robust_errors,
                             main_vars    = main,
                             has_random   = has_random)
@@ -127,8 +117,6 @@ QAPglm <- function(formula,
       groups.   = groups,
       fit.      = fit$base,
       family.   = family,
-      use_fixest. = use_fixest,
-      fixest_se_cluster. = fixest_se_cluster,
       use_robust_errors. = use_robust_errors,
       has_random. = has_random,
       main_vars. = main,
@@ -166,8 +154,6 @@ QAPglm <- function(formula,
         groups.   = groups,
         fit.      = fit$base,
         family.   = family,
-        use_fixest. = use_fixest,
-        fixest_se_cluster. = fixest_se_cluster,
         use_robust_errors. = use_robust_errors,
         has_random. = has_random,
         main_vars. = main,
@@ -234,8 +220,6 @@ QAPglmPermEst <- function(i,
                           groups.,
                           fit.,
                           family.,
-                          use_fixest.,
-                          fixest_se_cluster.,
                           use_robust_errors.,
                           has_random.,
                           main_vars.,
@@ -299,8 +283,6 @@ QAPglmPermEst <- function(i,
     suppressWarnings(fit_qap_model(mod          = mod.,
                   pred         = pred,
                   family       = family.,
-                  use_fixest   = use_fixest.,
-                  fixest_se_cluster = fixest_se_cluster.,
                   use_robust_errors = use_robust_errors.,
                   main_vars    = main_vars.,
                   has_random   = has_random.)),

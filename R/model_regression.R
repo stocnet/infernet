@@ -14,7 +14,7 @@
 #'   Poisson families;
 #' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
 #'   and `"outcome"`;
-#' - random intercepts (lme4) and fixed effects (fixest);
+#' - random intercepts (lme4);
 #' - robust (HC3) standard errors;
 #' - lists of networks, in which graphs that are missing any predictor are
 #'   dropped with a warning and the remaining networks are pooled.
@@ -54,7 +54,6 @@
 #'   - `diag`: logical, include loops (default auto-detected).
 #'   - `seed`, `groups`, `ncores`: passed through to the engine.
 #'   - `use_robust_errors`: HC3 standard errors.
-#'   - `fixest_se_cluster`: cluster variable for fixest.
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `less_mem`: drop the baseline model object from the return.
 #' @return An object of class `net_regression` inheriting from either
@@ -142,7 +141,6 @@ net_regression <- function(formula,
     groups    = ctrl$groups,
     strategy  = ctrl$strategy,
     ncores    = ctrl$ncores,
-    fixest_se_cluster = ctrl$fixest_se_cluster,
     random_intercept_nets     = ctrl$random_intercept_nets,
     random_intercept_sender   = ctrl$random_intercept_sender,
     random_intercept_receiver = ctrl$random_intercept_receiver,
@@ -220,7 +218,6 @@ net_regression <- function(formula,
     groups    = NULL,
     ncores    = NULL,
     use_robust_errors = FALSE,
-    fixest_se_cluster = NULL,
     random_intercept_nets     = FALSE,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,

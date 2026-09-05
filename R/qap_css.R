@@ -93,8 +93,6 @@ QAPcssPermEst <- function(i,
                           groups.,
                           fit.,
                           family.,
-                          use_fixest.,
-                          fixest_se_cluster.,
                           use_robust_errors.,
                           has_random.,
                           main_vars.,
@@ -177,8 +175,6 @@ QAPcssPermEst <- function(i,
     suppressWarnings(fit_qap_model(mod          = mod.,
                   pred         = pred,
                   family       = family.,
-                  use_fixest   = use_fixest.,
-                  fixest_se_cluster = fixest_se_cluster.,
                   use_robust_errors = use_robust_errors.,
                   main_vars    = main_vars.,
                   has_random   = has_random.)),
@@ -232,7 +228,6 @@ QAPcss <- function(formula,
                    ncores    = NULL,
                    family    = "gaussian",
                    groups    = NULL,
-                   fixest_se_cluster = NULL,
                    use_robust_errors = FALSE,
                    random_intercept_nets      = FALSE,
                    random_intercept_sender    = FALSE,
@@ -242,7 +237,7 @@ QAPcss <- function(formula,
 
   if (!is.null(seed)) set.seed(seed)
 
-  parsed <- parse_qap_formula(formula, fixest_se_cluster)
+  parsed <- parse_qap_formula(formula)
   dep       <- parsed$dependent
   main      <- parsed$main
   data_vars <- intersect(parsed$all_data_vars, names(matlist))
@@ -273,13 +268,6 @@ QAPcss <- function(formula,
                                 rir = rir, rip = rip)
   mod_str <- paste(deparse(mod, width.cutoff = 500), collapse = " ")
   has_random <- grepl("\\(", mod_str) || parsed$has_random
-  use_fixest <- parsed$use_fixest
-  if (has_random && use_fixest) {
-    manynet::snet_warn(
-      c("Cannot combine {.pkg fixest} fixed effects with {.pkg lme4} random effects.",
-        i = "Using the random effects only."))
-    use_fixest <- FALSE
-  }
   mod <- stats::as.formula(mod_str)
 
   if ((permute == "predictor") && (nx == 1)) permute <- "outcome"
@@ -342,8 +330,6 @@ QAPcss <- function(formula,
   fit$base <- fit_qap_model(mod          = mod,
                             pred         = pred,
                             family       = family,
-                            use_fixest   = use_fixest,
-                            fixest_se_cluster = fixest_se_cluster,
                             use_robust_errors = use_robust_errors,
                             main_vars    = main,
                             has_random   = has_random)
@@ -365,8 +351,6 @@ QAPcss <- function(formula,
       groups.   = groups,
       fit.      = fit$base,
       family.   = family,
-      use_fixest. = use_fixest,
-      fixest_se_cluster. = fixest_se_cluster,
       use_robust_errors. = use_robust_errors,
       has_random. = has_random,
       main_vars. = main,
@@ -413,8 +397,6 @@ QAPcss <- function(formula,
         groups.   = groups,
         fit.      = fit$base,
         family.   = family,
-        use_fixest. = use_fixest,
-        fixest_se_cluster. = fixest_se_cluster,
         use_robust_errors. = use_robust_errors,
         has_random. = has_random,
         main_vars. = main,
