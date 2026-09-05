@@ -1,14 +1,16 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
-<url><loc>/404.html</loc></url>
-<url><loc>/CODE_OF_CONDUCT.html</loc></url>
-<url><loc>/CONTRIBUTING.html</loc></url>
-<url><loc>/LICENSE-text.html</loc></url>
-<url><loc>/LICENSE.html</loc></url>
-<url><loc>/authors.html</loc></url>
-<url><loc>/index.html</loc></url>
-<url><loc>/news/index.html</loc></url>
-<url><loc>/reference/index.html</loc></url>
-<url><loc>/reference/regression.html</loc></url>
-<url><loc>/reference/tests.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/404.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/CLAUDE.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/CODE_OF_CONDUCT.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/CONTRIBUTING.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/LICENSE-text.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/LICENSE.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/authors.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/index.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/news/index.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/reference/index.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/reference/infernet-package.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/reference/regression.html</loc></url>
+<url><loc>https://stocnet.github.io/infernet/reference/tests.html</loc></url>
 </urlset>
 
