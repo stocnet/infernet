@@ -13,7 +13,6 @@ QAPglm <- function(formula,
                    directed  = TRUE,
                    diag      = FALSE,
                    permute   = "predictor",
-                   estimator = "standard",
                    times      = 1000,
                    seed      = NULL,
                    groups    = NULL,
@@ -100,7 +99,6 @@ QAPglm <- function(formula,
     fit$base <- fit_qap_model(mod          = mod,
                               pred         = pred,
                               family       = family,
-                              estimator    = estimator,
                               use_fixest   = use_fixest,
                               fixest_se_cluster = fixest_se_cluster,
                               use_robust_errors = use_robust_errors,
@@ -116,7 +114,6 @@ QAPglm <- function(formula,
       fit$base[[k]] <- fit_qap_model(mod          = mod,
                                      pred         = predK,
                                      family       = family,
-                                     estimator    = estimator,
                                      use_fixest   = use_fixest,
                                      fixest_se_cluster = fixest_se_cluster,
                                      use_robust_errors = use_robust_errors,
@@ -155,7 +152,6 @@ QAPglm <- function(formula,
       groups.   = groups,
       fit.      = if (is.null(comparison)) fit$base else fit$base,
       family.   = family,
-      estimator. = estimator,
       use_fixest. = use_fixest,
       fixest_se_cluster. = fixest_se_cluster,
       use_robust_errors. = use_robust_errors,
@@ -228,7 +224,6 @@ QAPglm <- function(formula,
         groups.   = groups,
         fit.      = if (is.null(comparison)) fit$base else fit$base,
         family.   = family,
-        estimator. = estimator,
         use_fixest. = use_fixest,
         fixest_se_cluster. = fixest_se_cluster,
         use_robust_errors. = use_robust_errors,
@@ -280,15 +275,11 @@ QAPglm <- function(formula,
   }
 
   if (family == "binomial" && is.null(comparison)) {
-    bm <- fit$base$base_model
-    if (!inherits(bm, "gmm")) {
-      predicted <- stats::fitted(bm)
-      actual    <- pred[[dep]]
-      fit$confusion_matrix <- probabilistic_confusion_matrix(
-        actual = actual, predicted_prob = predicted,
-        n_draws = 1000, seed = seed
-      )
-    }
+    fit$confusion_matrix <- probabilistic_confusion_matrix(
+      actual = pred[[dep]],
+      predicted_prob = stats::fitted(fit$base$base_model),
+      n_draws = 1000, seed = seed
+    )
   }
 
   fit$permute   <- permute
@@ -298,7 +289,6 @@ QAPglm <- function(formula,
   fit$times      <- times
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
-  fit$estimator <- estimator
   fit$comp      <- comparison
   fit$reference <- reference
   fit$pred      <- pred
@@ -324,7 +314,6 @@ QAPglmPermEst <- function(i,
                           groups.,
                           fit.,
                           family.,
-                          estimator.,
                           use_fixest.,
                           fixest_se_cluster.,
                           use_robust_errors.,
@@ -393,7 +382,6 @@ QAPglmPermEst <- function(i,
       suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = pred,
                     family       = family.,
-                    estimator    = estimator.,
                     use_fixest   = use_fixest.,
                     fixest_se_cluster = fixest_se_cluster.,
                     use_robust_errors = use_robust_errors.,
@@ -423,7 +411,6 @@ QAPglmPermEst <- function(i,
       suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = predK,
                     family       = family.,
-                    estimator    = estimator.,
                     use_fixest   = use_fixest.,
                     fixest_se_cluster = fixest_se_cluster.,
                     use_robust_errors = use_robust_errors.,

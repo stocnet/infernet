@@ -93,7 +93,6 @@ QAPcssPermEst <- function(i,
                           groups.,
                           fit.,
                           family.,
-                          estimator.,
                           use_fixest.,
                           fixest_se_cluster.,
                           use_robust_errors.,
@@ -208,7 +207,6 @@ QAPcssPermEst <- function(i,
       suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = pred,
                     family       = family.,
-                    estimator    = estimator.,
                     use_fixest   = use_fixest.,
                     fixest_se_cluster = fixest_se_cluster.,
                     use_robust_errors = use_robust_errors.,
@@ -238,7 +236,6 @@ QAPcssPermEst <- function(i,
       suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = predK,
                     family       = family.,
-                    estimator    = estimator.,
                     use_fixest   = use_fixest.,
                     fixest_se_cluster = fixest_se_cluster.,
                     use_robust_errors = use_robust_errors.,
@@ -323,7 +320,6 @@ QAPcss <- function(formula,
                    strategy  = "sequential",
                    ncores    = NULL,
                    family    = "gaussian",
-                   estimator = "standard",
                    groups    = NULL,
                    fixest_se_cluster = NULL,
                    reference  = NULL,
@@ -451,7 +447,6 @@ QAPcss <- function(formula,
     fit$base <- fit_qap_model(mod          = mod,
                               pred         = pred,
                               family       = family,
-                              estimator    = estimator,
                               use_fixest   = use_fixest,
                               fixest_se_cluster = fixest_se_cluster,
                               use_robust_errors = use_robust_errors,
@@ -467,7 +462,6 @@ QAPcss <- function(formula,
       fit$base[[k]] <- fit_qap_model(mod          = mod,
                                      pred         = predK,
                                      family       = family,
-                                     estimator    = estimator,
                                      use_fixest   = use_fixest,
                                      fixest_se_cluster = fixest_se_cluster,
                                      use_robust_errors = use_robust_errors,
@@ -494,7 +488,6 @@ QAPcss <- function(formula,
       groups.   = groups,
       fit.      = if (is.null(comparison)) fit$base else fit$base,
       family.   = family,
-      estimator. = estimator,
       use_fixest. = use_fixest,
       fixest_se_cluster. = fixest_se_cluster,
       use_robust_errors. = use_robust_errors,
@@ -588,7 +581,6 @@ QAPcss <- function(formula,
         groups.   = groups,
         fit.      = if (is.null(comparison)) fit$base else fit$base,
         family.   = family,
-        estimator. = estimator,
         use_fixest. = use_fixest,
         fixest_se_cluster. = fixest_se_cluster,
         use_robust_errors. = use_robust_errors,
@@ -620,15 +612,11 @@ QAPcss <- function(formula,
   }
 
   if (family == "binomial" && is.null(comparison)) {
-    bm <- fit$base$base_model
-    if (!inherits(bm, "gmm")) {
-      predicted <- stats::fitted(bm)
-      actual    <- pred[[dep]]
-      fit$confusion_matrix <- probabilistic_confusion_matrix(
-        actual = actual, predicted_prob = predicted,
-        n_draws = 1000, seed = seed
-      )
-    }
+    fit$confusion_matrix <- probabilistic_confusion_matrix(
+      actual = pred[[dep]],
+      predicted_prob = stats::fitted(fit$base$base_model),
+      n_draws = 1000, seed = seed
+    )
   }
 
   fit$permute   <- permute
@@ -644,7 +632,6 @@ QAPcss <- function(formula,
                      perceiver = rip,
                      nets      = rin)
   fit$robust_se <- use_robust_errors
-  fit$estimator <- estimator
 
   if (is.null(comparison) && !is.null(fit$base$theta))
     fit$theta <- fit$base$theta
@@ -674,7 +661,6 @@ print.QAPCSS <- function(x, ...) {
     cat("The reference group was", format(paste0(x$reference, ".")), "\n")
   }
 
-  if (!is.null(x$estimator) && x$estimator == "gmm")
     cat("Estimator: Generalized Method-of-Moments.\n")
   if (!is.null(x$theta))
     cat("Negative binomial dispersion (theta):", format(round(x$theta, 4)), "\n")

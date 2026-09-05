@@ -302,7 +302,7 @@ HC3 <- function(X, e) {
 # The predictor names carry spaces ("ego Age"), so the model formula quotes them
 # and several fitters hand the backticks back in the coefficient names. Double
 # semi-partialling then looks a column up by the unquoted name and fails with a
-# subscript error. The inner function has many early returns, one per estimator,
+# subscript error. The inner function has many early returns, one per family,
 # so the names are cleaned here, where every path passes through exactly once.
 #' @keywords internal
 #' @noRd
@@ -319,7 +319,6 @@ fit_qap_model <- function(...) {
 #' @keywords internal
 #' @noRd
 .fit_qap_model <- function(mod, pred, family,
-                          estimator = "standard",
                           use_fixest = FALSE,
                           fixest_se_cluster = NULL,
                           use_robust_errors = FALSE,
@@ -344,76 +343,8 @@ fit_qap_model <- function(...) {
     return(fit)
   }
 
-  if (estimator == "gmm") {
-    thisRequires("gmm", "for GMM estimation")
-    y_vec <- pred[[dep_var]]
-    x_mat <- cbind(1, as.matrix(pred[, main_vars, drop = FALSE]))
 
-    gmm_args <- list(
-      x = list(y = y_vec, x = x_mat),
-      t0 = stats::rnorm(nx + 1),
-      wmatrix = "optimal", vcov = "MDS",
-      optfct = "nlminb",
-      control = list(eval.max = 10000)
-    )
-
-    has_extra_param <- FALSE
-
-    if (family == "binomial") {
-      gmm_args$g <- logit_moments
-      base_model <- do.call(gmm::gmm, gmm_args)
-      resid <- logit_resid(base_model)
-    } else if (family == "poisson") {
-      gmm_args$g <- poisson_moments
-      base_model <- do.call(gmm::gmm, gmm_args)
-      resid <- poisson_resid(base_model)
-    } else if (family == "negbin") {
-      gmm_args$g  <- negbin_moments
-      gmm_args$t0 <- stats::rnorm(nx + 2)
-      base_model   <- do.call(gmm::gmm, gmm_args)
-      resid <- negbin_resid(base_model)
-      has_extra_param <- TRUE
-    } else if (family == "zip") {
-      gmm_args$g  <- zip_moments
-      gmm_args$t0 <- stats::rnorm(nx + 2)
-      base_model   <- do.call(gmm::gmm, gmm_args)
-      resid <- zip_resid(base_model)
-      has_extra_param <- TRUE
-    } else {
-      manynet::snet_abort(
-        c("The GMM estimator is not available for the {.val {family}} family.",
-          i = "It is available for the binomial, poisson, negbin, and zip families."))
-    }
-
-    all_coefs <- base_model$coefficients
-    if (!use_robust_errors) {
-      all_t <- summary(base_model)$coefficients[, 3]
-    }
-
-    if (has_extra_param) {
-      fit$coefficients <- all_coefs[1:(nx + 1)]
-    } else {
-      fit$coefficients <- all_coefs
-    }
-    names(fit$coefficients) <- c("(Intercept)", main_vars)
-
-    if (use_robust_errors) {
-      xv <- as.matrix(pred[, main_vars, drop = FALSE])
-      fit$t <- fit$coefficients / HC3(xv, resid)
-    } else {
-      if (has_extra_param) {
-        fit$t <- all_t[1:(nx + 1)]
-      } else {
-        fit$t <- all_t
-      }
-    }
-    names(fit$t) <- names(fit$coefficients)
-    fit$base_model <- base_model
-    fit$estimator  <- "gmm"
-    return(fit)
-  }
-
-  if (family == "zip" && estimator == "standard") {
+  if (family == "zip") {
     if (has_random) {
       thisRequires("glmmTMB", "for mixed zero-inflated Poisson models")
       base_model <- glmmTMB::glmmTMB(mod, data = pred,

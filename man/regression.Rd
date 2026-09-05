@@ -47,8 +47,6 @@ reduces to \code{"outcome"} and says so.
 \item \code{family}: \code{"auto"} (default; gaussian for weighted networks, binomial
 for binary), \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"},
 \code{"zip"}, or \code{"multinom"}.
-\item \code{estimator}: \code{"standard"} (default) or \code{"gmm"} (binomial/poisson/
-negbin/zip).
 \item \code{directed}: logical, whether a tie from i to j differs from one from j
 to i. Read from \code{.data} unless given, and reported when read.
 \item \code{diag}: logical, include loops (default auto-detected).

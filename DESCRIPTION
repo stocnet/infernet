@@ -41,7 +41,6 @@ Suggests:
     lme4,
     nnet,
     fixest,
-    gmm,
     MASS,
     pscl,
     testthat (>= 3.0.0),

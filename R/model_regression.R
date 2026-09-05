@@ -49,8 +49,6 @@
 #'   - `family`: `"auto"` (default; gaussian for weighted networks, binomial
 #'     for binary), `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`,
 #'     `"zip"`, or `"multinom"`.
-#'   - `estimator`: `"standard"` (default) or `"gmm"` (binomial/poisson/
-#'     negbin/zip).
 #'   - `directed`: logical, whether a tie from i to j differs from one from j
 #'     to i. Read from `.data` unless given, and reported when read.
 #'   - `diag`: logical, include loops (default auto-detected).
@@ -140,7 +138,6 @@ net_regression <- function(formula,
     directed  = ctrl$directed,
     diag      = ctrl$diag,
     permute   = ctrl$permute,
-    estimator = ctrl$estimator,
     times      = times,
     seed      = ctrl$seed,
     groups    = ctrl$groups,
@@ -220,7 +217,6 @@ net_regression <- function(formula,
     permute   = .permute_schemes(),
     strategy  = "sequential",
     family    = "auto",
-    estimator = "standard",
     directed  = NULL,
     diag      = NULL,
     seed      = NULL,
@@ -456,8 +452,6 @@ print.net_regression <- function(x, ...,
   } else {
     cat("\nGeneralized Linear Mixed Network Model fit by REML\n")
   }
-  if (!is.null(x$estimator) && x$estimator == "gmm")
-    cat("\nEstimator: Generalized Method-of-Moments.")
   if (!is.null(x$theta))
     cat("\nNegative binomial dispersion (theta):", format(round(x$theta, 4)))
   if (!is.null(x$zi_coefficients)) {
@@ -534,8 +528,7 @@ print.net_regression <- function(x, ...,
     cat("--------------\n")
   }
 
-  if (!is.null(x$simple_fit) && !is.null(x$estimator) &&
-      x$estimator != "gmm") {
+  if (!is.null(x$simple_fit)) {
     cat("\nAIC:", format(stats::AIC(x$simple_fit)))
     cat("\nBIC:", format(stats::BIC(x$simple_fit)))
   }

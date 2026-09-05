@@ -32,7 +32,7 @@ test_that("a named control overrides only that default", {
   ctrl <- .resolve_control(list(family = "poisson"))
   expect_equal(ctrl$family, "poisson")
   expect_equal(ctrl$strategy, "sequential")
-  expect_equal(ctrl$estimator, "standard")
+  expect_null(ctrl$directed)
 })
 
 test_that("permute takes only the two spellings it documents", {

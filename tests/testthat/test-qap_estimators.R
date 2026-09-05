@@ -1,7 +1,7 @@
 # Every estimator path in fit_qap_model() is selected by a combination of
-# `family`, `estimator`, and the random and fixed effect flags. This file names
-# each combination, so that a path with no test fails the build rather than
-# going unnoticed.
+# `family` and the random and fixed effect flags. This file names each
+# combination, so that a path with no test fails the build rather than going
+# unnoticed.
 #
 # Two things are asserted for each. First, the baseline coefficients equal those
 # of the equivalent standard fit on the same dyad-level data: the permutation
@@ -107,35 +107,6 @@ test_that("zip baseline matches pscl::zeroinfl() and names its coefficients", {
   expect_false(any(grepl("`", names(fit$coefficients), fixed = TRUE)))
   expect_equal(unname(fit$coefficients), unname(zi$coefficients$count))
   expect_equal(unname(fit$zi_coefficients), unname(zi$coefficients$zero))
-})
-
-
-# ---- GMM -------------------------------------------------------------------
-
-test_that("the GMM estimator runs for each family it declares", {
-  skip_if_not_installed("gmm")
-  cases <- list(
-    list(form = FORM_B, net = qap_net_binary(), family = "binomial"),
-    list(form = FORM,   net = qap_net_count(),  family = "poisson"),
-    list(form = FORM,   net = qap_net_count(),  family = "negbin"),
-    list(form = FORM,   net = qap_net_zip(),    family = "zip")
-  )
-  for (case in cases) {
-    fit <- suppressWarnings(
-      net_regression(case$form, case$net, times = 10,
-                     control = list(seed = 1, family = case$family,
-                                    estimator = "gmm")))
-    expect_qap_shape(fit, COEFS3)
-    expect_equal(fit$estimator, "gmm", info = case$family)
-  }
-})
-
-test_that("the GMM estimator rejects a family it cannot fit", {
-  skip_if_not_installed("gmm")
-  expect_error(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(family = "gaussian", estimator = "gmm")),
-    "binomial")
 })
 
 
