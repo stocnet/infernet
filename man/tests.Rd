@@ -41,6 +41,9 @@ These functions conduct tests of any network-level statistic:
 \item \code{test_random()} performs a conditional uniform graph (CUG) test
 of a measure against a distribution of measures on random networks
 of the same dimensions.
+\item \code{test_configuration()} performs a CUG test against a distribution of
+measures on random networks that preserve the degree sequence
+of the original network.
 \item \code{test_permutation()} performs a quadratic assignment procedure (QAP) test
 of a measure against a distribution of measures on permutations
 of the original network.

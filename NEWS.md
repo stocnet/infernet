@@ -19,6 +19,7 @@
 
 ## Tests
 
+- Updated the `tests` documentation to describe `test_configuration()`
 - Updated the examples to use the native pipe `|>`
 
 
