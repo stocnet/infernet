@@ -132,6 +132,25 @@ Make it clear when you are referring to functions by adding backticks and parent
 e.g. `a_function()`, and arguments by adding an equals sign, e.g. `argument=`.
 Argument values or variables can be in double quotation marks, e.g. "value".
 
+## Parked extensions
+
+Five model extensions sit on `feature/*` branches while the architecture
+settles, each tracked by a Github issue and each reinstated by reverting one
+commit on `develop`:
+
+| Branch | Removes | Issue |
+|---|---|---|
+| `feature/multinomial-comparison` | `family = "multinom"`, and the `comparison`/`reference` controls | [#7](https://github.com/stocnet/infernet/issues/7) |
+| `feature/fixest-fixed-effects` | the `fixest_se_cluster` control and the `{fixest}` branch | [#8](https://github.com/stocnet/infernet/issues/8) |
+| `feature/glmmtmb-mixed` | mixed negbin and mixed zip | [#9](https://github.com/stocnet/infernet/issues/9) |
+| `feature/gmm-estimator` | the `estimator` control and `R/qap_gmm.R` | [#10](https://github.com/stocnet/infernet/issues/10) |
+| `feature/torch-gpu` | `R/qap_gpu.R` and the `use_gpu` control | [#11](https://github.com/stocnet/infernet/issues/11) |
+
+Do not reinstate one by reverting onto `develop` without reading its issue:
+several need rewriting against the merged engine rather than reverting onto it.
+Do not add a new model family that needs a new `Suggests` package until the
+two engines are one, for the same reason these left.
+
 ## Package architecture
 
 ### Project overview
