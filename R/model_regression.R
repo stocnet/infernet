@@ -16,7 +16,6 @@
 #'   and `"outcome"`;
 #' - random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
 #' - robust (HC3) standard errors;
-#' - optional torch-based batch OLS on the GPU;
 #' - lists of networks, in which graphs that are missing any predictor are
 #'   dropped with a warning and the remaining networks are pooled.
 #'
@@ -61,7 +60,6 @@
 #'   - `reference`, `comparison`: multinomial / pairwise-comparison options.
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `less_mem`: drop the baseline model object from the return.
-#'   - `use_gpu`: torch-based batch OLS (gaussian only).
 #' @return An object of class `net_regression` inheriting from either
 #'   `QAPRegression` (gaussian) or `QAPGLM` (other families).  When the
 #'   outcome is binary -- either `family = "binomial"` or `"gaussian"` with
@@ -155,8 +153,7 @@ net_regression <- function(formula,
     random_intercept_sender   = ctrl$random_intercept_sender,
     random_intercept_receiver = ctrl$random_intercept_receiver,
     use_robust_errors = ctrl$use_robust_errors,
-    less_mem = ctrl$less_mem,
-    use_gpu  = ctrl$use_gpu
+    less_mem = ctrl$less_mem
   )
 
   if (user_requested_gaussian_binary && is.null(ctrl$comparison)) {
@@ -236,8 +233,7 @@ net_regression <- function(formula,
     random_intercept_nets     = FALSE,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,
-    less_mem = FALSE,
-    use_gpu  = FALSE
+    less_mem = FALSE
   )
 }
 

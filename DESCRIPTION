@@ -45,7 +45,6 @@ Suggests:
     MASS,
     pscl,
     testthat (>= 3.0.0),
-    torch,
     glmmTMB
 Config/Needs/build:
     roxygen2,

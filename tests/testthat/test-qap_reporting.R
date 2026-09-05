@@ -22,9 +22,6 @@ test_that("every reporting message renders", {
     net_regression(FORM, g, times = 5, control = list(seed = 1))))
   expect_no_error(verbosely(
     net_regression(weight ~ ego(Age), g, times = 5, control = list(seed = 1))))
-  expect_no_error(verbosely(
-    net_regression(FORM, g, times = 5,
-                   control = list(seed = 1, use_gpu = TRUE))))
 })
 
 test_that("a family resolved from the outcome is reported", {
@@ -58,13 +55,6 @@ test_that("the fallback to permuting the outcome is reported", {
     "residualise")
 })
 
-test_that("the GPU falling back to the CPU is reported", {
-  skip_if(gpu_available(), "a CUDA device is present, so there is no fallback")
-  expect_message(
-    verbosely(net_regression(FORM, qap_net_gaussian(n = 15), times = 5,
-                             control = list(seed = 1, use_gpu = TRUE))),
-    "CPU")
-})
 
 test_that("the model advice on homophily terms is reported", {
   expect_message(

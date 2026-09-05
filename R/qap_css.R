@@ -333,7 +333,7 @@ QAPcss <- function(formula,
                    random_intercept_sender    = FALSE,
                    random_intercept_receiver  = FALSE,
                    random_intercept_perceiver = FALSE,
-                   use_gpu    = FALSE) {
+                   less_mem   = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
 
@@ -477,70 +477,111 @@ QAPcss <- function(formula,
     }
   }
 
-  if (use_gpu && family == "gaussian" && !has_random && !use_fixest &&
-      is.null(comparison) && !large) {
+  old_plan <- setup_future_plan(strategy, ncores)
+  on.exit({
+    future::plan(old_plan)
+    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
+  }, add = TRUE)
 
-    if (permute == "outcome") {
-      gpu_res <- gpu_batch_ols_css(matlist         = matlist,
-                                   parsed       = parsed,
-                                   directed     = directed,
-                                   diag         = diag,
-                                   groups       = groups,
-                                   times         = times,
-                                   baseline_fit = fit$base,
-                                   perm_var     = NULL)
-      fit$lower  <- gpu_res$lower
-      fit$larger <- gpu_res$larger
-      fit$abs    <- gpu_res$abs
+  if (permute == "outcome") {
+    res <- run_permutations(
+      times, QAPcssPermEst,
+      matlist.     = matlist,
+      perm_var. = NULL,
+      directed. = directed,
+      diag.     = diag,
+      mod.      = mod,
+      groups.   = groups,
+      fit.      = if (is.null(comparison)) fit$base else fit$base,
+      family.   = family,
+      estimator. = estimator,
+      use_fixest. = use_fixest,
+      fixest_se_cluster. = fixest_se_cluster,
+      use_robust_errors. = use_robust_errors,
+      has_random. = has_random,
+      main_vars. = main,
+      data_vars. = data_vars,
+      parsed.   = parsed,
+      comp.     = comparison,
+      reference. = reference
+    )
 
-    } else if (permute == "predictor") {
-      n_coefs <- length(fit$base$coefficients)
-      fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
-      fit$larger <- fit$abs <- fit$lower
-      colnames(fit$lower) <- colnames(fit$larger) <-
-        colnames(fit$abs)  <- names(fit$base$coefficients)
-
-      for (xi in main) {
-        test_val <- matlist[[xi]]
-        if (!is.numeric(test_val)) {
-          manynet::snet_warn(
-            c("Cannot residualise the non-numeric predictor {.val {xi}}.",
-              i = "Skipping double semi-partialling for this predictor."))
-          next
-        }
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-        matlist_resid <- matlist
-        matlist_resid[[xi]] <- residuals_to_array(xR, matlist[[xi]], valid, pred,
-                                               large, valid_list)
-
-        gpu_res <- gpu_batch_ols_css(matlist         = matlist_resid,
-                                     parsed       = parsed,
-                                     directed     = directed,
-                                     diag         = diag,
-                                     groups       = groups,
-                                     times         = times,
-                                     baseline_fit = fit$base,
-                                     perm_var     = xi)
-        fit$lower[, xi]  <- gpu_res$lower[, xi]
-        fit$larger[, xi] <- gpu_res$larger[, xi]
-        fit$abs[, xi]    <- gpu_res$abs[, xi]
+    if (is.null(comparison)) {
+      agg <- aggregate_perm_results(res, times)
+      fit$lower  <- agg$lower
+      fit$larger <- agg$larger
+      fit$abs    <- agg$abs
+    } else {
+      res_valid <- Filter(Negate(is.null), res)
+      n_valid   <- length(res_valid)
+      fit$lower <- fit$larger <- fit$abs <-
+        vector("list", length(comparison))
+      names(fit$lower) <- names(fit$larger) <-
+        names(fit$abs) <- names(comparison)
+      resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
+      for (k in seq_along(comparison)) {
+        cn <- names(comparison)[k]
+        fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
+        fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
+        fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
       }
     }
 
-  } else {
-    old_plan <- setup_future_plan(strategy, ncores)
-    on.exit({
-      future::plan(old_plan)
-      options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-    }, add = TRUE)
+  } else if (permute == "predictor") {
+    if (is.null(comparison)) {
+      if (family != "multinom") {
+        n_coefs <- length(fit$base$coefficients)
+        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
+        fit$larger <- fit$abs <- fit$lower
+        colnames(fit$lower) <- colnames(fit$larger) <-
+          colnames(fit$abs)  <- names(fit$base$coefficients)
+      } else {
+        ncat <- if (large) {
+          length(stats::na.omit(unique(as.vector(unlist(matlist[[dep]])))))
+        } else {
+          length(stats::na.omit(unique(as.vector(matlist[[dep]]))))
+        }
+        n_coefs <- length(fit$base$coefficients)
+        fit$lower  <- matrix(NA, nrow = 2 * (ncat - 1), ncol = n_coefs)
+        fit$larger <- fit$abs <- fit$lower
+        colnames(fit$lower) <- colnames(fit$larger) <-
+          colnames(fit$abs) <- names(fit$base$coefficients)
+      }
+    } else {
+      fit$lower <- fit$larger <- fit$abs <-
+        vector("list", length(comparison))
+      names(fit$lower) <- names(fit$larger) <-
+        names(fit$abs) <- names(comparison)
+      for (k in seq_along(comparison)) {
+        n_coefs <- length(fit$base[[k]]$coefficients)
+        fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs)
+        fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
+        colnames(fit$lower[[k]]) <- colnames(fit$larger[[k]]) <-
+          colnames(fit$abs[[k]]) <- names(fit$base[[k]]$coefficients)
+      }
+    }
 
-    if (permute == "outcome") {
+    for (xi in main) {
+      test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
+      if (!is.numeric(test_val)) {
+        manynet::snet_warn(
+          c("Cannot residualise the non-numeric predictor {.val {xi}}.",
+            i = "Skipping double semi-partialling for this predictor."))
+        next
+      }
+
+      xR <- residualise_predictor(xi, pred, main,
+                                  has_random   = has_random,
+                                  rand_formula = rand_part)
+
+      matlist_resid <- matlist
+      matlist_resid[[xi]] <- residuals_to_array(xR, matlist[[xi]], valid, pred,
+                                             large, valid_list)
+
       res <- run_permutations(
         times, QAPcssPermEst,
-        matlist.     = matlist,
-        perm_var. = NULL,
+        matlist.     = matlist_resid,
+        perm_var. = xi,
         directed. = directed,
         diag.     = diag,
         mod.      = mod,
@@ -561,113 +602,18 @@ QAPcss <- function(formula,
 
       if (is.null(comparison)) {
         agg <- aggregate_perm_results(res, times)
-        fit$lower  <- agg$lower
-        fit$larger <- agg$larger
-        fit$abs    <- agg$abs
+        fit$lower[, xi]  <- agg$lower
+        fit$larger[, xi] <- agg$larger
+        fit$abs[, xi]    <- agg$abs
       } else {
         res_valid <- Filter(Negate(is.null), res)
         n_valid   <- length(res_valid)
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower) <- names(fit$larger) <-
-          names(fit$abs) <- names(comparison)
         resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
         for (k in seq_along(comparison)) {
           cn <- names(comparison)[k]
-          fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-          fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-          fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-        }
-      }
-
-    } else if (permute == "predictor") {
-      if (is.null(comparison)) {
-        if (family != "multinom") {
-          n_coefs <- length(fit$base$coefficients)
-          fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
-          fit$larger <- fit$abs <- fit$lower
-          colnames(fit$lower) <- colnames(fit$larger) <-
-            colnames(fit$abs)  <- names(fit$base$coefficients)
-        } else {
-          ncat <- if (large) {
-            length(stats::na.omit(unique(as.vector(unlist(matlist[[dep]])))))
-          } else {
-            length(stats::na.omit(unique(as.vector(matlist[[dep]]))))
-          }
-          n_coefs <- length(fit$base$coefficients)
-          fit$lower  <- matrix(NA, nrow = 2 * (ncat - 1), ncol = n_coefs)
-          fit$larger <- fit$abs <- fit$lower
-          colnames(fit$lower) <- colnames(fit$larger) <-
-            colnames(fit$abs) <- names(fit$base$coefficients)
-        }
-      } else {
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower) <- names(fit$larger) <-
-          names(fit$abs) <- names(comparison)
-        for (k in seq_along(comparison)) {
-          n_coefs <- length(fit$base[[k]]$coefficients)
-          fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs)
-          fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-          colnames(fit$lower[[k]]) <- colnames(fit$larger[[k]]) <-
-            colnames(fit$abs[[k]]) <- names(fit$base[[k]]$coefficients)
-        }
-      }
-
-      for (xi in main) {
-        test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
-        if (!is.numeric(test_val)) {
-          manynet::snet_warn(
-            c("Cannot residualise the non-numeric predictor {.val {xi}}.",
-              i = "Skipping double semi-partialling for this predictor."))
-          next
-        }
-
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-
-        matlist_resid <- matlist
-        matlist_resid[[xi]] <- residuals_to_array(xR, matlist[[xi]], valid, pred,
-                                               large, valid_list)
-
-        res <- run_permutations(
-          times, QAPcssPermEst,
-          matlist.     = matlist_resid,
-          perm_var. = xi,
-          directed. = directed,
-          diag.     = diag,
-          mod.      = mod,
-          groups.   = groups,
-          fit.      = if (is.null(comparison)) fit$base else fit$base,
-          family.   = family,
-          estimator. = estimator,
-          use_fixest. = use_fixest,
-          fixest_se_cluster. = fixest_se_cluster,
-          use_robust_errors. = use_robust_errors,
-          has_random. = has_random,
-          main_vars. = main,
-          data_vars. = data_vars,
-          parsed.   = parsed,
-          comp.     = comparison,
-          reference. = reference
-        )
-
-        if (is.null(comparison)) {
-          agg <- aggregate_perm_results(res, times)
-          fit$lower[, xi]  <- agg$lower
-          fit$larger[, xi] <- agg$larger
-          fit$abs[, xi]    <- agg$abs
-        } else {
-          res_valid <- Filter(Negate(is.null), res)
-          n_valid   <- length(res_valid)
-          resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-          for (k in seq_along(comparison)) {
-            cn <- names(comparison)[k]
-            fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-            fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-            fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-          }
+          fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
+          fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
+          fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
         }
       }
     }

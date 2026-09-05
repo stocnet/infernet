@@ -239,16 +239,3 @@ test_that("combining fixed and random effects warns", {
     "random effects")
 })
 
-
-# ---- GPU -------------------------------------------------------------------
-
-test_that("use_gpu falls back to the CPU rather than aborting", {
-  # The GPU path is a shortcut, so an unmet condition must not stop the run.
-  gpu <- suppressMessages(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(seed = 1, use_gpu = TRUE)))
-  cpu <- net_regression(FORM, qap_net_gaussian(), times = 10,
-                        control = list(seed = 1))
-  expect_qap_shape(gpu, COEFS3)
-  if (!gpu_available()) expect_equal(gpu$lower, cpu$lower)
-})

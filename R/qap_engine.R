@@ -26,8 +26,7 @@ QAPglm <- function(formula,
                    random_intercept_sender   = FALSE,
                    random_intercept_receiver = FALSE,
                    use_robust_errors = FALSE,
-                   less_mem   = FALSE,
-                   use_gpu    = FALSE) {
+                   less_mem   = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
 
@@ -139,73 +138,90 @@ QAPglm <- function(formula,
       "with one predictor there is nothing to residualise it against.")
   }
 
-  # The GPU path is a shortcut, not a requirement, so an unmet condition falls
-  # back to the CPU permutation loop rather than aborting. `gpu_available()`
-  # covers the two conditions the user cannot see from the call: whether
-  # {torch} is installed, and whether CUDA is reachable.
-  use_gpu <- use_gpu && family == "gaussian" && !has_random && !use_fixest &&
-    is.null(comparison) && !large
-  if (use_gpu && !gpu_available()) {
-    manynet::snet_info(
-      "No CUDA device is reachable, so using the CPU permutation path.")
-    use_gpu <- FALSE
-  }
+  old_plan <- setup_future_plan(strategy, ncores)
+  on.exit({
+    future::plan(old_plan)
+    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
+  }, add = TRUE)
 
-  if (use_gpu) {
+  if (permute == "outcome") {
+    res <- run_permutations(
+      times, QAPglmPermEst,
+      matlist.     = matlist,
+      perm_var. = NULL,
+      directed. = directed,
+      diag.     = diag,
+      mod.      = mod,
+      groups.   = groups,
+      fit.      = if (is.null(comparison)) fit$base else fit$base,
+      family.   = family,
+      estimator. = estimator,
+      use_fixest. = use_fixest,
+      fixest_se_cluster. = fixest_se_cluster,
+      use_robust_errors. = use_robust_errors,
+      has_random. = has_random,
+      main_vars. = main,
+      data_vars. = data_vars,
+      parsed.   = parsed,
+      comp.     = comparison,
+      reference. = reference
+    )
 
-    if (permute == "outcome") {
-      gpu_res <- gpu_batch_ols(matlist         = matlist,
-                               parsed       = parsed,
-                               directed     = directed,
-                               diag         = diag,
-                               groups       = groups,
-                               times         = times,
-                               baseline_fit = fit$base,
-                               perm_var     = NULL)
-      fit$lower  <- gpu_res$lower
-      fit$larger <- gpu_res$larger
-      fit$abs    <- gpu_res$abs
+    if (is.null(comparison)) {
+      agg <- aggregate_perm_results(res, times)
+      fit$lower  <- agg$lower
+      fit$larger <- agg$larger
+      fit$abs    <- agg$abs
+    } else {
+      res_valid <- Filter(Negate(is.null), res)
+      n_valid   <- length(res_valid)
+      fit$lower <- fit$larger <- fit$abs <-
+        vector("list", length(comparison))
+      names(fit$lower)  <- names(comparison)
+      names(fit$larger) <- names(comparison)
+      names(fit$abs)    <- names(comparison)
+      resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
+      for (k in seq_along(comparison)) {
+        cn <- names(comparison)[k]
+        fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
+        fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
+        fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
+      }
+    }
 
-    } else if (permute == "predictor") {
+  } else if (permute == "predictor") {
+    if (is.null(comparison)) {
       n_coefs <- length(fit$base$coefficients)
       fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
                            dimnames = list(c("perm_coefs", "perm_t"),
                                            names(fit$base$coefficients)))
       fit$larger <- fit$abs <- fit$lower
-
-      for (xi in main) {
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-        matlist_resid <- matlist
-        matlist_resid[[xi]] <- residuals_to_matrix(xR, matlist[[xi]], pred, large)
-
-        gpu_res <- gpu_batch_ols(matlist         = matlist_resid,
-                                 parsed       = parsed,
-                                 directed     = directed,
-                                 diag         = diag,
-                                 groups       = groups,
-                                 times         = times,
-                                 baseline_fit = fit$base,
-                                 perm_var     = xi)
-        fit$lower[, xi]  <- gpu_res$lower[, xi]
-        fit$larger[, xi] <- gpu_res$larger[, xi]
-        fit$abs[, xi]    <- gpu_res$abs[, xi]
+    } else {
+      fit$lower <- fit$larger <- fit$abs <-
+        vector("list", length(comparison))
+      names(fit$lower) <- names(fit$larger) <-
+        names(fit$abs)  <- names(comparison)
+      for (k in seq_along(comparison)) {
+        n_coefs <- length(fit$base[[k]]$coefficients)
+        fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs,
+                                 dimnames = list(c("perm_coefs", "perm_t"),
+                                                 names(fit$base[[k]]$coefficients)))
+        fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
       }
     }
 
-  } else {
-    old_plan <- setup_future_plan(strategy, ncores)
-    on.exit({
-      future::plan(old_plan)
-      options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-    }, add = TRUE)
+    for (xi in main) {
+      xR <- residualise_predictor(xi, pred, main,
+                                  has_random   = has_random,
+                                  rand_formula = rand_part)
 
-    if (permute == "outcome") {
+      matlist_resid <- matlist
+      matlist_resid[[xi]] <- residuals_to_matrix(xR, matlist[[xi]], pred, large)
+
       res <- run_permutations(
         times, QAPglmPermEst,
-        matlist.     = matlist,
-        perm_var. = NULL,
+        matlist.     = matlist_resid,
+        perm_var. = xi,
         directed. = directed,
         diag.     = diag,
         mod.      = mod,
@@ -226,92 +242,18 @@ QAPglm <- function(formula,
 
       if (is.null(comparison)) {
         agg <- aggregate_perm_results(res, times)
-        fit$lower  <- agg$lower
-        fit$larger <- agg$larger
-        fit$abs    <- agg$abs
+        fit$lower[, xi]  <- agg$lower
+        fit$larger[, xi] <- agg$larger
+        fit$abs[, xi]    <- agg$abs
       } else {
         res_valid <- Filter(Negate(is.null), res)
         n_valid   <- length(res_valid)
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower)  <- names(comparison)
-        names(fit$larger) <- names(comparison)
-        names(fit$abs)    <- names(comparison)
         resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
         for (k in seq_along(comparison)) {
           cn <- names(comparison)[k]
-          fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-          fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-          fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-        }
-      }
-
-    } else if (permute == "predictor") {
-      if (is.null(comparison)) {
-        n_coefs <- length(fit$base$coefficients)
-        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
-                             dimnames = list(c("perm_coefs", "perm_t"),
-                                             names(fit$base$coefficients)))
-        fit$larger <- fit$abs <- fit$lower
-      } else {
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower) <- names(fit$larger) <-
-          names(fit$abs)  <- names(comparison)
-        for (k in seq_along(comparison)) {
-          n_coefs <- length(fit$base[[k]]$coefficients)
-          fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs,
-                                   dimnames = list(c("perm_coefs", "perm_t"),
-                                                   names(fit$base[[k]]$coefficients)))
-          fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-        }
-      }
-
-      for (xi in main) {
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-
-        matlist_resid <- matlist
-        matlist_resid[[xi]] <- residuals_to_matrix(xR, matlist[[xi]], pred, large)
-
-        res <- run_permutations(
-          times, QAPglmPermEst,
-          matlist.     = matlist_resid,
-          perm_var. = xi,
-          directed. = directed,
-          diag.     = diag,
-          mod.      = mod,
-          groups.   = groups,
-          fit.      = if (is.null(comparison)) fit$base else fit$base,
-          family.   = family,
-          estimator. = estimator,
-          use_fixest. = use_fixest,
-          fixest_se_cluster. = fixest_se_cluster,
-          use_robust_errors. = use_robust_errors,
-          has_random. = has_random,
-          main_vars. = main,
-          data_vars. = data_vars,
-          parsed.   = parsed,
-          comp.     = comparison,
-          reference. = reference
-        )
-
-        if (is.null(comparison)) {
-          agg <- aggregate_perm_results(res, times)
-          fit$lower[, xi]  <- agg$lower
-          fit$larger[, xi] <- agg$larger
-          fit$abs[, xi]    <- agg$abs
-        } else {
-          res_valid <- Filter(Negate(is.null), res)
-          n_valid   <- length(res_valid)
-          resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-          for (k in seq_along(comparison)) {
-            cn <- names(comparison)[k]
-            fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-            fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-            fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-          }
+          fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
+          fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
+          fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
         }
       }
     }

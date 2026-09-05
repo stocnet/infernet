@@ -58,7 +58,6 @@ to i. Read from \code{.data} unless given, and reported when read.
 \item \code{reference}, \code{comparison}: multinomial / pairwise-comparison options.
 \item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
 \item \code{less_mem}: drop the baseline model object from the return.
-\item \code{use_gpu}: torch-based batch OLS (gaussian only).
 }}
 
 \item{x}{A \code{net_regression} object.}
@@ -93,7 +92,6 @@ multinomial families;
 and \code{"outcome"};
 \item random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
 \item robust (HC3) standard errors;
-\item optional torch-based batch OLS on the GPU;
 \item lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.
 }
