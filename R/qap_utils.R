@@ -346,20 +346,10 @@ fit_qap_model <- function(...) {
 
   if (family == "zip") {
     if (has_random) {
-      thisRequires("glmmTMB", "for mixed zero-inflated Poisson models")
-      base_model <- glmmTMB::glmmTMB(mod, data = pred,
-                                     family = stats::poisson(),
-                                     ziformula = ~1)
-      fit$coefficients <- glmmTMB::fixef(base_model)$cond
-      resid <- stats::residuals(base_model, type = "response")
-      fit$t <- summary(base_model)$coefficients$cond[, 3]
-      names(fit$t) <- names(fit$coefficients)
-      fit$zi_coefficients <- glmmTMB::fixef(base_model)$zi
-      fit$random.intercepts <- list()
-      re <- glmmTMB::ranef(base_model)$cond
-      for (rV in names(re)) {
-        fit$random.intercepts[[rV]] <- re[[rV]][, 1]
-      }
+      # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
+      manynet::snet_abort(
+        c("Random intercepts are not available for the {.val zip} family.",
+          i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
       thisRequires("pscl", "for zero-inflated Poisson models")
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
@@ -448,26 +438,10 @@ fit_qap_model <- function(...) {
       thisRequires("lme4", "for random effects")
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
-      thisRequires("glmmTMB", "for mixed negative binomial models")
-      base_model <- glmmTMB::glmmTMB(mod, data = pred,
-                                     family = glmmTMB::nbinom2())
-      fit$coefficients <- glmmTMB::fixef(base_model)$cond
-      resid <- stats::residuals(base_model, type = "response")
-      if (use_robust_errors) {
-        xv <- as.matrix(pred[, main_vars, drop = FALSE])
-        fit$t <- fit$coefficients / HC3(xv, resid)
-      } else {
-        fit$t <- summary(base_model)$coefficients$cond[, 3]
-        names(fit$t) <- names(fit$coefficients)
-      }
-      fit$theta <- glmmTMB::sigma(base_model)
-      fit$random.intercepts <- list()
-      re <- glmmTMB::ranef(base_model)$cond
-      for (rV in names(re)) {
-        fit$random.intercepts[[rV]] <- re[[rV]][, 1]
-      }
-      fit$base_model <- base_model
-      return(fit)
+      # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
+      manynet::snet_abort(
+        c("Random intercepts are not available for the {.val negbin} family.",
+          i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
       thisRequires("lme4", "for random effects")
       base_model <- lme4::glmer(mod, data = pred, family = family,

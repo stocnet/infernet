@@ -14,7 +14,7 @@
 #'   multinomial families;
 #' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
 #'   and `"outcome"`;
-#' - random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+#' - random intercepts (lme4) and fixed effects (fixest);
 #' - robust (HC3) standard errors;
 #' - lists of networks, in which graphs that are missing any predictor are
 #'   dropped with a warning and the remaining networks are pooled.

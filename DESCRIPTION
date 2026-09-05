@@ -43,8 +43,7 @@ Suggests:
     fixest,
     MASS,
     pscl,
-    testthat (>= 3.0.0),
-    glmmTMB
+    testthat (>= 3.0.0)
 Config/Needs/build:
     roxygen2,
     devtools

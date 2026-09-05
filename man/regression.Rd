@@ -88,7 +88,7 @@ and handed to a QAP engine (ported from MrQAP) that supports:
 multinomial families;
 \item two permutation schemes: \code{"predictor"} (Dekker's double semi-partialling)
 and \code{"outcome"};
-\item random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+\item random intercepts (lme4) and fixed effects (fixest);
 \item robust (HC3) standard errors;
 \item lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.
