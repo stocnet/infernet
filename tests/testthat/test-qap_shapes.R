@@ -69,12 +69,19 @@ test_that("a list of networks is pooled, and one missing a predictor is dropped"
   expect_length(unique(fit$pred$nv), 2L)
 
   bare <- manynet::as_tidygraph(matrix(stats::rnorm(18^2), 18, 18))
-  expect_warning(
-    dropped <- net_regression(weight ~ ego(Age),
-                              list(good[[1]], bare, good[[2]]),
-                              times = 10, control = list(seed = 1)),
-    "Dropping")
+  dropped <- suppressWarnings(
+    net_regression(weight ~ ego(Age), list(good[[1]], bare, good[[2]]),
+                   times = 10, control = list(seed = 1)))
   expect_equal(nrow(dropped$pred), 2 * 18 * 17)
+})
+
+test_that("dropping a network from a list warns", {
+  good <- qap_net_gaussian(n = 18, seed = 1)
+  bare <- manynet::as_tidygraph(matrix(stats::rnorm(18^2), 18, 18))
+  expect_snet_warning(
+    net_regression(weight ~ ego(Age), list(good, bare), times = 10,
+                   control = list(seed = 1)),
+    "Dropping")
 })
 
 test_that("a missing dyad is dropped from the model", {

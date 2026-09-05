@@ -424,6 +424,19 @@ An estimator that needs a package from `Suggests` takes
 absent. Do not let a path go untested because the package is missing locally:
 install it, and check that the test runs before you rely on the skip.
 
+Note that `skip_if_not_installed()` is weaker than it looks. CI installs every
+`Suggests`, so the skip does not fire there, and an installed package is not
+always a working one: `{torch}` installs as an R package before its Lantern
+backend is downloaded, and `torch::cuda_is_available()` then throws rather than
+returning `FALSE`. Guard on the capability, not on the package.
+
+A test must not depend on a `{manynet}` feature newer than the CRAN version, or
+it passes here and fails on CI. 
+
+Note that `options(snet_verbosity)` is unset under `R CMD check`, 
+because manynet's `.onAttach` only sets it in an interactive session. 
+Never write a test that depends on `snet_info()` output.
+
 Count the dyads rather than checking that a call returns.
 A directed network of *n* nodes contributes *n*(*n*-1) dyads, an undirected one
 *n*(*n*-1)/2, and a two-mode one every cell of its incidence matrix.

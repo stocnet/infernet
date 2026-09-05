@@ -215,13 +215,28 @@ test_that("fixest coefficients match a direct feglm() fit", {
 test_that("fixed effects and random effects together fall back to random", {
   skip_if_not_installed("fixest")
   skip_if_not_installed("lme4")
-  expect_warning(
-    fit <- suppressMessages(
+  both <- suppressMessages(suppressWarnings(
+    net_regression(FORM, qap_net_gaussian(), times = 10,
+                   control = list(seed = 1, fixest_se_cluster = "sv",
+                                  random_intercept_sender = TRUE))))
+  random_only <- suppressMessages(suppressWarnings(
+    net_regression(FORM, qap_net_gaussian(), times = 10,
+                   control = list(seed = 1, random_intercept_sender = TRUE))))
+  expect_qap_shape(both, COEFS3)
+  # The fixed effects are dropped, so the fit is the random-effects one.
+  expect_equal(both$coefficients, random_only$coefficients)
+  expect_named(both$random.intercepts, "sv")
+})
+
+test_that("combining fixed and random effects warns", {
+  skip_if_not_installed("fixest")
+  skip_if_not_installed("lme4")
+  expect_snet_warning(
+    suppressMessages(
       net_regression(FORM, qap_net_gaussian(), times = 10,
                      control = list(seed = 1, fixest_se_cluster = "sv",
                                     random_intercept_sender = TRUE))),
     "random effects")
-  expect_qap_shape(fit, COEFS3)
 })
 
 

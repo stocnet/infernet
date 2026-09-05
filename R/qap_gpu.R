@@ -309,5 +309,10 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
 #' @noRd
 gpu_available <- function() {
   if (!requireNamespace("torch", quietly = TRUE)) return(FALSE)
-  torch::cuda_is_available()
+  # {torch} installs as an R package before its Lantern backend is downloaded,
+  # so `cuda_is_available()` throws rather than returning FALSE on a machine
+  # that has the package but not the runtime. That is the state of a CI runner
+  # that installed Suggests, and it must read as "no GPU", not as an error.
+  isTRUE(tryCatch(torch::cuda_is_available(),
+                  error = function(e) FALSE, warning = function(w) FALSE))
 }

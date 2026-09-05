@@ -104,15 +104,21 @@ test_that("net_regression fits on a list of graphs", {
 
 # ---- list-of-graphs: drop graphs missing a predictor, with warning ---------
 
-test_that("graphs missing a predictor are dropped with a warning", {
+test_that("graphs missing a predictor are dropped", {
   g1 <- make_weighted_net(n = 8, seed = 1)
   g2 <- manynet::as_tidygraph(matrix(stats::rnorm(8^2), 8, 8))
   gs <- list(A = g1, B = g2)
-  expect_warning(
-    fit <- net_regression(weight ~ sim(Age), gs, times = 10),
-    regexp = "Dropping"
-  )
+  fit <- suppressWarnings(net_regression(weight ~ sim(Age), gs, times = 10))
   expect_s3_class(fit, "net_regression")
+  expect_length(unique(fit$pred$nv), 1L)
+})
+
+test_that("dropping a graph warns", {
+  g1 <- make_weighted_net(n = 8, seed = 1)
+  g2 <- manynet::as_tidygraph(matrix(stats::rnorm(8^2), 8, 8))
+  expect_snet_warning(
+    net_regression(weight ~ sim(Age), list(A = g1, B = g2), times = 10),
+    "Dropping")
 })
 
 

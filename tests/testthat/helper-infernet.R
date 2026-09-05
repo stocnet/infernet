@@ -104,3 +104,30 @@ expect_qap_shape <- function(fit, coefs) {
   }
   invisible(fit)
 }
+
+# ---- version-tolerant warnings ----------------------------------------------
+
+# `manynet::snet_warn()` only began raising a catchable warning condition in
+# manynet 2.3.2. Before that it printed a cli alert that the default
+# `snet_verbosity = "quiet"` suppressed, and signalled nothing. CI installs the
+# CRAN version, so a test that expects a warning has to know which it has.
+# Probe the behaviour rather than the version string: a development build can
+# carry the version without the behaviour.
+snet_warn_signals <- function() {
+  isTRUE(tryCatch({
+    manynet::snet_warn("probe")
+    FALSE
+  }, warning = function(w) TRUE))
+}
+
+# Asserts the warning where manynet raises one, and otherwise just evaluates the
+# expression, so that whatever the test asserts about the returned value still
+# runs. The behaviour a warning accompanies is always asserted separately.
+expect_snet_warning <- function(object, regexp) {
+  if (snet_warn_signals()) {
+    testthat::expect_warning(object, regexp)
+  } else {
+    testthat::skip(paste("manynet", utils::packageVersion("manynet"),
+                         "does not signal snet_warn() conditions"))
+  }
+}
