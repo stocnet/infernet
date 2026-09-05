@@ -2,6 +2,11 @@
 
 ## Package
 
+- Branched off five model extensions, to settle the architecture first
+  - Each is on its own `feature/*` branch, and each strip is one commit that
+    `git revert` reinstates
+  - `Suggests` falls from eight modelling packages to three
+  - See the Github issues for the order they come back in
 - Renamed the engine's vocabulary to the front end's, so one word means one
   thing on both sides of the seam
   - `reps` is now `times`, everywhere including on the returned fit
@@ -20,6 +25,22 @@
 
 ## Regression
 
+- Removed the `torch` GPU path (`feature/torch-gpu`)
+  - Gaussian only, duplicated for CSS, no test, and no hosted runner has a
+    CUDA device; `{torch}` in Suggests broke the CI build
+- Removed the `gmm` estimator and the `estimator` control (`feature/gmm-estimator`)
+  - It warned that the coefficient covariance matrix was singular on every
+    family, on well-conditioned data
+- Removed the mixed negbin and mixed zip paths (`feature/glmmtmb-mixed`)
+  - `{glmmTMB}` carries 62 recursive dependencies and must match `{TMB}`
+  - The standard `negbin` and `zip` paths are unaffected
+- Removed `family = "multinom"` and the `comparison`/`reference` controls
+  (`feature/multinomial-comparison`)
+  - Unreachable from the front end, and its pairwise branch forked both
+    engines at 21 points
+- Removed the `fixest_se_cluster` control (`feature/fixest-fixed-effects`)
+  - A bar in the formula now means an `{lme4}` random-effect term, and
+    nothing else; `parse_qap_formula()` drops from three branches to one
 - Fixed `net_regression()` failing on a two-mode network with more columns than
   rows (closing #4)
   - The validity mask was built as rows-by-rows, so a wider predictor extended
