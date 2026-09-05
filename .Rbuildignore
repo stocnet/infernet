@@ -18,3 +18,8 @@ vignettes/precompile\.R
 ^CRAN-SUBMISSION$
 ^README\.Rmd$
 ^.mailmap$
+^\.positai$
+^\.claude$
+^CLAUDE\.md$
+^\.Rhistory$
+^\.RData$

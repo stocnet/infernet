@@ -27,7 +27,7 @@ dyadic covariate.
 }}
 
 \item{.data}{A manynet-consistent network (see
-\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
+\code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
 supplied the model is fit jointly; graphs missing any predictor are
 dropped with a warning.}
 
@@ -96,7 +96,7 @@ dropped with a warning and the remaining networks are pooled.
 }
 \examples{
 \dontrun{
-networkers <- manynet::ison_networkers \%>\%
+networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 model1 <- net_regression(
   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
@@ -118,7 +118,7 @@ conditions."
 \doi{10.1007/s11336-007-9016-1}.
 }
 \seealso{
-Other models: 
+Other models:
 \code{\link{tests}}
 }
 \concept{models}

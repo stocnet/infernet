@@ -1,17 +1,25 @@
 Package: infernet
-Title: Basic inferential models for many different types of networks
-Version: 0.1.0
-Date: 2025-06-23
-Description: TBD.
+Title: Inferential Models for Many Different Types of Networks
+Version: 0.1.1
+Description: A set of tools for testing networks.
+   It includes functions for univariate and multivariate 
+   conditional uniform graph and quadratic assignment procedure testing,
+   and multiple regression quadratic assignment procedure (MRQAP) models
+   for a range of families, with random and fixed effects,
+   missing data, and cognitive social structures.
+   Built on the 'manynet' package, all functions operate with matrices, 
+   edge lists, and 'igraph', 'network', and 'tidygraph' objects,
+   and on one-mode and two-mode (bipartite) networks.
 URL: https://stocnet.github.io/infernet/
 BugReports: https://github.com/stocnet/infernet/issues
 License: MIT + file LICENSE
 Language: en-GB
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.3
 Depends: 
-    R (>= 3.6.0)
+    R (>= 4.1.0),
+    manynet (>= 2.3.1),
+    netrics (>= 1.0.1)
 Authors@R: 
     c(person(given = "James",
              family = "Hollway",
@@ -24,16 +32,11 @@ Authors@R:
              comment = c(ORCID = "0000-0003-4288-4732"))
     )
 Imports:
-    cli,
-    dplyr,
     furrr,
     future,
     future.apply,
-    manynet,
     purrr,
-    reformulas,
-    stats,
-    utils
+    reformulas
 Suggests:
     lme4,
     nnet,
@@ -56,3 +59,5 @@ Config/Needs/website:
     pkgdown
 Config/testthat/parallel: true
 Config/testthat/edition: 3
+Config/testthat/start-first: qap_estimators, model_tests
+Config/roxygen2/version: 8.1.0

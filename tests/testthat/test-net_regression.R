@@ -104,15 +104,21 @@ test_that("net_regression fits on a list of graphs", {
 
 # ---- list-of-graphs: drop graphs missing a predictor, with warning ---------
 
-test_that("graphs missing a predictor are dropped with a warning", {
+test_that("graphs missing a predictor are dropped", {
   g1 <- make_weighted_net(n = 8, seed = 1)
   g2 <- manynet::as_tidygraph(matrix(stats::rnorm(8^2), 8, 8))
   gs <- list(A = g1, B = g2)
-  expect_warning(
-    fit <- net_regression(weight ~ sim(Age), gs, times = 10),
-    regexp = "Dropping"
-  )
+  fit <- suppressWarnings(net_regression(weight ~ sim(Age), gs, times = 10))
   expect_s3_class(fit, "net_regression")
+  expect_length(unique(fit$pred$nv), 1L)
+})
+
+test_that("dropping a graph warns", {
+  g1 <- make_weighted_net(n = 8, seed = 1)
+  g2 <- manynet::as_tidygraph(matrix(stats::rnorm(8^2), 8, 8))
+  expect_snet_warning(
+    net_regression(weight ~ sim(Age), list(A = g1, B = g2), times = 10),
+    "Dropping")
 })
 
 
@@ -139,4 +145,34 @@ test_that("method = 'qapy' runs and flags the nullhyp on the fit", {
                         g, times = 10,
                         control = list(method = "qapy"))
   expect_equal(fit$nullhyp, "qapy")
+})
+
+
+# ---- tertius ---------------------------------------------------------------
+
+test_that("tertius() accepts a quoted and an unquoted summary function", {
+  g <- make_weighted_net()
+  quoted   <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
+  unquoted <- net_regression(weight ~ tertius(Age, mean), g, times = 10)
+  bare     <- net_regression(weight ~ tertius(Age), g, times = 10)
+  expect_equal(quoted$coefficients, unquoted$coefficients)
+  expect_equal(quoted$coefficients, bare$coefficients)
+})
+
+test_that("tertius() sum differs from mean, and rejects anything else", {
+  g <- make_weighted_net()
+  mean_fit <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
+  sum_fit  <- net_regression(weight ~ tertius(Age, "sum"), g, times = 10)
+  expect_false(isTRUE(all.equal(mean_fit$coefficients, sum_fit$coefficients)))
+  expect_error(net_regression(weight ~ tertius(Age, "median"), g, times = 10),
+               "mean")
+})
+
+
+# ---- messaging -------------------------------------------------------------
+
+test_that("a missing attribute names what is available", {
+  g <- make_weighted_net()
+  expect_error(net_regression(weight ~ ego(Nope), g, times = 10),
+               "Age")
 })

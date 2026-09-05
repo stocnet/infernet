@@ -7,36 +7,15 @@
 \alias{test_permutation}
 \title{Tests of network measures}
 \usage{
-test_random(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_random(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_configuration(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_configuration(.data, FUN, ..., times = 1000, strategy = "sequential")
 
-test_permutation(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  strategy = "sequential",
-  verbose = FALSE
-)
+test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
 }
 \arguments{
 \item{.data}{A manynet-consistent network (see
-\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
+\code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
 supplied the model is fit jointly; graphs missing any predictor are
 dropped with a warning.}
 
@@ -47,6 +26,14 @@ e.g. the name of the attribute.}
 
 \item{times}{Integer.  Number of permutations for the null distribution.
 1000 is the default; publication-ready work usually needs 1000-10000.}
+
+\item{strategy}{If \code{{furrr}} is installed,
+then multiple cores can be used to accelerate the function.
+By default \code{"sequential"},
+but if multiple cores available,
+then \code{"multisession"} or \code{"multicore"} may be useful.
+Generally this is useful only when \code{times} > 1000.
+See \href{https://furrr.futureverse.org}{\code{{furrr}}} for more.}
 }
 \description{
 These functions conduct tests of any network-level statistic:
@@ -54,25 +41,28 @@ These functions conduct tests of any network-level statistic:
 \item \code{test_random()} performs a conditional uniform graph (CUG) test
 of a measure against a distribution of measures on random networks
 of the same dimensions.
+\item \code{test_configuration()} performs a CUG test against a distribution of
+measures on random networks that preserve the degree sequence
+of the original network.
 \item \code{test_permutation()} performs a quadratic assignment procedure (QAP) test
 of a measure against a distribution of measures on permutations
 of the original network.
 }
 }
 \examples{
-marvel_friends <- to_unsigned(ison_marvel_relationships)
-marvel_friends <- to_giant(marvel_friends) \%>\% 
+marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+  to_unsigned() |> to_giant() |> 
   to_subgraph(PowerOrigin == "Human")
-(cugtest <- test_random(marvel_friends, manynet::net_heterophily, attribute = "Attractive",
+(cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
    times = 200))
 # plot(cugtest)
 # (qaptest <- test_permutation(marvel_friends, 
-#                 manynet::net_heterophily, attribute = "Attractive",
+#                 net_by_heterophily, attribute = "Attractive",
 #                 times = 200))
 # plot(qaptest)
 }
 \seealso{
-Other models: 
+Other models:
 \code{\link{regression}}
 }
 \concept{models}

@@ -9,13 +9,10 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
                           baseline_fit, perm_var = NULL,
                           batch_size = 500, device = "cuda") {
 
-  if (!requireNamespace("torch", quietly = TRUE)) {
-    stop("The 'torch' package is required for GPU acceleration. ",
-         "Install it with: install.packages('torch')")
-  }
+  thisRequires("torch", "for GPU acceleration")
 
   if (device == "cuda" && !torch::cuda_is_available()) {
-    message("CUDA not available. Falling back to CPU torch.")
+    manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")
     device <- "cpu"
   }
 
@@ -167,12 +164,10 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
                               baseline_fit, perm_var = NULL,
                               batch_size = 500, device = "cuda") {
 
-  if (!requireNamespace("torch", quietly = TRUE)) {
-    stop("The 'torch' package is required for GPU acceleration.")
-  }
+  thisRequires("torch", "for GPU acceleration")
 
   if (device == "cuda" && !torch::cuda_is_available()) {
-    message("CUDA not available. Falling back to CPU torch.")
+    manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")
     device <- "cpu"
   }
 
@@ -314,5 +309,10 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
 #' @noRd
 gpu_available <- function() {
   if (!requireNamespace("torch", quietly = TRUE)) return(FALSE)
-  torch::cuda_is_available()
+  # {torch} installs as an R package before its Lantern backend is downloaded,
+  # so `cuda_is_available()` throws rather than returning FALSE on a machine
+  # that has the package but not the runtime. That is the state of a CI runner
+  # that installed Suggests, and it must read as "no GPU", not as an error.
+  isTRUE(tryCatch(torch::cuda_is_available(),
+                  error = function(e) FALSE, warning = function(w) FALSE))
 }

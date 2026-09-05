@@ -6,11 +6,12 @@ export(net_regression)
 export(test_configuration)
 export(test_permutation)
 export(test_random)
-importFrom(cli,cli_div)
-importFrom(cli,cli_end)
-importFrom(cli,cli_inform)
-importFrom(manynet,bind_node_attributes)
-importFrom(manynet,generate_configuration)
-importFrom(manynet,generate_random)
-importFrom(manynet,is_complex)
-importFrom(manynet,is_directed)
+importFrom(manynet,
+  bind_node_attributes,
+  generate_configuration,
+  generate_random,
+  is_complex,
+  is_directed,
+  snet_info
+)
+importFrom(netrics,net_by_heterophily)
