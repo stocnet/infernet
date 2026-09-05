@@ -1,0 +1,48 @@
+url: https://stocnet.github.io/infernet/
+development:
+    mode: auto
+template:
+  bootstrap: 5
+  bootswatch: superhero
+authors:
+  James Hollway:
+    href: https://jameshollway.com
+navbar:
+  structure:
+    left:
+    - home
+    - intro
+    - reference
+    - news
+    right:
+    - search
+    - github
+    - cran
+  components:
+    home:
+      icon: fa-home fa-lg
+      href: index.html
+      aria-label: Go to home
+    reference:
+      text: Function Overview
+      href: reference/index.html
+    news:
+      text: News
+      href: news/index.html
+    github:
+      icon: "fab fa-github fa-lg"
+      href: https://github.com/stocnet/infernet
+      aria-label: View on Github
+    cran:
+      icon: "fab fa-r-project"
+      href: https://cloud.r-project.org/package=infernet
+      aria-label: View on CRAN
+reference:
+  - title: "Tests"
+    desc: "Functions for testing network statistics against a null distribution:"
+    contents:
+      - starts_with("test")
+  - title: "Regression"
+    desc: "Functions for regressing networks on nodal and dyadic covariates:"
+    contents:
+      - regression

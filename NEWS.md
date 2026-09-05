@@ -10,6 +10,8 @@
   - Release notes are now taken from the matching `NEWS.md` section
   - Updated the action versions in `prchecks` and `pushrelease`
 - Updated CONTRIBUTING to document the architecture and the house conventions
+- Added `README.Rmd` and `pkgdown/_pkgdown.yml` for this package
+
 
 # infernet 0.1.0
 
