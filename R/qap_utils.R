@@ -323,26 +323,10 @@ fit_qap_model <- function(...) {
                           fixest_se_cluster = NULL,
                           use_robust_errors = FALSE,
                           main_vars = NULL,
-                          has_random = FALSE,
-                          reference = NULL) {
+                          has_random = FALSE) {
   fit <- list()
   dep_var <- all.vars(mod)[1]
   nx  <- length(main_vars)
-
-  if (family == "multinom") {
-    pred[[dep_var]] <- as.factor(pred[[dep_var]])
-    if (!is.null(reference)) {
-      pred[[dep_var]] <- stats::relevel(pred[[dep_var]], ref = reference)
-    }
-    thisRequires("nnet", "for multinomial models")
-    base_model       <- nnet::multinom(mod, data = pred, trace = FALSE)
-    fit$coefficients <- stats::coefficients(base_model)
-    fit$t            <- stats::coefficients(base_model) /
-                          summary(base_model)$standard.errors
-    fit$base_model   <- base_model
-    return(fit)
-  }
-
 
   if (family == "zip") {
     if (has_random) {

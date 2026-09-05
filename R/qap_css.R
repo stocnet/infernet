@@ -99,9 +99,7 @@ QAPcssPermEst <- function(i,
                           has_random.,
                           main_vars.,
                           data_vars.,
-                          parsed.,
-                          comp.,
-                          reference.) {
+                          parsed.) {
 
   dep   <- parsed.$dependent
   large <- is.list(matlist.[[dep]])
@@ -151,40 +149,13 @@ QAPcssPermEst <- function(i,
 
     names(pred)[names(pred) == "yv"] <- dep
 
-    if (family. != "multinom" && is.null(comp.)) {
-      y_ok <- length(stats::na.omit(unique(pred[[dep]]))) > 1
-    } else {
-      y2_cat <- stats::na.omit(unique(pred[[dep]]))
-      y_present <- all(y_cat %in% y2_cat)
-      y_mult <- all(table(pred[[dep]]) > 2)
-      y_ok <- y_present && y_mult
-    }
+    y_ok <- length(stats::na.omit(unique(pred[[dep]]))) > 1
 
     x_ok <- TRUE
     num_preds <- pred[, data_vars.[data_vars. %in% names(pred)], drop = FALSE]
     num_preds <- num_preds[, sapply(num_preds, is.numeric), drop = FALSE]
     if (ncol(num_preds) > 0) {
       x_ok <- all(sapply(num_preds, function(col) length(unique(col)) > 1))
-    }
-
-    if (nrow(pred) != 0 && x_ok && y_ok && !is.null(comp.)) {
-      for (k in seq_along(comp.)) {
-        pred2 <- pred[pred[[dep]] %in% comp.[[k]], ]
-        pred2[[dep]] <- ifelse(pred2[[dep]] == comp.[[k]][1], 0, 1)
-        check_cols <- c(dep, intersect(main_vars., names(pred2)))
-        if (length(check_cols) > 1) {
-          cors <- tryCatch(
-            stats::cor(pred2[, check_cols, drop = FALSE], use = "complete.obs"),
-            error = function(e) NULL
-          )
-          if (is.null(cors) || any(is.na(cors))) {
-            y_ok <- x_ok <- FALSE
-          } else {
-            diag(cors) <- 0
-            if (any(abs(cors) > 0.9999)) y_ok <- x_ok <- FALSE
-          }
-        }
-      }
     }
 
     sufficient_data <- y_ok && x_ok
@@ -198,113 +169,53 @@ QAPcssPermEst <- function(i,
 
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
-  if (is.null(comp.)) {
-    # A fit inside the permutation loop runs `times` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = pred,
-                    family       = family.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
+  # A fit inside the permutation loop runs `times` times, so a fitter's
+  # convergence warning would print once per draw and drown the console.
+  # The count of draws that failed outright is reported by
+  # `aggregate_perm_results()`, which is the number the user needs.
+  perm_fit <- tryCatch(
+    suppressWarnings(fit_qap_model(mod          = mod.,
+                  pred         = pred,
+                  family       = family.,
+                  use_fixest   = use_fixest.,
+                  fixest_se_cluster = fixest_se_cluster.,
+                  use_robust_errors = use_robust_errors.,
+                  main_vars    = main_vars.,
+                  has_random   = has_random.)),
+    error = function(e) NULL
+  )
+  if (is.null(perm_fit)) return(NULL)
 
-    return(compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                    fit., xi = xi_arg))
-  }
-
-  xresL <- vector("list", length(comp.))
-  names(xresL) <- names(comp.)
-
-  for (k in seq_along(comp.)) {
-    predK <- pred[pred[[dep]] %in% comp.[[k]], ]
-    predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
-
-    # A fit inside the permutation loop runs `times` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = predK,
-                    family       = family.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
-
-    xresL[[k]] <- compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                           fit.[[k]], xi = xi_arg)
-  }
-
-  return(xresL)
+  return(compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
+                                  fit., xi = xi_arg))
 }
 
 
 # Coefficient-table helper used by print.QAPCSS
 #' @keywords internal
 #' @noRd
-glm_tab <- function(x, comp) {
-  if (!is.null(comp)) {
-    cat("\n\nComparison between",
-        x$comp[[comp]][1], "and", x$comp[[comp]][2])
-    cat("\n\nCoefficients:\n")
+glm_tab <- function(x) {
+  cat("\n\nCoefficients:\n")
 
-    nc <- length(x$base[[comp]]$coefficients)
-    cmat <- matrix(NA, nrow = nc, ncol = 4)
-    cmat[, 1] <- format(round(as.numeric(x$base[[comp]]$coefficients), 3))
-    cmat[, 2] <- format(x$lower[[comp]][2, ])
-    cmat[, 3] <- format(x$larger[[comp]][2, ])
-    cmat[, 4] <- format(x$abs[[comp]][2, ])
-    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-    colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-    rownames(cmat) <- names(x$base[[comp]]$coefficients)
-    print.table(cmat)
+  nc <- length(x$base$coefficients)
+  cmat <- matrix(NA, nrow = nc, ncol = 4)
+  cmat[, 1] <- format(round(as.numeric(x$base$coefficients), 3))
+  cmat[, 2] <- format(x$lower[2, ])
+  cmat[, 3] <- format(x$larger[2, ])
+  cmat[, 4] <- format(x$abs[2, ])
+  if (x$permute == "predictor") cmat[1, 2:4] <- "*"
+  colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
+  rownames(cmat) <- names(x$base$coefficients)
+  print.table(cmat)
 
-    if (x$permute == "predictor")
-      cat("\n* The intercept has no significance test when predictors are permuted.\n")
+  if (x$permute == "predictor")
+    cat("\n* The intercept has no significance test when predictors are permuted.\n")
 
-    if (!is.null(x$base[[comp]]$base_model)) {
-      cat("\nAIC of base model:", format(stats::AIC(x$base[[comp]]$base_model)))
-      cat("\nBIC of base model:", format(stats::BIC(x$base[[comp]]$base_model)))
-    }
-    cat("\n")
-  } else {
-    cat("\n\nCoefficients:\n")
-
-    nc <- length(x$base$coefficients)
-    cmat <- matrix(NA, nrow = nc, ncol = 4)
-    cmat[, 1] <- format(round(as.numeric(x$base$coefficients), 3))
-    cmat[, 2] <- format(x$lower[2, ])
-    cmat[, 3] <- format(x$larger[2, ])
-    cmat[, 4] <- format(x$abs[2, ])
-    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-    colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-    rownames(cmat) <- names(x$base$coefficients)
-    print.table(cmat)
-
-    if (x$permute == "predictor")
-      cat("\n* The intercept has no significance test when predictors are permuted.\n")
-
-    if (!is.null(x$base$base_model)) {
-      cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
-      cat("\nBIC of base model:", format(stats::BIC(x$base$base_model)))
-    }
-    cat("\n")
+  if (!is.null(x$base$base_model)) {
+    cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
+    cat("\nBIC of base model:", format(stats::BIC(x$base$base_model)))
   }
+  cat("\n")
 }
 
 
@@ -322,8 +233,6 @@ QAPcss <- function(formula,
                    family    = "gaussian",
                    groups    = NULL,
                    fixest_se_cluster = NULL,
-                   reference  = NULL,
-                   comparison = NULL,
                    use_robust_errors = FALSE,
                    random_intercept_nets      = FALSE,
                    random_intercept_sender    = FALSE,
@@ -373,19 +282,6 @@ QAPcss <- function(formula,
   }
   mod <- stats::as.formula(mod_str)
 
-  if (has_random && family == "multinom") {
-    manynet::snet_warn(
-      c("Random intercepts are not implemented for the multinomial family.",
-        i = "Using {.fn nnet::multinom} instead."))
-    has_random <- FALSE
-  }
-  if (!is.null(reference) && !is.character(reference) && family == "multinom")
-    reference <- as.character(reference)
-  if (use_robust_errors && family == "multinom") {
-    manynet::snet_warn(
-      "Robust standard errors are not implemented for the multinomial family.")
-    use_robust_errors <- FALSE
-  }
   if ((permute == "predictor") && (nx == 1)) permute <- "outcome"
   if (!directed && (ris || rir)) {
     manynet::snet_warn(
@@ -443,33 +339,14 @@ QAPcss <- function(formula,
 
   fit <- list()
 
-  if (is.null(comparison)) {
-    fit$base <- fit_qap_model(mod          = mod,
-                              pred         = pred,
-                              family       = family,
-                              use_fixest   = use_fixest,
-                              fixest_se_cluster = fixest_se_cluster,
-                              use_robust_errors = use_robust_errors,
-                              main_vars    = main,
-                              has_random   = has_random,
-                              reference    = reference)
-  } else {
-    fit$base <- vector("list", length(comparison))
-    names(fit$base) <- names(comparison)
-    for (k in seq_along(comparison)) {
-      predK <- pred[pred[[dep]] %in% comparison[[k]], ]
-      predK[[dep]] <- ifelse(predK[[dep]] == comparison[[k]][1], 0, 1)
-      fit$base[[k]] <- fit_qap_model(mod          = mod,
-                                     pred         = predK,
-                                     family       = family,
-                                     use_fixest   = use_fixest,
-                                     fixest_se_cluster = fixest_se_cluster,
-                                     use_robust_errors = use_robust_errors,
-                                     main_vars    = main,
-                                     has_random   = has_random,
-                                     reference    = reference)
-    }
-  }
+  fit$base <- fit_qap_model(mod          = mod,
+                            pred         = pred,
+                            family       = family,
+                            use_fixest   = use_fixest,
+                            fixest_se_cluster = fixest_se_cluster,
+                            use_robust_errors = use_robust_errors,
+                            main_vars    = main,
+                            has_random   = has_random)
 
   old_plan <- setup_future_plan(strategy, ncores)
   on.exit({
@@ -486,7 +363,7 @@ QAPcss <- function(formula,
       diag.     = diag,
       mod.      = mod,
       groups.   = groups,
-      fit.      = if (is.null(comparison)) fit$base else fit$base,
+      fit.      = fit$base,
       family.   = family,
       use_fixest. = use_fixest,
       fixest_se_cluster. = fixest_se_cluster,
@@ -494,65 +371,20 @@ QAPcss <- function(formula,
       has_random. = has_random,
       main_vars. = main,
       data_vars. = data_vars,
-      parsed.   = parsed,
-      comp.     = comparison,
-      reference. = reference
+      parsed.   = parsed
     )
 
-    if (is.null(comparison)) {
-      agg <- aggregate_perm_results(res, times)
-      fit$lower  <- agg$lower
-      fit$larger <- agg$larger
-      fit$abs    <- agg$abs
-    } else {
-      res_valid <- Filter(Negate(is.null), res)
-      n_valid   <- length(res_valid)
-      fit$lower <- fit$larger <- fit$abs <-
-        vector("list", length(comparison))
-      names(fit$lower) <- names(fit$larger) <-
-        names(fit$abs) <- names(comparison)
-      resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-      for (k in seq_along(comparison)) {
-        cn <- names(comparison)[k]
-        fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-        fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-        fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-      }
-    }
+    agg <- aggregate_perm_results(res, times)
+    fit$lower  <- agg$lower
+    fit$larger <- agg$larger
+    fit$abs    <- agg$abs
 
   } else if (permute == "predictor") {
-    if (is.null(comparison)) {
-      if (family != "multinom") {
-        n_coefs <- length(fit$base$coefficients)
-        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
-        fit$larger <- fit$abs <- fit$lower
-        colnames(fit$lower) <- colnames(fit$larger) <-
-          colnames(fit$abs)  <- names(fit$base$coefficients)
-      } else {
-        ncat <- if (large) {
-          length(stats::na.omit(unique(as.vector(unlist(matlist[[dep]])))))
-        } else {
-          length(stats::na.omit(unique(as.vector(matlist[[dep]]))))
-        }
-        n_coefs <- length(fit$base$coefficients)
-        fit$lower  <- matrix(NA, nrow = 2 * (ncat - 1), ncol = n_coefs)
-        fit$larger <- fit$abs <- fit$lower
-        colnames(fit$lower) <- colnames(fit$larger) <-
-          colnames(fit$abs) <- names(fit$base$coefficients)
-      }
-    } else {
-      fit$lower <- fit$larger <- fit$abs <-
-        vector("list", length(comparison))
-      names(fit$lower) <- names(fit$larger) <-
-        names(fit$abs) <- names(comparison)
-      for (k in seq_along(comparison)) {
-        n_coefs <- length(fit$base[[k]]$coefficients)
-        fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs)
-        fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-        colnames(fit$lower[[k]]) <- colnames(fit$larger[[k]]) <-
-          colnames(fit$abs[[k]]) <- names(fit$base[[k]]$coefficients)
-      }
-    }
+    n_coefs <- length(fit$base$coefficients)
+    fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
+    fit$larger <- fit$abs <- fit$lower
+    colnames(fit$lower) <- colnames(fit$larger) <-
+      colnames(fit$abs)  <- names(fit$base$coefficients)
 
     for (xi in main) {
       test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
@@ -579,7 +411,7 @@ QAPcss <- function(formula,
         diag.     = diag,
         mod.      = mod,
         groups.   = groups,
-        fit.      = if (is.null(comparison)) fit$base else fit$base,
+        fit.      = fit$base,
         family.   = family,
         use_fixest. = use_fixest,
         fixest_se_cluster. = fixest_se_cluster,
@@ -587,31 +419,17 @@ QAPcss <- function(formula,
         has_random. = has_random,
         main_vars. = main,
         data_vars. = data_vars,
-        parsed.   = parsed,
-        comp.     = comparison,
-        reference. = reference
+        parsed.   = parsed
       )
 
-      if (is.null(comparison)) {
-        agg <- aggregate_perm_results(res, times)
-        fit$lower[, xi]  <- agg$lower
-        fit$larger[, xi] <- agg$larger
-        fit$abs[, xi]    <- agg$abs
-      } else {
-        res_valid <- Filter(Negate(is.null), res)
-        n_valid   <- length(res_valid)
-        resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-        for (k in seq_along(comparison)) {
-          cn <- names(comparison)[k]
-          fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-          fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-          fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-        }
-      }
+      agg <- aggregate_perm_results(res, times)
+      fit$lower[, xi]  <- agg$lower
+      fit$larger[, xi] <- agg$larger
+      fit$abs[, xi]    <- agg$abs
     }
   }
 
-  if (family == "binomial" && is.null(comparison)) {
+  if (family == "binomial") {
     fit$confusion_matrix <- probabilistic_confusion_matrix(
       actual = pred[[dep]],
       predicted_prob = stats::fitted(fit$base$base_model),
@@ -625,21 +443,16 @@ QAPcss <- function(formula,
   fit$diag      <- diag
   fit$directed  <- directed
   fit$times      <- times
-  fit$reference <- reference
-  fit$comp      <- comparison
   fit$random    <- c(sender    = ris,
                      receiver  = rir,
                      perceiver = rip,
                      nets      = rin)
   fit$robust_se <- use_robust_errors
 
-  if (is.null(comparison) && !is.null(fit$base$theta))
+  if (!is.null(fit$base$theta))
     fit$theta <- fit$base$theta
-  if (is.null(comparison) && !is.null(fit$base$zi_coefficients))
+  if (!is.null(fit$base$zi_coefficients))
     fit$zi_coefficients <- fit$base$zi_coefficients
-
-  if (family == "multinom")
-    names(fit)[names(fit) == "t"] <- "z"
 
   class(fit) <- "QAPCSS"
   return(fit)
@@ -650,15 +463,10 @@ QAPcss <- function(formula,
 #' @noRd
 print.QAPCSS <- function(x, ...) {
 
-  if (x$family != "multinom") {
-    if (!any(x$random)) {
-      cat("\nGeneralized Linear Network Model for CSS\n\n")
-    } else {
-      cat("\nGeneralized Linear Mixed Network Model for CSS fit by REML\n\n")
-    }
+  if (!any(x$random)) {
+    cat("\nGeneralized Linear Network Model for CSS\n\n")
   } else {
-    cat("\nMultinomial Choice Network Model for CSS\n\n")
-    cat("The reference group was", format(paste0(x$reference, ".")), "\n")
+    cat("\nGeneralized Linear Mixed Network Model for CSS fit by REML\n\n")
   }
 
     cat("Estimator: Generalized Method-of-Moments.\n")
@@ -694,40 +502,7 @@ print.QAPCSS <- function(x, ...) {
   cat("The outcome was treated as",
       format(paste0(.directed_label(x$directed), ".")), "\n")
 
-  if (x$family != "multinom") {
-    if (is.null(x$comp)) {
-      glm_tab(x, comp = x$comp)
-    } else {
-      for (mod in seq_along(x$comp)) {
-        glm_tab(x, comp = names(x$comp)[[mod]])
-      }
-    }
-  } else {
-    cat("\nCoefficients:\n\n")
-    for (option in seq_len(nrow(x$base$coefficients))) {
-      cat(format(paste0("-- ", rownames(x$base$coefficients)[option], "\n")))
-
-      nc <- ncol(x$base$coefficients)
-      cmat <- matrix(NA, nrow = nc, ncol = 4)
-      row_idx <- option + nrow(x$base$coefficients)
-      cmat[, 1] <- format(as.numeric(x$base$coefficients[option, ]))
-      cmat[, 2] <- format(x$lower[row_idx, ])
-      cmat[, 3] <- format(x$larger[row_idx, ])
-      cmat[, 4] <- format(x$abs[row_idx, ])
-      if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-      colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-      rownames(cmat) <- colnames(x$base$coefficients)
-      print.table(cmat)
-      cat("\n\n")
-    }
-
-    if (x$permute == "predictor")
-      cat("* The intercept has no significance test when predictors are permuted.\n")
-
-    cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
-    cat("\nBIC of base model:", format(stats::BIC(x$base$base_model)))
-    cat("\n")
-  }
+  glm_tab(x)
 
   if (!is.null(x$confusion_matrix)) {
     cat("\n")

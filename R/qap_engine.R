@@ -19,8 +19,6 @@ QAPglm <- function(formula,
                    strategy  = "sequential",
                    ncores    = NULL,
                    fixest_se_cluster = NULL,
-                   comparison = NULL,
-                   reference  = NULL,
                    random_intercept_nets     = FALSE,
                    random_intercept_sender   = FALSE,
                    random_intercept_receiver = FALSE,
@@ -84,10 +82,6 @@ QAPglm <- function(formula,
 
   names(pred)[names(pred) == "yv"] <- dep
 
-  if (!is.null(comparison) && is.null(reference)) {
-    reference <- NULL
-  }
-
   fit <- list()
 
   rand_part <- ""
@@ -95,33 +89,14 @@ QAPglm <- function(formula,
   if (ris) rand_part <- paste(rand_part, "+ (1|sv)")
   if (rir) rand_part <- paste(rand_part, "+ (1|rv)")
 
-  if (is.null(comparison)) {
-    fit$base <- fit_qap_model(mod          = mod,
-                              pred         = pred,
-                              family       = family,
-                              use_fixest   = use_fixest,
-                              fixest_se_cluster = fixest_se_cluster,
-                              use_robust_errors = use_robust_errors,
-                              main_vars    = main,
-                              has_random   = has_random,
-                              reference    = reference)
-  } else {
-    fit$base <- vector("list", length(comparison))
-    names(fit$base) <- names(comparison)
-    for (k in seq_along(comparison)) {
-      predK <- pred[pred[[dep]] %in% comparison[[k]], ]
-      predK[[dep]] <- ifelse(predK[[dep]] == comparison[[k]][1], 0, 1)
-      fit$base[[k]] <- fit_qap_model(mod          = mod,
-                                     pred         = predK,
-                                     family       = family,
-                                     use_fixest   = use_fixest,
-                                     fixest_se_cluster = fixest_se_cluster,
-                                     use_robust_errors = use_robust_errors,
-                                     main_vars    = main,
-                                     has_random   = has_random,
-                                     reference    = reference)
-    }
-  }
+  fit$base <- fit_qap_model(mod          = mod,
+                            pred         = pred,
+                            family       = family,
+                            use_fixest   = use_fixest,
+                            fixest_se_cluster = fixest_se_cluster,
+                            use_robust_errors = use_robust_errors,
+                            main_vars    = main,
+                            has_random   = has_random)
 
   # Double semi-partialling residualises a predictor against the others, so
   # with one predictor there are none and the scheme reduces to permuting the
@@ -150,7 +125,7 @@ QAPglm <- function(formula,
       diag.     = diag,
       mod.      = mod,
       groups.   = groups,
-      fit.      = if (is.null(comparison)) fit$base else fit$base,
+      fit.      = fit$base,
       family.   = family,
       use_fixest. = use_fixest,
       fixest_se_cluster. = fixest_se_cluster,
@@ -158,53 +133,20 @@ QAPglm <- function(formula,
       has_random. = has_random,
       main_vars. = main,
       data_vars. = data_vars,
-      parsed.   = parsed,
-      comp.     = comparison,
-      reference. = reference
+      parsed.   = parsed
     )
 
-    if (is.null(comparison)) {
-      agg <- aggregate_perm_results(res, times)
-      fit$lower  <- agg$lower
-      fit$larger <- agg$larger
-      fit$abs    <- agg$abs
-    } else {
-      res_valid <- Filter(Negate(is.null), res)
-      n_valid   <- length(res_valid)
-      fit$lower <- fit$larger <- fit$abs <-
-        vector("list", length(comparison))
-      names(fit$lower)  <- names(comparison)
-      names(fit$larger) <- names(comparison)
-      names(fit$abs)    <- names(comparison)
-      resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-      for (k in seq_along(comparison)) {
-        cn <- names(comparison)[k]
-        fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-        fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-        fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-      }
-    }
+    agg <- aggregate_perm_results(res, times)
+    fit$lower  <- agg$lower
+    fit$larger <- agg$larger
+    fit$abs    <- agg$abs
 
   } else if (permute == "predictor") {
-    if (is.null(comparison)) {
-      n_coefs <- length(fit$base$coefficients)
-      fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
-                           dimnames = list(c("perm_coefs", "perm_t"),
-                                           names(fit$base$coefficients)))
-      fit$larger <- fit$abs <- fit$lower
-    } else {
-      fit$lower <- fit$larger <- fit$abs <-
-        vector("list", length(comparison))
-      names(fit$lower) <- names(fit$larger) <-
-        names(fit$abs)  <- names(comparison)
-      for (k in seq_along(comparison)) {
-        n_coefs <- length(fit$base[[k]]$coefficients)
-        fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs,
-                                 dimnames = list(c("perm_coefs", "perm_t"),
-                                                 names(fit$base[[k]]$coefficients)))
-        fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-      }
-    }
+    n_coefs <- length(fit$base$coefficients)
+    fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
+                         dimnames = list(c("perm_coefs", "perm_t"),
+                                         names(fit$base$coefficients)))
+    fit$larger <- fit$abs <- fit$lower
 
     for (xi in main) {
       xR <- residualise_predictor(xi, pred, main,
@@ -222,7 +164,7 @@ QAPglm <- function(formula,
         diag.     = diag,
         mod.      = mod,
         groups.   = groups,
-        fit.      = if (is.null(comparison)) fit$base else fit$base,
+        fit.      = fit$base,
         family.   = family,
         use_fixest. = use_fixest,
         fixest_se_cluster. = fixest_se_cluster,
@@ -230,51 +172,31 @@ QAPglm <- function(formula,
         has_random. = has_random,
         main_vars. = main,
         data_vars. = data_vars,
-        parsed.   = parsed,
-        comp.     = comparison,
-        reference. = reference
+        parsed.   = parsed
       )
 
-      if (is.null(comparison)) {
-        agg <- aggregate_perm_results(res, times)
-        fit$lower[, xi]  <- agg$lower
-        fit$larger[, xi] <- agg$larger
-        fit$abs[, xi]    <- agg$abs
-      } else {
-        res_valid <- Filter(Negate(is.null), res)
-        n_valid   <- length(res_valid)
-        resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-        for (k in seq_along(comparison)) {
-          cn <- names(comparison)[k]
-          fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-          fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-          fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-        }
-      }
+      agg <- aggregate_perm_results(res, times)
+      fit$lower[, xi]  <- agg$lower
+      fit$larger[, xi] <- agg$larger
+      fit$abs[, xi]    <- agg$abs
     }
   }
 
-  if (is.null(comparison)) {
-    fit$coefficients <- fit$base$coefficients
-    fit$t            <- fit$base$t
-    if (!is.null(fit$base$r.squared)) {
-      fit$r.squared     <- fit$base$r.squared
-      fit$adj.r.squared <- fit$base$adj.r.squared
-    }
-    if (!is.null(fit$base$random.intercepts))
-      fit$random.intercepts <- fit$base$random.intercepts
-    if (!is.null(fit$base$theta))
-      fit$theta <- fit$base$theta
-    if (!is.null(fit$base$zi_coefficients))
-      fit$zi_coefficients <- fit$base$zi_coefficients
-    if (!less_mem) fit$simple_fit <- fit$base$base_model
-  } else {
-    if (!less_mem) {
-      fit$simple_fits <- lapply(fit$base, `[[`, "base_model")
-    }
+  fit$coefficients <- fit$base$coefficients
+  fit$t            <- fit$base$t
+  if (!is.null(fit$base$r.squared)) {
+    fit$r.squared     <- fit$base$r.squared
+    fit$adj.r.squared <- fit$base$adj.r.squared
   }
+  if (!is.null(fit$base$random.intercepts))
+    fit$random.intercepts <- fit$base$random.intercepts
+  if (!is.null(fit$base$theta))
+    fit$theta <- fit$base$theta
+  if (!is.null(fit$base$zi_coefficients))
+    fit$zi_coefficients <- fit$base$zi_coefficients
+  if (!less_mem) fit$simple_fit <- fit$base$base_model
 
-  if (family == "binomial" && is.null(comparison)) {
+  if (family == "binomial") {
     fit$confusion_matrix <- probabilistic_confusion_matrix(
       actual = pred[[dep]],
       predicted_prob = stats::fitted(fit$base$base_model),
@@ -289,12 +211,10 @@ QAPglm <- function(formula,
   fit$times      <- times
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
-  fit$comp      <- comparison
-  fit$reference <- reference
   fit$pred      <- pred
   fit$dep       <- dep
 
-  if (family == "gaussian" && is.null(comparison)) {
+  if (family == "gaussian") {
     class(fit) <- "QAPRegression"
   } else {
     class(fit) <- "QAPGLM"
@@ -320,9 +240,7 @@ QAPglmPermEst <- function(i,
                           has_random.,
                           main_vars.,
                           data_vars.,
-                          parsed.,
-                          comp.,
-                          reference.) {
+                          parsed.) {
 
   dep   <- parsed.$dependent
   large <- is.list(matlist.[[dep]])
@@ -373,57 +291,23 @@ QAPglmPermEst <- function(i,
 
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
-  if (is.null(comp.)) {
-    # A fit inside the permutation loop runs `times` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = pred,
-                    family       = family.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
+  # A fit inside the permutation loop runs `times` times, so a fitter's
+  # convergence warning would print once per draw and drown the console.
+  # The count of draws that failed outright is reported by
+  # `aggregate_perm_results()`, which is the number the user needs.
+  perm_fit <- tryCatch(
+    suppressWarnings(fit_qap_model(mod          = mod.,
+                  pred         = pred,
+                  family       = family.,
+                  use_fixest   = use_fixest.,
+                  fixest_se_cluster = fixest_se_cluster.,
+                  use_robust_errors = use_robust_errors.,
+                  main_vars    = main_vars.,
+                  has_random   = has_random.)),
+    error = function(e) NULL
+  )
+  if (is.null(perm_fit)) return(NULL)
 
-    return(compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                    fit., xi = xi_arg))
-  }
-
-  xresL <- vector("list", length(comp.))
-  names(xresL) <- names(comp.)
-
-  for (k in seq_along(comp.)) {
-    predK <- pred[pred[[dep]] %in% comp.[[k]], ]
-    predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
-
-    # A fit inside the permutation loop runs `times` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = predK,
-                    family       = family.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
-
-    xresL[[k]] <- compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                           fit.[[k]], xi = xi_arg)
-  }
-
-  return(xresL)
+  return(compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
+                                  fit., xi = xi_arg))
 }

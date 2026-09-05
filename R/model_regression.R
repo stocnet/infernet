@@ -10,8 +10,8 @@
 #' object. Internally the response and predictors are packed into matrices
 #' and handed to a QAP engine (ported from MrQAP) that supports:
 #'
-#' - gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-#'   multinomial families;
+#' - gaussian, binomial, poisson, negative binomial, and zero-inflated
+#'   Poisson families;
 #' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
 #'   and `"outcome"`;
 #' - random intercepts (lme4) and fixed effects (fixest);
@@ -48,14 +48,13 @@
 #'   - `strategy`: future plan, e.g. `"sequential"` (default), `"multisession"`.
 #'   - `family`: `"auto"` (default; gaussian for weighted networks, binomial
 #'     for binary), `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`,
-#'     `"zip"`, or `"multinom"`.
+#'     or `"zip"`.
 #'   - `directed`: logical, whether a tie from i to j differs from one from j
 #'     to i. Read from `.data` unless given, and reported when read.
 #'   - `diag`: logical, include loops (default auto-detected).
 #'   - `seed`, `groups`, `ncores`: passed through to the engine.
 #'   - `use_robust_errors`: HC3 standard errors.
 #'   - `fixest_se_cluster`: cluster variable for fixest.
-#'   - `reference`, `comparison`: multinomial / pairwise-comparison options.
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `less_mem`: drop the baseline model object from the return.
 #' @return An object of class `net_regression` inheriting from either
@@ -144,8 +143,6 @@ net_regression <- function(formula,
     strategy  = ctrl$strategy,
     ncores    = ctrl$ncores,
     fixest_se_cluster = ctrl$fixest_se_cluster,
-    comparison = ctrl$comparison,
-    reference  = ctrl$reference,
     random_intercept_nets     = ctrl$random_intercept_nets,
     random_intercept_sender   = ctrl$random_intercept_sender,
     random_intercept_receiver = ctrl$random_intercept_receiver,
@@ -153,7 +150,7 @@ net_regression <- function(formula,
     less_mem = ctrl$less_mem
   )
 
-  if (user_requested_gaussian_binary && is.null(ctrl$comparison)) {
+  if (user_requested_gaussian_binary) {
     fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
   }
 
@@ -224,8 +221,6 @@ net_regression <- function(formula,
     ncores    = NULL,
     use_robust_errors = FALSE,
     fixest_se_cluster = NULL,
-    reference  = NULL,
-    comparison = NULL,
     random_intercept_nets     = FALSE,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,
@@ -480,40 +475,31 @@ print.net_regression <- function(x, ...,
       format(paste0(.directed_label(x$directed), ".")))
   cat("\nModel family:", format(x$family))
 
-  if (!is.null(x$comp)) {
-    for (k in seq_along(x$comp)) {
-      cat("\n\n--- Comparison:", names(x$comp)[k], "---")
-      cat("\n   ", x$comp[[k]][1], "vs", x$comp[[k]][2])
-      .print_glm_table(x$base[[k]], x$lower[[k]], x$larger[[k]], x$abs[[k]],
-                       x$permute, print_b)
-    }
-  } else {
-    cat("\n\nCoefficients:\n")
-    if (print_b) {
-      cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
-      cmat[, 1] <- format(as.numeric(x$coefficients))
-      cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-      cmat[, 3] <- format(x$lower[1, ])
-      cmat[, 4] <- format(x$larger[1, ])
-      cmat[, 5] <- format(x$abs[1, ])
-      if (x$permute == "predictor") cmat[1, 3:5] <- "*"
-      colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
-      rownames(cmat) <- names(x$coefficients)
-      print.table(cmat)
-      cat("--------------\n")
-    }
-
+  cat("\n\nCoefficients:\n")
+  if (print_b) {
     cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
     cmat[, 1] <- format(as.numeric(x$coefficients))
     cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-    cmat[, 3] <- format(x$lower[2, ])
-    cmat[, 4] <- format(x$larger[2, ])
-    cmat[, 5] <- format(x$abs[2, ])
+    cmat[, 3] <- format(x$lower[1, ])
+    cmat[, 4] <- format(x$larger[1, ])
+    cmat[, 5] <- format(x$abs[1, ])
     if (x$permute == "predictor") cmat[1, 3:5] <- "*"
-    colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
+    colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
     rownames(cmat) <- names(x$coefficients)
     print.table(cmat)
+    cat("--------------\n")
   }
+
+  cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
+  cmat[, 1] <- format(as.numeric(x$coefficients))
+  cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
+  cmat[, 3] <- format(x$lower[2, ])
+  cmat[, 4] <- format(x$larger[2, ])
+  cmat[, 5] <- format(x$abs[2, ])
+  if (x$permute == "predictor") cmat[1, 3:5] <- "*"
+  colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
+  rownames(cmat) <- names(x$coefficients)
+  print.table(cmat)
 
   if (x$permute == "predictor")
     cat("\n* The intercept has no significance test when predictors are permuted.\n")

@@ -39,7 +39,6 @@ Imports:
     reformulas
 Suggests:
     lme4,
-    nnet,
     fixest,
     MASS,
     pscl,
