@@ -151,6 +151,18 @@ run_permutations <- function(reps, FUN, ...) {
 
 # ---- matrix permutation -----------------------------------------------------
 
+# One permutation of the node order, respecting a blocking factor where its
+# length matches the mode being permuted. A `groups` vector of the wrong length
+# cannot describe this mode, so that mode permutes freely rather than silently
+# recycling the factor, which is what `split()` did before.
+#' @keywords internal
+#' @noRd
+.perm_order <- function(n, groups = NULL) {
+  if (is.null(groups) || length(groups) != n) return(sample(seq_len(n)))
+  groups <- as.character(groups)
+  unsplit(lapply(split(seq_len(n), groups), FUN = sample), groups)
+}
+
 #' @keywords internal
 #' @noRd
 RMPerm <- function(m, groups = NULL, CSS = FALSE) {
@@ -166,8 +178,20 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
   }
 
   if (length(dim(m)) == 2) {
-    o <- unsplit(lapply(split(1:dim(m)[1], groups), FUN = sample), groups)
-    p <- matrix(data = m[o, o], nrow = dim(m)[1], ncol = dim(m)[2])
+    nr <- dim(m)[1]
+    nc <- dim(m)[2]
+    if (nr == nc) {
+      o <- unsplit(lapply(split(1:nr, groups), FUN = sample), groups)
+      p <- matrix(data = m[o, o], nrow = nr, ncol = nc)
+    } else {
+      # A two-mode incidence matrix has two nodesets, so the rows and the
+      # columns permute independently. Permuting both by one order, as the
+      # square case does, indexes past the shorter side and errors.
+      or <- .perm_order(nr, groups)
+      oc <- .perm_order(nc, groups)
+      p <- matrix(data = m[or, oc], nrow = nr, ncol = nc)
+    }
+    dimnames(p) <- dimnames(m)
   } else if (CSS) {
     p <- array(dim = c(dim(m)[1], dim(m)[2], dim(m)[3]))
     o <- unsplit(lapply(split(1:dim(m)[2], groups), FUN = sample), groups)
@@ -197,9 +221,21 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
     x[[xi]] <- RMPerm(x[[xi]], g)
   }
 
-  n <- dim(y)[1]
-  valid <- matrix(TRUE, n, n)
-  if (!diag) diag(valid) <- FALSE
+  # The dependent matrix is square for a one-mode network and rectangular for a
+  # two-mode one. Reading `nc` from the matrix rather than assuming `nr` is what
+  # keeps a two-mode network from being read as a square one, which used to
+  # wrap past the last column and invent dyads.
+  nr <- dim(y)[1]
+  nc <- dim(y)[2]
+  square <- identical(nr, nc)
+
+  valid <- matrix(TRUE, nr, nc)
+  if (!diag && square) diag(valid) <- FALSE
+  # An undirected one-mode network holds each dyad twice, once on each side of
+  # the diagonal. Keeping both halves doubles the sample and shrinks every
+  # standard error, so take the lower triangle only. A two-mode incidence
+  # matrix has no such symmetry, and keeps every cell.
+  if (identical(mode, "graph") && square) valid[upper.tri(valid)] <- FALSE
 
   for (var in seq_len(nx)) {
     valid[is.na(x[[var]])] <- FALSE
@@ -214,23 +250,22 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
   }
 
   if (sum(vv) == 0) {
-    stop("No valid dyads remain after removing NA and diagonal cells for ",
-         "network ", net, ". Check that your predictors and outcome have ",
-         "non-missing values for overlapping node pairs.",
-         call. = FALSE)
+    manynet::snet_abort(
+      c("No valid dyads remain in network {net} after dropping NA and diagonal cells.",
+        i = "Check that the predictors and the outcome are observed for the same node pairs."))
   }
 
   pred <- data.frame(
-    location = as.vector(matrix(seq_len(n^2), n, n))[vv],
+    location = as.vector(matrix(seq_len(nr * nc), nr, nc))[vv],
     yv       = as.vector(y)[vv]
   )
   pred$nv <- as.factor(net)
 
-  sv <- matrix(seq_len(n), n, n)
+  sv <- matrix(seq_len(nr), nr, nc)
   sv[!valid] <- NA
   pred$sv <- as.vector(sv)[vv]
 
-  rv <- t(matrix(seq_len(n), n, n))
+  rv <- matrix(seq_len(nc), nr, nc, byrow = TRUE)
   rv[!valid] <- NA
   pred$rv <- as.vector(rv)[vv]
 
@@ -256,17 +291,34 @@ HC3 <- function(X, e) {
   }
   h  <- apply(XO, 1, hf, XTXINV = XTXINV)
   om <- e^2 / (1 - h)^2
-  x <- sqrt(diag(t(t(XTXINV %*% t(XO)) * om) %*% XO %*% XTXINV))
-  gc()
-  return(x)
+  # No gc() here: this runs once per permutation, and forcing a collection
+  # thousands of times costs far more than the memory it returns.
+  sqrt(diag(t(t(XTXINV %*% t(XO)) * om) %*% XO %*% XTXINV))
 }
 
 
 # ---- baseline + perm fitting ------------------------------------------------
 
+# The predictor names carry spaces ("ego Age"), so the model formula quotes them
+# and several fitters hand the backticks back in the coefficient names. Double
+# semi-partialling then looks a column up by the unquoted name and fails with a
+# subscript error. The inner function has many early returns, one per estimator,
+# so the names are cleaned here, where every path passes through exactly once.
 #' @keywords internal
 #' @noRd
-fit_qap_model <- function(mod, pred, family,
+fit_qap_model <- function(...) {
+  fit <- .fit_qap_model(...)
+  for (el in c("coefficients", "t", "zi_coefficients")) {
+    if (!is.null(fit[[el]]) && !is.null(names(fit[[el]]))) {
+      names(fit[[el]]) <- gsub("`", "", names(fit[[el]]), fixed = TRUE)
+    }
+  }
+  fit
+}
+
+#' @keywords internal
+#' @noRd
+.fit_qap_model <- function(mod, pred, family,
                           estimator = "standard",
                           use_fixest = FALSE,
                           fixest_se_cluster = NULL,
@@ -401,17 +453,33 @@ fit_qap_model <- function(mod, pred, family,
       base_model <- fixest::feglm(mod, data = pred,
                                   family = fe_family,
                                   cluster = fixest_se_cluster)
-      fit$coefficients <- c("(Intercept)" = NA, base_model$coefficients)
+      # {fixest} reports an intercept where no fixed effect is absorbed, and
+      # none where one is. Add the placeholder only in the second case;
+      # otherwise the coefficient vector carries two intercepts.
+      fe_coefs <- base_model$coefficients
+      fit$coefficients <- if ("(Intercept)" %in% names(fe_coefs)) {
+        fe_coefs
+      } else {
+        c("(Intercept)" = NA, fe_coefs)
+      }
       resid <- stats::residuals(base_model)
 
+      # `HC3()` and `vcov()` both return one standard error per estimated
+      # coefficient, so the placeholder is needed only where the intercept was
+      # absorbed and `fit$coefficients` carries an NA for it.
+      absorbed <- !("(Intercept)" %in% names(fe_coefs))
       if (use_robust_errors) {
         xv   <- as.matrix(pred[, main_vars, drop = FALSE])
         hc   <- HC3(xv, resid)
-        fit$t <- fit$coefficients / c(NA, hc[-1])
+        fit$t <- if (absorbed) {
+          fit$coefficients / c(NA, hc[-1])
+        } else {
+          fit$coefficients / hc
+        }
       } else {
         fe_se <- sqrt(diag(stats::vcov(base_model)))
-        fit$t <- c("(Intercept)" = NA,
-                   base_model$coefficients / fe_se)
+        fe_t  <- fe_coefs / fe_se
+        fit$t <- if (absorbed) c("(Intercept)" = NA, fe_t) else fe_t
       }
       names(fit$t) <- names(fit$coefficients)
 
@@ -496,14 +564,6 @@ fit_qap_model <- function(mod, pred, family,
   }
 
   fit$base_model <- base_model
-
-  if (!is.null(fit$coefficients) && !is.null(names(fit$coefficients))) {
-    names(fit$coefficients) <- gsub("`", "", names(fit$coefficients), fixed = TRUE)
-  }
-  if (!is.null(fit$t) && !is.null(names(fit$t))) {
-    names(fit$t) <- gsub("`", "", names(fit$t), fixed = TRUE)
-  }
-
   return(fit)
 }
 
@@ -536,10 +596,13 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
 aggregate_perm_results <- function(results, reps) {
   results <- Filter(Negate(is.null), results)
   n_valid <- length(results)
-  if (n_valid == 0) stop("All permutations failed to converge.")
+  if (n_valid == 0)
+    manynet::snet_abort(
+      c("All {reps} permutations failed to converge.",
+        i = "Try a simpler model, another {.arg family}, or fewer predictors."))
   if (n_valid < reps) {
-    warning(reps - n_valid, " of ", reps,
-            " permutations failed and were excluded.")
+    manynet::snet_warn(
+      "{reps - n_valid} of {reps} permutation{?s} failed and {?was/were} excluded.")
   }
   resL <- unlist(results, recursive = FALSE)
   list(
@@ -574,9 +637,24 @@ residualise_predictor <- function(xi, pred, main_vars,
   if (!has_random) {
     xm <- stats::lm(modx, data = pred)
   } else {
-    if (!requireNamespace("lme4", quietly = TRUE))
-      stop("Package 'lme4' is required for random effects.")
-    xm <- lme4::lmer(modx, data = pred)
+    thisRequires("lme4", "for random effects")
+    # Residualising is a step towards the null distribution, not a result the
+    # user reads, so a degenerate mixed fit here must not abort the whole run.
+    # Crossed sender and receiver intercepts on a predictor are often singular,
+    # and `lmer()` then stops with "Downdated VtV is not positive definite".
+    xm <- tryCatch(suppressWarnings(lme4::lmer(modx, data = pred)),
+                   error = function(e) NULL)
+    if (is.null(xm)) {
+      manynet::snet_warn(
+        c("Could not residualise {.val {xi}} with random intercepts.",
+          i = "Residualising it without them instead."))
+      xm <- stats::lm(stats::as.formula(
+        paste(bq(xi), "~ 1",
+              if (length(others) > 0)
+                paste("+", paste(vapply(others, bq, character(1)),
+                                 collapse = " + ")) else "")),
+        data = pred)
+    }
   }
   stats::residuals(xm)
 }

@@ -19,9 +19,53 @@
 
 ## Tests
 
+- Improved `test_permutation()` by dropping two unused computations
 - Updated the `tests` documentation to describe `test_configuration()`
 - Updated the examples to use the native pipe `|>`
 
+## Regression
+
+- Added a test suite for the regression engine, in four files
+  - `test-qap_estimators.R` compares each estimator's baseline against the
+    equivalent `lm()`, `glm()`, `MASS`, `pscl`, `lme4`, or `fixest` fit
+  - `test-qap_shapes.R` counts the dyads that reach the model for a directed,
+    an undirected, a two-mode, a pooled, and a partly missing network
+  - `test-qap_reproducibility.R` fixes the seed contract, sequential and parallel
+  - `test-qap_control.R` covers the control list and the null-hypothesis choice
+  - `helper-infernet.R` holds the seeded fixtures and `expect_qap_shape()`
+- Fixed a two-mode network being read as a square one
+  - An 18x14 incidence matrix produced 306 dyads rather than 252
+  - `RMPerm()` now permutes the rows and the columns of a rectangular matrix
+    independently, rather than erroring on the shorter side
+  - `dist()` and `sim()` now read each mode separately, as `ego()` and
+    `alter()` already did
+- Fixed an undirected network contributing each dyad twice, shrinking the standard error
+- Fixed `family = "zip"` failing during permutation
+  - Several estimators returned backticked coefficient names, which double
+    semi-partialling could not look up
+  - Coefficient names are now cleaned on the one path every estimator takes
+- Fixed the `{fixest}` path reporting two intercepts where none was absorbed
+- Fixed crossed sender and receiver intercepts aborting the run
+  - Residualising falls back to no random intercepts, with a warning, where the
+    mixed fit is singular
+- Fixed `use_gpu = TRUE` aborting where `{torch}` or CUDA is unavailable
+- Improved `control` to reject a name it does not take, and offer the nearest
+- Improved the permutation loop to hold back a fitter's convergence warnings
+  - These printed once per draw; the count of failed draws is still reported
+- Improved `lower`, `larger`, and `abs` to carry the same row names under both
+  null hypotheses
+- Improved `HC3()` by dropping a `gc()` call that ran once per permutation
+- Improved the missing-predictor error to name the sender, receiver, and
+  network indices that a formula can also use
+- Fixed `tertius()` rejecting a quoted summary function
+  - `tertius(x, "mean")`, the documented spelling, now works alongside
+    `tertius(x, mean)`
+- Added tests for the `tertius()` spellings and for the missing-attribute error
+- Fixed `R/model_regression.R`, which a bad merge left unable to parse
+  - Restored `.default_control()`, `.is_list_of_graphs()`, and the head of
+    `.prepare_list_of_graphs()`
+  - Removed `vectorise_list()`, and the copies of `logit_moments()` and
+    `logit_resid()` that duplicate `R/qap_gmm.R`
 
 # infernet 0.1.0
 

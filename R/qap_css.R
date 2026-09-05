@@ -200,8 +200,12 @@ QAPcssPermEst <- function(i,
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
   if (is.null(comp.)) {
+    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # convergence warning would print once per draw and drown the console.
+    # The count of draws that failed outright is reported by
+    # `aggregate_perm_results()`, which is the number the user needs.
     perm_fit <- tryCatch(
-      fit_qap_model(mod          = mod.,
+      suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = pred,
                     family       = family.,
                     estimator    = estimator.,
@@ -210,7 +214,7 @@ QAPcssPermEst <- function(i,
                     use_robust_errors = use_robust_errors.,
                     main_vars    = main_vars.,
                     has_random   = has_random.,
-                    reference    = reference.),
+                    reference    = reference.)),
       error = function(e) NULL
     )
     if (is.null(perm_fit)) return(NULL)
@@ -226,8 +230,12 @@ QAPcssPermEst <- function(i,
     predK <- pred[pred[[dep]] %in% comp.[[k]], ]
     predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
 
+    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # convergence warning would print once per draw and drown the console.
+    # The count of draws that failed outright is reported by
+    # `aggregate_perm_results()`, which is the number the user needs.
     perm_fit <- tryCatch(
-      fit_qap_model(mod          = mod.,
+      suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = predK,
                     family       = family.,
                     estimator    = estimator.,
@@ -236,7 +244,7 @@ QAPcssPermEst <- function(i,
                     use_robust_errors = use_robust_errors.,
                     main_vars    = main_vars.,
                     has_random   = has_random.,
-                    reference    = reference.),
+                    reference    = reference.)),
       error = function(e) NULL
     )
     if (is.null(perm_fit)) return(NULL)

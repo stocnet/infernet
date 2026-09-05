@@ -374,23 +374,65 @@ Please see the [testthat website](https://testthat.r-lib.org) for more details.
 (`Config/testthat/parallel: true`).
 `Config/testthat/start-first` should prioritise the test files that take longest to run.
 
-Tests in `tests/testthat/` mirror the `R/` files
-(e.g. `test-net_regression.R`, `test-zzz.R`).
-Fixtures live in `tests/testthat/testdata/`.
+Tests in `tests/testthat/` mirror the `R/` files for the exported functions
+(`test-net_regression.R`, `test-model_tests.R`),
+and are grouped by contract for the engine:
 
-Three things are worth asserting for every estimator that is added:
+| File | Asserts |
+|---|---|
+| `test-qap_estimators.R` | each `family` and `estimator` combination, against the equivalent standard fit |
+| `test-qap_shapes.R` | the dyads that reach the model, for each shape of network |
+| `test-qap_reproducibility.R` | that a seed reproduces a run, sequentially and in parallel |
+| `test-qap_control.R` | the `control` list and the choice of null hypothesis |
 
-1. That the baseline coefficients match those of the equivalent
-   `lm()`/`glm()` fit on the same vectorised data.
+[tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
+holds the shared fixtures and expectations:
+
+- `qap_net_gaussian()`, `qap_net_binary()`, `qap_net_count()`, `qap_net_zip()`,
+  `qap_net_undirected()`, `qap_net_twomode()` — each seeded, and each carrying
+  real signal, so that every family converges and the comparison is not testing
+  noise against noise.
+- `qap_reference_data()` — rebuilds the dyad-level data frame the engine fits,
+  so a baseline coefficient can be compared against `lm()`, `glm()`,
+  `MASS::glm.nb()`, `pscl::zeroinfl()`, `lme4::lmer()` or `fixest::feglm()`
+  on identical data.
+- `expect_qap_shape()` — the shape contract every estimator meets, whatever it
+  fits underneath: named coefficients, and `lower`/`larger`/`abs` as
+  two-row matrices of proportions with matching dimnames.
+
+Four things are worth asserting for every estimator that is added:
+
+1. That the baseline coefficients match those of the equivalent standard fit on
+   the same dyad-level data, using `qap_reference_data()`.
    The permutation inference is what is novel; the point estimates are not,
    and they should agree.
-2. That a given `seed` reproduces the same p-values.
+2. That the result meets `expect_qap_shape()`.
+   Most engine defects found so far surfaced as a name or a dimension, not as a
+   wrong number: a backticked coefficient name broke double semi-partialling,
+   and a stray placeholder intercept broke the `{fixest}` path.
+3. That a given `seed` reproduces the same p-values.
    Permutation results are only comparable across runs if the RNG is,
-   and `furrr_options(seed = TRUE)` is what makes that true in parallel.
-3. That the estimator is reached at all.
+   and `furrr_options(seed = TRUE)` and `future.seed = TRUE` are what make that
+   true in parallel.
+4. That the estimator is reached at all.
    Several paths in `fit_qap_model()` are selected by a combination of `family`,
    `estimator` and the random/fixed effects flags,
    so a test that does not name that combination does not cover it.
+
+An estimator that needs a package from `Suggests` takes
+`skip_if_not_installed()`, so the suite still passes where that package is
+absent. Do not let a path go untested because the package is missing locally:
+install it, and check that the test runs before you rely on the skip.
+
+Count the dyads rather than checking that a call returns.
+A directed network of *n* nodes contributes *n*(*n*-1) dyads, an undirected one
+*n*(*n*-1)/2, and a two-mode one every cell of its incidence matrix.
+Each of those was wrong at some point, and each looked like a working model.
+
+A fitter's warning raised inside the permutation loop is held back, since it
+would print once per draw; `aggregate_perm_results()` reports the number of
+draws that failed outright. A test therefore should not expect a convergence
+warning from a permutation, only from the baseline.
 
 The aim is to work towards comprehensive coverage,
 so each change should be fully covered by tests.

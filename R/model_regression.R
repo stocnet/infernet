@@ -66,56 +66,6 @@
 #'   probability fitted values are clamped to 0/1 before sampling.
 #' @name regression
 #' @family models
-#' @param formula A formula describing the relationship being tested.
-#'   Several additional terms are available to assist users investigate
-#'   the effects they are interested in. These include:
-#'   - `ego()` constructs a matrix where the cells reflect the value of
-#'   a named nodal attribute for an edge's sending node
-#'   - `alter()` constructs a matrix where the cells reflect the value of
-#'   a named nodal attribute for an edge's receiving node
-#'   - `same()` constructs a matrix where a 1 reflects 
-#'   if two nodes' attribute values are the same
-#'   - `dist()` constructs a matrix where the cells reflect the
-#'   absolute difference between the attribute's values 
-#'   for the sending and receiving nodes
-#'   - `sim()` constructs a matrix where the cells reflect the
-#'   proportional similarity between the attribute's values 
-#'   for the sending and receiving nodes
-#'   - `tertius()` constructs a matrix where the cells reflect some
-#'   aggregate of an attribute associated with a node's other ties.
-#'   Currently "mean" and "sum" are available aggregating functions.
-#'   'ego' is excluded from these calculations.
-#'   See Haunss and Hollway (2023) for more on this effect.
-#'   - dyadic covariates (other networks) can just be named
-#' @param .data A manynet-consistent network. 
-#'   See e.g. `manynet::as_tidygraph()` for more details.
-#' @param method A method for establishing the null hypothesis.
-#'   Note that "qap" uses Dekker et al's (2007) double semi-partialling technique,
-#'   whereas "qapy" permutes only the $y$ variable.
-#'   "qap" is the default.
-#' @param times Integer indicating number of simulations used for quantile estimation. 
-#'   (Relevant to the null hypothesis test only - 
-#'   the analysis itself is unaffected by this parameter.) 
-#'   Note that, as for all Monte Carlo procedures, convergence is slower for more
-#'   extreme quantiles.
-#'   By default, `times=1000`.
-#'   1,000 - 10,000 repetitions recommended for publication-ready results.
-#' @param strategy If `{furrr}` is installed, 
-#'   then multiple cores can be used to accelerate the function.
-#'   By default `"sequential"`, 
-#'   but if multiple cores available,
-#'   then `"multisession"` or `"multicore"` may be useful.
-#'   Generally this is useful only when `times` > 1000.
-#'   See [`{furrr}`](https://furrr.futureverse.org) for more.
-#' @param verbose Whether the function should report on its progress.
-#'   By default FALSE.
-#'   See [`{progressr}`](https://progressr.futureverse.org) for more.
-#' @importFrom dplyr bind_cols left_join
-#' @importFrom purrr flatten
-#' @importFrom future plan
-#' @importFrom furrr future_map_dfr furrr_options
-#' @importFrom stats as.formula lm glm fitted.values residuals coefficients
-#' @importFrom lme4 lmer glmer deviance.merMod
 #' @references
 #'   Krackhardt, David. 1988.
 #'   "Predicting with Networks: Nonparametric Multiple Regression Analysis
@@ -130,7 +80,7 @@
 #'   \doi{10.1007/s11336-007-9016-1}.
 #' @examples
 #' \dontrun{
-#' networkers <- manynet::ison_networkers %>%
+#' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")
 #' model1 <- net_regression(
 #'   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
@@ -143,11 +93,7 @@ net_regression <- function(formula,
                            times   = 1000,
                            control = list()) {
 
-  ctrl <- .default_control()
-  if (length(control) > 0) {
-    ctrl[names(control)] <- control
-  }
-  ctrl$method <- match.arg(ctrl$method, choices = c("qap", "qapy"))
+  ctrl <- .resolve_control(control)
 
   if (.is_list_of_graphs(.data)) {
     prepared <- .prepare_list_of_graphs(formula, .data)
@@ -210,14 +156,101 @@ net_regression <- function(formula,
   fit
 }
 
+
+# ---- default control -------------------------------------------------------
+
+# Merges the user's list over the defaults. A name that is not a control is
+# rejected rather than added silently: a misspelt name would otherwise leave the
+# option it was meant to set at its default, with nothing to say so.
+#' @keywords internal
+#' @noRd
+.resolve_control <- function(control = list()) {
+  ctrl <- .default_control()
+  if (length(control) == 0) {
+    ctrl$method <- match.arg(ctrl$method, choices = c("qap", "qapy"))
+    return(ctrl)
+  }
+  if (is.null(names(control)) || any(!nzchar(names(control)))) {
+    manynet::snet_abort("Every entry of {.arg control} must be named.")
+  }
+  unknown <- setdiff(names(control), names(ctrl))
+  if (length(unknown) > 0) {
+    near <- vapply(unknown, function(u) {
+      d <- utils::adist(u, names(ctrl), ignore.case = TRUE)[1, ]
+      if (min(d) <= max(2, nchar(u) %/% 3)) names(ctrl)[which.min(d)] else NA_character_
+    }, character(1))
+    msg <- c("{.arg control} does not take {.val {unknown}}.")
+    if (any(!is.na(near))) {
+      msg <- c(msg, i = "Did you mean {.val {unname(near[!is.na(near)])}}?")
+    }
+    msg <- c(msg, i = "Available controls: {.val {names(ctrl)}}.")
+    manynet::snet_abort(msg)
+  }
+  ctrl[names(control)] <- control
+  ctrl$method <- match.arg(ctrl$method, choices = c("qap", "qapy"))
+  ctrl
+}
+
+.default_control <- function() {
+  list(
+    method    = c("qap", "qapy"),
+    strategy  = "sequential",
+    family    = "auto",
+    estimator = "standard",
+    mode      = NULL,
+    diag      = NULL,
+    seed      = NULL,
+    groups    = NULL,
+    ncores    = NULL,
+    use_robust_errors = FALSE,
+    fixest_se_cluster = NULL,
+    reference  = NULL,
+    comparison = NULL,
+    random_intercept_nets     = FALSE,
+    random_intercept_sender   = FALSE,
+    random_intercept_receiver = FALSE,
+    less_mem = FALSE,
+    use_gpu  = FALSE
+  )
+}
+
+
+# ---- input dispatch --------------------------------------------------------
+
+.is_list_of_graphs <- function(x) {
+  if (!is.list(x)) return(FALSE)
+  if (inherits(x, c("igraph", "tbl_graph", "network", "data.frame")))
+    return(FALSE)
+  if (length(x) == 0) return(FALSE)
+  first <- x[[1]]
+  inherits(first, c("igraph", "tbl_graph", "network")) || is.matrix(first)
+}
+
+
+.prepare_list_of_graphs <- function(formula, glist) {
+  ml_list <- vector("list", length(glist))
+  fail_idx <- integer(0)
+  fail_reason <- character(0)
+
+  for (i in seq_along(glist)) {
+    res <- tryCatch(
+      convertToMatrixList(formula, glist[[i]], advise = FALSE),
+      error = function(e) list(error = conditionMessage(e))
+    )
+    if (!is.null(res$error)) {
+      fail_idx <- c(fail_idx, i)
+      fail_reason <- c(fail_reason, res$error)
+      ml_list[[i]] <- NULL
     } else {
       ml_list[[i]] <- res
     }
   }
+
   keep <- setdiff(seq_along(glist), fail_idx)
   if (length(keep) == 0) {
-    stop("None of the supplied networks could be converted for the given ",
-         "formula. Reasons:\n  ", paste(fail_reason, collapse = "\n  "))
+    manynet::snet_abort(
+      c("None of the supplied networks could be converted for this formula.",
+        stats::setNames(unique(fail_reason), rep("x", length(unique(fail_reason))))))
   }
 
   ref_names <- names(ml_list[[keep[1]]]$mydata)
@@ -237,13 +270,11 @@ net_regression <- function(formula,
     } else {
       paste0("[", dropped, "]")
     }
-    warning("Dropping ", length(dropped),
-            " network(s) missing one or more predictors: ",
-            paste(dropped_labels, collapse = ", "),
-            call. = FALSE)
+    manynet::snet_warn(
+      "Dropping {length(dropped)} network{?s} missing one or more predictors: {.val {dropped_labels}}.")
   }
   if (length(keep) == 0) {
-    stop("All supplied networks were dropped due to missing predictors.")
+    manynet::snet_abort("All the supplied networks were dropped for missing predictors.")
   }
 
   kept_mls <- ml_list[keep]
@@ -272,30 +303,6 @@ net_regression <- function(formula,
   v <- all.vars(formula)
   if (length(v) == 0) return(NA_character_)
   v[1]
-}
-
-vectorise_list <- function(glist, simplex, directed){
-  if (missing(simplex)) {
-    simplex <- !manynet::is_complex(glist[[1]])
-  }
-  if (missing(directed)) {
-    directed <- manynet::is_directed(glist[[1]])
-  }
-  if (simplex) {
-    diag(glist[[1]]) <- NA
-  }
-  if (!directed) {
-    glist[[1]][upper.tri(glist[[1]])] <- NA
-  }
-  
-  furrr::future_map(glist,function(x) {
-    c(x)}) %>%
-    dplyr::bind_cols() %>%
-    stats::na.omit() %>%
-    suppressMessages()
-  
-  #suppressMessages(stats::na.omit(dplyr::bind_cols(furrr::future_map(
-  #  glist,function(x) c(x)))))
 }
 
 
@@ -540,6 +547,22 @@ print.net_regression <- function(x, ...,
 convertToMatrixList <- function(formula, .data, advise = TRUE) {
   data <- manynet::as_tidygraph(.data)
   DV <- manynet::as_matrix(data)
+  # The sender and the receiver of a tie come from one nodeset in a one-mode
+  # network and from two in a two-mode one, so a dyadic term must read the
+  # attribute once per mode rather than once per network.
+  side_matrices <- function(attrib, DV, twomode, type) {
+    if (twomode) {
+      rows <- matrix(attrib[!type], nrow(DV), ncol(DV))
+      cols <- matrix(attrib[type], nrow(DV), ncol(DV), byrow = TRUE)
+    } else {
+      rows <- matrix(attrib, nrow(DV), ncol(DV))
+      cols <- matrix(attrib, nrow(DV), ncol(DV), byrow = TRUE)
+    }
+    list(rows = rows, cols = cols)
+  }
+  twomode <- manynet::is_twomode(data)
+  node_type <- if (twomode) manynet::node_attribute(data, "type") else NULL
+
   names_form <- getRHSNames(formula)
   .check_formula_vars(names_form$IVnames, data)
   if (advise) specificationAdvice(names_form$IVnames, data)
@@ -596,24 +619,28 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         out
       } else if (IV[[elem]][1] == "dist") {
         if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
-          stop("Distance undefined for factors.")
+          manynet::snet_abort(
+            c("{.fn dist} is undefined for a categorical attribute.",
+              i = "Try {.fn same} instead."))
         }
-        rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
-                       nrow(DV), ncol(DV))
-        cols <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
-                       nrow(DV), ncol(DV), byrow = TRUE)
+        sides <- side_matrices(manynet::node_attribute(data, IV[[elem]][2]),
+                               DV, twomode, node_type)
+        rows <- sides$rows
+        cols <- sides$cols
         out <- abs(rows - cols)
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "sim") {
         if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
-          stop("Similarity undefined for factors. Try `same()` instead.")
+          manynet::snet_abort(
+            c("{.fn sim} is undefined for a categorical attribute.",
+              i = "Try {.fn same} instead."))
         }
-        rows <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
-                       nrow(DV), ncol(DV))
-        cols <- matrix(manynet::node_attribute(data, IV[[elem]][2]),
-                       nrow(DV), ncol(DV), byrow = TRUE)
+        sides <- side_matrices(manynet::node_attribute(data, IV[[elem]][2]),
+                               DV, twomode, node_type)
+        rows <- sides$rows
+        cols <- sides$cols
         denom <- max(abs(rows - cols), na.rm = TRUE)
         if (!is.finite(denom) || denom == 0) denom <- 1
         out <- abs(1 - abs(rows - cols) / denom)
@@ -629,6 +656,9 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         if (is.na(IV[[elem]][3])) {
           IV[[elem]][3] <- "mean"
         }
+        # The deparsed term keeps the quotation marks of `tertius(x, "mean")`,
+        # so strip them; otherwise only the unquoted spelling is recognised.
+        IV[[elem]][3] <- gsub('^"|"$', "", IV[[elem]][3])
         out <- t(vapply(seq_len(nrow(DV)),
                         function(x) {
                           if (IV[[elem]][3] == "mean") {
@@ -636,7 +666,8 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
                           } else if (IV[[elem]][3] == "sum") {
                             colSums(val[-x, ], na.rm = TRUE)
                           } else {
-                            stop("tertius summary function not recognised")
+                            manynet::snet_abort(
+                              "{.fn tertius} takes {.val mean} or {.val sum}, not {.val {IV[[elem]][3]}}.")
                           }
                         },
                         FUN.VALUE = numeric(ncol(DV))))
@@ -651,7 +682,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
           names(out) <- IV[[elem]][1]
           out
         } else {
-          stop("Predictor '", IV[[elem]][1], "' not found in the network.")
+          manynet::snet_abort("Predictor {.val {IV[[elem]][1]}} not found in the network.")
         }
       }
     })
@@ -763,7 +794,11 @@ getRHSNames <- function(formula) {
 .check_formula_vars <- function(IVnames, data) {
   node_fns <- c("ego", "alter", "same", "dist", "sim", "tertius")
   node_attrs <- manynet::net_node_attributes(data)
-  tie_attrs  <- manynet::net_tie_attributes(data)
+  # The engine builds these columns itself in `make_qap_data()`: the sender, the
+  # receiver, the network, and the perceiver index. They are what a user names
+  # after a `|` to absorb sender or receiver fixed effects, so they are not
+  # attributes of the network and must not be looked for among them.
+  tie_attrs  <- c(manynet::net_tie_attributes(data), .structural_vars())
 
   missing_node <- character(0)
   missing_tie  <- character(0)
@@ -783,21 +818,25 @@ getRHSNames <- function(formula) {
   }
 
   if (length(missing_node) > 0) {
-    stop("Node attribute(s) not found: ",
-         paste(shQuote(unique(missing_node)), collapse = ", "),
-         ".\n  Available: ",
-         paste(shQuote(node_attrs), collapse = ", "),
-         call. = FALSE)
+    manynet::snet_abort(
+      c("Node attribute{?s} {.val {unique(missing_node)}} not found.",
+        i = "Available node attributes: {.val {node_attrs}}."))
   }
   if (length(missing_tie) > 0) {
-    stop("Tie attribute / predictor(s) not found: ",
-         paste(shQuote(unique(missing_tie)), collapse = ", "),
-         ".\n  Available tie attributes: ",
-         paste(shQuote(tie_attrs), collapse = ", "),
-         call. = FALSE)
+    available   <- manynet::net_tie_attributes(data)
+    structurals <- .structural_vars()
+    manynet::snet_abort(
+      c("Tie attribute or predictor{?s} {.val {unique(missing_tie)}} not found.",
+        i = "Available tie attributes: {.val {available}}.",
+        i = "Sender, receiver, and network indices are also available as {.val {structurals}}."))
   }
   invisible(TRUE)
 }
+
+# Columns the engine builds for every dyad, rather than reads off the network.
+#' @keywords internal
+#' @noRd
+.structural_vars <- function() c("sv", "rv", "nv", "pv")
 
 
 #' @keywords internal
@@ -833,26 +872,9 @@ specificationAdvice <- function(formula, data) {
       if (length(suggests) > 1) {
         suggests <- paste0(suggests, collapse = ", ")
       }
-      cat(paste("When testing for homophily,",
-                "it is recommended to include all more fundamental effects.\n",
-                "Try adding", suggests, "to the model specification.\n\n"))
+      manynet::snet_info(
+        "When testing for homophily, include all the more fundamental effects.",
+        "Try adding {suggests} to the model specification.")
     }
   }
-}
- 
-logit_moments <- function(theta, data) {
-  Y <- data$y
-  X <- data$x
-  prob <- 1 / (1 + exp(-1 * (X %*% theta)))
-  residuals <- as.vector(Y - prob)
-  g <- residuals * X
-  return(g)
-}
- 
-logit_resid <- function(gmmo) {
-  Y <- gmmo$dat$y
-  X <- gmmo$dat$x
-  prob <- 1 / (1 + exp(-1 * (X %*% gmmo$coefficients)))
-  residuals <- as.vector(Y - prob)
-  return(residuals)
 }

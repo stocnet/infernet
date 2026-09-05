@@ -9,10 +9,7 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
                           baseline_fit, perm_var = NULL,
                           batch_size = 500, device = "cuda") {
 
-  if (!requireNamespace("torch", quietly = TRUE)) {
-    stop("The 'torch' package is required for GPU acceleration. ",
-         "Install it with: install.packages('torch')")
-  }
+  thisRequires("torch", "for GPU acceleration")
 
   if (device == "cuda" && !torch::cuda_is_available()) {
     manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")
@@ -167,9 +164,7 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
                               baseline_fit, perm_var = NULL,
                               batch_size = 500, device = "cuda") {
 
-  if (!requireNamespace("torch", quietly = TRUE)) {
-    stop("The 'torch' package is required for GPU acceleration.")
-  }
+  thisRequires("torch", "for GPU acceleration")
 
   if (device == "cuda" && !torch::cuda_is_available()) {
     manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")

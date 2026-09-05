@@ -140,3 +140,33 @@ test_that("method = 'qapy' runs and flags the nullhyp on the fit", {
                         control = list(method = "qapy"))
   expect_equal(fit$nullhyp, "qapy")
 })
+
+
+# ---- tertius ---------------------------------------------------------------
+
+test_that("tertius() accepts a quoted and an unquoted summary function", {
+  g <- make_weighted_net()
+  quoted   <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
+  unquoted <- net_regression(weight ~ tertius(Age, mean), g, times = 10)
+  bare     <- net_regression(weight ~ tertius(Age), g, times = 10)
+  expect_equal(quoted$coefficients, unquoted$coefficients)
+  expect_equal(quoted$coefficients, bare$coefficients)
+})
+
+test_that("tertius() sum differs from mean, and rejects anything else", {
+  g <- make_weighted_net()
+  mean_fit <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
+  sum_fit  <- net_regression(weight ~ tertius(Age, "sum"), g, times = 10)
+  expect_false(isTRUE(all.equal(mean_fit$coefficients, sum_fit$coefficients)))
+  expect_error(net_regression(weight ~ tertius(Age, "median"), g, times = 10),
+               "mean")
+})
+
+
+# ---- messaging -------------------------------------------------------------
+
+test_that("a missing attribute names what is available", {
+  g <- make_weighted_net()
+  expect_error(net_regression(weight ~ ego(Nope), g, times = 10),
+               "Age")
+})

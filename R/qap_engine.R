@@ -130,8 +130,19 @@ QAPglm <- function(formula,
 
   if ((nullhyp == "qapspp") && (length(main) == 1)) nullhyp <- "qapy"
 
-  if (use_gpu && family == "gaussian" && !has_random && !use_fixest &&
-      is.null(comparison) && !large) {
+  # The GPU path is a shortcut, not a requirement, so an unmet condition falls
+  # back to the CPU permutation loop rather than aborting. `gpu_available()`
+  # covers the two conditions the user cannot see from the call: whether
+  # {torch} is installed, and whether CUDA is reachable.
+  use_gpu <- use_gpu && family == "gaussian" && !has_random && !use_fixest &&
+    is.null(comparison) && !large
+  if (use_gpu && !gpu_available()) {
+    manynet::snet_info(
+      "No CUDA device is reachable, so using the CPU permutation path.")
+    use_gpu <- FALSE
+  }
+
+  if (use_gpu) {
 
     if (nullhyp == "qapy") {
       gpu_res <- gpu_batch_ols(data         = data,
@@ -148,10 +159,10 @@ QAPglm <- function(formula,
 
     } else if (nullhyp == "qapspp") {
       n_coefs <- length(fit$base$coefficients)
-      fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
+      fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
+                           dimnames = list(c("perm_coefs", "perm_t"),
+                                           names(fit$base$coefficients)))
       fit$larger <- fit$abs <- fit$lower
-      colnames(fit$lower) <- colnames(fit$larger) <-
-        colnames(fit$abs)  <- names(fit$base$coefficients)
 
       for (xi in main) {
         xR <- residualise_predictor(xi, pred, main,
@@ -229,10 +240,10 @@ QAPglm <- function(formula,
     } else if (nullhyp == "qapspp") {
       if (is.null(comparison)) {
         n_coefs <- length(fit$base$coefficients)
-        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
+        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
+                             dimnames = list(c("perm_coefs", "perm_t"),
+                                             names(fit$base$coefficients)))
         fit$larger <- fit$abs <- fit$lower
-        colnames(fit$lower) <- colnames(fit$larger) <-
-          colnames(fit$abs)  <- names(fit$base$coefficients)
       } else {
         fit$lower <- fit$larger <- fit$abs <-
           vector("list", length(comparison))
@@ -240,10 +251,10 @@ QAPglm <- function(formula,
           names(fit$abs)  <- names(comparison)
         for (k in seq_along(comparison)) {
           n_coefs <- length(fit$base[[k]]$coefficients)
-          fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs)
+          fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs,
+                                   dimnames = list(c("perm_coefs", "perm_t"),
+                                                   names(fit$base[[k]]$coefficients)))
           fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-          colnames(fit$lower[[k]]) <- colnames(fit$larger[[k]]) <-
-            colnames(fit$abs[[k]])  <- names(fit$base[[k]]$coefficients)
         }
       }
 
@@ -423,8 +434,12 @@ QAPglmPermEst <- function(i,
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
   if (is.null(comp.)) {
+    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # convergence warning would print once per draw and drown the console.
+    # The count of draws that failed outright is reported by
+    # `aggregate_perm_results()`, which is the number the user needs.
     perm_fit <- tryCatch(
-      fit_qap_model(mod          = mod.,
+      suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = pred,
                     family       = family.,
                     estimator    = estimator.,
@@ -433,7 +448,7 @@ QAPglmPermEst <- function(i,
                     use_robust_errors = use_robust_errors.,
                     main_vars    = main_vars.,
                     has_random   = has_random.,
-                    reference    = reference.),
+                    reference    = reference.)),
       error = function(e) NULL
     )
     if (is.null(perm_fit)) return(NULL)
@@ -449,8 +464,12 @@ QAPglmPermEst <- function(i,
     predK <- pred[pred[[dep]] %in% comp.[[k]], ]
     predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
 
+    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # convergence warning would print once per draw and drown the console.
+    # The count of draws that failed outright is reported by
+    # `aggregate_perm_results()`, which is the number the user needs.
     perm_fit <- tryCatch(
-      fit_qap_model(mod          = mod.,
+      suppressWarnings(fit_qap_model(mod          = mod.,
                     pred         = predK,
                     family       = family.,
                     estimator    = estimator.,
@@ -459,7 +478,7 @@ QAPglmPermEst <- function(i,
                     use_robust_errors = use_robust_errors.,
                     main_vars    = main_vars.,
                     has_random   = has_random.,
-                    reference    = reference.),
+                    reference    = reference.)),
       error = function(e) NULL
     )
     if (is.null(perm_fit)) return(NULL)
