@@ -58,6 +58,20 @@ qap_net_undirected <- function(n = 24, seed = 105) {
   manynet::mutate(manynet::as_tidygraph(m, twomode = FALSE), Age = age)
 }
 
+# A two-mode network with more columns than rows. This shape is what turned the
+# square-matrix assumption into an error rather than a wrong number: the
+# predictor held more cells than the validity mask, and a logical index longer
+# than its target extends that target with NA. See stocnet/infernet#4.
+qap_net_twomode_wide <- function(nr = 12, nc = 40, seed = 107) {
+  set.seed(seed)
+  m <- matrix(stats::rbinom(nr * nc, size = 4, prob = 0.3), nr, nc)
+  g <- manynet::as_igraph(m)
+  manynet::mutate_nodes(g,
+    GONGO    = c(rep(c("GON", "GO"), length.out = nr), rep(NA_character_, nc)),
+    province = c(rep(LETTERS[1:4], length.out = nr), rep(NA_character_, nc)),
+    Att      = c(stats::runif(nr), rep(NA_real_, nc)))
+}
+
 qap_net_twomode <- function(seed = 106) {
   set.seed(seed)
   sw <- manynet::ison_southern_women
@@ -70,16 +84,14 @@ qap_net_twomode <- function(seed = 106) {
 # coefficient can be compared against the equivalent standard fit on identical
 # data. Anything this returns comes from the engine's own internals, so a
 # comparison against it tests the estimator dispatch, not the vectorisation.
-qap_reference_data <- function(formula, .data, mode = NULL, diag = FALSE) {
+qap_reference_data <- function(formula, .data, directed = NULL, diag = FALSE) {
   ml <- convertToMatrixList(formula, .data, advise = FALSE)
   parsed <- parse_qap_formula(ml$formula)
   g <- manynet::as_tidygraph(.data)
-  if (is.null(mode)) {
-    mode <- if (manynet::is_directed(g)) "digraph" else "graph"
-  }
+  if (is.null(directed)) directed <- manynet::is_directed(g)
   pred <- make_qap_data(y = ml$mydata[[parsed$dependent]],
                         x = ml$mydata[parsed$main],
-                        diag = diag, mode = mode)
+                        diag = diag, directed = directed)
   names(pred)[names(pred) == "yv"] <- parsed$dependent
   list(pred = pred, formula = ml$formula, parsed = parsed)
 }

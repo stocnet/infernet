@@ -5,7 +5,7 @@
 
 #' @keywords internal
 #' @noRd
-gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
+gpu_batch_ols <- function(matlist, parsed, directed, diag, groups, times,
                           baseline_fit, perm_var = NULL,
                           batch_size = 500, device = "cuda") {
 
@@ -19,11 +19,11 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
   dep  <- parsed$dependent
   main <- parsed$main
 
-  pred0 <- make_qap_data(y    = data[[dep]],
-                         x    = data[main],
+  pred0 <- make_qap_data(y    = matlist[[dep]],
+                         x    = matlist[main],
                          g    = groups,
                          diag = diag,
-                         mode = mode,
+                         directed = directed,
                          net  = 1,
                          perm = FALSE,
                          xi   = NULL)
@@ -51,17 +51,17 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
     XtXinv_diag <- torch::torch_diag(XtXinv)
 
     reps_done <- 0
-    while (reps_done < reps) {
-      current_batch <- min(batch_size, reps - reps_done)
+    while (reps_done < times) {
+      current_batch <- min(batch_size, times - reps_done)
 
       Y_batch <- matrix(NA_real_, nrow = n_obs, ncol = current_batch)
       for (j in seq_len(current_batch)) {
-        y_perm <- RMPerm(data[[dep]], groups)
+        y_perm <- RMPerm(matlist[[dep]], groups)
         perm_pred <- make_qap_data(y    = y_perm,
-                                   x    = data[main],
+                                   x    = matlist[main],
                                    g    = groups,
                                    diag = diag,
-                                   mode = mode,
+                                   directed = directed,
                                    net  = 1,
                                    perm = FALSE,
                                    xi   = NULL)
@@ -97,21 +97,21 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
                                device = device)
 
     reps_done <- 0
-    while (reps_done < reps) {
-      current_batch <- min(batch_size, reps - reps_done)
+    while (reps_done < times) {
+      current_batch <- min(batch_size, times - reps_done)
 
       B_batch <- matrix(NA_real_, nrow = p, ncol = current_batch)
       T_batch <- matrix(NA_real_, nrow = p, ncol = current_batch)
 
       for (j in seq_len(current_batch)) {
-        d_perm <- data
+        d_perm <- matlist
         d_perm[[perm_var]] <- RMPerm(d_perm[[perm_var]], groups)
 
         perm_pred <- make_qap_data(y    = d_perm[[dep]],
                                    x    = d_perm[main],
                                    g    = groups,
                                    diag = diag,
-                                   mode = mode,
+                                   directed = directed,
                                    net  = 1,
                                    perm = FALSE,
                                    xi   = NULL)
@@ -148,11 +148,11 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
   }
 
   list(
-    lower  = matrix(lower_sum / reps,  nrow = dim_out[1], ncol = dim_out[2],
+    lower  = matrix(lower_sum / times,  nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs))),
-    larger = matrix(larger_sum / reps, nrow = dim_out[1], ncol = dim_out[2],
+    larger = matrix(larger_sum / times, nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs))),
-    abs    = matrix(abs_sum / reps,    nrow = dim_out[1], ncol = dim_out[2],
+    abs    = matrix(abs_sum / times,    nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs)))
   )
 }
@@ -160,7 +160,7 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
 
 #' @keywords internal
 #' @noRd
-gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
+gpu_batch_ols_css <- function(matlist, parsed, directed, diag, groups, times,
                               baseline_fit, perm_var = NULL,
                               batch_size = 500, device = "cuda") {
 
@@ -175,10 +175,10 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
   main <- parsed$main
   data_vars <- parsed$all_data_vars
 
-  x_list <- lapply(data_vars, function(v) data[[v]])
+  x_list <- lapply(data_vars, function(v) matlist[[v]])
   names(x_list) <- data_vars
-  cssd  <- make_css_data(y = data[[dep]], x = x_list,
-                         nets = 1, diag = diag, mode = mode)
+  cssd  <- make_css_data(y = matlist[[dep]], x = x_list,
+                         nets = 1, diag = diag, directed = directed)
   pred0 <- cssd$pred
 
   y_vec <- pred0$yv
@@ -199,7 +199,7 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
     xl <- lapply(data_vars, function(v) d[[v]])
     names(xl) <- data_vars
     make_css_data(y = d[[dep]], x = xl,
-                  nets = 1, diag = diag, mode = mode)$pred
+                  nets = 1, diag = diag, directed = directed)$pred
   }
 
   if (is.null(perm_var)) {
@@ -211,12 +211,12 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
     XtXinv_diag <- torch::torch_diag(XtXinv)
 
     reps_done <- 0
-    while (reps_done < reps) {
-      current_batch <- min(batch_size, reps - reps_done)
+    while (reps_done < times) {
+      current_batch <- min(batch_size, times - reps_done)
 
       Y_batch <- matrix(NA_real_, nrow = n_obs, ncol = current_batch)
       for (j in seq_len(current_batch)) {
-        d_perm <- data
+        d_perm <- matlist
         d_perm[[dep]] <- RMPerm(d_perm[[dep]], groups, CSS = TRUE)
         perm_pred <- build_css_pred(d_perm)
         Y_batch[, j] <- perm_pred$yv
@@ -251,14 +251,14 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
                                device = device)
 
     reps_done <- 0
-    while (reps_done < reps) {
-      current_batch <- min(batch_size, reps - reps_done)
+    while (reps_done < times) {
+      current_batch <- min(batch_size, times - reps_done)
 
       B_batch <- matrix(NA_real_, nrow = p, ncol = current_batch)
       T_batch <- matrix(NA_real_, nrow = p, ncol = current_batch)
 
       for (j in seq_len(current_batch)) {
-        d_perm <- data
+        d_perm <- matlist
         d_perm[[perm_var]] <- RMPerm(d_perm[[perm_var]], groups, CSS = TRUE)
 
         perm_pred <- build_css_pred(d_perm)
@@ -295,11 +295,11 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
   }
 
   list(
-    lower  = matrix(lower_sum / reps,  nrow = dim_out[1], ncol = dim_out[2],
+    lower  = matrix(lower_sum / times,  nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs))),
-    larger = matrix(larger_sum / reps, nrow = dim_out[1], ncol = dim_out[2],
+    larger = matrix(larger_sum / times, nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs))),
-    abs    = matrix(abs_sum / reps,    nrow = dim_out[1], ncol = dim_out[2],
+    abs    = matrix(abs_sum / times,    nrow = dim_out[1], ncol = dim_out[2],
                     dimnames = list(NULL, names(base_coefs)))
   )
 }

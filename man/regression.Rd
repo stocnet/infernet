@@ -37,16 +37,20 @@ dropped with a warning.}
 \item{control}{Named list of additional controls; unspecified entries fall
 back to the defaults below.
 \itemize{
-\item \code{method}: \code{"qap"} (double semi-partialling plus, default) or \code{"qapy"}
-(permute y only).
+\item \code{permute}: what the null distribution permutes. \code{"predictor"} (the
+default) residualises each main predictor against the others and
+permutes that residual, following Dekker et al. (2007). \code{"outcome"}
+permutes the dependent matrix and leaves the predictors alone. With one
+predictor there is nothing to residualise against, so \code{"predictor"}
+reduces to \code{"outcome"} and says so.
 \item \code{strategy}: future plan, e.g. \code{"sequential"} (default), \code{"multisession"}.
 \item \code{family}: \code{"auto"} (default; gaussian for weighted networks, binomial
 for binary), \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"},
 \code{"zip"}, or \code{"multinom"}.
 \item \code{estimator}: \code{"standard"} (default) or \code{"gmm"} (binomial/poisson/
 negbin/zip).
-\item \code{mode}: \code{"directed"} / \code{"undirected"} (default auto-detected from
-\code{.data}).
+\item \code{directed}: logical, whether a tie from i to j differs from one from j
+to i. Read from \code{.data} unless given, and reported when read.
 \item \code{diag}: logical, include loops (default auto-detected).
 \item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
 \item \code{use_robust_errors}: HC3 standard errors.
@@ -85,8 +89,8 @@ and handed to a QAP engine (ported from MrQAP) that supports:
 \itemize{
 \item gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
 multinomial families;
-\item \code{"qap"} (Dekker's double semi-partialling plus) and \code{"qapy"}
-(permute-y-only) null hypotheses;
+\item two permutation schemes: \code{"predictor"} (Dekker's double semi-partialling)
+and \code{"outcome"};
 \item random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
 \item robust (HC3) standard errors;
 \item optional torch-based batch OLS on the GPU;

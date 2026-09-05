@@ -104,6 +104,28 @@ as well as the burden on users to understand all of the options.
 Use sensible defaults instead.
 Function and argument names should also follow the house rules (see below).
 
+One word means one thing, on both sides of the seam between the formula front
+end and the engine. The engine was ported from `MrQAP` and used its own
+vocabulary; the front end's words won, since those are the ones users read:
+
+| Word | Means | Not |
+|---|---|---|
+| `times` | how many permutations | `reps` |
+| `directed` | logical, whether i→j differs from j→i | `mode`, `"digraph"`/`"graph"` |
+| `permute` | what the null distribution permutes: `"predictor"` or `"outcome"` | `nullhyp`, `method`, `"qapspp"`/`"qapy"` |
+| `.data` | the network the user passes in | — |
+| `matlist` | the named list of matrices the engine fits | `data` |
+| `net` | one coerced network, inside the formula front end | `data` |
+
+`mode` is reserved for a nodeset, as in one-mode and two-mode, which is what it
+means everywhere else in the ecosystem. Do not use it for directedness.
+`permute` replaced `method` because "method" says nothing about what differs;
+`"predictor"` and `"outcome"` name the thing that is actually shuffled.
+`data` is retired as an identifier: it named the network in one half of
+[R/model_regression.R](../R/model_regression.R) and the matrix list in the
+other, one letter away from `.data`. Reserve `data =` for the argument a model
+fitter takes.
+
 When writing documentation or NEWS items, prefer breaking lines at punctuation.
 
 Make it clear when you are referring to functions by adding backticks and parentheses,
@@ -212,17 +234,21 @@ regression entry point. Its control flow is:
    network, drops the ones that are missing a predictor with a warning,
    and pools the rest.
 3. Resolve `family = "auto"` against the dependent variable
-   (binomial for a 0/1 outcome, gaussian otherwise), and resolve `mode` and
+   (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
    `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
+   Report each resolution with `snet_info()`: a model the user did not state is
+   one they cannot describe in a paper.
 4. Call `QAPglm()`, which parses the formula, fits the baseline model once
-   via `fit_qap_model()`, then runs `reps` permutations and aggregates them.
+   via `fit_qap_model()`, then runs `times` permutations and aggregates them.
 5. Attach a probabilistic confusion matrix where the outcome is binary,
    and class the result `net_regression`.
 
-Inside `QAPglm()` the null hypothesis decides the permutation scheme:
-`"qapy"` permutes the dependent matrix only, while `"qapspp"` implements Dekker
-et al.'s double semi-partialling, running one permutation set per main predictor
-after residualising it against the others.
+Inside `QAPglm()` the `permute` control names what the null distribution
+permutes: `"outcome"` permutes the dependent matrix only, while `"predictor"`
+implements Dekker et al.'s double semi-partialling, running one permutation set
+per main predictor after residualising it against the others.
+With one predictor there is nothing to residualise against, so `"predictor"`
+falls back to `"outcome"` and says so.
 Permuted coefficients and test statistics are then compared against the baseline
 by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
 p-value matrices by `aggregate_perm_results()`.
@@ -328,6 +354,12 @@ Users opt in with e.g. `options(snet_verbosity = "verbose")`.
 These wrappers pass their input to `{cli}`, so:
 
 - Braces interpolate, replacing `paste()`: `snet_abort("{.val {dep}} is not in the data.")`.
+- A brace expression beginning with a dot is read as a *style*, not as code, so
+  `{.val {.directed_label(x)}}` aborts with "Invalid cli literal". Resolve a
+  call to a dot-prefixed function into a local variable first.
+- `snet_info()` pastes its arguments, so pass separate strings for a longer
+  message rather than a named `c()` vector: the names are dropped and the
+  strings run together without a space.
 - Use `{cli}` inline classes to mark up what you refer to — `{.fn}` for functions,
   `{.arg}`/`{.var}` for arguments and variables, `{.val}` for values,
   `{.pkg}` for packages, `{.url}` for links.
@@ -335,6 +367,15 @@ These wrappers pass their input to `{cli}`, so:
   `snet_warn("Dropped {length(dropped)} network{?s}.")`.
 
 Prefer "`{.arg times}` must be a positive whole number" over "invalid input".
+
+Report every default the model resolves for itself, with `snet_info()`: the
+family read from the outcome's values, the directedness read from the network,
+and any fallback such as `permute = "predictor"` reducing to `"outcome"`.
+A model the user did not state is one they cannot describe in a paper.
+Because this output is silent by default, a broken message is invisible in
+every other test, so cover it in
+[tests/testthat/test-qap_reporting.R](../tests/testthat/test-qap_reporting.R),
+which runs with `snet_verbosity = "verbose"`.
 Where a function needs a package from `Suggests`, name it and say how to get it:
 `snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))`.
 

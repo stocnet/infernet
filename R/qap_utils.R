@@ -75,20 +75,20 @@ build_internal_formula <- function(formula,
 
 #' @keywords internal
 #' @noRd
-validate_qap_input <- function(data, parsed, css = FALSE) {
+validate_qap_input <- function(matlist, parsed, css = FALSE) {
   dep <- parsed$dependent
-  if (!(dep %in% names(data))) {
+  if (!(dep %in% names(matlist))) {
     manynet::snet_abort("Dependent variable {.val {dep}} not found in the data.")
   }
   structural_vars <- c("sv", "rv", "nv", "pv")
   for (v in parsed$all_data_vars) {
     if (v %in% structural_vars) next
-    if (!(v %in% names(data))) {
+    if (!(v %in% names(matlist))) {
       manynet::snet_abort("Predictor {.val {v}} not found in the data.")
     }
   }
 
-  y <- data[[dep]]
+  y <- matlist[[dep]]
   large <- is.list(y)
 
   if (!css) {
@@ -139,9 +139,9 @@ setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
 
 #' @keywords internal
 #' @noRd
-run_permutations <- function(reps, FUN, ...) {
+run_permutations <- function(times, FUN, ...) {
   future.apply::future_lapply(
-    seq_len(reps),
+    seq_len(times),
     FUN,
     ...,
     future.seed = TRUE
@@ -211,7 +211,7 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
 
 #' @keywords internal
 #' @noRd
-make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
+make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
                           net = 1, perm = FALSE, xi = NULL) {
   nx <- length(x)
 
@@ -235,7 +235,7 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
   # the diagonal. Keeping both halves doubles the sample and shrinks every
   # standard error, so take the lower triangle only. A two-mode incidence
   # matrix has no such symmetry, and keeps every cell.
-  if (identical(mode, "graph") && square) valid[upper.tri(valid)] <- FALSE
+  if (!directed && square) valid[upper.tri(valid)] <- FALSE
 
   for (var in seq_len(nx)) {
     valid[is.na(x[[var]])] <- FALSE
@@ -593,16 +593,16 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
 
 #' @keywords internal
 #' @noRd
-aggregate_perm_results <- function(results, reps) {
+aggregate_perm_results <- function(results, times) {
   results <- Filter(Negate(is.null), results)
   n_valid <- length(results)
   if (n_valid == 0)
     manynet::snet_abort(
-      c("All {reps} permutations failed to converge.",
+      c("All {times} permutations failed to converge.",
         i = "Try a simpler model, another {.arg family}, or fewer predictors."))
-  if (n_valid < reps) {
+  if (n_valid < times) {
     manynet::snet_warn(
-      "{reps - n_valid} of {reps} permutation{?s} failed and {?was/were} excluded.")
+      "{times - n_valid} of {times} permutation{?s} failed and {?was/were} excluded.")
   }
   resL <- unlist(results, recursive = FALSE)
   list(
@@ -613,7 +613,7 @@ aggregate_perm_results <- function(results, reps) {
 }
 
 
-# ---- residualisation for qapspp ---------------------------------------------
+# ---- residualisation for permute = "predictor" ---------------------------------------------
 
 #' @keywords internal
 #' @noRd

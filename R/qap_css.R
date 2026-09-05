@@ -6,10 +6,10 @@
 
 #' @keywords internal
 #' @noRd
-array_to_vector <- function(ar, mode., diag.) {
+array_to_vector <- function(ar, directed., diag.) {
   v <- c()
   for (i in 1:nrow(ar)) {
-    if (mode. == 'undirected') {
+    if (!directed.) {
       v <- c(v, as.vector(ar[, , i][upper.tri(ar[, , i], diag = diag.)]))
     } else {
       v <- c(v, as.vector(ar[, , i]))
@@ -21,7 +21,7 @@ array_to_vector <- function(ar, mode., diag.) {
 
 #' @keywords internal
 #' @noRd
-make_css_data <- function(y, x, nets, diag, mode) {
+make_css_data <- function(y, x, nets, diag, directed) {
   n <- dim(y)[1]
   nx <- length(x)
   valid <- array(TRUE, dim = c(n, n, n))
@@ -41,7 +41,7 @@ make_css_data <- function(y, x, nets, diag, mode) {
     valid[is.na(x[[var]])] <- FALSE
   }
 
-  if (mode == 'undirected') {
+  if (!directed) {
     for (i in 1:n) {
       y[, , i][lower.tri(y[, , i])] <- NA
       valid[, , i][lower.tri(valid[, , i])] <- FALSE
@@ -57,8 +57,8 @@ make_css_data <- function(y, x, nets, diag, mode) {
     x[[var]][!valid] <- NA
   }
 
-  vv <- array_to_vector(valid, mode. = mode, diag. = diag)
-  yv <- array_to_vector(y, mode. = mode, diag. = diag)[vv]
+  vv <- array_to_vector(valid, directed. = directed, diag. = diag)
+  yv <- array_to_vector(y, directed. = directed, diag. = diag)[vv]
 
   pred <- data.frame(yv = yv, nv = nets)
 
@@ -70,13 +70,13 @@ make_css_data <- function(y, x, nets, diag, mode) {
     per[, , i] <- i
   }
 
-  pred$sv <- as.factor(array_to_vector(sen, mode. = mode, diag. = diag)[vv])
-  pred$rv <- as.factor(array_to_vector(rec, mode. = mode, diag. = diag)[vv])
-  pred$pv <- as.factor(array_to_vector(per, mode. = mode, diag. = diag)[vv])
+  pred$sv <- as.factor(array_to_vector(sen, directed. = directed, diag. = diag)[vv])
+  pred$rv <- as.factor(array_to_vector(rec, directed. = directed, diag. = diag)[vv])
+  pred$pv <- as.factor(array_to_vector(per, directed. = directed, diag. = diag)[vv])
 
   for (var in c(1:nx)) {
     pred[[names(x)[var]]] <- array_to_vector(x[[var]],
-                                             mode. = mode, diag. = diag)[vv]
+                                             directed. = directed, diag. = diag)[vv]
   }
   return(list(pred = pred, valid = valid))
 }
@@ -85,9 +85,9 @@ make_css_data <- function(y, x, nets, diag, mode) {
 #' @keywords internal
 #' @noRd
 QAPcssPermEst <- function(i,
-                          data.,
+                          matlist.,
                           perm_var.,
-                          mode.,
+                          directed.,
                           diag.,
                           mod.,
                           groups.,
@@ -105,9 +105,9 @@ QAPcssPermEst <- function(i,
                           reference.) {
 
   dep   <- parsed.$dependent
-  large <- is.list(data.[[dep]])
+  large <- is.list(matlist.[[dep]])
 
-  y_cat <- stats::na.omit(unique(as.vector(unlist(data.[[dep]]))))
+  y_cat <- stats::na.omit(unique(as.vector(unlist(matlist.[[dep]]))))
 
   sufficient_data <- FALSE
   trial <- 0
@@ -116,7 +116,7 @@ QAPcssPermEst <- function(i,
   while (!sufficient_data && trial < max_trials) {
     trial <- trial + 1
 
-    d <- data.
+    d <- matlist.
     if (is.null(perm_var.)) {
       if (!large) {
         d[[dep]] <- RMPerm(d[[dep]], groups., CSS = TRUE)
@@ -137,7 +137,7 @@ QAPcssPermEst <- function(i,
       names(x_list) <- data_vars.
       pred <- make_css_data(y = d[[dep]], x = x_list,
                             nets = 1,
-                            diag = diag., mode = mode.)$pred
+                            diag = diag., directed = directed.)$pred
     } else {
       pred_list <- vector("list", length(d[[dep]]))
       for (gr in seq_along(d[[dep]])) {
@@ -145,7 +145,7 @@ QAPcssPermEst <- function(i,
         names(xgr) <- data_vars.
         pred_list[[gr]] <- make_css_data(y = d[[dep]][[gr]], x = xgr,
                                          nets = gr,
-                                         diag = diag., mode = mode.)$pred
+                                         diag = diag., directed = directed.)$pred
       }
       pred <- do.call(rbind, pred_list)
     }
@@ -200,7 +200,7 @@ QAPcssPermEst <- function(i,
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
   if (is.null(comp.)) {
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # A fit inside the permutation loop runs `times` times, so a fitter's
     # convergence warning would print once per draw and drown the console.
     # The count of draws that failed outright is reported by
     # `aggregate_perm_results()`, which is the number the user needs.
@@ -230,7 +230,7 @@ QAPcssPermEst <- function(i,
     predK <- pred[pred[[dep]] %in% comp.[[k]], ]
     predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
 
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # A fit inside the permutation loop runs `times` times, so a fitter's
     # convergence warning would print once per draw and drown the console.
     # The count of draws that failed outright is reported by
     # `aggregate_perm_results()`, which is the number the user needs.
@@ -272,13 +272,13 @@ glm_tab <- function(x, comp) {
     cmat[, 2] <- format(x$lower[[comp]][2, ])
     cmat[, 3] <- format(x$larger[[comp]][2, ])
     cmat[, 4] <- format(x$abs[[comp]][2, ])
-    if (x$nullhyp == "qapspp") cmat[1, 2:4] <- "*"
+    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
     colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
     rownames(cmat) <- names(x$base[[comp]]$coefficients)
     print.table(cmat)
 
-    if (x$nullhyp == "qapspp")
-      cat("\n* Significance test for the intercept is undefined with qapspp.\n")
+    if (x$permute == "predictor")
+      cat("\n* The intercept has no significance test when predictors are permuted.\n")
 
     if (!is.null(x$base[[comp]]$base_model)) {
       cat("\nAIC of base model:", format(stats::AIC(x$base[[comp]]$base_model)))
@@ -294,13 +294,13 @@ glm_tab <- function(x, comp) {
     cmat[, 2] <- format(x$lower[2, ])
     cmat[, 3] <- format(x$larger[2, ])
     cmat[, 4] <- format(x$abs[2, ])
-    if (x$nullhyp == "qapspp") cmat[1, 2:4] <- "*"
+    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
     colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
     rownames(cmat) <- names(x$base$coefficients)
     print.table(cmat)
 
-    if (x$nullhyp == "qapspp")
-      cat("\n* Significance test for the intercept is undefined with qapspp.\n")
+    if (x$permute == "predictor")
+      cat("\n* The intercept has no significance test when predictors are permuted.\n")
 
     if (!is.null(x$base$base_model)) {
       cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
@@ -314,11 +314,11 @@ glm_tab <- function(x, comp) {
 #' @keywords internal
 #' @noRd
 QAPcss <- function(formula,
-                   data,
-                   mode      = "directed",
+                   matlist,
+                   directed  = TRUE,
                    diag      = FALSE,
-                   nullhyp   = "qapy",
-                   reps      = 1000,
+                   permute   = "outcome",
+                   times      = 1000,
                    seed      = NULL,
                    strategy  = "sequential",
                    ncores    = NULL,
@@ -340,20 +340,20 @@ QAPcss <- function(formula,
   parsed <- parse_qap_formula(formula, fixest_se_cluster)
   dep       <- parsed$dependent
   main      <- parsed$main
-  data_vars <- intersect(parsed$all_data_vars, names(data))
+  data_vars <- intersect(parsed$all_data_vars, names(matlist))
   nx        <- length(main)
 
-  validate_qap_input(data, parsed, css = TRUE)
-  large <- is.list(data[[dep]])
+  validate_qap_input(matlist, parsed, css = TRUE)
+  large <- is.list(matlist[[dep]])
 
   if (!large) {
-    y <- data[[dep]]
+    y <- matlist[[dep]]
     if (length(dim(y)) != 3)
       manynet::snet_abort(
         "The dependent variable {.val {dep}} must be a 3-dimensional array of sender, receiver, and perceiver.")
   } else {
-    for (i in seq_along(data[[dep]])) {
-      if (length(dim(data[[dep]][[i]])) != 3)
+    for (i in seq_along(matlist[[dep]])) {
+      if (length(dim(matlist[[dep]][[i]])) != 3)
         manynet::snet_abort(
           "Network {i} of the dependent variable {.val {dep}} must be a 3-dimensional array.")
     }
@@ -390,8 +390,8 @@ QAPcss <- function(formula,
       "Robust standard errors are not implemented for the multinomial family.")
     use_robust_errors <- FALSE
   }
-  if ((nullhyp == "qapspp") && (nx == 1)) nullhyp <- "qapy"
-  if (mode == "undirected" && (ris || rir)) {
+  if ((permute == "predictor") && (nx == 1)) permute <- "outcome"
+  if (!directed && (ris || rir)) {
     manynet::snet_warn(
       c("An undirected network has no senders or receivers.",
         i = "Setting the sender and receiver random intercepts to {.val FALSE}."))
@@ -408,7 +408,7 @@ QAPcss <- function(formula,
   if (rir) rand_part <- paste(rand_part, "+ (1|rv)")
 
   if (!large) {
-    n <- dim(data[[dep]])[1]
+    n <- dim(matlist[[dep]])[1]
     if (!is.null(groups)) {
       if (length(groups) != n)
         manynet::snet_abort(
@@ -421,22 +421,22 @@ QAPcss <- function(formula,
 
   valid <- NULL; valid_list <- NULL
   if (!large) {
-    x_list <- lapply(data_vars, function(v) data[[v]])
+    x_list <- lapply(data_vars, function(v) matlist[[v]])
     names(x_list) <- data_vars
-    cssd  <- make_css_data(y = data[[dep]], x = x_list,
+    cssd  <- make_css_data(y = matlist[[dep]], x = x_list,
                            nets = 1,
-                           diag = diag, mode = mode)
+                           diag = diag, directed = directed)
     pred  <- cssd$pred
     valid <- cssd$valid
   } else {
-    pred_list  <- vector("list", length(data[[dep]]))
-    valid_list <- vector("list", length(data[[dep]]))
-    for (gr in seq_along(data[[dep]])) {
-      xgr <- lapply(data_vars, function(v) data[[v]][[gr]])
+    pred_list  <- vector("list", length(matlist[[dep]]))
+    valid_list <- vector("list", length(matlist[[dep]]))
+    for (gr in seq_along(matlist[[dep]])) {
+      xgr <- lapply(data_vars, function(v) matlist[[v]][[gr]])
       names(xgr) <- data_vars
-      cssd <- make_css_data(y = data[[dep]][[gr]], x = xgr,
+      cssd <- make_css_data(y = matlist[[dep]][[gr]], x = xgr,
                             nets = gr,
-                            diag = diag, mode = mode)
+                            diag = diag, directed = directed)
       pred_list[[gr]]  <- cssd$pred
       valid_list[[gr]] <- cssd$valid
     }
@@ -480,20 +480,20 @@ QAPcss <- function(formula,
   if (use_gpu && family == "gaussian" && !has_random && !use_fixest &&
       is.null(comparison) && !large) {
 
-    if (nullhyp == "qapy") {
-      gpu_res <- gpu_batch_ols_css(data         = data,
+    if (permute == "outcome") {
+      gpu_res <- gpu_batch_ols_css(matlist         = matlist,
                                    parsed       = parsed,
-                                   mode         = mode,
+                                   directed     = directed,
                                    diag         = diag,
                                    groups       = groups,
-                                   reps         = reps,
+                                   times         = times,
                                    baseline_fit = fit$base,
                                    perm_var     = NULL)
       fit$lower  <- gpu_res$lower
       fit$larger <- gpu_res$larger
       fit$abs    <- gpu_res$abs
 
-    } else if (nullhyp == "qapspp") {
+    } else if (permute == "predictor") {
       n_coefs <- length(fit$base$coefficients)
       fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs)
       fit$larger <- fit$abs <- fit$lower
@@ -501,7 +501,7 @@ QAPcss <- function(formula,
         colnames(fit$abs)  <- names(fit$base$coefficients)
 
       for (xi in main) {
-        test_val <- data[[xi]]
+        test_val <- matlist[[xi]]
         if (!is.numeric(test_val)) {
           manynet::snet_warn(
             c("Cannot residualise the non-numeric predictor {.val {xi}}.",
@@ -511,16 +511,16 @@ QAPcss <- function(formula,
         xR <- residualise_predictor(xi, pred, main,
                                     has_random   = has_random,
                                     rand_formula = rand_part)
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_array(xR, data[[xi]], valid, pred,
+        matlist_resid <- matlist
+        matlist_resid[[xi]] <- residuals_to_array(xR, matlist[[xi]], valid, pred,
                                                large, valid_list)
 
-        gpu_res <- gpu_batch_ols_css(data         = data_resid,
+        gpu_res <- gpu_batch_ols_css(matlist         = matlist_resid,
                                      parsed       = parsed,
-                                     mode         = mode,
+                                     directed     = directed,
                                      diag         = diag,
                                      groups       = groups,
-                                     reps         = reps,
+                                     times         = times,
                                      baseline_fit = fit$base,
                                      perm_var     = xi)
         fit$lower[, xi]  <- gpu_res$lower[, xi]
@@ -536,12 +536,12 @@ QAPcss <- function(formula,
       options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
     }, add = TRUE)
 
-    if (nullhyp == "qapy") {
+    if (permute == "outcome") {
       res <- run_permutations(
-        reps, QAPcssPermEst,
-        data.     = data,
+        times, QAPcssPermEst,
+        matlist.     = matlist,
         perm_var. = NULL,
-        mode.     = mode,
+        directed. = directed,
         diag.     = diag,
         mod.      = mod,
         groups.   = groups,
@@ -560,7 +560,7 @@ QAPcss <- function(formula,
       )
 
       if (is.null(comparison)) {
-        agg <- aggregate_perm_results(res, reps)
+        agg <- aggregate_perm_results(res, times)
         fit$lower  <- agg$lower
         fit$larger <- agg$larger
         fit$abs    <- agg$abs
@@ -580,7 +580,7 @@ QAPcss <- function(formula,
         }
       }
 
-    } else if (nullhyp == "qapspp") {
+    } else if (permute == "predictor") {
       if (is.null(comparison)) {
         if (family != "multinom") {
           n_coefs <- length(fit$base$coefficients)
@@ -590,9 +590,9 @@ QAPcss <- function(formula,
             colnames(fit$abs)  <- names(fit$base$coefficients)
         } else {
           ncat <- if (large) {
-            length(stats::na.omit(unique(as.vector(unlist(data[[dep]])))))
+            length(stats::na.omit(unique(as.vector(unlist(matlist[[dep]])))))
           } else {
-            length(stats::na.omit(unique(as.vector(data[[dep]]))))
+            length(stats::na.omit(unique(as.vector(matlist[[dep]]))))
           }
           n_coefs <- length(fit$base$coefficients)
           fit$lower  <- matrix(NA, nrow = 2 * (ncat - 1), ncol = n_coefs)
@@ -615,7 +615,7 @@ QAPcss <- function(formula,
       }
 
       for (xi in main) {
-        test_val <- if (!large) data[[xi]] else data[[xi]][[1]]
+        test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
         if (!is.numeric(test_val)) {
           manynet::snet_warn(
             c("Cannot residualise the non-numeric predictor {.val {xi}}.",
@@ -627,15 +627,15 @@ QAPcss <- function(formula,
                                     has_random   = has_random,
                                     rand_formula = rand_part)
 
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_array(xR, data[[xi]], valid, pred,
+        matlist_resid <- matlist
+        matlist_resid[[xi]] <- residuals_to_array(xR, matlist[[xi]], valid, pred,
                                                large, valid_list)
 
         res <- run_permutations(
-          reps, QAPcssPermEst,
-          data.     = data_resid,
+          times, QAPcssPermEst,
+          matlist.     = matlist_resid,
           perm_var. = xi,
-          mode.     = mode,
+          directed. = directed,
           diag.     = diag,
           mod.      = mod,
           groups.   = groups,
@@ -654,7 +654,7 @@ QAPcss <- function(formula,
         )
 
         if (is.null(comparison)) {
-          agg <- aggregate_perm_results(res, reps)
+          agg <- aggregate_perm_results(res, times)
           fit$lower[, xi]  <- agg$lower
           fit$larger[, xi] <- agg$larger
           fit$abs[, xi]    <- agg$abs
@@ -685,12 +685,12 @@ QAPcss <- function(formula,
     }
   }
 
-  fit$nullhyp   <- nullhyp
+  fit$permute   <- permute
   fit$family    <- family
   fit$groups    <- unique(unlist(groups))
   fit$diag      <- diag
-  fit$mode      <- mode
-  fit$reps      <- reps
+  fit$directed  <- directed
+  fit$times      <- times
   fit$reference <- reference
   fit$comp      <- comparison
   fit$random    <- c(sender    = ris,
@@ -742,12 +742,12 @@ print.QAPCSS <- function(x, ...) {
   if (!is.null(x$groups))
     cat("Permutations were performed within groups only.\n")
 
-  if (x$nullhyp == "qapy")
-    cat("The outcome array Y was permuted", format(x$reps), "times.\n")
-  if (x$nullhyp == "qapspp") {
+  if (x$permute == "outcome")
+    cat("The outcome array Y was permuted", format(x$times), "times.\n")
+  if (x$permute == "predictor") {
     cat("Significance was estimated using Dekker's\n")
     cat("  'semi-partialling plus' procedure with",
-        format(x$reps), "permutations.\n")
+        format(x$times), "permutations.\n")
   }
 
   if (x$robust_se)
@@ -759,7 +759,8 @@ print.QAPCSS <- function(x, ...) {
   } else {
     cat("Diagonal values (loops) were ignored.\n")
   }
-  cat("The outcome was treated as", format(paste0(x$mode, ".")), "\n")
+  cat("The outcome was treated as",
+      format(paste0(.directed_label(x$directed), ".")), "\n")
 
   if (x$family != "multinom") {
     if (is.null(x$comp)) {
@@ -781,15 +782,15 @@ print.QAPCSS <- function(x, ...) {
       cmat[, 2] <- format(x$lower[row_idx, ])
       cmat[, 3] <- format(x$larger[row_idx, ])
       cmat[, 4] <- format(x$abs[row_idx, ])
-      if (x$nullhyp == "qapspp") cmat[1, 2:4] <- "*"
+      if (x$permute == "predictor") cmat[1, 2:4] <- "*"
       colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
       rownames(cmat) <- colnames(x$base$coefficients)
       print.table(cmat)
       cat("\n\n")
     }
 
-    if (x$nullhyp == "qapspp")
-      cat("* Significance test for the intercept is undefined with qapspp.\n")
+    if (x$permute == "predictor")
+      cat("* The intercept has no significance test when predictors are permuted.\n")
 
     cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
     cat("\nBIC of base model:", format(stats::BIC(x$base$base_model)))

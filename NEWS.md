@@ -1,3 +1,48 @@
+# infernet 0.2.0
+
+## Package
+
+- Renamed the engine's vocabulary to the front end's, so one word means one
+  thing on both sides of the seam
+  - `reps` is now `times`, everywhere including on the returned fit
+  - `mode` is now `directed`, a logical, and `"digraph"`/`"graph"` are gone;
+    `mode` is reserved for a nodeset, as in one-mode and two-mode
+  - `nullhyp` is now `permute`, and its values name what is shuffled:
+    `"predictor"` for Dekker's double semi-partialling, `"outcome"` for
+    permuting the dependent matrix alone
+  - `data` is retired as an identifier: it named the network in one half of
+    `R/model_regression.R` and the matrix list in the other, one letter away
+    from `.data`
+    - `matlist` is the named list of matrices the engine fits
+    - `net` is one coerced network, inside the formula front end
+    - `.data` remains the network the user passes in
+- Updated CONTRIBUTING with the vocabulary table and the reporting rule
+
+## Regression
+
+- Fixed `net_regression()` failing on a two-mode network with more columns than
+  rows (closing #4)
+  - The validity mask was built as rows-by-rows, so a wider predictor extended
+    it with `NA` and the dyad count came back as `NA`
+  - The reported 448 by 12489 network now fits, on all 5,595,072 dyads
+- Renamed the `method` control to `permute`
+  - `method = "qap"` is now `permute = "predictor"`, and `method = "qapy"` is
+    now `permute = "outcome"`
+- Renamed the `mode` control to `directed`
+  - `mode = "undirected"` is now `directed = FALSE`
+- Added reporting of every default the model resolves for itself
+  - The family chosen from the outcome's values
+  - The directedness read from the network
+  - `permute = "predictor"` falling back to `"outcome"` with one predictor
+  - These use `snet_info()`, so `options(snet_verbosity = "verbose")` shows them
+
+## Tests
+
+- Added a wide two-mode fixture and two regression tests for #4
+- Added `test-qap_reporting.R`, which runs with `snet_verbosity = "verbose"`
+  - Informational output is silent in every other test, so a message that
+    `{cli}` cannot parse was invisible until it aborted; two shipped that way
+
 # infernet 0.1.1
 
 ## Package

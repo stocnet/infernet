@@ -8,13 +8,13 @@
 #' @keywords internal
 #' @noRd
 QAPglm <- function(formula,
-                   data,
+                   matlist,
                    family    = "gaussian",
-                   mode      = "directed",
+                   directed  = TRUE,
                    diag      = FALSE,
-                   nullhyp   = "qapspp",
+                   permute   = "predictor",
                    estimator = "standard",
-                   reps      = 1000,
+                   times      = 1000,
                    seed      = NULL,
                    groups    = NULL,
                    strategy  = "sequential",
@@ -34,12 +34,11 @@ QAPglm <- function(formula,
   parsed <- parse_qap_formula(formula, fixest_se_cluster)
   dep        <- parsed$dependent
   main       <- parsed$main
-  data_vars  <- intersect(parsed$all_data_vars, names(data))
+  data_vars  <- intersect(parsed$all_data_vars, names(matlist))
 
-  validate_qap_input(data, parsed, css = FALSE)
-  large <- is.list(data[[dep]])
+  validate_qap_input(matlist, parsed, css = FALSE)
+  large <- is.list(matlist[[dep]])
 
-  mode_internal <- if (mode == "directed") "digraph" else "graph"
 
   rin <- random_intercept_nets
   ris <- random_intercept_sender
@@ -59,25 +58,25 @@ QAPglm <- function(formula,
   mod <- stats::as.formula(mod_str)
 
   if (!large) {
-    pred <- make_qap_data(y    = data[[dep]],
-                          x    = data[data_vars],
+    pred <- make_qap_data(y    = matlist[[dep]],
+                          x    = matlist[data_vars],
                           g    = groups,
                           diag = diag,
-                          mode = mode_internal,
+                          directed = directed,
                           net  = 1,
                           perm = FALSE,
                           xi   = NULL)
   } else {
-    pred_list <- vector("list", length(data[[dep]]))
-    for (net in seq_along(data[[dep]])) {
-      x2 <- lapply(data_vars, function(v) data[[v]][[net]])
+    pred_list <- vector("list", length(matlist[[dep]]))
+    for (net in seq_along(matlist[[dep]])) {
+      x2 <- lapply(data_vars, function(v) matlist[[v]][[net]])
       names(x2) <- data_vars
       g2 <- if (!is.null(groups)) groups[[net]] else NULL
-      pred_list[[net]] <- make_qap_data(y    = data[[dep]][[net]],
+      pred_list[[net]] <- make_qap_data(y    = matlist[[dep]][[net]],
                                         x    = x2,
                                         g    = g2,
                                         diag = diag,
-                                        mode = mode_internal,
+                                        directed = directed,
                                         net  = net,
                                         perm = FALSE,
                                         xi   = NULL)
@@ -128,7 +127,17 @@ QAPglm <- function(formula,
     }
   }
 
-  if ((nullhyp == "qapspp") && (length(main) == 1)) nullhyp <- "qapy"
+  # Double semi-partialling residualises a predictor against the others, so
+  # with one predictor there are none and the scheme reduces to permuting the
+  # outcome. Say so: the result would otherwise report a scheme nobody chose.
+  if ((permute == "predictor") && (length(main) == 1)) {
+    permute <- "outcome"
+    # `snet_info()` pastes its arguments, so give it separate strings rather
+    # than a named vector: a named vector loses its bullets and runs together.
+    manynet::snet_info(
+      "Permuting {.val outcome}, not {.val predictor}:",
+      "with one predictor there is nothing to residualise it against.")
+  }
 
   # The GPU path is a shortcut, not a requirement, so an unmet condition falls
   # back to the CPU permutation loop rather than aborting. `gpu_available()`
@@ -144,20 +153,20 @@ QAPglm <- function(formula,
 
   if (use_gpu) {
 
-    if (nullhyp == "qapy") {
-      gpu_res <- gpu_batch_ols(data         = data,
+    if (permute == "outcome") {
+      gpu_res <- gpu_batch_ols(matlist         = matlist,
                                parsed       = parsed,
-                               mode         = mode_internal,
+                               directed     = directed,
                                diag         = diag,
                                groups       = groups,
-                               reps         = reps,
+                               times         = times,
                                baseline_fit = fit$base,
                                perm_var     = NULL)
       fit$lower  <- gpu_res$lower
       fit$larger <- gpu_res$larger
       fit$abs    <- gpu_res$abs
 
-    } else if (nullhyp == "qapspp") {
+    } else if (permute == "predictor") {
       n_coefs <- length(fit$base$coefficients)
       fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
                            dimnames = list(c("perm_coefs", "perm_t"),
@@ -168,15 +177,15 @@ QAPglm <- function(formula,
         xR <- residualise_predictor(xi, pred, main,
                                     has_random   = has_random,
                                     rand_formula = rand_part)
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_matrix(xR, data[[xi]], pred, large)
+        matlist_resid <- matlist
+        matlist_resid[[xi]] <- residuals_to_matrix(xR, matlist[[xi]], pred, large)
 
-        gpu_res <- gpu_batch_ols(data         = data_resid,
+        gpu_res <- gpu_batch_ols(matlist         = matlist_resid,
                                  parsed       = parsed,
-                                 mode         = mode_internal,
+                                 directed     = directed,
                                  diag         = diag,
                                  groups       = groups,
-                                 reps         = reps,
+                                 times         = times,
                                  baseline_fit = fit$base,
                                  perm_var     = xi)
         fit$lower[, xi]  <- gpu_res$lower[, xi]
@@ -192,12 +201,12 @@ QAPglm <- function(formula,
       options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
     }, add = TRUE)
 
-    if (nullhyp == "qapy") {
+    if (permute == "outcome") {
       res <- run_permutations(
-        reps, QAPglmPermEst,
-        data.     = data,
+        times, QAPglmPermEst,
+        matlist.     = matlist,
         perm_var. = NULL,
-        mode.     = mode_internal,
+        directed. = directed,
         diag.     = diag,
         mod.      = mod,
         groups.   = groups,
@@ -216,7 +225,7 @@ QAPglm <- function(formula,
       )
 
       if (is.null(comparison)) {
-        agg <- aggregate_perm_results(res, reps)
+        agg <- aggregate_perm_results(res, times)
         fit$lower  <- agg$lower
         fit$larger <- agg$larger
         fit$abs    <- agg$abs
@@ -237,7 +246,7 @@ QAPglm <- function(formula,
         }
       }
 
-    } else if (nullhyp == "qapspp") {
+    } else if (permute == "predictor") {
       if (is.null(comparison)) {
         n_coefs <- length(fit$base$coefficients)
         fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
@@ -263,14 +272,14 @@ QAPglm <- function(formula,
                                     has_random   = has_random,
                                     rand_formula = rand_part)
 
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_matrix(xR, data[[xi]], pred, large)
+        matlist_resid <- matlist
+        matlist_resid[[xi]] <- residuals_to_matrix(xR, matlist[[xi]], pred, large)
 
         res <- run_permutations(
-          reps, QAPglmPermEst,
-          data.     = data_resid,
+          times, QAPglmPermEst,
+          matlist.     = matlist_resid,
           perm_var. = xi,
-          mode.     = mode_internal,
+          directed. = directed,
           diag.     = diag,
           mod.      = mod,
           groups.   = groups,
@@ -289,7 +298,7 @@ QAPglm <- function(formula,
         )
 
         if (is.null(comparison)) {
-          agg <- aggregate_perm_results(res, reps)
+          agg <- aggregate_perm_results(res, times)
           fit$lower[, xi]  <- agg$lower
           fit$larger[, xi] <- agg$larger
           fit$abs[, xi]    <- agg$abs
@@ -340,11 +349,11 @@ QAPglm <- function(formula,
     }
   }
 
-  fit$nullhyp   <- nullhyp
+  fit$permute   <- permute
   fit$diag      <- diag
   fit$family    <- family
-  fit$mode      <- mode
-  fit$reps      <- reps
+  fit$directed  <- directed
+  fit$times      <- times
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
   fit$estimator <- estimator
@@ -365,9 +374,9 @@ QAPglm <- function(formula,
 #' @keywords internal
 #' @noRd
 QAPglmPermEst <- function(i,
-                          data.,
+                          matlist.,
                           perm_var.,
-                          mode.,
+                          directed.,
                           diag.,
                           mod.,
                           groups.,
@@ -385,9 +394,9 @@ QAPglmPermEst <- function(i,
                           reference.) {
 
   dep   <- parsed.$dependent
-  large <- is.list(data.[[dep]])
+  large <- is.list(matlist.[[dep]])
 
-  d <- data.
+  d <- matlist.
   if (is.null(perm_var.)) {
     if (!large) {
       d[[dep]] <- RMPerm(d[[dep]], groups.)
@@ -407,7 +416,7 @@ QAPglmPermEst <- function(i,
                           x    = d[data_vars.],
                           g    = groups.,
                           diag = diag.,
-                          mode = mode.,
+                          directed = directed.,
                           net  = 1,
                           perm = FALSE,
                           xi   = NULL)
@@ -421,7 +430,7 @@ QAPglmPermEst <- function(i,
                                         x    = x2,
                                         g    = g2,
                                         diag = diag.,
-                                        mode = mode.,
+                                        directed = directed.,
                                         net  = net,
                                         perm = FALSE,
                                         xi   = NULL)
@@ -434,7 +443,7 @@ QAPglmPermEst <- function(i,
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
 
   if (is.null(comp.)) {
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # A fit inside the permutation loop runs `times` times, so a fitter's
     # convergence warning would print once per draw and drown the console.
     # The count of draws that failed outright is reported by
     # `aggregate_perm_results()`, which is the number the user needs.
@@ -464,7 +473,7 @@ QAPglmPermEst <- function(i,
     predK <- pred[pred[[dep]] %in% comp.[[k]], ]
     predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
 
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
+    # A fit inside the permutation loop runs `times` times, so a fitter's
     # convergence warning would print once per draw and drown the console.
     # The count of draws that failed outright is reported by
     # `aggregate_perm_results()`, which is the number the user needs.
