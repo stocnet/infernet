@@ -2,6 +2,15 @@
 
 ## Package
 
+- Merged the two engines into one, `QAPengine()`
+  - `QAPglm()` and `QAPcss()` were 55% the same code, so every fix had to be
+    made twice; one of them was made in only one place
+  - What the two shapes do differently is now four functions in
+    `R/qap_shapes.R`: how to vectorise, how to permute, how to put a
+    residualised predictor back, and which random intercepts exist
+  - A random intercept a shape does not have now aborts by name, so a
+    perceiver intercept on a dyadic network says so
+  - The engine files fall from 791 lines to 552, with no duplication left
 - Branched off five model extensions, to settle the architecture first
   - Each is on its own `feature/*` branch, and each strip is one commit that
     `git revert` reinstates
@@ -59,6 +68,10 @@
 
 ## Tests
 
+- Added `test-qap_shape_css.R`, which fits a cognitive social structure through
+  the merged engine
+  - `net_regression()` has no CSS entry point yet, so the merge would
+    otherwise be untested on the shape it was merged for
 - Added a wide two-mode fixture and two regression tests for #4
 - Added `test-qap_reporting.R`, which runs with `snet_verbosity = "verbose"`
   - Informational output is silent in every other test, so a message that

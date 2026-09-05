@@ -129,9 +129,10 @@ net_regression <- function(formula,
     ctrl$diag <- isTRUE(manynet::is_complex(first_graph))
   }
 
-  fit <- QAPglm(
+  fit <- QAPengine(
     formula   = formula,
-    matlist      = matlist,
+    matlist   = matlist,
+    css       = FALSE,
     family    = ctrl$family,
     directed  = ctrl$directed,
     diag      = ctrl$diag,

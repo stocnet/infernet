@@ -225,9 +225,10 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_regression.R` | `net_regression()`, the formula front end (`convertToMatrixList()`, `getRHSNames()`, `specificationAdvice()`), and the `print.*` methods for its results |
-| `qap_engine.R` | `QAPglm()` and `QAPglmPermEst()` — the matrix-level engine that performs the baseline fit and the permutation inference |
+| `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
+| `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_utils.R` | formula parsing, input validation, `future` plumbing, matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
-| `qap_css.R` | `QAPcss()` and `QAPcssPermEst()` — the parallel engine for cognitive social structures |
+| `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method |
 | `qap_gmm.R` | GMM moment conditions and residual functions for the `estimator = "gmm"` path |
 | `qap_gpu.R` | the optional `{torch}` batch OLS path, `gpu_batch_ols()` |
 | `qap_confusion.R` | probabilistic confusion matrices for binary outcomes |
@@ -271,7 +272,31 @@ falls back to `"outcome"` and says so.
 Permuted coefficients and test statistics are then compared against the baseline
 by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
 p-value matrices by `aggregate_perm_results()`.
-`QAPcss()` mirrors this same permute-refit-aggregate architecture for CSS data.
+### One engine, two shapes
+
+`QAPengine()` fits a dyadic network and a cognitive social structure through the
+same skeleton. They differ in four places and nowhere else, and those four live
+in a *shape* returned by `.qap_shape()`
+([R/qap_shapes.R](../R/qap_shapes.R)):
+
+| Field | Dyadic | Cognitive |
+|---|---|---|
+| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per perceiver |
+| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)` |
+| `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
+| `rand_slots` | sender, receiver, network | and perceiver |
+
+A fifth field, `max_trials`, says how many permutations to redraw before giving
+up: one for a dyadic network, since a degenerate draw is simply dropped and
+counted, and 10,000 for a CSS, whose sparse arrays often permute into an
+outcome with a single value.
+
+Add a shape rather than a second engine. A random-intercept slot a shape does
+not list cannot be requested, so a perceiver intercept on a dyadic network
+aborts by name rather than producing a formula that will not parse.
+
+Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same code, and
+every fix had to be made twice. One of them was made in only one place.
 
 The formula front end accepts these terms, and a new one should be added
 to `getRHSNames()` and `convertToMatrixList()` together:
