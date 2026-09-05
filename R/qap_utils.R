@@ -78,13 +78,13 @@ build_internal_formula <- function(formula,
 validate_qap_input <- function(data, parsed, css = FALSE) {
   dep <- parsed$dependent
   if (!(dep %in% names(data))) {
-    stop("Dependent variable '", dep, "' not found in data.")
+    manynet::snet_abort("Dependent variable {.val {dep}} not found in the data.")
   }
   structural_vars <- c("sv", "rv", "nv", "pv")
   for (v in parsed$all_data_vars) {
     if (v %in% structural_vars) next
     if (!(v %in% names(data))) {
-      stop("Predictor '", v, "' not found in data.")
+      manynet::snet_abort("Predictor {.val {v}} not found in the data.")
     }
   }
 
@@ -93,21 +93,25 @@ validate_qap_input <- function(data, parsed, css = FALSE) {
 
   if (!css) {
     if (!large) {
-      if (!is.matrix(y)) stop("data[['", dep, "']] must be a matrix.")
+      if (!is.matrix(y))
+        manynet::snet_abort("The dependent variable {.val {dep}} must be a matrix.")
     } else {
       for (i in seq_along(y)) {
         if (!is.matrix(y[[i]]))
-          stop("data[['", dep, "']][[", i, "]] must be a matrix.")
+          manynet::snet_abort(
+            "Network {i} of the dependent variable {.val {dep}} must be a matrix.")
       }
     }
   } else {
     if (!large) {
       if (length(dim(y)) != 3)
-        stop("data[['", dep, "']] must be a 3-dimensional array.")
+        manynet::snet_abort(
+          "The dependent variable {.val {dep}} must be a 3-dimensional array.")
     } else {
       for (i in seq_along(y)) {
         if (length(dim(y[[i]])) != 3)
-          stop("data[['", dep, "']][[", i, "]] must be a 3D array.")
+          manynet::snet_abort(
+            "Network {i} of the dependent variable {.val {dep}} must be a 3-dimensional array.")
       }
     }
   }
@@ -279,8 +283,7 @@ fit_qap_model <- function(mod, pred, family,
     if (!is.null(reference)) {
       pred[[dep_var]] <- stats::relevel(pred[[dep_var]], ref = reference)
     }
-    if (!requireNamespace("nnet", quietly = TRUE))
-      stop("Package 'nnet' is required for multinomial models.")
+    thisRequires("nnet", "for multinomial models")
     base_model       <- nnet::multinom(mod, data = pred, trace = FALSE)
     fit$coefficients <- stats::coefficients(base_model)
     fit$t            <- stats::coefficients(base_model) /
@@ -290,8 +293,7 @@ fit_qap_model <- function(mod, pred, family,
   }
 
   if (estimator == "gmm") {
-    if (!requireNamespace("gmm", quietly = TRUE))
-      stop("Package 'gmm' is required for GMM estimation.")
+    thisRequires("gmm", "for GMM estimation")
     y_vec <- pred[[dep_var]]
     x_mat <- cbind(1, as.matrix(pred[, main_vars, drop = FALSE]))
 
@@ -326,8 +328,9 @@ fit_qap_model <- function(mod, pred, family,
       resid <- zip_resid(base_model)
       has_extra_param <- TRUE
     } else {
-      stop("GMM estimator is available for binomial, poisson, negbin, ",
-           "and zip families.")
+      manynet::snet_abort(
+        c("The GMM estimator is not available for the {.val {family}} family.",
+          i = "It is available for the binomial, poisson, negbin, and zip families."))
     }
 
     all_coefs <- base_model$coefficients
@@ -360,8 +363,7 @@ fit_qap_model <- function(mod, pred, family,
 
   if (family == "zip" && estimator == "standard") {
     if (has_random) {
-      if (!requireNamespace("glmmTMB", quietly = TRUE))
-        stop("Package 'glmmTMB' is required for mixed ZIP models.")
+      thisRequires("glmmTMB", "for mixed zero-inflated Poisson models")
       base_model <- glmmTMB::glmmTMB(mod, data = pred,
                                      family = stats::poisson(),
                                      ziformula = ~1)
@@ -376,8 +378,7 @@ fit_qap_model <- function(mod, pred, family,
         fit$random.intercepts[[rV]] <- re[[rV]][, 1]
       }
     } else {
-      if (!requireNamespace("pscl", quietly = TRUE))
-        stop("Package 'pscl' is required for zero-inflated Poisson models.")
+      thisRequires("pscl", "for zero-inflated Poisson models")
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
       fit$coefficients <- base_model$coefficients$count
       resid <- stats::residuals(base_model, type = "response")
@@ -395,8 +396,7 @@ fit_qap_model <- function(mod, pred, family,
 
   if (!has_random) {
     if (use_fixest) {
-      if (!requireNamespace("fixest", quietly = TRUE))
-        stop("Package 'fixest' is required when fixest_se_cluster or fixed effects with | ")
+      thisRequires("fixest", "for fixed effects and clustered standard errors")
       fe_family <- if (family == "negbin") "negbin" else family
       base_model <- fixest::feglm(mod, data = pred,
                                   family = fe_family,
@@ -428,8 +428,7 @@ fit_qap_model <- function(mod, pred, family,
         fit$r.squared     <- summary(base_model)$r.squared
         fit$adj.r.squared <- summary(base_model)$adj.r.squared
       } else if (family == "negbin") {
-        if (!requireNamespace("MASS", quietly = TRUE))
-          stop("Package 'MASS' is required for negative binomial models.")
+        thisRequires("MASS", "for negative binomial models")
         base_model <- MASS::glm.nb(mod, data = pred)
         fit$theta  <- base_model$theta
       } else {
@@ -447,12 +446,10 @@ fit_qap_model <- function(mod, pred, family,
     }
   } else {
     if (family == "gaussian") {
-      if (!requireNamespace("lme4", quietly = TRUE))
-        stop("Package 'lme4' is required for random effects.")
+      thisRequires("lme4", "for random effects")
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
-      if (!requireNamespace("glmmTMB", quietly = TRUE))
-        stop("Package 'glmmTMB' is required for mixed negative binomial models.")
+      thisRequires("glmmTMB", "for mixed negative binomial models")
       base_model <- glmmTMB::glmmTMB(mod, data = pred,
                                      family = glmmTMB::nbinom2())
       fit$coefficients <- glmmTMB::fixef(base_model)$cond
@@ -473,8 +470,7 @@ fit_qap_model <- function(mod, pred, family,
       fit$base_model <- base_model
       return(fit)
     } else {
-      if (!requireNamespace("lme4", quietly = TRUE))
-        stop("Package 'lme4' is required for random effects.")
+      thisRequires("lme4", "for random effects")
       base_model <- lme4::glmer(mod, data = pred, family = family,
                                 control = lme4::glmerControl(
                                   calc.derivs = FALSE,

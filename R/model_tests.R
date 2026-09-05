@@ -29,8 +29,8 @@ NULL
 #' @rdname tests 
 #' @importFrom manynet generate_random bind_node_attributes is_directed is_complex
 #' @examples 
-#' marvel_friends <- fict_marvel %>% to_uniplex("relationship") %>% 
-#'   to_unsigned() %>% to_giant() %>% 
+#' marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+#'   to_unsigned() |> to_giant() |> 
 #'   to_subgraph(PowerOrigin == "Human")
 #' (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
 #'    times = 200))
@@ -50,12 +50,12 @@ test_random <- function(.data, FUN, ...,
   on.exit(future::plan(oplan), add = TRUE)
   rands <- furrr::future_map(1:times, manynet::generate_random, n = .data, 
                              .progress = verbose, 
-                             .options = furrr::furrr_options(seed = T))
+                             .options = furrr::furrr_options(seed = TRUE))
   if (length(args) > 0) {
     rands <- furrr::future_map(rands, 
                                manynet::bind_node_attributes, object2 = .data, 
                                .progress = verbose, 
-                               .options = furrr::furrr_options(seed = T))
+                               .options = furrr::furrr_options(seed = TRUE))
   }
   if (!is.null(args)) {
     simd <- furrr::future_map_dbl(rands,
@@ -95,12 +95,12 @@ test_configuration <- function(.data, FUN, ...,
   rands <- furrr::future_map(1:times, 
                              ~ manynet::generate_configuration(.data), 
                              .progress = verbose, 
-                             .options = furrr::furrr_options(seed = T))
+                             .options = furrr::furrr_options(seed = TRUE))
   if (length(args) > 0) {
     rands <- furrr::future_map(rands, 
                                manynet::bind_node_attributes, object2 = .data, 
                                .progress = verbose, 
-                               .options = furrr::furrr_options(seed = T))
+                               .options = furrr::furrr_options(seed = TRUE))
   }
   if (!is.null(args)) {
     simd <- furrr::future_map_dbl(rands,
@@ -139,24 +139,22 @@ test_permutation <- function(.data, FUN, ...,
   } else {
     obsd <- FUN(.data)
   }
-  n <- manynet::net_dims(.data)
-  d <- netrics::net_by_density(.data)
   oplan <- future::plan(strategy)
   on.exit(future::plan(oplan), add = TRUE)
   rands <- furrr::future_map(1:times, 
                   function(x) manynet::to_permuted(.data), 
                   .progress = verbose, 
-                  .options = furrr::furrr_options(seed = T))
+                  .options = furrr::furrr_options(seed = TRUE))
   if (!is.null(args)) {
     simd <- furrr::future_map_dbl(rands,
                    FUN, args, 
                    .progress = verbose, 
-                   .options = furrr::furrr_options(seed = T))
+                   .options = furrr::furrr_options(seed = TRUE))
   } else {
     simd <- furrr::future_map_dbl(rands,
                    FUN, 
                    .progress = verbose, 
-                   .options = furrr::furrr_options(seed = T))
+                   .options = furrr::furrr_options(seed = TRUE))
   }
   out <- list(test = "QAP",
               testval = obsd,
@@ -178,5 +176,6 @@ print.network_test <- function(x, ...,
   cat("Observed Value:", x$testval, "\n")
   cat("Pr(X>=Obs):", x$pgteobs, "\n")
   cat("Pr(X<=Obs):", x$plteobs, "\n\n")
+  invisible(x)
 }
 

@@ -15,7 +15,7 @@ test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
 }
 \arguments{
 \item{.data}{A manynet-consistent network (see
-\code{\link[manynet:coerce_graph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
+\code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
 supplied the model is fit jointly; graphs missing any predictor are
 dropped with a warning.}
 
@@ -47,8 +47,8 @@ of the original network.
 }
 }
 \examples{
-marvel_friends <- fict_marvel \%>\% to_uniplex("relationship") \%>\% 
-  to_unsigned() \%>\% to_giant() \%>\% 
+marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+  to_unsigned() |> to_giant() |> 
   to_subgraph(PowerOrigin == "Human")
 (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
    times = 200))
@@ -59,7 +59,7 @@ marvel_friends <- fict_marvel \%>\% to_uniplex("relationship") \%>\%
 # plot(qaptest)
 }
 \seealso{
-Other models: 
+Other models:
 \code{\link{regression}}
 }
 \concept{models}

@@ -4,11 +4,11 @@
 \name{infernet-package}
 \alias{infernet}
 \alias{infernet-package}
-\title{infernet: Basic inferential models for many different types of networks}
+\title{infernet: Inferential Models for Many Different Types of Networks}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-A set of tools for testing networks. It includes functions for univariate and multivariate conditional uniform graph and quadratic assignment procedure testing, and network regression.
+A set of tools for testing networks. It includes functions for univariate and multivariate conditional uniform graph and quadratic assignment procedure testing, and multiple regression quadratic assignment procedure (MRQAP) models for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the 'manynet' package, all functions operate with matrices, edge lists, and 'igraph', 'network', and 'tidygraph' objects, and on one-mode and two-mode (bipartite) networks.
 }
 \seealso{
 Useful links:
@@ -20,6 +20,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [contributor]
+
+Authors:
+\itemize{
+  \item James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [contributor]
+}
 
 Other contributors:
 \itemize{

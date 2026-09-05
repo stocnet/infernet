@@ -15,7 +15,7 @@ gpu_batch_ols <- function(data, parsed, mode, diag, groups, reps,
   }
 
   if (device == "cuda" && !torch::cuda_is_available()) {
-    message("CUDA not available. Falling back to CPU torch.")
+    manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")
     device <- "cpu"
   }
 
@@ -172,7 +172,7 @@ gpu_batch_ols_css <- function(data, parsed, mode, diag, groups, reps,
   }
 
   if (device == "cuda" && !torch::cuda_is_available()) {
-    message("CUDA not available. Falling back to CPU torch.")
+    manynet::snet_info("CUDA is not available, so falling back to CPU {.pkg torch}.")
     device <- "cpu"
   }
 

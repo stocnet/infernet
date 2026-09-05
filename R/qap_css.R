@@ -192,7 +192,9 @@ QAPcssPermEst <- function(i,
   }
 
   if (trial >= max_trials) {
-    stop("Cannot find valid permutation after ", max_trials, " trials.")
+    manynet::snet_abort(
+      c("Cannot find a valid permutation after {max_trials} trials.",
+        i = "The network may be too sparse, or too many cells may be missing."))
   }
 
   xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
@@ -339,12 +341,13 @@ QAPcss <- function(formula,
   if (!large) {
     y <- data[[dep]]
     if (length(dim(y)) != 3)
-      stop("data[['", dep, "']] must be a 3-dimensional array ",
-           "[sender, receiver, perceiver].")
+      manynet::snet_abort(
+        "The dependent variable {.val {dep}} must be a 3-dimensional array of sender, receiver, and perceiver.")
   } else {
     for (i in seq_along(data[[dep]])) {
       if (length(dim(data[[dep]][[i]])) != 3)
-        stop("data[['", dep, "']][[", i, "]] must be a 3D array.")
+        manynet::snet_abort(
+          "Network {i} of the dependent variable {.val {dep}} must be a 3-dimensional array.")
     }
   }
 
@@ -359,29 +362,36 @@ QAPcss <- function(formula,
   has_random <- grepl("\\(", mod_str) || parsed$has_random
   use_fixest <- parsed$use_fixest
   if (has_random && use_fixest) {
-    warning("Cannot combine fixest FE and lme4 random effects. ",
-            "Using lme4 only.")
+    manynet::snet_warn(
+      c("Cannot combine {.pkg fixest} fixed effects with {.pkg lme4} random effects.",
+        i = "Using the random effects only."))
     use_fixest <- FALSE
   }
   mod <- stats::as.formula(mod_str)
 
   if (has_random && family == "multinom") {
-    warning("Random intercepts not implemented for multinomial. ",
-            "Using standard nnet::multinom().")
+    manynet::snet_warn(
+      c("Random intercepts are not implemented for the multinomial family.",
+        i = "Using {.fn nnet::multinom} instead."))
     has_random <- FALSE
   }
   if (!is.null(reference) && !is.character(reference) && family == "multinom")
     reference <- as.character(reference)
   if (use_robust_errors && family == "multinom") {
-    warning("Robust SEs not implemented for multinomial.")
+    manynet::snet_warn(
+      "Robust standard errors are not implemented for the multinomial family.")
     use_robust_errors <- FALSE
   }
   if ((nullhyp == "qapspp") && (nx == 1)) nullhyp <- "qapy"
   if (mode == "undirected" && (ris || rir)) {
-    warning("Undirected mode: sender/receiver random intercepts set to FALSE.")
+    manynet::snet_warn(
+      c("An undirected network has no senders or receivers.",
+        i = "Setting the sender and receiver random intercepts to {.val FALSE}."))
     ris <- rir <- FALSE
   }
-  if (diag) warning("Results may not be valid when diagonal is used.")
+  if (diag)
+    manynet::snet_warn(
+      "Results may not be valid where the diagonal is included.")
 
   rand_part <- ""
   if (rin) rand_part <- paste(rand_part, "+ (1|nv)")
@@ -393,7 +403,8 @@ QAPcss <- function(formula,
     n <- dim(data[[dep]])[1]
     if (!is.null(groups)) {
       if (length(groups) != n)
-        stop("groups length (", length(groups), ") != N (", n, ").")
+        manynet::snet_abort(
+          "{.arg groups} is of length {length(groups)}, but the network has {n} nodes.")
       groups <- as.factor(groups)
     } else {
       groups <- as.factor(rep(1, n))
@@ -484,8 +495,9 @@ QAPcss <- function(formula,
       for (xi in main) {
         test_val <- data[[xi]]
         if (!is.numeric(test_val)) {
-          warning("Cannot residualise non-numeric predictor '", xi,
-                  "'. Skipping qapspp for this variable.")
+          manynet::snet_warn(
+            c("Cannot residualise the non-numeric predictor {.val {xi}}.",
+              i = "Skipping double semi-partialling for this predictor."))
           next
         }
         xR <- residualise_predictor(xi, pred, main,
@@ -597,8 +609,9 @@ QAPcss <- function(formula,
       for (xi in main) {
         test_val <- if (!large) data[[xi]] else data[[xi]][[1]]
         if (!is.numeric(test_val)) {
-          warning("Cannot residualise non-numeric predictor '", xi,
-                  "'. Skipping qapspp for this variable.")
+          manynet::snet_warn(
+            c("Cannot residualise the non-numeric predictor {.val {xi}}.",
+              i = "Skipping double semi-partialling for this predictor."))
           next
         }
 

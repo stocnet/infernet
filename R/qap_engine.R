@@ -50,8 +50,9 @@ QAPglm <- function(formula,
   has_random <- grepl("\\(", mod_str) || parsed$has_random
   use_fixest <- parsed$use_fixest
   if (has_random && use_fixest) {
-    warning("Cannot combine fixest FE and lme4 random effects. ",
-            "Using lme4 random effects only.")
+    manynet::snet_warn(
+      c("Cannot combine {.pkg fixest} fixed effects with {.pkg lme4} random effects.",
+        i = "Using the random effects only."))
     use_fixest <- FALSE
   }
 

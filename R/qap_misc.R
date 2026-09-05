@@ -103,8 +103,9 @@ df_to_mat <- function(df,
     if (loops) n_s * n_r else n_s * n_r - min(n_s, n_r)
   }
   if (anyNA(df[var_names]) || nrow(df) != expected) {
-    warning("Incomplete dyadic data: some cells will be NA.",
-            "\nCheck the data and consider coding matrices manually.")
+    manynet::snet_warn(
+      c("Incomplete dyadic data, so some cells will be {.val NA}.",
+        i = "Check the data, or code the matrices manually."))
   }
 
   make_structure <- function(var) {
