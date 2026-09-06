@@ -525,21 +525,6 @@ print.net_regression <- function(x, ...,
 }
 
 
-.print_glm_table <- function(base, lower, larger, abs_mat, permute, print_b) {
-  cat("\n\nCoefficients:\n")
-  nc <- length(base$coefficients)
-  cmat <- matrix(NA, nrow = nc, ncol = 4)
-  cmat[, 1] <- format(round(as.numeric(base$coefficients), 4))
-  cmat[, 2] <- format(lower[2, ])
-  cmat[, 3] <- format(larger[2, ])
-  cmat[, 4] <- format(abs_mat[2, ])
-  if (permute == "predictor") cmat[1, 2:4] <- "*"
-  colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-  rownames(cmat) <- names(base$coefficients)
-  print.table(cmat)
-}
-
-
 # ============================================================================
 # Formula -> matrix-list front end
 # ============================================================================

@@ -116,3 +116,23 @@ test_that("a missing dyad is dropped from the model", {
                         control = list(seed = 1))
   expect_equal(nrow(fit$pred), 20 * 19 - 1)
 })
+
+# A blocking factor names the nodes of one mode. A two-mode network has two
+# modes of different sizes, so a factor of the row length cannot also be of the
+# column length. Requiring the row length refused a factor that blocks the
+# columns, which `.perm_order()` handles. See the review of stocnet/infernet#13.
+test_that("a two-mode network accepts a grouping factor for either mode", {
+  g <- qap_net_twomode_wide(nr = 12, nc = 40)
+  rows <- rep(c("a", "b"), length.out = 12)
+  cols <- rep(c("a", "b", "c", "d"), length.out = 40)
+  for (grp in list(rows, cols)) {
+    fit <- net_regression(. ~ ego(Att), g, times = 5,
+                          control = list(seed = 1, groups = grp))
+    expect_s3_class(fit, "net_regression")
+    expect_equal(nrow(fit$pred), 12 * 40)
+  }
+  expect_error(
+    net_regression(. ~ ego(Att), g, times = 5,
+                   control = list(seed = 1, groups = rep("a", 7))),
+    "length 7")
+})

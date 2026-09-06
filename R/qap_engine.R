@@ -84,10 +84,16 @@ QAPengine <- function(formula,
   # ---- vectorise ------------------------------------------------------------
 
   if (!large && !is.null(groups)) {
-    n <- dim(matlist[[dep]])[1]
-    if (length(groups) != n)
+    # A blocking factor names the nodes of one mode. A one-mode network has a
+    # single mode, but a two-mode network has two of different sizes, and either
+    # may be the one that is blocked. `.perm_order()` already permutes a mode
+    # freely when the factor cannot describe it, so accept a length that matches
+    # any side of the outcome and abort only when it matches none.
+    ns <- unique(dim(matlist[[dep]]))
+    if (!length(groups) %in% ns)
       manynet::snet_abort(
-        "{.arg groups} is of length {length(groups)}, but the network has {n} nodes.")
+        c("{.arg groups} is of length {length(groups)}.",
+          i = "It must match one of the outcome's node sets: {ns}."))
     groups <- as.factor(groups)
   }
 

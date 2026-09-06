@@ -12,6 +12,8 @@
   - Validity was built rows-by-rows, so wider predictor extended it with `NA` 
     and the dyad count came back as `NA`
   - Reported 448 by 12489 network now fits on all 5,595,072 dyads
+- Fixed `groups=` being refused on a two-mode network unless it matched the row
+  mode, though either mode may be the one that is blocked
 - Standardised vocabulary in the engine to match the front end:
   - Renamed `reps=` to `times=` including on the returned fit
   - Renamed `method=`/`nullhyp=` to `permute=`, as method can be ambiguous
