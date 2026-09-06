@@ -2,38 +2,35 @@
 
 ## Package
 
-- Merged the two engines into one, `QAPengine()`
-  - `QAPglm()` and `QAPcss()` were 55% the same code, so every fix had to be
-    made twice; one of them was made in only one place
-  - What the two shapes do differently is now four functions in
-    `R/qap_shapes.R`: how to vectorise, how to permute, how to put a
-    residualised predictor back, and which random intercepts exist
-  - A random intercept a shape does not have now aborts by name, so a
-    perceiver intercept on a dyadic network says so
-  - The engine files fall from 791 lines to 552, with no duplication left
-- Branched off five model extensions, to settle the architecture first
-  - Each is on its own `feature/*` branch, and each strip is one commit that
-    `git revert` reinstates
-  - `Suggests` falls from eight modelling packages to three
-  - See the Github issues for the order they come back in
-- Renamed the engine's vocabulary to the front end's, so one word means one
-  thing on both sides of the seam
-  - `reps` is now `times`, everywhere including on the returned fit
-  - `mode` is now `directed`, a logical, and `"digraph"`/`"graph"` are gone;
-    `mode` is reserved for a nodeset, as in one-mode and two-mode
-  - `nullhyp` is now `permute`, and its values name what is shuffled:
-    `"predictor"` for Dekker's double semi-partialling, `"outcome"` for
-    permuting the dependent matrix alone
-  - `data` is retired as an identifier: it named the network in one half of
-    `R/model_regression.R` and the matrix list in the other, one letter away
-    from `.data`
-    - `matlist` is the named list of matrices the engine fits
-    - `net` is one coerced network, inside the formula front end
-    - `.data` remains the network the user passes in
+- Branching off five model extensions reduces `Suggests` packages from eight to three
 - Updated CONTRIBUTING with the vocabulary table and the reporting rule
 
 ## Regression
 
+- Fixed `net_regression()` failing on a two-mode network with more columns than
+  rows (closing #4)
+  - Validity was built rows-by-rows, so wider predictor extended it with `NA` 
+    and the dyad count came back as `NA`
+  - Reported 448 by 12489 network now fits on all 5,595,072 dyads
+- Standardised vocabulary in the engine to match the front end:
+  - Renamed `reps=` to `times=` including on the returned fit
+  - Renamed `method=`/`nullhyp=` to `permute=`, as method can be ambiguous
+    - `method = "qap"`/`nullhyp = "qapspp"` is now `permute = "predictor"`
+    - `method = "qapy"` is now `permute = "outcome"`
+  - Renamed `mode=` to `directed=`, reserving mode for one-mode and two-mode networks
+    - `mode = "undirected"` is now `directed = FALSE`
+  - `data` is retired as potentially confusing:
+    - `.data` remains the network the user passes in
+    - `matlist` is the named list of matrices the engine fits
+    - `net` is one coerced network, inside the formula front end
+- Added `snet_info()` reporting of every default the model resolves for itself
+  - Family chosen from the outcome's values
+  - Directedness from the network
+  - `permute = "predictor"` falling back to `"outcome"` with one predictor
+- Merged `QAPglm()` and `QAPcss()` engines into one, `QAPengine()`
+  - 55% the same code, reduces code from 791 lines to 552
+  - Differences in treatment are now four functions: vectorisation, permutation, 
+    returning residuals, and identifying random intercepts
 - Removed the `torch` GPU path (`feature/torch-gpu`)
   - Gaussian only, duplicated for CSS, no test, and no hosted runner has a
     CUDA device; `{torch}` in Suggests broke the CI build
@@ -50,32 +47,12 @@
 - Removed the `fixest_se_cluster` control (`feature/fixest-fixed-effects`)
   - A bar in the formula now means an `{lme4}` random-effect term, and
     nothing else; `parse_qap_formula()` drops from three branches to one
-- Fixed `net_regression()` failing on a two-mode network with more columns than
-  rows (closing #4)
-  - The validity mask was built as rows-by-rows, so a wider predictor extended
-    it with `NA` and the dyad count came back as `NA`
-  - The reported 448 by 12489 network now fits, on all 5,595,072 dyads
-- Renamed the `method` control to `permute`
-  - `method = "qap"` is now `permute = "predictor"`, and `method = "qapy"` is
-    now `permute = "outcome"`
-- Renamed the `mode` control to `directed`
-  - `mode = "undirected"` is now `directed = FALSE`
-- Added reporting of every default the model resolves for itself
-  - The family chosen from the outcome's values
-  - The directedness read from the network
-  - `permute = "predictor"` falling back to `"outcome"` with one predictor
-  - These use `snet_info()`, so `options(snet_verbosity = "verbose")` shows them
 
 ## Tests
 
-- Added `test-qap_shape_css.R`, which fits a cognitive social structure through
-  the merged engine
-  - `net_regression()` has no CSS entry point yet, so the merge would
-    otherwise be untested on the shape it was merged for
 - Added a wide two-mode fixture and two regression tests for #4
 - Added `test-qap_reporting.R`, which runs with `snet_verbosity = "verbose"`
-  - Informational output is silent in every other test, so a message that
-    `{cli}` cannot parse was invisible until it aborted; two shipped that way
+- Added `test-qap_shape_css.R`, which fits a cognitive social structure
 
 # infernet 0.1.1
 
