@@ -8,7 +8,7 @@
 ## Regression
 
 - Fixed `net_regression()` failing on a two-mode network with more columns than
-  rows (closing #4)
+  rows (closes #4)
   - Validity was built rows-by-rows, so wider predictor extended it with `NA` 
     and the dyad count came back as `NA`
   - Reported 448 by 12489 network now fits on all 5,595,072 dyads
