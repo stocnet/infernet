@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,83 @@
       <small>Source: <a href="https://github.com/stocnet/infernet/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="infernet-020">infernet 0.2.0<a class="anchor" aria-label="anchor" href="#infernet-020"></a></h2>
+<div class="section level3">
+<h3 id="package-0-2-0">Package<a class="anchor" aria-label="anchor" href="#package-0-2-0"></a></h3>
+<ul><li>Branching off five model extensions reduces <code>Suggests</code> packages from eight to three</li>
+<li>Updated CONTRIBUTING with the vocabulary table and the reporting rule</li>
+</ul></div>
+<div class="section level3">
+<h3 id="regression-0-2-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-2-0"></a></h3>
+<ul><li>Fixed <code><a href="../reference/regression.html">net_regression()</a></code> failing on a two-mode network with more columns than rows (closes <a href="https://github.com/stocnet/infernet/issues/4" class="external-link">#4</a>)
+<ul><li>Validity was built rows-by-rows, so wider predictor extended it with <code>NA</code> and the dyad count came back as <code>NA</code>
+</li>
+<li>Reported 448 by 12489 network now fits on all 5,595,072 dyads</li>
+</ul></li>
+<li>Fixed <code>groups=</code> being refused on a two-mode network unless it matched the row mode, though either mode may be the one that is blocked</li>
+<li>Standardised vocabulary in the engine to match the front end:
+<ul><li>Renamed <code>reps=</code> to <code>times=</code> including on the returned fit</li>
+<li>Renamed <code>method=</code>/<code>nullhyp=</code> to <code>permute=</code>, as method can be ambiguous
+<ul><li>
+<code>method = "qap"</code>/<code>nullhyp = "qapspp"</code> is now <code>permute = "predictor"</code>
+</li>
+<li>
+<code>method = "qapy"</code> is now <code>permute = "outcome"</code>
+</li>
+</ul></li>
+<li>Renamed <code>mode=</code> to <code>directed=</code>, reserving mode for one-mode and two-mode networks
+<ul><li>
+<code>mode = "undirected"</code> is now <code>directed = FALSE</code>
+</li>
+</ul></li>
+<li>
+<code>data</code> is retired as potentially confusing:
+<ul><li>
+<code>.data</code> remains the network the user passes in</li>
+<li>
+<code>matlist</code> is the named list of matrices the engine fits</li>
+<li>
+<code>net</code> is one coerced network, inside the formula front end</li>
+</ul></li>
+</ul></li>
+<li>Added <code><a href="https://stocnet.github.io/manynet/reference/interface.html" class="external-link">snet_info()</a></code> reporting of every default the model resolves for itself
+<ul><li>Family chosen from the outcome’s values</li>
+<li>Directedness from the network</li>
+<li>
+<code>permute = "predictor"</code> falling back to <code>"outcome"</code> with one predictor</li>
+</ul></li>
+<li>Merged <code>QAPglm()</code> and <code>QAPcss()</code> engines into one, <code>QAPengine()</code>
+<ul><li>55% the same code, reduces code from 791 lines to 552</li>
+<li>Differences in treatment are now four functions: vectorisation, permutation, returning residuals, and identifying random intercepts</li>
+</ul></li>
+<li>Removed the <code>torch</code> GPU path (<code>feature/torch-gpu</code>)
+<ul><li>Gaussian only, duplicated for CSS, no test, and no hosted runner has a CUDA device; <a href="https://torch.mlverse.org/docs" class="external-link">torch</a> in Suggests broke the CI build</li>
+</ul></li>
+<li>Removed the <code>gmm</code> estimator and the <code>estimator</code> control (<code>feature/gmm-estimator</code>)
+<ul><li>It warned that the coefficient covariance matrix was singular on every family, on well-conditioned data</li>
+</ul></li>
+<li>Removed the mixed negbin and mixed zip paths (<code>feature/glmmtmb-mixed</code>)
+<ul><li>
+<a href="https://github.com/glmmTMB/glmmTMB" class="external-link">glmmTMB</a> carries 62 recursive dependencies and must match <a href="https://github.com/kaskr/adcomp/wiki" class="external-link">TMB</a>
+</li>
+<li>The standard <code>negbin</code> and <code>zip</code> paths are unaffected</li>
+</ul></li>
+<li>Removed <code>family = "multinom"</code> and the <code>comparison</code>/<code>reference</code> controls (<code>feature/multinomial-comparison</code>)
+<ul><li>Unreachable from the front end, and its pairwise branch forked both engines at 21 points</li>
+</ul></li>
+<li>Removed the <code>fixest_se_cluster</code> control (<code>feature/fixest-fixed-effects</code>)
+<ul><li>A bar in the formula now means an <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a> random-effect term, and nothing else; <code>parse_qap_formula()</code> drops from three branches to one</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="tests-0-2-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-2-0"></a></h3>
+<ul><li>Added a wide two-mode fixture and two regression tests for <a href="https://github.com/stocnet/infernet/issues/4" class="external-link">#4</a></li>
+<li>Added <code>test-qap_reporting.R</code>, which runs with <code>snet_verbosity = "verbose"</code>
+</li>
+<li>Added <code>test-qap_shape_css.R</code>, which fits a cognitive social structure</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.1" id="infernet-011">infernet 0.1.1<a class="anchor" aria-label="anchor" href="#infernet-011"></a></h2>
 <div class="section level3">

@@ -10,17 +10,15 @@ syntax, plus plain references to other networks in the object.
 Internally the response and predictors are packed into matrices and
 handed to a QAP engine (ported from MrQAP) that supports:
 
-- gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-  multinomial families;
+- gaussian, binomial, poisson, negative binomial, and zero-inflated
+  Poisson families;
 
-- `"qap"` (Dekker's double semi-partialling plus) and `"qapy"`
-  (permute-y-only) null hypotheses;
+- two permutation schemes: `"predictor"` (Dekker's double
+  semi-partialling) and `"outcome"`;
 
-- random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+- random intercepts (lme4);
 
 - robust (HC3) standard errors;
-
-- optional torch-based batch OLS on the GPU;
 
 - lists of networks, in which graphs that are missing any predictor are
   dropped with a warning and the remaining networks are pooled.
@@ -75,21 +73,22 @@ print(x, ..., print_b = FALSE, print_random = FALSE)
   Named list of additional controls; unspecified entries fall back to
   the defaults below.
 
-  - `method`: `"qap"` (double semi-partialling plus, default) or
-    `"qapy"` (permute y only).
+  - `permute`: what the null distribution permutes. `"predictor"` (the
+    default) residualises each main predictor against the others and
+    permutes that residual, following Dekker et al. (2007). `"outcome"`
+    permutes the dependent matrix and leaves the predictors alone. With
+    one predictor there is nothing to residualise against, so
+    `"predictor"` reduces to `"outcome"` and says so.
 
   - `strategy`: future plan, e.g. `"sequential"` (default),
     `"multisession"`.
 
   - `family`: `"auto"` (default; gaussian for weighted networks,
     binomial for binary), `"gaussian"`, `"binomial"`, `"poisson"`,
-    `"negbin"`, `"zip"`, or `"multinom"`.
+    `"negbin"`, or `"zip"`.
 
-  - `estimator`: `"standard"` (default) or `"gmm"` (binomial/poisson/
-    negbin/zip).
-
-  - `mode`: `"directed"` / `"undirected"` (default auto-detected from
-    `.data`).
+  - `directed`: logical, whether a tie from i to j differs from one from
+    j to i. Read from `.data` unless given, and reported when read.
 
   - `diag`: logical, include loops (default auto-detected).
 
@@ -97,16 +96,9 @@ print(x, ..., print_b = FALSE, print_random = FALSE)
 
   - `use_robust_errors`: HC3 standard errors.
 
-  - `fixest_se_cluster`: cluster variable for fixest.
-
-  - `reference`, `comparison`: multinomial / pairwise-comparison
-    options.
-
   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 
   - `less_mem`: drop the baseline model object from the return.
-
-  - `use_gpu`: torch-based batch OLS (gaussian only).
 
 - x:
 

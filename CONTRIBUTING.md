@@ -116,6 +116,30 @@ as the burden on users to understand all of the options. Use sensible
 defaults instead. Function and argument names should also follow the
 house rules (see below).
 
+One word means one thing, on both sides of the seam between the formula
+front end and the engine. The engine was ported from `MrQAP` and used
+its own vocabulary; the front end’s words won, since those are the ones
+users read:
+
+| Word | Means | Not |
+|----|----|----|
+| `times` | how many permutations | `reps` |
+| `directed` | logical, whether i→j differs from j→i | `mode`, `"digraph"`/`"graph"` |
+| `permute` | what the null distribution permutes: `"predictor"` or `"outcome"` | `nullhyp`, `method`, `"qapspp"`/`"qapy"` |
+| `.data` | the network the user passes in | — |
+| `matlist` | the named list of matrices the engine fits | `data` |
+| `net` | one coerced network, inside the formula front end | `data` |
+
+`mode` is reserved for a nodeset, as in one-mode and two-mode, which is
+what it means everywhere else in the ecosystem. Do not use it for
+directedness. `permute` replaced `method` because “method” says nothing
+about what differs; `"predictor"` and `"outcome"` name the thing that is
+actually shuffled. `data` is retired as an identifier: it named the
+network in one half of
+[R/model_regression.R](https://stocnet.github.io/R/model_regression.R)
+and the matrix list in the other, one letter away from `.data`. Reserve
+`data =` for the argument a model fitter takes.
+
 When writing documentation or NEWS items, prefer breaking lines at
 punctuation.
 
@@ -123,6 +147,26 @@ Make it clear when you are referring to functions by adding backticks
 and parentheses, e.g. `a_function()`, and arguments by adding an equals
 sign, e.g. `argument=`. Argument values or variables can be in double
 quotation marks, e.g. “value”.
+
+## Parked extensions
+
+Five model extensions sit on `feature/*` branches while the architecture
+settles, each tracked by a Github issue and each reinstated by reverting
+one commit on `develop`:
+
+| Branch | Removes | Issue |
+|----|----|----|
+| `feature/multinomial-comparison` | `family = "multinom"`, and the `comparison`/`reference` controls | [\#7](https://github.com/stocnet/infernet/issues/7) |
+| `feature/fixest-fixed-effects` | the `fixest_se_cluster` control and the [fixest](https://lrberge.github.io/fixest/) branch | [\#8](https://github.com/stocnet/infernet/issues/8) |
+| `feature/glmmtmb-mixed` | mixed negbin and mixed zip | [\#9](https://github.com/stocnet/infernet/issues/9) |
+| `feature/gmm-estimator` | the `estimator` control and `R/qap_gmm.R` | [\#10](https://github.com/stocnet/infernet/issues/10) |
+| `feature/torch-gpu` | `R/qap_gpu.R` and the `use_gpu` control | [\#11](https://github.com/stocnet/infernet/issues/11) |
+
+Do not reinstate one by reverting onto `develop` without reading its
+issue: several need rewriting against the merged engine rather than
+reverting onto it. Do not add a new model family that needs a new
+`Suggests` package until the two engines are one, for the same reason
+these left.
 
 ## Package architecture
 
@@ -185,19 +229,27 @@ This is a standard R package developed with `devtools`/`roxygen2`. Run
 these from an R console with the working directory set to the package
 root (or via `Rscript -e`).
 
-- Load package for interactive development: `devtools::load_all()`
+- Load package for interactive development:
+  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
 - Regenerate docs & NAMESPACE after editing roxygen comments:
-  `devtools::document()`
-- Run full test suite: `devtools::test()`
+  [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+- Run full test suite:
+  [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
 - Run a single test file: `devtools::test(filter = "net_regression")`
   (matches `test-net_regression.R`), or
   `testthat::test_file("tests/testthat/test-net_regression.R")`
-- Full package check (mirrors CI): `devtools::check()` or
+- Full package check (mirrors CI):
+  [`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
+  or
   [`rcmdcheck::rcmdcheck()`](http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.md)
-- Lint: `lintr::lint_package()`
-- Spell check: `spelling::spell_check_package()`
-- Code coverage: `covr::package_coverage()`
-- Rebuild `README.md` from `README.Rmd`: `devtools::build_readme()`
+- Lint:
+  [`lintr::lint_package()`](https://lintr.r-lib.org/reference/lint.html)
+- Spell check:
+  [`spelling::spell_check_package()`](https://docs.ropensci.org/spelling//reference/spell_check_package.html)
+- Code coverage:
+  [`covr::package_coverage()`](http://covr.r-lib.org/reference/package_coverage.md)
+- Rebuild `README.md` from `README.Rmd`:
+  [`devtools::build_readme()`](https://devtools.r-lib.org/reference/build_readme.html)
 - Check every topic is in the pkgdown index:
   [`pkgdown::check_pkgdown()`](https://pkgdown.r-lib.org/reference/check_pkgdown.html)
 - Build pkgdown site locally:
@@ -218,9 +270,10 @@ user-facing files are named `model_*.R`; the internal engine ported from
 |----|----|
 | `model_tests.R` | the test family: [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md) (CUG), [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md), [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md) (QAP), and `print.network_test()` |
 | `model_regression.R` | [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md), the formula front end (`convertToMatrixList()`, `getRHSNames()`, `specificationAdvice()`), and the `print.*` methods for its results |
-| `qap_engine.R` | `QAPglm()` and `QAPglmPermEst()` — the matrix-level engine that performs the baseline fit and the permutation inference |
+| `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
+| `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_utils.R` | formula parsing, input validation, `future` plumbing, matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
-| `qap_css.R` | `QAPcss()` and `QAPcssPermEst()` — the parallel engine for cognitive social structures |
+| `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method |
 | `qap_gmm.R` | GMM moment conditions and residual functions for the `estimator = "gmm"` path |
 | `qap_gpu.R` | the optional [torch](https://torch.mlverse.org/docs) batch OLS path, `gpu_batch_ols()` |
 | `qap_confusion.R` | probabilistic confusion matrices for binary outcomes |
@@ -247,23 +300,53 @@ is the single regression entry point. Its control flow is:
     ones that are missing a predictor with a warning, and pools the
     rest.
 3.  Resolve `family = "auto"` against the dependent variable (binomial
-    for a 0/1 outcome, gaussian otherwise), and resolve `mode` and
+    for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
     `diag` from the network with `manynet::is_directed()` and
     [`manynet::is_complex()`](https://stocnet.github.io/manynet/reference/mark_format_tie.html).
+    Report each resolution with `snet_info()`: a model the user did not
+    state is one they cannot describe in a paper.
 4.  Call `QAPglm()`, which parses the formula, fits the baseline model
-    once via `fit_qap_model()`, then runs `reps` permutations and
+    once via `fit_qap_model()`, then runs `times` permutations and
     aggregates them.
 5.  Attach a probabilistic confusion matrix where the outcome is binary,
     and class the result `net_regression`.
 
-Inside `QAPglm()` the null hypothesis decides the permutation scheme:
-`"qapy"` permutes the dependent matrix only, while `"qapspp"` implements
-Dekker et al.’s double semi-partialling, running one permutation set per
-main predictor after residualising it against the others. Permuted
-coefficients and test statistics are then compared against the baseline
-by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
-p-value matrices by `aggregate_perm_results()`. `QAPcss()` mirrors this
-same permute-refit-aggregate architecture for CSS data.
+Inside `QAPglm()` the `permute` control names what the null distribution
+permutes: `"outcome"` permutes the dependent matrix only, while
+`"predictor"` implements Dekker et al.’s double semi-partialling,
+running one permutation set per main predictor after residualising it
+against the others. With one predictor there is nothing to residualise
+against, so `"predictor"` falls back to `"outcome"` and says so.
+Permuted coefficients and test statistics are then compared against the
+baseline by `compare_perm_to_baseline()` and reduced to
+`lower`/`larger`/`abs` p-value matrices by `aggregate_perm_results()`.
+\### One engine, two shapes
+
+`QAPengine()` fits a dyadic network and a cognitive social structure
+through the same skeleton. They differ in four places and nowhere else,
+and those four live in a *shape* returned by `.qap_shape()`
+([R/qap_shapes.R](https://stocnet.github.io/R/qap_shapes.R)):
+
+| Field | Dyadic | Cognitive |
+|----|----|----|
+| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per perceiver |
+| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)` |
+| `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
+| `rand_slots` | sender, receiver, network | and perceiver |
+
+A fifth field, `max_trials`, says how many permutations to redraw before
+giving up: one for a dyadic network, since a degenerate draw is simply
+dropped and counted, and 10,000 for a CSS, whose sparse arrays often
+permute into an outcome with a single value.
+
+Add a shape rather than a second engine. A random-intercept slot a shape
+does not list cannot be requested, so a perceiver intercept on a dyadic
+network aborts by name rather than producing a formula that will not
+parse.
+
+Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same
+code, and every fix had to be made twice. One of them was made in only
+one place.
 
 The formula front end accepts these terms, and a new one should be added
 to `getRHSNames()` and `convertToMatrixList()` together:
@@ -381,6 +464,14 @@ These wrappers pass their input to [cli](https://cli.r-lib.org), so:
 - Braces interpolate, replacing
   [`paste()`](https://rdrr.io/r/base/paste.html):
   `snet_abort("{.val {dep}} is not in the data.")`.
+- A brace expression beginning with a dot is read as a *style*, not as
+  code, so `{.val {.directed_label(x)}}` aborts with “Invalid cli
+  literal”. Resolve a call to a dot-prefixed function into a local
+  variable first.
+- `snet_info()` pastes its arguments, so pass separate strings for a
+  longer message rather than a named
+  [`c()`](https://rdrr.io/r/base/c.html) vector: the names are dropped
+  and the strings run together without a space.
 - Use [cli](https://cli.r-lib.org) inline classes to mark up what you
   refer to — `{.fn}` for functions, `{.arg}`/`{.var}` for arguments and
   variables, `{.val}` for values, `{.pkg}` for packages, `{.url}` for
@@ -390,8 +481,17 @@ These wrappers pass their input to [cli](https://cli.r-lib.org), so:
   `snet_warn("Dropped {length(dropped)} network{?s}.")`.
 
 Prefer “`{.arg times}` must be a positive whole number” over “invalid
-input”. Where a function needs a package from `Suggests`, name it and
-say how to get it:
+input”.
+
+Report every default the model resolves for itself, with `snet_info()`:
+the family read from the outcome’s values, the directedness read from
+the network, and any fallback such as `permute = "predictor"` reducing
+to `"outcome"`. A model the user did not state is one they cannot
+describe in a paper. Because this output is silent by default, a broken
+message is invisible in every other test, so cover it in
+[tests/testthat/test-qap_reporting.R](https://stocnet.github.io/tests/testthat/test-qap_reporting.R),
+which runs with `snet_verbosity = "verbose"`. Where a function needs a
+package from `Suggests`, name it and say how to get it:
 `snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))`.
 
 The model specification advice printed by `specificationAdvice()` is
@@ -532,7 +632,8 @@ difficult to cover.
 
 Roxygen is configured with `markdown = TRUE`; `NAMESPACE` and all
 `man/*.Rd` files are generated — never hand-edit them. Run
-`devtools::document()` after changing any roxygen comment.
+[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+after changing any roxygen comment.
 
 - Related functions share one roxygen block via `@name`/`@rdname`,
   matching the file organisation above.
@@ -564,8 +665,9 @@ The README offers a landing page for new users, both on the GitHub
 repository as well as on the website. As such, it should make a
 compelling case for the value added of the package, and not drift out of
 date. Note that `README.md` is generated from `README.Rmd` — edit
-`README.Rmd` and re-knit (`devtools::build_readme()`), never edit
-`README.md` directly.
+`README.Rmd` and re-knit
+([`devtools::build_readme()`](https://devtools.r-lib.org/reference/build_readme.html)),
+never edit `README.md` directly.
 
 The website is created by pkgdown from
 [pkgdown/\_pkgdown.yml](https://stocnet.github.io/pkgdown/_pkgdown.yml),

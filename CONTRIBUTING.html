@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -75,8 +75,62 @@
 <h2 id="style">Style<a class="anchor" aria-label="anchor" href="#style"></a></h2>
 <p>In terms of style, we are aiming for “pleasant predictability” in terms of user experience. To that end, we have a regular syntax that users can rely on producing expected effects. Functions in the same family (<code>test_*()</code>, etc.) should share argument order and naming, so that behaviour is guessable across the family.</p>
 <p>We are also aiming for “declarative simplicity”, where functions carry as few arguments as possible to reduce the documentation burden, as well as the burden on users to understand all of the options. Use sensible defaults instead. Function and argument names should also follow the house rules (see below).</p>
+<p>One word means one thing, on both sides of the seam between the formula front end and the engine. The engine was ported from <code>MrQAP</code> and used its own vocabulary; the front end’s words won, since those are the ones users read:</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Word</th>
+<th>Means</th>
+<th>Not</th>
+</tr></thead><tbody><tr><td><code>times</code></td>
+<td>how many permutations</td>
+<td><code>reps</code></td>
+</tr><tr><td><code>directed</code></td>
+<td>logical, whether i→j differs from j→i</td>
+<td>
+<code>mode</code>, <code>"digraph"</code>/<code>"graph"</code>
+</td>
+</tr><tr><td><code>permute</code></td>
+<td>what the null distribution permutes: <code>"predictor"</code> or <code>"outcome"</code>
+</td>
+<td>
+<code>nullhyp</code>, <code>method</code>, <code>"qapspp"</code>/<code>"qapy"</code>
+</td>
+</tr><tr><td><code>.data</code></td>
+<td>the network the user passes in</td>
+<td>—</td>
+</tr><tr><td><code>matlist</code></td>
+<td>the named list of matrices the engine fits</td>
+<td><code>data</code></td>
+</tr><tr><td><code>net</code></td>
+<td>one coerced network, inside the formula front end</td>
+<td><code>data</code></td>
+</tr></tbody></table><p><code>mode</code> is reserved for a nodeset, as in one-mode and two-mode, which is what it means everywhere else in the ecosystem. Do not use it for directedness. <code>permute</code> replaced <code>method</code> because “method” says nothing about what differs; <code>"predictor"</code> and <code>"outcome"</code> name the thing that is actually shuffled. <code>data</code> is retired as an identifier: it named the network in one half of <a href="../R/model_regression.R">R/model_regression.R</a> and the matrix list in the other, one letter away from <code>.data</code>. Reserve <code>data =</code> for the argument a model fitter takes.</p>
 <p>When writing documentation or NEWS items, prefer breaking lines at punctuation.</p>
 <p>Make it clear when you are referring to functions by adding backticks and parentheses, e.g. <code>a_function()</code>, and arguments by adding an equals sign, e.g. <code>argument=</code>. Argument values or variables can be in double quotation marks, e.g. “value”.</p>
+</div>
+<div class="section level2">
+<h2 id="parked-extensions">Parked extensions<a class="anchor" aria-label="anchor" href="#parked-extensions"></a></h2>
+<p>Five model extensions sit on <code>feature/*</code> branches while the architecture settles, each tracked by a Github issue and each reinstated by reverting one commit on <code>develop</code>:</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Branch</th>
+<th>Removes</th>
+<th>Issue</th>
+</tr></thead><tbody><tr><td><code>feature/multinomial-comparison</code></td>
+<td>
+<code>family = "multinom"</code>, and the <code>comparison</code>/<code>reference</code> controls</td>
+<td><a href="https://github.com/stocnet/infernet/issues/7" class="external-link">#7</a></td>
+</tr><tr><td><code>feature/fixest-fixed-effects</code></td>
+<td>the <code>fixest_se_cluster</code> control and the <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> branch</td>
+<td><a href="https://github.com/stocnet/infernet/issues/8" class="external-link">#8</a></td>
+</tr><tr><td><code>feature/glmmtmb-mixed</code></td>
+<td>mixed negbin and mixed zip</td>
+<td><a href="https://github.com/stocnet/infernet/issues/9" class="external-link">#9</a></td>
+</tr><tr><td><code>feature/gmm-estimator</code></td>
+<td>the <code>estimator</code> control and <code>R/qap_gmm.R</code>
+</td>
+<td><a href="https://github.com/stocnet/infernet/issues/10" class="external-link">#10</a></td>
+</tr><tr><td><code>feature/torch-gpu</code></td>
+<td>
+<code>R/qap_gpu.R</code> and the <code>use_gpu</code> control</td>
+<td><a href="https://github.com/stocnet/infernet/issues/11" class="external-link">#11</a></td>
+</tr></tbody></table><p>Do not reinstate one by reverting onto <code>develop</code> without reading its issue: several need rewriting against the merged engine rather than reverting onto it. Do not add a new model family that needs a new <code>Suggests</code> package until the two engines are one, for the same reason these left.</p>
 </div>
 <div class="section level2">
 <h2 id="package-architecture">Package architecture<a class="anchor" aria-label="anchor" href="#package-architecture"></a></h2>
@@ -103,23 +157,23 @@
 <div class="section level3">
 <h3 id="common-commands">Common commands<a class="anchor" aria-label="anchor" href="#common-commands"></a></h3>
 <p>This is a standard R package developed with <code>devtools</code>/<code>roxygen2</code>. Run these from an R console with the working directory set to the package root (or via <code>Rscript -e</code>).</p>
-<ul><li>Load package for interactive development: <code>devtools::load_all()</code>
+<ul><li>Load package for interactive development: <code><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">devtools::load_all()</a></code>
 </li>
-<li>Regenerate docs &amp; NAMESPACE after editing roxygen comments: <code>devtools::document()</code>
+<li>Regenerate docs &amp; NAMESPACE after editing roxygen comments: <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>
 </li>
-<li>Run full test suite: <code>devtools::test()</code>
+<li>Run full test suite: <code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>
 </li>
 <li>Run a single test file: <code>devtools::test(filter = "net_regression")</code> (matches <code>test-net_regression.R</code>), or <code>testthat::test_file("tests/testthat/test-net_regression.R")</code>
 </li>
-<li>Full package check (mirrors CI): <code>devtools::check()</code> or <code><a href="http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.html" class="external-link">rcmdcheck::rcmdcheck()</a></code>
+<li>Full package check (mirrors CI): <code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> or <code><a href="http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.html" class="external-link">rcmdcheck::rcmdcheck()</a></code>
 </li>
-<li>Lint: <code>lintr::lint_package()</code>
+<li>Lint: <code><a href="https://lintr.r-lib.org/reference/lint.html" class="external-link">lintr::lint_package()</a></code>
 </li>
-<li>Spell check: <code>spelling::spell_check_package()</code>
+<li>Spell check: <code><a href="https://docs.ropensci.org/spelling//reference/spell_check_package.html" class="external-link">spelling::spell_check_package()</a></code>
 </li>
-<li>Code coverage: <code>covr::package_coverage()</code>
+<li>Code coverage: <code><a href="http://covr.r-lib.org/reference/package_coverage.html" class="external-link">covr::package_coverage()</a></code>
 </li>
-<li>Rebuild <code>README.md</code> from <code>README.Rmd</code>: <code>devtools::build_readme()</code>
+<li>Rebuild <code>README.md</code> from <code>README.Rmd</code>: <code><a href="https://devtools.r-lib.org/reference/build_readme.html" class="external-link">devtools::build_readme()</a></code>
 </li>
 <li>Check every topic is in the pkgdown index: <code><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">pkgdown::check_pkgdown()</a></code>
 </li>
@@ -140,12 +194,13 @@
 <code><a href="reference/regression.html">net_regression()</a></code>, the formula front end (<code>convertToMatrixList()</code>, <code>getRHSNames()</code>, <code>specificationAdvice()</code>), and the <code>print.*</code> methods for its results</td>
 </tr><tr><td><code>qap_engine.R</code></td>
 <td>
-<code>QAPglm()</code> and <code>QAPglmPermEst()</code> — the matrix-level engine that performs the baseline fit and the permutation inference</td>
+<code>QAPengine()</code> and <code>QAPPermEst()</code> — the one matrix-level engine, for both a dyadic network and a cognitive social structure</td>
+</tr><tr><td><code>qap_shapes.R</code></td>
+<td>the four things the two shapes do differently, and nothing else</td>
 </tr><tr><td><code>qap_utils.R</code></td>
 <td>formula parsing, input validation, <code>future</code> plumbing, matrix permutation (<code>RMPerm()</code>), the model-fitting dispatcher <code>fit_qap_model()</code>, and the permutation aggregators</td>
 </tr><tr><td><code>qap_css.R</code></td>
-<td>
-<code>QAPcss()</code> and <code>QAPcssPermEst()</code> — the parallel engine for cognitive social structures</td>
+<td>what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method</td>
 </tr><tr><td><code>qap_gmm.R</code></td>
 <td>GMM moment conditions and residual functions for the <code>estimator = "gmm"</code> path</td>
 </tr><tr><td><code>qap_gpu.R</code></td>
@@ -166,10 +221,31 @@
 <p><code><a href="reference/regression.html">net_regression()</a></code> (<a href="../R/model_regression.R">R/model_regression.R</a>) is the single regression entry point. Its control flow is:</p>
 <ol style="list-style-type: decimal"><li>Merge the user’s <code>control</code> list over <code>.default_control()</code>, so an unnamed entry falls back to the default rather than to <code>NULL</code>.</li>
 <li>Dispatch on the input shape. A single network goes to <code>convertToMatrixList()</code>; a list of networks goes to <code>.prepare_list_of_graphs()</code>, which converts each network, drops the ones that are missing a predictor with a warning, and pools the rest.</li>
-<li>Resolve <code>family = "auto"</code> against the dependent variable (binomial for a 0/1 outcome, gaussian otherwise), and resolve <code>mode</code> and <code>diag</code> from the network with <code>manynet::is_directed()</code> and <code><a href="https://stocnet.github.io/manynet/reference/mark_format_tie.html" class="external-link">manynet::is_complex()</a></code>.</li>
-<li>Call <code>QAPglm()</code>, which parses the formula, fits the baseline model once via <code>fit_qap_model()</code>, then runs <code>reps</code> permutations and aggregates them.</li>
+<li>Resolve <code>family = "auto"</code> against the dependent variable (binomial for a 0/1 outcome, gaussian otherwise), and resolve <code>directed</code> and <code>diag</code> from the network with <code>manynet::is_directed()</code> and <code><a href="https://stocnet.github.io/manynet/reference/mark_format_tie.html" class="external-link">manynet::is_complex()</a></code>. Report each resolution with <code>snet_info()</code>: a model the user did not state is one they cannot describe in a paper.</li>
+<li>Call <code>QAPglm()</code>, which parses the formula, fits the baseline model once via <code>fit_qap_model()</code>, then runs <code>times</code> permutations and aggregates them.</li>
 <li>Attach a probabilistic confusion matrix where the outcome is binary, and class the result <code>net_regression</code>.</li>
-</ol><p>Inside <code>QAPglm()</code> the null hypothesis decides the permutation scheme: <code>"qapy"</code> permutes the dependent matrix only, while <code>"qapspp"</code> implements Dekker et al.’s double semi-partialling, running one permutation set per main predictor after residualising it against the others. Permuted coefficients and test statistics are then compared against the baseline by <code>compare_perm_to_baseline()</code> and reduced to <code>lower</code>/<code>larger</code>/<code>abs</code> p-value matrices by <code>aggregate_perm_results()</code>. <code>QAPcss()</code> mirrors this same permute-refit-aggregate architecture for CSS data.</p>
+</ol><p>Inside <code>QAPglm()</code> the <code>permute</code> control names what the null distribution permutes: <code>"outcome"</code> permutes the dependent matrix only, while <code>"predictor"</code> implements Dekker et al.’s double semi-partialling, running one permutation set per main predictor after residualising it against the others. With one predictor there is nothing to residualise against, so <code>"predictor"</code> falls back to <code>"outcome"</code> and says so. Permuted coefficients and test statistics are then compared against the baseline by <code>compare_perm_to_baseline()</code> and reduced to <code>lower</code>/<code>larger</code>/<code>abs</code> p-value matrices by <code>aggregate_perm_results()</code>. ### One engine, two shapes</p>
+<p><code>QAPengine()</code> fits a dyadic network and a cognitive social structure through the same skeleton. They differ in four places and nowhere else, and those four live in a <em>shape</em> returned by <code>.qap_shape()</code> (<a href="../R/qap_shapes.R">R/qap_shapes.R</a>):</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Field</th>
+<th>Dyadic</th>
+<th>Cognitive</th>
+</tr></thead><tbody><tr><td><code>vectorise()</code></td>
+<td>
+<code>make_qap_data()</code>, one row per dyad</td>
+<td>
+<code>make_css_data()</code>, one row per dyad per perceiver</td>
+</tr><tr><td><code>permute()</code></td>
+<td><code>RMPerm()</code></td>
+<td><code>RMPerm(CSS = TRUE)</code></td>
+</tr><tr><td><code>unresidualise()</code></td>
+<td><code>residuals_to_matrix()</code></td>
+<td><code>residuals_to_array()</code></td>
+</tr><tr><td><code>rand_slots</code></td>
+<td>sender, receiver, network</td>
+<td>and perceiver</td>
+</tr></tbody></table><p>A fifth field, <code>max_trials</code>, says how many permutations to redraw before giving up: one for a dyadic network, since a degenerate draw is simply dropped and counted, and 10,000 for a CSS, whose sparse arrays often permute into an outcome with a single value.</p>
+<p>Add a shape rather than a second engine. A random-intercept slot a shape does not list cannot be requested, so a perceiver intercept on a dyadic network aborts by name rather than producing a formula that will not parse.</p>
+<p>Before this merge the two were <code>QAPglm()</code> and <code>QAPcss()</code>, 55% the same code, and every fix had to be made twice. One of them was made in only one place.</p>
 <p>The formula front end accepts these terms, and a new one should be added to <code>getRHSNames()</code> and <code>convertToMatrixList()</code> together:</p>
 <ul><li>
 <code>ego(attr)</code> — the sender’s value of a nodal attribute,</li>
@@ -231,9 +307,13 @@
 </tr></tbody></table><p>Every wrapper except <code>snet_abort()</code> is silenced by <code>options(snet_verbosity = "quiet")</code>, which is the <em>default</em> — so informational output must never be load-bearing, and errors must carry everything the user needs to act. Users opt in with e.g. <code>options(snet_verbosity = "verbose")</code>.</p>
 <p>These wrappers pass their input to <a href="https://cli.r-lib.org" class="external-link">cli</a>, so:</p>
 <ul><li>Braces interpolate, replacing <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste()</a></code>: <code>snet_abort("{.val {dep}} is not in the data.")</code>.</li>
+<li>A brace expression beginning with a dot is read as a <em>style</em>, not as code, so <code>{.val {.directed_label(x)}}</code> aborts with “Invalid cli literal”. Resolve a call to a dot-prefixed function into a local variable first.</li>
+<li>
+<code>snet_info()</code> pastes its arguments, so pass separate strings for a longer message rather than a named <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> vector: the names are dropped and the strings run together without a space.</li>
 <li>Use <a href="https://cli.r-lib.org" class="external-link">cli</a> inline classes to mark up what you refer to — <code>{.fn}</code> for functions, <code>{.arg}</code>/<code>{.var}</code> for arguments and variables, <code>{.val}</code> for values, <code>{.pkg}</code> for packages, <code>{.url}</code> for links.</li>
 <li>Use <a href="https://cli.r-lib.org" class="external-link">cli</a>’s pluralisation rather than hand-written branches: <code>snet_warn("Dropped {length(dropped)} network{?s}.")</code>.</li>
-</ul><p>Prefer “<code>{.arg times}</code> must be a positive whole number” over “invalid input”. Where a function needs a package from <code>Suggests</code>, name it and say how to get it: <code>snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))</code>.</p>
+</ul><p>Prefer “<code>{.arg times}</code> must be a positive whole number” over “invalid input”.</p>
+<p>Report every default the model resolves for itself, with <code>snet_info()</code>: the family read from the outcome’s values, the directedness read from the network, and any fallback such as <code>permute = "predictor"</code> reducing to <code>"outcome"</code>. A model the user did not state is one they cannot describe in a paper. Because this output is silent by default, a broken message is invisible in every other test, so cover it in <a href="../tests/testthat/test-qap_reporting.R">tests/testthat/test-qap_reporting.R</a>, which runs with <code>snet_verbosity = "verbose"</code>. Where a function needs a package from <code>Suggests</code>, name it and say how to get it: <code>snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))</code>.</p>
 <p>The model specification advice printed by <code>specificationAdvice()</code> is informational, not load-bearing, so it belongs at <code>snet_info()</code>.</p>
 </div>
 <div class="section level3">
@@ -278,7 +358,7 @@
 </div>
 <div class="section level3">
 <h3 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h3>
-<p>Roxygen is configured with <code>markdown = TRUE</code>; <code>NAMESPACE</code> and all <code>man/*.Rd</code> files are generated — never hand-edit them. Run <code>devtools::document()</code> after changing any roxygen comment.</p>
+<p>Roxygen is configured with <code>markdown = TRUE</code>; <code>NAMESPACE</code> and all <code>man/*.Rd</code> files are generated — never hand-edit them. Run <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> after changing any roxygen comment.</p>
 <ul><li>Related functions share one roxygen block via <code>@name</code>/<code>@rdname</code>, matching the file organisation above.</li>
 <li>Document each argument once. <code><a href="reference/regression.html">net_regression()</a></code> takes its options through a <code>control</code> list, so document each entry of that list as a bullet under <code>@param control</code> rather than as its own <code>@param</code>. A stray <code>@param</code> for something that is no longer a formal argument is an R CMD check warning, and the duplicated blocks that the engine merge introduced were exactly that.</li>
 <li>Every exported function needs a runnable <code>@examples</code> block: examples are run by R CMD check, and they are also the fastest documentation for users. Prefer the bundled <code>ison_*</code>/<code>fict_*</code> networks from <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> over ad hoc constructions, and keep <code>times</code> small so the example is fast.</li>
@@ -288,7 +368,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="readme-and-website">README and website<a class="anchor" aria-label="anchor" href="#readme-and-website"></a></h3>
-<p>The README offers a landing page for new users, both on the GitHub repository as well as on the website. As such, it should make a compelling case for the value added of the package, and not drift out of date. Note that <code>README.md</code> is generated from <code>README.Rmd</code> — edit <code>README.Rmd</code> and re-knit (<code>devtools::build_readme()</code>), never edit <code>README.md</code> directly.</p>
+<p>The README offers a landing page for new users, both on the GitHub repository as well as on the website. As such, it should make a compelling case for the value added of the package, and not drift out of date. Note that <code>README.md</code> is generated from <code>README.Rmd</code> — edit <code>README.Rmd</code> and re-knit (<code><a href="https://devtools.r-lib.org/reference/build_readme.html" class="external-link">devtools::build_readme()</a></code>), never edit <code>README.md</code> directly.</p>
 <p>The website is created by pkgdown from <a href="../pkgdown/_pkgdown.yml">pkgdown/_pkgdown.yml</a>, and is deployed automatically when changes reach <code>main</code>. Please make sure that the pkgdown website will build correctly before opening a PR:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgdown</span><span class="fu">::</span><span class="fu"><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">check_pkgdown</a></span><span class="op">(</span><span class="op">)</span>              <span class="co"># every topic is in the index</span></span>

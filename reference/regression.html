@@ -5,13 +5,12 @@ The formula front-end is the familiar
 y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) + tertius(attr, fn) syntax, plus plain references to other networks in the
 object. Internally the response and predictors are packed into matrices
 and handed to a QAP engine (ported from MrQAP) that supports:
-gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-multinomial families;
-&quot;qap&quot; (Dekker's double semi-partialling plus) and &quot;qapy&quot;
-(permute-y-only) null hypotheses;
-random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+gaussian, binomial, poisson, negative binomial, and zero-inflated
+Poisson families;
+two permutation schemes: &quot;predictor&quot; (Dekker's double semi-partialling)
+and &quot;outcome&quot;;
+random intercepts (lme4);
 robust (HC3) standard errors;
-optional torch-based batch OLS on the GPU;
 lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.
 
@@ -21,13 +20,12 @@ The formula front-end is the familiar
 y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) + tertius(attr, fn) syntax, plus plain references to other networks in the
 object. Internally the response and predictors are packed into matrices
 and handed to a QAP engine (ported from MrQAP) that supports:
-gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-multinomial families;
-&quot;qap&quot; (Dekker's double semi-partialling plus) and &quot;qapy&quot;
-(permute-y-only) null hypotheses;
-random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+gaussian, binomial, poisson, negative binomial, and zero-inflated
+Poisson families;
+two permutation schemes: &quot;predictor&quot; (Dekker's double semi-partialling)
+and &quot;outcome&quot;;
+random intercepts (lme4);
 robust (HC3) standard errors;
-optional torch-based batch OLS on the GPU;
 lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.
 
@@ -39,7 +37,7 @@ dropped with a warning and the remaining networks are pooled.
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,13 +70,12 @@ using the multiple regression quadratic assignment procedure (MRQAP).</p>
 <p>The formula front-end is the familiar
 <code>y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) + tertius(attr, fn)</code> syntax, plus plain references to other networks in the
 object. Internally the response and predictors are packed into matrices
-and handed to a QAP engine (ported from MrQAP) that supports:</p><ul><li><p>gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-multinomial families;</p></li>
-<li><p><code>"qap"</code> (Dekker's double semi-partialling plus) and <code>"qapy"</code>
-(permute-y-only) null hypotheses;</p></li>
-<li><p>random intercepts (lme4 / glmmTMB) and fixed effects (fixest);</p></li>
+and handed to a QAP engine (ported from MrQAP) that supports:</p><ul><li><p>gaussian, binomial, poisson, negative binomial, and zero-inflated
+Poisson families;</p></li>
+<li><p>two permutation schemes: <code>"predictor"</code> (Dekker's double semi-partialling)
+and <code>"outcome"</code>;</p></li>
+<li><p>random intercepts (lme4);</p></li>
 <li><p>robust (HC3) standard errors;</p></li>
-<li><p>optional torch-based batch OLS on the GPU;</p></li>
 <li><p>lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.</p></li>
 </ul></div>
@@ -124,24 +121,23 @@ dropped with a warning.</p></dd>
 
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
 <dd><p>Named list of additional controls; unspecified entries fall
-back to the defaults below.</p><ul><li><p><code>method</code>: <code>"qap"</code> (double semi-partialling plus, default) or <code>"qapy"</code>
-(permute y only).</p></li>
+back to the defaults below.</p><ul><li><p><code>permute</code>: what the null distribution permutes. <code>"predictor"</code> (the
+default) residualises each main predictor against the others and
+permutes that residual, following Dekker et al. (2007). <code>"outcome"</code>
+permutes the dependent matrix and leaves the predictors alone. With one
+predictor there is nothing to residualise against, so <code>"predictor"</code>
+reduces to <code>"outcome"</code> and says so.</p></li>
 <li><p><code>strategy</code>: future plan, e.g. <code>"sequential"</code> (default), <code>"multisession"</code>.</p></li>
 <li><p><code>family</code>: <code>"auto"</code> (default; gaussian for weighted networks, binomial
 for binary), <code>"gaussian"</code>, <code>"binomial"</code>, <code>"poisson"</code>, <code>"negbin"</code>,
-<code>"zip"</code>, or <code>"multinom"</code>.</p></li>
-<li><p><code>estimator</code>: <code>"standard"</code> (default) or <code>"gmm"</code> (binomial/poisson/
-negbin/zip).</p></li>
-<li><p><code>mode</code>: <code>"directed"</code> / <code>"undirected"</code> (default auto-detected from
-<code>.data</code>).</p></li>
+or <code>"zip"</code>.</p></li>
+<li><p><code>directed</code>: logical, whether a tie from i to j differs from one from j
+to i. Read from <code>.data</code> unless given, and reported when read.</p></li>
 <li><p><code>diag</code>: logical, include loops (default auto-detected).</p></li>
 <li><p><code>seed</code>, <code>groups</code>, <code>ncores</code>: passed through to the engine.</p></li>
 <li><p><code>use_robust_errors</code>: HC3 standard errors.</p></li>
-<li><p><code>fixest_se_cluster</code>: cluster variable for fixest.</p></li>
-<li><p><code>reference</code>, <code>comparison</code>: multinomial / pairwise-comparison options.</p></li>
 <li><p><code>random_intercept_nets</code> / <code>_sender</code> / <code>_receiver</code>: lme4-style REs.</p></li>
 <li><p><code>less_mem</code>: drop the baseline model object from the return.</p></li>
-<li><p><code>use_gpu</code>: torch-based batch OLS (gaussian only).</p></li>
 </ul></dd>
 
 
