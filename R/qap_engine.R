@@ -1,491 +1,290 @@
-# QAPglm engine --------------------------------------------------------------
+# QAP engine ------------------------------------------------------------------
 #
-# Internal.  The matrix-level engine that drives net_regression(): performs
-# the baseline fit and the QAP / QAP-DSP permutation inference on a pre-built
-# list of matrices.  Ported from MrQAP::QAPglm().  All parallelism uses the
-# `future` framework via `run_permutations()`; no progressr integration.
+# Internal. The matrix-level engine behind net_regression(): it performs the
+# baseline fit and the permutation inference on a pre-built list of matrices,
+# for both a dyadic network and a cognitive social structure.
+#
+# The two used to be `QAPglm()` and `QAPcss()`, two 200-line functions that were
+# 55% the same code. Everything they shared is here; everything they did not is
+# in R/qap_shapes.R. Ported from MrQAP. All parallelism uses the `future`
+# framework via `run_permutations()`.
 
 #' @keywords internal
 #' @noRd
-QAPglm <- function(formula,
-                   data,
-                   family    = "gaussian",
-                   mode      = "directed",
-                   diag      = FALSE,
-                   nullhyp   = "qapspp",
-                   estimator = "standard",
-                   reps      = 1000,
-                   seed      = NULL,
-                   groups    = NULL,
-                   strategy  = "sequential",
-                   ncores    = NULL,
-                   fixest_se_cluster = NULL,
-                   comparison = NULL,
-                   reference  = NULL,
-                   random_intercept_nets     = FALSE,
-                   random_intercept_sender   = FALSE,
-                   random_intercept_receiver = FALSE,
-                   use_robust_errors = FALSE,
-                   less_mem   = FALSE,
-                   use_gpu    = FALSE) {
+QAPengine <- function(formula,
+                      matlist,
+                      css       = FALSE,
+                      family    = "gaussian",
+                      directed  = TRUE,
+                      diag      = FALSE,
+                      permute   = "predictor",
+                      times     = 1000,
+                      seed      = NULL,
+                      groups    = NULL,
+                      strategy  = "sequential",
+                      ncores    = NULL,
+                      random_intercept_nets      = FALSE,
+                      random_intercept_sender    = FALSE,
+                      random_intercept_receiver  = FALSE,
+                      random_intercept_perceiver = FALSE,
+                      use_robust_errors = FALSE,
+                      less_mem  = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
 
-  parsed <- parse_qap_formula(formula, fixest_se_cluster)
-  dep        <- parsed$dependent
-  main       <- parsed$main
-  data_vars  <- intersect(parsed$all_data_vars, names(data))
+  shape  <- .qap_shape(css)
+  parsed <- parse_qap_formula(formula)
+  dep       <- parsed$dependent
+  main      <- parsed$main
+  data_vars <- intersect(parsed$all_data_vars, names(matlist))
 
-  validate_qap_input(data, parsed, css = FALSE)
-  large <- is.list(data[[dep]])
+  validate_qap_input(matlist, parsed, css = css)
+  large <- is.list(matlist[[dep]])
 
-  mode_internal <- if (mode == "directed") "digraph" else "graph"
+  # ---- random intercepts ----------------------------------------------------
 
-  rin <- random_intercept_nets
-  ris <- random_intercept_sender
-  rir <- random_intercept_receiver
-
-  mod <- build_internal_formula(formula, rin = rin, ris = ris, rir = rir)
-  mod_str <- paste(deparse(mod, width.cutoff = 500), collapse = " ")
-  has_random <- grepl("\\(", mod_str) || parsed$has_random
-  use_fixest <- parsed$use_fixest
-  if (has_random && use_fixest) {
+  requested <- c(nets      = random_intercept_nets,
+                 sender    = random_intercept_sender,
+                 receiver  = random_intercept_receiver,
+                 perceiver = random_intercept_perceiver)
+  # A slot a shape does not have cannot be asked for. A dyadic network has no
+  # perceiver, so a perceiver intercept there is a mistake worth naming.
+  unavailable <- names(requested)[requested &
+                                    !(names(requested) %in% names(shape$rand_slots))]
+  if (length(unavailable) > 0) {
+    label <- shape$label
+    manynet::snet_abort(
+      "A {label} has no {.val {unavailable}} random intercept{?s}.")
+  }
+  if (!directed && (requested[["sender"]] || requested[["receiver"]])) {
     manynet::snet_warn(
-      c("Cannot combine {.pkg fixest} fixed effects with {.pkg lme4} random effects.",
-        i = "Using the random effects only."))
-    use_fixest <- FALSE
+      c("An undirected network has no senders or receivers.",
+        i = "Setting the sender and receiver random intercepts to {.val FALSE}."))
+    requested[c("sender", "receiver")] <- FALSE
   }
 
-  mod <- stats::as.formula(mod_str)
-
-  if (!large) {
-    pred <- make_qap_data(y    = data[[dep]],
-                          x    = data[data_vars],
-                          g    = groups,
-                          diag = diag,
-                          mode = mode_internal,
-                          net  = 1,
-                          perm = FALSE,
-                          xi   = NULL)
+  slots  <- shape$rand_slots
+  active <- slots[requested[names(slots)]]
+  # `paste0()` folds a zero-length argument into "", so an empty set of
+  # intercepts would otherwise produce the unparseable term " + (1|)".
+  rand_part <- if (length(active) == 0) {
+    ""
   } else {
-    pred_list <- vector("list", length(data[[dep]]))
-    for (net in seq_along(data[[dep]])) {
-      x2 <- lapply(data_vars, function(v) data[[v]][[net]])
-      names(x2) <- data_vars
-      g2 <- if (!is.null(groups)) groups[[net]] else NULL
-      pred_list[[net]] <- make_qap_data(y    = data[[dep]][[net]],
-                                        x    = x2,
-                                        g    = g2,
-                                        diag = diag,
-                                        mode = mode_internal,
-                                        net  = net,
-                                        perm = FALSE,
-                                        xi   = NULL)
-    }
-    pred <- do.call(rbind, pred_list)
+    paste0(" + (1|", active, ")", collapse = "")
   }
 
+  mod <- stats::as.formula(paste(
+    paste(deparse(formula, width.cutoff = 500), collapse = " "), rand_part))
+  has_random <- length(active) > 0 || parsed$has_random
+
+  if (diag && css)
+    manynet::snet_warn(
+      "Results may not be valid where the diagonal is included.")
+
+  # ---- vectorise ------------------------------------------------------------
+
+  if (!large && !is.null(groups)) {
+    # A blocking factor names the nodes of one mode. A one-mode network has a
+    # single mode, but a two-mode network has two of different sizes, and either
+    # may be the one that is blocked. `.perm_order()` already permutes a mode
+    # freely when the factor cannot describe it, so accept a length that matches
+    # any side of the outcome and abort only when it matches none.
+    ns <- unique(dim(matlist[[dep]]))
+    if (!length(groups) %in% ns)
+      manynet::snet_abort(
+        c("{.arg groups} is of length {length(groups)}.",
+          i = "It must match one of the outcome's node sets: {ns}."))
+    groups <- as.factor(groups)
+  }
+
+  vec <- .vectorise_matlist(shape, matlist, dep, data_vars, groups,
+                            diag, directed, large)
+  pred <- vec$pred
   names(pred)[names(pred) == "yv"] <- dep
 
-  if (!is.null(comparison) && is.null(reference)) {
-    reference <- NULL
-  }
+  # ---- baseline -------------------------------------------------------------
 
   fit <- list()
+  fit$base <- fit_qap_model(mod          = mod,
+                            pred         = pred,
+                            family       = family,
+                            use_robust_errors = use_robust_errors,
+                            main_vars    = main,
+                            has_random   = has_random)
 
-  rand_part <- ""
-  if (rin) rand_part <- paste(rand_part, "+ (1|nv)")
-  if (ris) rand_part <- paste(rand_part, "+ (1|sv)")
-  if (rir) rand_part <- paste(rand_part, "+ (1|rv)")
-
-  if (is.null(comparison)) {
-    fit$base <- fit_qap_model(mod          = mod,
-                              pred         = pred,
-                              family       = family,
-                              estimator    = estimator,
-                              use_fixest   = use_fixest,
-                              fixest_se_cluster = fixest_se_cluster,
-                              use_robust_errors = use_robust_errors,
-                              main_vars    = main,
-                              has_random   = has_random,
-                              reference    = reference)
-  } else {
-    fit$base <- vector("list", length(comparison))
-    names(fit$base) <- names(comparison)
-    for (k in seq_along(comparison)) {
-      predK <- pred[pred[[dep]] %in% comparison[[k]], ]
-      predK[[dep]] <- ifelse(predK[[dep]] == comparison[[k]][1], 0, 1)
-      fit$base[[k]] <- fit_qap_model(mod          = mod,
-                                     pred         = predK,
-                                     family       = family,
-                                     estimator    = estimator,
-                                     use_fixest   = use_fixest,
-                                     fixest_se_cluster = fixest_se_cluster,
-                                     use_robust_errors = use_robust_errors,
-                                     main_vars    = main,
-                                     has_random   = has_random,
-                                     reference    = reference)
-    }
-  }
-
-  if ((nullhyp == "qapspp") && (length(main) == 1)) nullhyp <- "qapy"
-
-  # The GPU path is a shortcut, not a requirement, so an unmet condition falls
-  # back to the CPU permutation loop rather than aborting. `gpu_available()`
-  # covers the two conditions the user cannot see from the call: whether
-  # {torch} is installed, and whether CUDA is reachable.
-  use_gpu <- use_gpu && family == "gaussian" && !has_random && !use_fixest &&
-    is.null(comparison) && !large
-  if (use_gpu && !gpu_available()) {
+  # Double semi-partialling residualises a predictor against the others, so
+  # with one predictor there are none and the scheme reduces to permuting the
+  # outcome. Say so: the result would otherwise report a scheme nobody chose.
+  if ((permute == "predictor") && (length(main) == 1)) {
+    permute <- "outcome"
     manynet::snet_info(
-      "No CUDA device is reachable, so using the CPU permutation path.")
-    use_gpu <- FALSE
+      "Permuting {.val outcome}, not {.val predictor}:",
+      "with one predictor there is nothing to residualise it against.")
   }
 
-  if (use_gpu) {
+  # ---- permute --------------------------------------------------------------
 
-    if (nullhyp == "qapy") {
-      gpu_res <- gpu_batch_ols(data         = data,
-                               parsed       = parsed,
-                               mode         = mode_internal,
-                               diag         = diag,
-                               groups       = groups,
-                               reps         = reps,
-                               baseline_fit = fit$base,
-                               perm_var     = NULL)
-      fit$lower  <- gpu_res$lower
-      fit$larger <- gpu_res$larger
-      fit$abs    <- gpu_res$abs
+  old_plan <- setup_future_plan(strategy, ncores)
+  on.exit({
+    future::plan(old_plan)
+    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
+  }, add = TRUE)
 
-    } else if (nullhyp == "qapspp") {
-      n_coefs <- length(fit$base$coefficients)
-      fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
-                           dimnames = list(c("perm_coefs", "perm_t"),
-                                           names(fit$base$coefficients)))
-      fit$larger <- fit$abs <- fit$lower
+  perm_args <- list(shape. = shape, directed. = directed, diag. = diag,
+                    mod. = mod, groups. = groups, fit. = fit$base,
+                    family. = family, use_robust_errors. = use_robust_errors,
+                    has_random. = has_random, main_vars. = main,
+                    data_vars. = data_vars, parsed. = parsed)
 
-      for (xi in main) {
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_matrix(xR, data[[xi]], pred, large)
+  if (permute == "outcome") {
+    res <- do.call(run_permutations,
+                   c(list(times, QAPPermEst, matlist. = matlist,
+                          perm_var. = NULL), perm_args))
+    agg <- aggregate_perm_results(res, times)
+    fit$lower  <- agg$lower
+    fit$larger <- agg$larger
+    fit$abs    <- agg$abs
 
-        gpu_res <- gpu_batch_ols(data         = data_resid,
-                                 parsed       = parsed,
-                                 mode         = mode_internal,
-                                 diag         = diag,
-                                 groups       = groups,
-                                 reps         = reps,
-                                 baseline_fit = fit$base,
-                                 perm_var     = xi)
-        fit$lower[, xi]  <- gpu_res$lower[, xi]
-        fit$larger[, xi] <- gpu_res$larger[, xi]
-        fit$abs[, xi]    <- gpu_res$abs[, xi]
-      }
-    }
+  } else if (permute == "predictor") {
+    n_coefs <- length(fit$base$coefficients)
+    fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
+                         dimnames = list(c("perm_coefs", "perm_t"),
+                                         names(fit$base$coefficients)))
+    fit$larger <- fit$abs <- fit$lower
 
-  } else {
-    old_plan <- setup_future_plan(strategy, ncores)
-    on.exit({
-      future::plan(old_plan)
-      options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-    }, add = TRUE)
-
-    if (nullhyp == "qapy") {
-      res <- run_permutations(
-        reps, QAPglmPermEst,
-        data.     = data,
-        perm_var. = NULL,
-        mode.     = mode_internal,
-        diag.     = diag,
-        mod.      = mod,
-        groups.   = groups,
-        fit.      = if (is.null(comparison)) fit$base else fit$base,
-        family.   = family,
-        estimator. = estimator,
-        use_fixest. = use_fixest,
-        fixest_se_cluster. = fixest_se_cluster,
-        use_robust_errors. = use_robust_errors,
-        has_random. = has_random,
-        main_vars. = main,
-        data_vars. = data_vars,
-        parsed.   = parsed,
-        comp.     = comparison,
-        reference. = reference
-      )
-
-      if (is.null(comparison)) {
-        agg <- aggregate_perm_results(res, reps)
-        fit$lower  <- agg$lower
-        fit$larger <- agg$larger
-        fit$abs    <- agg$abs
-      } else {
-        res_valid <- Filter(Negate(is.null), res)
-        n_valid   <- length(res_valid)
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower)  <- names(comparison)
-        names(fit$larger) <- names(comparison)
-        names(fit$abs)    <- names(comparison)
-        resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-        for (k in seq_along(comparison)) {
-          cn <- names(comparison)[k]
-          fit$lower[[k]]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-          fit$larger[[k]] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-          fit$abs[[k]]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-        }
+    for (xi in main) {
+      test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
+      if (!is.numeric(test_val)) {
+        manynet::snet_warn(
+          c("Cannot residualise the non-numeric predictor {.val {xi}}.",
+            i = "Skipping double semi-partialling for this predictor."))
+        next
       }
 
-    } else if (nullhyp == "qapspp") {
-      if (is.null(comparison)) {
-        n_coefs <- length(fit$base$coefficients)
-        fit$lower  <- matrix(NA, nrow = 2, ncol = n_coefs,
-                             dimnames = list(c("perm_coefs", "perm_t"),
-                                             names(fit$base$coefficients)))
-        fit$larger <- fit$abs <- fit$lower
-      } else {
-        fit$lower <- fit$larger <- fit$abs <-
-          vector("list", length(comparison))
-        names(fit$lower) <- names(fit$larger) <-
-          names(fit$abs)  <- names(comparison)
-        for (k in seq_along(comparison)) {
-          n_coefs <- length(fit$base[[k]]$coefficients)
-          fit$lower[[k]] <- matrix(NA, nrow = 2, ncol = n_coefs,
-                                   dimnames = list(c("perm_coefs", "perm_t"),
-                                                   names(fit$base[[k]]$coefficients)))
-          fit$larger[[k]] <- fit$abs[[k]] <- fit$lower[[k]]
-        }
-      }
+      xR <- residualise_predictor(xi, pred, main,
+                                  has_random   = has_random,
+                                  rand_formula = rand_part)
+      matlist_resid <- matlist
+      matlist_resid[[xi]] <- shape$unresidualise(xR, matlist[[xi]], pred, large,
+                                                 vec$valid, vec$valid_list)
 
-      for (xi in main) {
-        xR <- residualise_predictor(xi, pred, main,
-                                    has_random   = has_random,
-                                    rand_formula = rand_part)
-
-        data_resid <- data
-        data_resid[[xi]] <- residuals_to_matrix(xR, data[[xi]], pred, large)
-
-        res <- run_permutations(
-          reps, QAPglmPermEst,
-          data.     = data_resid,
-          perm_var. = xi,
-          mode.     = mode_internal,
-          diag.     = diag,
-          mod.      = mod,
-          groups.   = groups,
-          fit.      = if (is.null(comparison)) fit$base else fit$base,
-          family.   = family,
-          estimator. = estimator,
-          use_fixest. = use_fixest,
-          fixest_se_cluster. = fixest_se_cluster,
-          use_robust_errors. = use_robust_errors,
-          has_random. = has_random,
-          main_vars. = main,
-          data_vars. = data_vars,
-          parsed.   = parsed,
-          comp.     = comparison,
-          reference. = reference
-        )
-
-        if (is.null(comparison)) {
-          agg <- aggregate_perm_results(res, reps)
-          fit$lower[, xi]  <- agg$lower
-          fit$larger[, xi] <- agg$larger
-          fit$abs[, xi]    <- agg$abs
-        } else {
-          res_valid <- Filter(Negate(is.null), res)
-          n_valid   <- length(res_valid)
-          resL <- unlist(unlist(res_valid, recursive = FALSE), recursive = FALSE)
-          for (k in seq_along(comparison)) {
-            cn <- names(comparison)[k]
-            fit$lower[[k]][, xi]  <- Reduce("+", resL[names(resL) == paste0(cn, ".lower")], 0) / n_valid
-            fit$larger[[k]][, xi] <- Reduce("+", resL[names(resL) == paste0(cn, ".larger")], 0) / n_valid
-            fit$abs[[k]][, xi]    <- Reduce("+", resL[names(resL) == paste0(cn, ".abs")], 0) / n_valid
-          }
-        }
-      }
+      res <- do.call(run_permutations,
+                     c(list(times, QAPPermEst, matlist. = matlist_resid,
+                            perm_var. = xi), perm_args))
+      agg <- aggregate_perm_results(res, times)
+      fit$lower[, xi]  <- agg$lower
+      fit$larger[, xi] <- agg$larger
+      fit$abs[, xi]    <- agg$abs
     }
   }
 
-  if (is.null(comparison)) {
-    fit$coefficients <- fit$base$coefficients
-    fit$t            <- fit$base$t
-    if (!is.null(fit$base$r.squared)) {
-      fit$r.squared     <- fit$base$r.squared
-      fit$adj.r.squared <- fit$base$adj.r.squared
-    }
-    if (!is.null(fit$base$random.intercepts))
-      fit$random.intercepts <- fit$base$random.intercepts
-    if (!is.null(fit$base$theta))
-      fit$theta <- fit$base$theta
-    if (!is.null(fit$base$zi_coefficients))
-      fit$zi_coefficients <- fit$base$zi_coefficients
-    if (!less_mem) fit$simple_fit <- fit$base$base_model
-  } else {
-    if (!less_mem) {
-      fit$simple_fits <- lapply(fit$base, `[[`, "base_model")
-    }
+  # ---- assemble -------------------------------------------------------------
+
+  # Lift what a reader of the result needs out of the baseline fit, so that
+  # `fit$coefficients` works without reaching into `fit$base`.
+  fit$coefficients <- fit$base$coefficients
+  fit$t            <- fit$base$t
+  for (el in c("r.squared", "adj.r.squared", "random.intercepts",
+               "theta", "zi_coefficients")) {
+    if (!is.null(fit$base[[el]])) fit[[el]] <- fit$base[[el]]
+  }
+  if (!less_mem) fit$simple_fit <- fit$base$base_model
+
+  if (family == "binomial") {
+    fit$confusion_matrix <- probabilistic_confusion_matrix(
+      actual = pred[[dep]],
+      predicted_prob = stats::fitted(fit$base$base_model),
+      n_draws = 1000, seed = seed
+    )
   }
 
-  if (family == "binomial" && is.null(comparison)) {
-    bm <- fit$base$base_model
-    if (!inherits(bm, "gmm")) {
-      predicted <- stats::fitted(bm)
-      actual    <- pred[[dep]]
-      fit$confusion_matrix <- probabilistic_confusion_matrix(
-        actual = actual, predicted_prob = predicted,
-        n_draws = 1000, seed = seed
-      )
-    }
-  }
-
-  fit$nullhyp   <- nullhyp
+  fit$permute   <- permute
   fit$diag      <- diag
   fit$family    <- family
-  fit$mode      <- mode
-  fit$reps      <- reps
+  fit$directed  <- directed
+  fit$times     <- times
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
-  fit$estimator <- estimator
-  fit$comp      <- comparison
-  fit$reference <- reference
+  fit$random    <- requested[names(slots)]
   fit$pred      <- pred
   fit$dep       <- dep
 
-  if (family == "gaussian" && is.null(comparison)) {
-    class(fit) <- "QAPRegression"
+
+  class(fit) <- if (css) {
+    "QAPCSS"
+  } else if (family == "gaussian") {
+    "QAPRegression"
   } else {
-    class(fit) <- "QAPGLM"
+    "QAPGLM"
   }
-  return(fit)
+  fit
 }
 
 
+# One permutation: draw, vectorise, refit, and compare against the baseline.
+# Returns NULL where the fit fails, which `aggregate_perm_results()` counts.
 #' @keywords internal
 #' @noRd
-QAPglmPermEst <- function(i,
-                          data.,
-                          perm_var.,
-                          mode.,
-                          diag.,
-                          mod.,
-                          groups.,
-                          fit.,
-                          family.,
-                          estimator.,
-                          use_fixest.,
-                          fixest_se_cluster.,
-                          use_robust_errors.,
-                          has_random.,
-                          main_vars.,
-                          data_vars.,
-                          parsed.,
-                          comp.,
-                          reference.) {
+QAPPermEst <- function(i,
+                       matlist.,
+                       perm_var.,
+                       shape.,
+                       directed.,
+                       diag.,
+                       mod.,
+                       groups.,
+                       fit.,
+                       family.,
+                       use_robust_errors.,
+                       has_random.,
+                       main_vars.,
+                       data_vars.,
+                       parsed.) {
 
-  dep   <- parsed.$dependent
-  large <- is.list(data.[[dep]])
+  dep    <- parsed.$dependent
+  large  <- is.list(matlist.[[dep]])
+  target <- if (is.null(perm_var.)) dep else perm_var.
 
-  d <- data.
-  if (is.null(perm_var.)) {
-    if (!large) {
-      d[[dep]] <- RMPerm(d[[dep]], groups.)
+  trial <- 0L
+  repeat {
+    trial <- trial + 1L
+    d <- matlist.
+    d[[target]] <- if (large) {
+      lapply(d[[target]], shape.$permute, groups = groups.)
     } else {
-      d[[dep]] <- lapply(d[[dep]], RMPerm, groups = groups.)
+      shape.$permute(d[[target]], groups.)
     }
-  } else {
-    if (!large) {
-      d[[perm_var.]] <- RMPerm(d[[perm_var.]], groups.)
-    } else {
-      d[[perm_var.]] <- lapply(d[[perm_var.]], RMPerm, groups = groups.)
+
+    vec <- .vectorise_matlist(shape., d, dep, data_vars., groups.,
+                              diag., directed., large)
+    pred <- vec$pred
+    names(pred)[names(pred) == "yv"] <- dep
+
+    if (.sufficient_data(pred, dep, data_vars.)) break
+    if (trial >= shape.$max_trials) {
+      # A shape that takes the first draw lets the fit fail and be counted.
+      if (shape.$max_trials == 1L) break
+      manynet::snet_abort(
+        c("Cannot find a valid permutation after {trial} trials.",
+          i = "The network may be too sparse, or too many cells may be missing."))
     }
   }
 
-  if (!large) {
-    pred <- make_qap_data(y    = d[[dep]],
-                          x    = d[data_vars.],
-                          g    = groups.,
-                          diag = diag.,
-                          mode = mode.,
-                          net  = 1,
-                          perm = FALSE,
-                          xi   = NULL)
-  } else {
-    pred_list <- vector("list", length(d[[dep]]))
-    for (net in seq_along(d[[dep]])) {
-      x2 <- lapply(data_vars., function(v) d[[v]][[net]])
-      names(x2) <- data_vars.
-      g2 <- if (!is.null(groups.)) groups.[[net]] else NULL
-      pred_list[[net]] <- make_qap_data(y    = d[[dep]][[net]],
-                                        x    = x2,
-                                        g    = g2,
-                                        diag = diag.,
-                                        mode = mode.,
-                                        net  = net,
-                                        perm = FALSE,
-                                        xi   = NULL)
-    }
-    pred <- do.call(rbind, pred_list)
-  }
+  # A fit inside the permutation loop runs `times` times, so a fitter's
+  # convergence warning would print once per draw and drown the console.
+  # The count of draws that failed outright is reported by
+  # `aggregate_perm_results()`, which is the number the user needs.
+  perm_fit <- tryCatch(
+    suppressWarnings(fit_qap_model(mod          = mod.,
+                                   pred         = pred,
+                                   family       = family.,
+                                   use_robust_errors = use_robust_errors.,
+                                   main_vars    = main_vars.,
+                                   has_random   = has_random.)),
+    error = function(e) NULL
+  )
+  if (is.null(perm_fit)) return(NULL)
 
-  names(pred)[names(pred) == "yv"] <- dep
-
-  xi_arg <- if (!is.null(perm_var.)) perm_var. else NULL
-
-  if (is.null(comp.)) {
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = pred,
-                    family       = family.,
-                    estimator    = estimator.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
-
-    return(compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                    fit., xi = xi_arg))
-  }
-
-  xresL <- vector("list", length(comp.))
-  names(xresL) <- names(comp.)
-
-  for (k in seq_along(comp.)) {
-    predK <- pred[pred[[dep]] %in% comp.[[k]], ]
-    predK[[dep]] <- ifelse(predK[[dep]] == comp.[[k]][1], 0, 1)
-
-    # A fit inside the permutation loop runs `reps` times, so a fitter's
-    # convergence warning would print once per draw and drown the console.
-    # The count of draws that failed outright is reported by
-    # `aggregate_perm_results()`, which is the number the user needs.
-    perm_fit <- tryCatch(
-      suppressWarnings(fit_qap_model(mod          = mod.,
-                    pred         = predK,
-                    family       = family.,
-                    estimator    = estimator.,
-                    use_fixest   = use_fixest.,
-                    fixest_se_cluster = fixest_se_cluster.,
-                    use_robust_errors = use_robust_errors.,
-                    main_vars    = main_vars.,
-                    has_random   = has_random.,
-                    reference    = reference.)),
-      error = function(e) NULL
-    )
-    if (is.null(perm_fit)) return(NULL)
-
-    xresL[[k]] <- compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
-                                           fit.[[k]], xi = xi_arg)
-  }
-
-  return(xresL)
+  compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
+                           fit., xi = perm_var.)
 }

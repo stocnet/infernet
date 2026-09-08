@@ -139,12 +139,12 @@ test_that("print.net_regression runs without error for QAPGLM", {
 
 # ---- method control --------------------------------------------------------
 
-test_that("method = 'qapy' runs and flags the nullhyp on the fit", {
+test_that("permute = 'outcome' runs and is recorded on the fit", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ ego(Age) + alter(Age),
                         g, times = 10,
-                        control = list(method = "qapy"))
-  expect_equal(fit$nullhyp, "qapy")
+                        control = list(permute = "outcome"))
+  expect_equal(fit$permute, "outcome")
 })
 
 

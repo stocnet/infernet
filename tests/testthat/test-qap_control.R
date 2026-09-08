@@ -23,7 +23,7 @@ test_that("an unnamed control entry is rejected", {
 
 test_that("an empty control list gives the defaults", {
   expect_equal(.resolve_control(list()), .resolve_control())
-  expect_equal(.resolve_control()$method, "qap")
+  expect_equal(.resolve_control()$permute, "predictor")
   expect_equal(.resolve_control()$strategy, "sequential")
   expect_equal(.resolve_control()$family, "auto")
 })
@@ -32,44 +32,43 @@ test_that("a named control overrides only that default", {
   ctrl <- .resolve_control(list(family = "poisson"))
   expect_equal(ctrl$family, "poisson")
   expect_equal(ctrl$strategy, "sequential")
-  expect_equal(ctrl$estimator, "standard")
+  expect_null(ctrl$directed)
 })
 
-test_that("method takes only the two spellings it documents", {
-  expect_equal(.resolve_control(list(method = "qapy"))$method, "qapy")
-  expect_error(.resolve_control(list(method = "spp")))
+test_that("permute takes only the two spellings it documents", {
+  expect_equal(.resolve_control(list(permute = "outcome"))$permute, "outcome")
+  expect_error(.resolve_control(list(permute = "qapy")))
 })
 
-test_that("method = 'qapy' is recorded on the fit and gives a full matrix", {
+test_that("permute = 'outcome' is recorded on the fit and gives a full matrix", {
   g <- qap_net_gaussian(n = 20)
   fit <- net_regression(FORM, g, times = 10,
-                        control = list(seed = 1, method = "qapy"))
-  expect_equal(fit$nullhyp, "qapy")
+                        control = list(seed = 1, permute = "outcome"))
+  expect_equal(fit$permute, "outcome")
   # Permuting y alone tests every coefficient, the intercept included, whereas
   # double semi-partialling residualises one predictor at a time.
   expect_false(anyNA(fit$lower))
   spp <- net_regression(FORM, g, times = 10, control = list(seed = 1))
-  expect_equal(spp$nullhyp, "qapspp")
+  expect_equal(spp$permute, "predictor")
   expect_true(all(is.na(spp$lower[, "(Intercept)"])))
 })
 
-test_that("a single predictor falls back from qapspp to qapy", {
+test_that("a single predictor falls back to permuting the outcome", {
   g <- qap_net_gaussian(n = 20)
   fit <- net_regression(weight ~ ego(Age), g, times = 10,
-                        control = list(seed = 1, method = "qap"))
+                        control = list(seed = 1, permute = "predictor"))
   # Double semi-partialling residualises a predictor against the others, and
   # with one predictor there are none.
-  expect_equal(fit$nullhyp, "qapy")
+  expect_equal(fit$permute, "outcome")
 })
 
-test_that("mode and diag are read from the network unless set", {
+test_that("directed and diag are read from the network unless set", {
   g <- qap_net_gaussian(n = 15)
-  expect_equal(net_regression(FORM, g, times = 5,
-                              control = list(seed = 1))$mode, "directed")
-  expect_equal(net_regression(FORM, g, times = 5,
+  expect_true(net_regression(FORM, g, times = 5,
+                             control = list(seed = 1))$directed)
+  expect_false(net_regression(FORM, g, times = 5,
                               control = list(seed = 1,
-                                             mode = "undirected"))$mode,
-               "undirected")
+                                             directed = FALSE))$directed)
   loops <- net_regression(FORM, g, times = 5,
                           control = list(seed = 1, diag = TRUE))
   expect_true(loops$diag)

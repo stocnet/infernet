@@ -6,7 +6,7 @@
 test_that("a directed network contributes every ordered dyad", {
   g <- qap_net_gaussian(n = 20)
   fit <- net_regression(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
-  expect_equal(fit$mode, "directed")
+  expect_true(fit$directed)
   expect_equal(nrow(fit$pred), 20 * 19)
 })
 
@@ -16,7 +16,7 @@ test_that("an undirected network contributes each dyad once", {
   fit <- net_regression(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
   # Both halves of a symmetric matrix hold the same dyad. Keeping both doubles
   # the sample and shrinks every standard error by about a factor of root two.
-  expect_equal(fit$mode, "undirected")
+  expect_false(fit$directed)
   expect_equal(nrow(fit$pred), 24 * 23 / 2)
 })
 
@@ -29,6 +29,28 @@ test_that("a two-mode network contributes every cell of the incidence matrix", {
   # as square wrapped past the last column and invented dyads.
   expect_equal(nrow(fit$pred), dims[1] * dims[2])
   expect_named(fit$coefficients, c("(Intercept)", "ego Att", "alter Att"))
+})
+
+test_that("a wide two-mode network fits, and counts its dyads", {
+  # stocnet/infernet#4: the validity mask was built as nrow-by-nrow, so a
+  # predictor with more columns than rows extended it with NA, and the dyad
+  # count came back as NA rather than a number.
+  g <- qap_net_twomode_wide(nr = 12, nc = 40)
+  expect_true(manynet::is_twomode(g))
+  fit <- net_regression(weight ~ same(GONGO) + same(province), g, times = 10,
+                        control = list(seed = 1))
+  expect_equal(nrow(fit$pred), 12 * 40)
+  expect_false(anyNA(fit$coefficients))
+  expect_named(fit$coefficients,
+               c("(Intercept)", "same GONGO", "same province"))
+})
+
+test_that("make_qap_data() counts a wide predictor's cells, not the mask's", {
+  y <- matrix(stats::rnorm(6 * 15), 6, 15)
+  x <- list(a = matrix(stats::rnorm(6 * 15), 6, 15))
+  pred <- make_qap_data(y = y, x = x, diag = FALSE, directed = TRUE)
+  expect_equal(nrow(pred), 6 * 15)
+  expect_false(anyNA(pred$a))
 })
 
 test_that("RMPerm() permutes a rectangular matrix without erroring", {
@@ -93,4 +115,24 @@ test_that("a missing dyad is dropped from the model", {
   fit <- net_regression(weight ~ ego(Age), holed, times = 10,
                         control = list(seed = 1))
   expect_equal(nrow(fit$pred), 20 * 19 - 1)
+})
+
+# A blocking factor names the nodes of one mode. A two-mode network has two
+# modes of different sizes, so a factor of the row length cannot also be of the
+# column length. Requiring the row length refused a factor that blocks the
+# columns, which `.perm_order()` handles. See the review of stocnet/infernet#13.
+test_that("a two-mode network accepts a grouping factor for either mode", {
+  g <- qap_net_twomode_wide(nr = 12, nc = 40)
+  rows <- rep(c("a", "b"), length.out = 12)
+  cols <- rep(c("a", "b", "c", "d"), length.out = 40)
+  for (grp in list(rows, cols)) {
+    fit <- net_regression(. ~ ego(Att), g, times = 5,
+                          control = list(seed = 1, groups = grp))
+    expect_s3_class(fit, "net_regression")
+    expect_equal(nrow(fit$pred), 12 * 40)
+  }
+  expect_error(
+    net_regression(. ~ ego(Att), g, times = 5,
+                   control = list(seed = 1, groups = rep("a", 7))),
+    "length 7")
 })

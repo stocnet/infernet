@@ -70,12 +70,12 @@ test_random <- function(.data, FUN, ...,
   out <- list(test = "CUG",
               testval = obsd,
               testdist = simd,
-              mode = manynet::is_directed(.data),
+              directed = manynet::is_directed(.data),
               diag = manynet::is_complex(.data),
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              reps = times)
+              times = times)
   class(out) <- "network_test"
   out
 }
@@ -115,12 +115,12 @@ test_configuration <- function(.data, FUN, ...,
   out <- list(test = "configuration",
               testval = obsd,
               testdist = simd,
-              mode = manynet::is_directed(.data),
+              directed = manynet::is_directed(.data),
               diag = manynet::is_complex(.data),
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              reps = times)
+              times = times)
   class(out) <- "network_test"
   out
 }
@@ -162,11 +162,11 @@ test_permutation <- function(.data, FUN, ...,
   out <- list(test = "QAP",
               testval = obsd,
               testdist = simd,
-              mode = manynet::is_directed(.data),
+              directed = manynet::is_directed(.data),
               diag = manynet::is_complex(.data),
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              reps = times)
+              times = times)
   class(out) <- "network_test"
   out
 }

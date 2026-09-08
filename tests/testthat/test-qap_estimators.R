@@ -1,7 +1,7 @@
 # Every estimator path in fit_qap_model() is selected by a combination of
-# `family`, `estimator`, and the random and fixed effect flags. This file names
-# each combination, so that a path with no test fails the build rather than
-# going unnoticed.
+# `family` and the random and fixed effect flags. This file names each
+# combination, so that a path with no test fails the build rather than going
+# unnoticed.
 #
 # Two things are asserted for each. First, the baseline coefficients equal those
 # of the equivalent standard fit on the same dyad-level data: the permutation
@@ -110,35 +110,6 @@ test_that("zip baseline matches pscl::zeroinfl() and names its coefficients", {
 })
 
 
-# ---- GMM -------------------------------------------------------------------
-
-test_that("the GMM estimator runs for each family it declares", {
-  skip_if_not_installed("gmm")
-  cases <- list(
-    list(form = FORM_B, net = qap_net_binary(), family = "binomial"),
-    list(form = FORM,   net = qap_net_count(),  family = "poisson"),
-    list(form = FORM,   net = qap_net_count(),  family = "negbin"),
-    list(form = FORM,   net = qap_net_zip(),    family = "zip")
-  )
-  for (case in cases) {
-    fit <- suppressWarnings(
-      net_regression(case$form, case$net, times = 10,
-                     control = list(seed = 1, family = case$family,
-                                    estimator = "gmm")))
-    expect_qap_shape(fit, COEFS3)
-    expect_equal(fit$estimator, "gmm", info = case$family)
-  }
-})
-
-test_that("the GMM estimator rejects a family it cannot fit", {
-  skip_if_not_installed("gmm")
-  expect_error(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(family = "gaussian", estimator = "gmm")),
-    "binomial")
-})
-
-
 # ---- random effects --------------------------------------------------------
 
 test_that("gaussian random intercepts match lme4::lmer() on the same dyads", {
@@ -185,70 +156,3 @@ test_that("binomial and poisson random intercepts run", {
   expect_qap_shape(pois, COEFS3)
 })
 
-
-# ---- fixed effects and clustered errors ------------------------------------
-
-test_that("fixest reports one intercept, not two", {
-  skip_if_not_installed("fixest")
-  # `feglm()` reports an intercept where no fixed effect is absorbed. The engine
-  # used to prepend a placeholder regardless, giving two.
-  fit <- net_regression(FORM, qap_net_gaussian(), times = 10,
-                        control = list(seed = 1, fixest_se_cluster = "sv"))
-  expect_qap_shape(fit, COEFS3)
-  expect_equal(sum(names(fit$coefficients) == "(Intercept)"), 1L)
-  expect_false(anyNA(fit$coefficients))
-  expect_equal(length(fit$t), length(fit$coefficients))
-})
-
-test_that("fixest coefficients match a direct feglm() fit", {
-  skip_if_not_installed("fixest")
-  g <- qap_net_gaussian()
-  ref <- qap_reference_data(FORM, g)
-  fe <- fixest::feglm(ref$formula, data = ref$pred,
-                      family = "gaussian", cluster = "sv")
-
-  fit <- net_regression(FORM, g, times = 10,
-                        control = list(seed = 1, fixest_se_cluster = "sv"))
-  expect_equal(unname(fit$coefficients), unname(fe$coefficients))
-})
-
-test_that("fixed effects and random effects together fall back to random", {
-  skip_if_not_installed("fixest")
-  skip_if_not_installed("lme4")
-  both <- suppressMessages(suppressWarnings(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(seed = 1, fixest_se_cluster = "sv",
-                                  random_intercept_sender = TRUE))))
-  random_only <- suppressMessages(suppressWarnings(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(seed = 1, random_intercept_sender = TRUE))))
-  expect_qap_shape(both, COEFS3)
-  # The fixed effects are dropped, so the fit is the random-effects one.
-  expect_equal(both$coefficients, random_only$coefficients)
-  expect_named(both$random.intercepts, "sv")
-})
-
-test_that("combining fixed and random effects warns", {
-  skip_if_not_installed("fixest")
-  skip_if_not_installed("lme4")
-  expect_snet_warning(
-    suppressMessages(
-      net_regression(FORM, qap_net_gaussian(), times = 10,
-                     control = list(seed = 1, fixest_se_cluster = "sv",
-                                    random_intercept_sender = TRUE))),
-    "random effects")
-})
-
-
-# ---- GPU -------------------------------------------------------------------
-
-test_that("use_gpu falls back to the CPU rather than aborting", {
-  # The GPU path is a shortcut, so an unmet condition must not stop the run.
-  gpu <- suppressMessages(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
-                   control = list(seed = 1, use_gpu = TRUE)))
-  cpu <- net_regression(FORM, qap_net_gaussian(), times = 10,
-                        control = list(seed = 1))
-  expect_qap_shape(gpu, COEFS3)
-  if (!gpu_available()) expect_equal(gpu$lower, cpu$lower)
-})

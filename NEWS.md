@@ -1,3 +1,61 @@
+# infernet 0.2.0
+
+## Package
+
+- Branching off five model extensions reduces `Suggests` packages from eight to three
+- Updated CONTRIBUTING with the vocabulary table and the reporting rule
+
+## Regression
+
+- Fixed `net_regression()` failing on a two-mode network with more columns than
+  rows (closes #4)
+  - Validity was built rows-by-rows, so wider predictor extended it with `NA` 
+    and the dyad count came back as `NA`
+  - Reported 448 by 12489 network now fits on all 5,595,072 dyads
+- Fixed `groups=` being refused on a two-mode network unless it matched the row
+  mode, though either mode may be the one that is blocked
+- Standardised vocabulary in the engine to match the front end:
+  - Renamed `reps=` to `times=` including on the returned fit
+  - Renamed `method=`/`nullhyp=` to `permute=`, as method can be ambiguous
+    - `method = "qap"`/`nullhyp = "qapspp"` is now `permute = "predictor"`
+    - `method = "qapy"` is now `permute = "outcome"`
+  - Renamed `mode=` to `directed=`, reserving mode for one-mode and two-mode networks
+    - `mode = "undirected"` is now `directed = FALSE`
+  - `data` is retired as potentially confusing:
+    - `.data` remains the network the user passes in
+    - `matlist` is the named list of matrices the engine fits
+    - `net` is one coerced network, inside the formula front end
+- Added `snet_info()` reporting of every default the model resolves for itself
+  - Family chosen from the outcome's values
+  - Directedness from the network
+  - `permute = "predictor"` falling back to `"outcome"` with one predictor
+- Merged `QAPglm()` and `QAPcss()` engines into one, `QAPengine()`
+  - 55% the same code, reduces code from 791 lines to 552
+  - Differences in treatment are now four functions: vectorisation, permutation, 
+    returning residuals, and identifying random intercepts
+- Removed the `torch` GPU path (`feature/torch-gpu`)
+  - Gaussian only, duplicated for CSS, no test, and no hosted runner has a
+    CUDA device; `{torch}` in Suggests broke the CI build
+- Removed the `gmm` estimator and the `estimator` control (`feature/gmm-estimator`)
+  - It warned that the coefficient covariance matrix was singular on every
+    family, on well-conditioned data
+- Removed the mixed negbin and mixed zip paths (`feature/glmmtmb-mixed`)
+  - `{glmmTMB}` carries 62 recursive dependencies and must match `{TMB}`
+  - The standard `negbin` and `zip` paths are unaffected
+- Removed `family = "multinom"` and the `comparison`/`reference` controls
+  (`feature/multinomial-comparison`)
+  - Unreachable from the front end, and its pairwise branch forked both
+    engines at 21 points
+- Removed the `fixest_se_cluster` control (`feature/fixest-fixed-effects`)
+  - A bar in the formula now means an `{lme4}` random-effect term, and
+    nothing else; `parse_qap_formula()` drops from three branches to one
+
+## Tests
+
+- Added a wide two-mode fixture and two regression tests for #4
+- Added `test-qap_reporting.R`, which runs with `snet_verbosity = "verbose"`
+- Added `test-qap_shape_css.R`, which fits a cognitive social structure
+
 # infernet 0.1.1
 
 ## Package

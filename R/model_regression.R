@@ -10,13 +10,12 @@
 #' object. Internally the response and predictors are packed into matrices
 #' and handed to a QAP engine (ported from MrQAP) that supports:
 #'
-#' - gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-#'   multinomial families;
-#' - `"qap"` (Dekker's double semi-partialling plus) and `"qapy"`
-#'   (permute-y-only) null hypotheses;
-#' - random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+#' - gaussian, binomial, poisson, negative binomial, and zero-inflated
+#'   Poisson families;
+#' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
+#'   and `"outcome"`;
+#' - random intercepts (lme4);
 #' - robust (HC3) standard errors;
-#' - optional torch-based batch OLS on the GPU;
 #' - lists of networks, in which graphs that are missing any predictor are
 #'   dropped with a warning and the remaining networks are pooled.
 #'
@@ -40,24 +39,23 @@
 #'   1000 is the default; publication-ready work usually needs 1000-10000.
 #' @param control Named list of additional controls; unspecified entries fall
 #'   back to the defaults below.
-#'   - `method`: `"qap"` (double semi-partialling plus, default) or `"qapy"`
-#'     (permute y only).
+#'   - `permute`: what the null distribution permutes. `"predictor"` (the
+#'     default) residualises each main predictor against the others and
+#'     permutes that residual, following Dekker et al. (2007). `"outcome"`
+#'     permutes the dependent matrix and leaves the predictors alone. With one
+#'     predictor there is nothing to residualise against, so `"predictor"`
+#'     reduces to `"outcome"` and says so.
 #'   - `strategy`: future plan, e.g. `"sequential"` (default), `"multisession"`.
 #'   - `family`: `"auto"` (default; gaussian for weighted networks, binomial
 #'     for binary), `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`,
-#'     `"zip"`, or `"multinom"`.
-#'   - `estimator`: `"standard"` (default) or `"gmm"` (binomial/poisson/
-#'     negbin/zip).
-#'   - `mode`: `"directed"` / `"undirected"` (default auto-detected from
-#'     `.data`).
+#'     or `"zip"`.
+#'   - `directed`: logical, whether a tie from i to j differs from one from j
+#'     to i. Read from `.data` unless given, and reported when read.
 #'   - `diag`: logical, include loops (default auto-detected).
 #'   - `seed`, `groups`, `ncores`: passed through to the engine.
 #'   - `use_robust_errors`: HC3 standard errors.
-#'   - `fixest_se_cluster`: cluster variable for fixest.
-#'   - `reference`, `comparison`: multinomial / pairwise-comparison options.
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `less_mem`: drop the baseline model object from the return.
-#'   - `use_gpu`: torch-based batch OLS (gaussian only).
 #' @return An object of class `net_regression` inheriting from either
 #'   `QAPRegression` (gaussian) or `QAPGLM` (other families).  When the
 #'   outcome is binary -- either `family = "binomial"` or `"gaussian"` with
@@ -97,58 +95,61 @@ net_regression <- function(formula,
 
   if (.is_list_of_graphs(.data)) {
     prepared <- .prepare_list_of_graphs(formula, .data)
-    data   <- prepared$data
+    matlist   <- prepared$matlist
     formula <- prepared$formula
     first_graph <- prepared$first_graph
   } else {
     ml <- convertToMatrixList(formula, .data)
-    data  <- ml$mydata
+    matlist  <- ml$mydata
     formula <- ml$formula
     first_graph <- manynet::as_tidygraph(.data)
   }
 
   dep <- .dep_name(formula)
 
+  # Each of these is resolved from the data rather than stated by the user, so
+  # each is reported. A defaulted family or a fallback that nobody sees is a
+  # model the user cannot describe in a paper.
   if (identical(ctrl$family, "auto")) {
-    ctrl$family <- if (.is_binary_outcome(data[[dep]])) "binomial" else "gaussian"
+    ctrl$family <- if (.is_binary_outcome(matlist[[dep]])) "binomial" else "gaussian"
+    manynet::snet_info(
+      "Treating the outcome as {.val {ctrl$family}}, from its values.")
   }
   user_requested_gaussian_binary <-
-    identical(ctrl$family, "gaussian") && .is_binary_outcome(data[[dep]])
+    identical(ctrl$family, "gaussian") && .is_binary_outcome(matlist[[dep]])
 
-  if (is.null(ctrl$mode)) {
-    ctrl$mode <- if (manynet::is_directed(first_graph)) "directed" else "undirected"
+  if (is.null(ctrl$directed)) {
+    ctrl$directed <- manynet::is_directed(first_graph)
+    # `{cli}` reads a brace expression beginning with a dot as a style, so a
+    # call to a dot-prefixed function has to be resolved before interpolation.
+    direction <- .directed_label(ctrl$directed)
+    manynet::snet_info("Reading the network as {.val {direction}}.")
   }
   if (is.null(ctrl$diag)) {
     ctrl$diag <- isTRUE(manynet::is_complex(first_graph))
   }
 
-  nullhyp <- if (ctrl$method == "qap") "qapspp" else "qapy"
-
-  fit <- QAPglm(
+  fit <- QAPengine(
     formula   = formula,
-    data      = data,
+    matlist   = matlist,
+    css       = FALSE,
     family    = ctrl$family,
-    mode      = ctrl$mode,
+    directed  = ctrl$directed,
     diag      = ctrl$diag,
-    nullhyp   = nullhyp,
-    estimator = ctrl$estimator,
-    reps      = times,
+    permute   = ctrl$permute,
+    times      = times,
     seed      = ctrl$seed,
     groups    = ctrl$groups,
     strategy  = ctrl$strategy,
     ncores    = ctrl$ncores,
-    fixest_se_cluster = ctrl$fixest_se_cluster,
-    comparison = ctrl$comparison,
-    reference  = ctrl$reference,
     random_intercept_nets     = ctrl$random_intercept_nets,
     random_intercept_sender   = ctrl$random_intercept_sender,
     random_intercept_receiver = ctrl$random_intercept_receiver,
     use_robust_errors = ctrl$use_robust_errors,
-    less_mem = ctrl$less_mem,
-    use_gpu  = ctrl$use_gpu
+    less_mem = ctrl$less_mem
   )
 
-  if (user_requested_gaussian_binary && is.null(ctrl$comparison)) {
+  if (user_requested_gaussian_binary) {
     fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
   }
 
@@ -167,7 +168,7 @@ net_regression <- function(formula,
 .resolve_control <- function(control = list()) {
   ctrl <- .default_control()
   if (length(control) == 0) {
-    ctrl$method <- match.arg(ctrl$method, choices = c("qap", "qapy"))
+    ctrl$permute <- match.arg(ctrl$permute, choices = .permute_schemes())
     return(ctrl)
   }
   if (is.null(names(control)) || any(!nzchar(names(control)))) {
@@ -187,30 +188,41 @@ net_regression <- function(formula,
     manynet::snet_abort(msg)
   }
   ctrl[names(control)] <- control
-  ctrl$method <- match.arg(ctrl$method, choices = c("qap", "qapy"))
+  ctrl$permute <- match.arg(ctrl$permute, choices = .permute_schemes())
   ctrl
+}
+
+# What the permutation scheme permutes, which is the only thing that separates
+# the two. "predictor" is Dekker et al's double semi-partialling: each main
+# predictor is residualised against the others and that residual is permuted.
+# "outcome" permutes the dependent matrix and leaves the predictors alone.
+#' @keywords internal
+#' @noRd
+.permute_schemes <- function() c("predictor", "outcome")
+
+#' @keywords internal
+#' @noRd
+.permute_label <- function(permute) {
+  switch(permute,
+         predictor = "each predictor's residuals (Dekker's double semi-partialling)",
+         outcome   = "the outcome only")
 }
 
 .default_control <- function() {
   list(
-    method    = c("qap", "qapy"),
+    permute   = .permute_schemes(),
     strategy  = "sequential",
     family    = "auto",
-    estimator = "standard",
-    mode      = NULL,
+    directed  = NULL,
     diag      = NULL,
     seed      = NULL,
     groups    = NULL,
     ncores    = NULL,
     use_robust_errors = FALSE,
-    fixest_se_cluster = NULL,
-    reference  = NULL,
-    comparison = NULL,
     random_intercept_nets     = FALSE,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,
-    less_mem = FALSE,
-    use_gpu  = FALSE
+    less_mem = FALSE
   )
 }
 
@@ -280,17 +292,17 @@ net_regression <- function(formula,
   kept_mls <- ml_list[keep]
   ref_names <- names(kept_mls[[1]]$mydata)
 
-  data <- vector("list", length(ref_names))
-  names(data) <- ref_names
+  matlist <- vector("list", length(ref_names))
+  names(matlist) <- ref_names
   for (nm in ref_names) {
-    data[[nm]] <- lapply(kept_mls, function(ml) ml$mydata[[nm]])
+    matlist[[nm]] <- lapply(kept_mls, function(ml) ml$mydata[[nm]])
   }
 
   first_graph <- manynet::as_tidygraph(glist[[keep[1]]])
   specificationAdvice(getRHSNames(formula)$IVnames, first_graph)
 
   list(
-    data        = data,
+    matlist        = matlist,
     formula     = kept_mls[[1]]$formula,
     first_graph = first_graph
   )
@@ -363,12 +375,12 @@ print.net_regression <- function(x, ...,
   if (!is.null(x$groups))
     cat("Permutations were performed within groups only.\n")
 
-  if (x$nullhyp == "qapy")
-    cat("The outcome matrix Y was permuted", format(x$reps), "times.\n")
-  if (x$nullhyp == "qapspp") {
+  if (x$permute == "outcome")
+    cat("The outcome matrix Y was permuted", format(x$times), "times.\n")
+  if (x$permute == "predictor") {
     cat("Significance was estimated using Dekker's\n")
     cat("  'semi-partialling plus' procedure with",
-        format(x$reps), "permutations.\n")
+        format(x$times), "permutations.\n")
   }
 
   if (x$diag) {
@@ -376,7 +388,8 @@ print.net_regression <- function(x, ...,
   } else {
     cat("Diagonal values (loops) were ignored.\n")
   }
-  cat("The outcome was treated as", format(paste0(x$mode, ".")), "\n")
+  cat("The outcome was treated as",
+      format(paste0(.directed_label(x$directed), ".")), "\n")
 
   if (!is.null(x$r.squared)) {
     cat("\nR-squared:    ", format(round(x$r.squared, 4)))
@@ -391,7 +404,7 @@ print.net_regression <- function(x, ...,
                   format(x$abs[1, ]))
     colnames(cmat) <- c("Estimate", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
     rownames(cmat) <- names(x$coefficients)
-    if (x$nullhyp == "qapspp") cmat[1, 2:4] <- "*"
+    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
     print.table(cmat)
     cat("\n--------------\n")
   }
@@ -402,11 +415,11 @@ print.net_regression <- function(x, ...,
                 format(x$abs[2, ]))
   colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
   rownames(cmat) <- names(x$coefficients)
-  if (x$nullhyp == "qapspp") cmat[1, 2:4] <- "*"
+  if (x$permute == "predictor") cmat[1, 2:4] <- "*"
   print.table(cmat)
 
-  if (x$nullhyp == "qapspp")
-    cat("\n* Significance test for the intercept is not defined with qapspp.\n")
+  if (x$permute == "predictor")
+    cat("\n* The intercept has no significance test when predictors are permuted.\n")
 
   cat("\n--------------\n")
 
@@ -432,8 +445,6 @@ print.net_regression <- function(x, ...,
   } else {
     cat("\nGeneralized Linear Mixed Network Model fit by REML\n")
   }
-  if (!is.null(x$estimator) && x$estimator == "gmm")
-    cat("\nEstimator: Generalized Method-of-Moments.")
   if (!is.null(x$theta))
     cat("\nNegative binomial dispersion (theta):", format(round(x$theta, 4)))
   if (!is.null(x$zi_coefficients)) {
@@ -445,12 +456,12 @@ print.net_regression <- function(x, ...,
   if (!is.null(x$groups))
     cat("\nPermutations were performed within groups only.")
 
-  if (x$nullhyp == "qapy")
-    cat("\nThe outcome matrix Y was permuted", format(x$reps), "times.")
-  if (x$nullhyp == "qapspp") {
+  if (x$permute == "outcome")
+    cat("\nThe outcome matrix Y was permuted", format(x$times), "times.")
+  if (x$permute == "predictor") {
     cat("\nSignificance was estimated using Dekker's")
     cat("\n  'semi-partialling plus' procedure with",
-        format(x$reps), "permutations.")
+        format(x$times), "permutations.")
   }
 
   if (x$diag) {
@@ -458,46 +469,38 @@ print.net_regression <- function(x, ...,
   } else {
     cat("\nDiagonal values (loops) were ignored.")
   }
-  cat("\nThe outcome was treated as", format(paste0(x$mode, ".")))
+  cat("\nThe outcome was treated as",
+      format(paste0(.directed_label(x$directed), ".")))
   cat("\nModel family:", format(x$family))
 
-  if (!is.null(x$comp)) {
-    for (k in seq_along(x$comp)) {
-      cat("\n\n--- Comparison:", names(x$comp)[k], "---")
-      cat("\n   ", x$comp[[k]][1], "vs", x$comp[[k]][2])
-      .print_glm_table(x$base[[k]], x$lower[[k]], x$larger[[k]], x$abs[[k]],
-                       x$nullhyp, print_b)
-    }
-  } else {
-    cat("\n\nCoefficients:\n")
-    if (print_b) {
-      cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
-      cmat[, 1] <- format(as.numeric(x$coefficients))
-      cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-      cmat[, 3] <- format(x$lower[1, ])
-      cmat[, 4] <- format(x$larger[1, ])
-      cmat[, 5] <- format(x$abs[1, ])
-      if (x$nullhyp == "qapspp") cmat[1, 3:5] <- "*"
-      colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
-      rownames(cmat) <- names(x$coefficients)
-      print.table(cmat)
-      cat("--------------\n")
-    }
-
+  cat("\n\nCoefficients:\n")
+  if (print_b) {
     cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
     cmat[, 1] <- format(as.numeric(x$coefficients))
     cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-    cmat[, 3] <- format(x$lower[2, ])
-    cmat[, 4] <- format(x$larger[2, ])
-    cmat[, 5] <- format(x$abs[2, ])
-    if (x$nullhyp == "qapspp") cmat[1, 3:5] <- "*"
-    colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
+    cmat[, 3] <- format(x$lower[1, ])
+    cmat[, 4] <- format(x$larger[1, ])
+    cmat[, 5] <- format(x$abs[1, ])
+    if (x$permute == "predictor") cmat[1, 3:5] <- "*"
+    colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
     rownames(cmat) <- names(x$coefficients)
     print.table(cmat)
+    cat("--------------\n")
   }
 
-  if (x$nullhyp == "qapspp")
-    cat("\n* Significance test for the intercept is not defined with qapspp.\n")
+  cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
+  cmat[, 1] <- format(as.numeric(x$coefficients))
+  cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
+  cmat[, 3] <- format(x$lower[2, ])
+  cmat[, 4] <- format(x$larger[2, ])
+  cmat[, 5] <- format(x$abs[2, ])
+  if (x$permute == "predictor") cmat[1, 3:5] <- "*"
+  colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
+  rownames(cmat) <- names(x$coefficients)
+  print.table(cmat)
+
+  if (x$permute == "predictor")
+    cat("\n* The intercept has no significance test when predictors are permuted.\n")
 
   cat("--------------\n")
 
@@ -509,8 +512,7 @@ print.net_regression <- function(x, ...,
     cat("--------------\n")
   }
 
-  if (!is.null(x$simple_fit) && !is.null(x$estimator) &&
-      x$estimator != "gmm") {
+  if (!is.null(x$simple_fit)) {
     cat("\nAIC:", format(stats::AIC(x$simple_fit)))
     cat("\nBIC:", format(stats::BIC(x$simple_fit)))
   }
@@ -523,21 +525,6 @@ print.net_regression <- function(x, ...,
 }
 
 
-.print_glm_table <- function(base, lower, larger, abs_mat, nullhyp, print_b) {
-  cat("\n\nCoefficients:\n")
-  nc <- length(base$coefficients)
-  cmat <- matrix(NA, nrow = nc, ncol = 4)
-  cmat[, 1] <- format(round(as.numeric(base$coefficients), 4))
-  cmat[, 2] <- format(lower[2, ])
-  cmat[, 3] <- format(larger[2, ])
-  cmat[, 4] <- format(abs_mat[2, ])
-  if (nullhyp == "qapspp") cmat[1, 2:4] <- "*"
-  colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-  rownames(cmat) <- names(base$coefficients)
-  print.table(cmat)
-}
-
-
 # ============================================================================
 # Formula -> matrix-list front end
 # ============================================================================
@@ -545,8 +532,8 @@ print.net_regression <- function(x, ...,
 #' @keywords internal
 #' @noRd
 convertToMatrixList <- function(formula, .data, advise = TRUE) {
-  data <- manynet::as_tidygraph(.data)
-  DV <- manynet::as_matrix(data)
+  net <- manynet::as_tidygraph(.data)
+  DV <- manynet::as_matrix(net)
   # The sender and the receiver of a tie come from one nodeset in a one-mode
   # network and from two in a two-mode one, so a dyadic term must read the
   # attribute once per mode rather than once per network.
@@ -560,52 +547,52 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
     }
     list(rows = rows, cols = cols)
   }
-  twomode <- manynet::is_twomode(data)
-  node_type <- if (twomode) manynet::node_attribute(data, "type") else NULL
+  twomode <- manynet::is_twomode(net)
+  node_type <- if (twomode) manynet::node_attribute(net, "type") else NULL
 
   names_form <- getRHSNames(formula)
-  .check_formula_vars(names_form$IVnames, data)
-  if (advise) specificationAdvice(names_form$IVnames, data)
+  .check_formula_vars(names_form$IVnames, net)
+  if (advise) specificationAdvice(names_form$IVnames, net)
   IVs <- lapply(names_form$IVnames, function(IV) {
     out <- lapply(seq_along(IV), function(elem) {
       if (IV[[elem]][1] == "ego") {
-        vct <- manynet::node_attribute(data, IV[[elem]][2])
-        if (manynet::is_twomode(data)) {
-          vct <- vct[!manynet::node_attribute(data, "type")]
+        vct <- manynet::node_attribute(net, IV[[elem]][2])
+        if (manynet::is_twomode(net)) {
+          vct <- vct[!manynet::node_attribute(net, "type")]
         }
         out <- matrix(vct, nrow(DV), ncol(DV))
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "alter") {
-        vct <- manynet::node_attribute(data, IV[[elem]][2])
-        if (manynet::is_twomode(data)) {
-          vct <- vct[manynet::node_attribute(data, "type")]
+        vct <- manynet::node_attribute(net, IV[[elem]][2])
+        if (manynet::is_twomode(net)) {
+          vct <- vct[manynet::node_attribute(net, "type")]
         }
         out <- matrix(vct, nrow(DV), ncol(DV), byrow = TRUE)
         out <- list(out)
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "same") {
-        attrib <- manynet::node_attribute(data, IV[[elem]][2])
+        attrib <- manynet::node_attribute(net, IV[[elem]][2])
         if (manynet::is_twomode(.data)) {
           if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
             attrib <- attrib[manynet::node_is_mode(.data)]
             out <- vapply(1:length(attrib), function(x) {
-              net <- manynet::as_matrix(
+              held_out <- manynet::as_matrix(
                 manynet::delete_nodes(.data, manynet::net_dims(.data)[1] + x))
-              rowSums(net * matrix((attrib[-x] == attrib[x]) * 1,
-                                   nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
-                rowSums(net)
+              rowSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
+                                        nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
+                rowSums(held_out)
             }, FUN.VALUE = numeric(nrow(DV)))
             out[is.nan(out)] <- 0
           } else {
             attrib <- attrib[!manynet::node_is_mode(.data)]
             out <- t(vapply(1:length(attrib), function(x) {
-              net <- manynet::as_matrix(manynet::delete_nodes(.data, x))
-              colSums(net * matrix((attrib[-x] == attrib[x]) * 1,
-                                   nrow(DV) - 1, ncol(DV))) /
-                colSums(net)
+              held_out <- manynet::as_matrix(manynet::delete_nodes(.data, x))
+              colSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
+                                        nrow(DV) - 1, ncol(DV))) /
+                colSums(held_out)
             }, FUN.VALUE = numeric(ncol(DV))))
             out[is.nan(out)] <- 0
           }
@@ -618,12 +605,12 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "dist") {
-        if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
+        if (is.character(manynet::node_attribute(net, IV[[elem]][2]))) {
           manynet::snet_abort(
             c("{.fn dist} is undefined for a categorical attribute.",
               i = "Try {.fn same} instead."))
         }
-        sides <- side_matrices(manynet::node_attribute(data, IV[[elem]][2]),
+        sides <- side_matrices(manynet::node_attribute(net, IV[[elem]][2]),
                                DV, twomode, node_type)
         rows <- sides$rows
         cols <- sides$cols
@@ -632,12 +619,12 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "sim") {
-        if (is.character(manynet::node_attribute(data, IV[[elem]][2]))) {
+        if (is.character(manynet::node_attribute(net, IV[[elem]][2]))) {
           manynet::snet_abort(
             c("{.fn sim} is undefined for a categorical attribute.",
               i = "Try {.fn same} instead."))
         }
-        sides <- side_matrices(manynet::node_attribute(data, IV[[elem]][2]),
+        sides <- side_matrices(manynet::node_attribute(net, IV[[elem]][2]),
                                DV, twomode, node_type)
         rows <- sides$rows
         cols <- sides$cols
@@ -648,9 +635,9 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         names(out) <- paste(IV[[elem]], collapse = " ")
         out
       } else if (IV[[elem]][1] == "tertius") {
-        vct <- manynet::node_attribute(data, IV[[elem]][2])
-        if (manynet::is_twomode(data)) {
-          vct <- vct[!manynet::node_attribute(data, "type")]
+        vct <- manynet::node_attribute(net, IV[[elem]][2])
+        if (manynet::is_twomode(net)) {
+          vct <- vct[!manynet::node_attribute(net, "type")]
         }
         val <- matrix(vct, nrow(DV), ncol(DV)) * DV
         if (is.na(IV[[elem]][3])) {
@@ -675,8 +662,8 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         names(out) <- paste(IV[[elem]][1:2], collapse = " ")
         out
       } else {
-        if (IV[[elem]][1] %in% manynet::net_tie_attributes(data)) {
-          out <- manynet::as_matrix(manynet::to_uniplex(data,
+        if (IV[[elem]][1] %in% manynet::net_tie_attributes(net)) {
+          out <- manynet::as_matrix(manynet::to_uniplex(net,
                                                        tie = IV[[elem]][1]))
           out <- list(out)
           names(out) <- IV[[elem]][1]
@@ -791,14 +778,14 @@ getRHSNames <- function(formula) {
 
 #' @keywords internal
 #' @noRd
-.check_formula_vars <- function(IVnames, data) {
+.check_formula_vars <- function(IVnames, net) {
   node_fns <- c("ego", "alter", "same", "dist", "sim", "tertius")
-  node_attrs <- manynet::net_node_attributes(data)
+  node_attrs <- manynet::net_node_attributes(net)
   # The engine builds these columns itself in `make_qap_data()`: the sender, the
   # receiver, the network, and the perceiver index. They are what a user names
   # after a `|` to absorb sender or receiver fixed effects, so they are not
   # attributes of the network and must not be looked for among them.
-  tie_attrs  <- c(manynet::net_tie_attributes(data), .structural_vars())
+  tie_attrs  <- c(manynet::net_tie_attributes(net), .structural_vars())
 
   missing_node <- character(0)
   missing_tie  <- character(0)
@@ -823,7 +810,7 @@ getRHSNames <- function(formula) {
         i = "Available node attributes: {.val {node_attrs}}."))
   }
   if (length(missing_tie) > 0) {
-    available   <- manynet::net_tie_attributes(data)
+    available   <- manynet::net_tie_attributes(net)
     structurals <- .structural_vars()
     manynet::snet_abort(
       c("Tie attribute or predictor{?s} {.val {unique(missing_tie)}} not found.",
@@ -849,13 +836,13 @@ getDependentName <- function(formula) {
 
 #' @keywords internal
 #' @noRd
-specificationAdvice <- function(formula, data) {
+specificationAdvice <- function(formula, net) {
   formdf <- t(data.frame(formula))
   if (any(formdf[, 1] %in% c("sim", "same"))) {
     vars <- formdf[formdf[, 1] %in% c("sim", "same"), 2]
     suggests <- vapply(vars, function(x) {
       incl <- unname(formdf[formdf[, 2] == x, 1])
-      if (manynet::is_twomode(data)) {
+      if (manynet::is_twomode(net)) {
         excl <- setdiff(c("ego", "tertius"), incl)
       } else excl <- setdiff(c("ego", "alter"), incl)
       if (length(excl) > 0) {
@@ -865,7 +852,7 @@ specificationAdvice <- function(formula, data) {
       }
     }, FUN.VALUE = character(1))
     suggests <- suggests[!is.na(suggests)]
-    if (!manynet::is_directed(data)) {
+    if (!manynet::is_directed(net)) {
       suggests <- suggests[!grepl("ego\\(", suggests)]
     }
     if (length(suggests) > 0) {

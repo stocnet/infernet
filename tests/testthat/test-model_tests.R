@@ -16,12 +16,12 @@ cugtest2 <- test_random(marvel_friends,
 test_that("test_random works", {
   expect_equal(as.numeric(cugtest$testval), -0.85714, tolerance = 0.001)
   expect_length(cugtest$testdist, 200) # NB: Stochastic
-  expect_false(cugtest$mode)
+  expect_false(cugtest$directed)
   expect_false(cugtest$diag)
   expect_equal(cugtest$cmode, "edges")
   expect_type(cugtest$plteobs, "double")
   expect_type(cugtest$pgteobs, "double")
-  expect_equal(cugtest$reps, 200)
+  expect_equal(cugtest$times, 200)
   expect_s3_class(cugtest, "network_test")
   expect_equal(as.numeric(cugtest2$testval), 0.2375, tolerance = 0.001)
   expect_length(cugtest2$testdist, 200) # NB: Stochastic
@@ -40,7 +40,7 @@ test_that("test_permutation works", {
   expect_type(qaptest$plteobs, "double") # NB: Stochastic
   expect_type(qaptest$pgteobs, "double") # NB: Stochastic
   expect_length(qaptest$testdist, 200) # NB: Stochastic
-  expect_equal(qaptest$reps, 200)
+  expect_equal(qaptest$times, 200)
   expect_s3_class(qaptest, "network_test")
 })
 

@@ -1,6 +1,6 @@
 Package: infernet
 Title: Inferential Models for Many Different Types of Networks
-Version: 0.1.1
+Version: 0.2.0
 Description: A set of tools for testing networks.
    It includes functions for univariate and multivariate 
    conditional uniform graph and quadratic assignment procedure testing,
@@ -39,14 +39,9 @@ Imports:
     reformulas
 Suggests:
     lme4,
-    nnet,
-    fixest,
-    gmm,
     MASS,
     pscl,
-    testthat (>= 3.0.0),
-    torch,
-    glmmTMB
+    testthat (>= 3.0.0)
 Config/Needs/build:
     roxygen2,
     devtools

@@ -8,46 +8,25 @@
 #' Parse a QAP formula into its components
 #' @keywords internal
 #' @noRd
-parse_qap_formula <- function(formula, fixest_se_cluster = NULL) {
+parse_qap_formula <- function(formula) {
   dependent <- all.vars(formula)[1]
 
+  # A bar in the formula means one thing: an {lme4} random-effect term. The
+  # front end always writes it inside parentheses, and {fixest} -- which read a
+  # bare bar as a fixed effect -- is on feature/fixest-fixed-effects.
   formula_str <- paste(deparse(formula, width.cutoff = 500), collapse = " ")
-  has_pipe  <- grepl("\\|", formula_str)
-  has_paren <- grepl("\\(", formula_str)
+  has_random <- grepl("\\|", formula_str)
 
-  if (has_pipe && has_paren) {
-    main <- all.vars(reformulas::nobars(formula))[-1]
-    fixed_effects <- NULL
-    use_fixest    <- FALSE
-    has_random    <- TRUE
-    all_data_vars <- main
-  } else if (has_pipe && !has_paren) {
-    main          <- all.vars(formula[[3]][[2]])
-    fixed_effects <- all.vars(formula[[3]][[3]])
-    has_random    <- FALSE
-    use_fixest    <- TRUE
-    all_data_vars <- c(main, fixed_effects)
+  main <- if (has_random) {
+    all.vars(reformulas::nobars(formula))[-1]
   } else {
-    main          <- all.vars(formula[-1])
-    fixed_effects <- NULL
-    has_random    <- FALSE
-    use_fixest    <- !is.null(fixest_se_cluster)
-    all_data_vars <- main
-  }
-
-  if (!is.null(fixest_se_cluster)) {
-    use_fixest <- TRUE
-    if (!(fixest_se_cluster %in% all_data_vars)) {
-      all_data_vars <- c(all_data_vars, fixest_se_cluster)
-    }
+    all.vars(formula[-1])
   }
 
   list(dependent     = dependent,
        main          = main,
-       fixed_effects = fixed_effects,
        has_random    = has_random,
-       use_fixest    = use_fixest,
-       all_data_vars = all_data_vars)
+       all_data_vars = main)
 }
 
 
@@ -75,20 +54,20 @@ build_internal_formula <- function(formula,
 
 #' @keywords internal
 #' @noRd
-validate_qap_input <- function(data, parsed, css = FALSE) {
+validate_qap_input <- function(matlist, parsed, css = FALSE) {
   dep <- parsed$dependent
-  if (!(dep %in% names(data))) {
+  if (!(dep %in% names(matlist))) {
     manynet::snet_abort("Dependent variable {.val {dep}} not found in the data.")
   }
   structural_vars <- c("sv", "rv", "nv", "pv")
   for (v in parsed$all_data_vars) {
     if (v %in% structural_vars) next
-    if (!(v %in% names(data))) {
+    if (!(v %in% names(matlist))) {
       manynet::snet_abort("Predictor {.val {v}} not found in the data.")
     }
   }
 
-  y <- data[[dep]]
+  y <- matlist[[dep]]
   large <- is.list(y)
 
   if (!css) {
@@ -139,9 +118,9 @@ setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
 
 #' @keywords internal
 #' @noRd
-run_permutations <- function(reps, FUN, ...) {
+run_permutations <- function(times, FUN, ...) {
   future.apply::future_lapply(
-    seq_len(reps),
+    seq_len(times),
     FUN,
     ...,
     future.seed = TRUE
@@ -211,7 +190,7 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
 
 #' @keywords internal
 #' @noRd
-make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
+make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
                           net = 1, perm = FALSE, xi = NULL) {
   nx <- length(x)
 
@@ -235,7 +214,7 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, mode = "digraph",
   # the diagonal. Keeping both halves doubles the sample and shrinks every
   # standard error, so take the lower triangle only. A two-mode incidence
   # matrix has no such symmetry, and keeps every cell.
-  if (identical(mode, "graph") && square) valid[upper.tri(valid)] <- FALSE
+  if (!directed && square) valid[upper.tri(valid)] <- FALSE
 
   for (var in seq_len(nx)) {
     valid[is.na(x[[var]])] <- FALSE
@@ -302,7 +281,7 @@ HC3 <- function(X, e) {
 # The predictor names carry spaces ("ego Age"), so the model formula quotes them
 # and several fitters hand the backticks back in the coefficient names. Double
 # semi-partialling then looks a column up by the unquoted name and fails with a
-# subscript error. The inner function has many early returns, one per estimator,
+# subscript error. The inner function has many early returns, one per family,
 # so the names are cleaned here, where every path passes through exactly once.
 #' @keywords internal
 #' @noRd
@@ -319,116 +298,19 @@ fit_qap_model <- function(...) {
 #' @keywords internal
 #' @noRd
 .fit_qap_model <- function(mod, pred, family,
-                          estimator = "standard",
-                          use_fixest = FALSE,
-                          fixest_se_cluster = NULL,
                           use_robust_errors = FALSE,
                           main_vars = NULL,
-                          has_random = FALSE,
-                          reference = NULL) {
+                          has_random = FALSE) {
   fit <- list()
   dep_var <- all.vars(mod)[1]
   nx  <- length(main_vars)
 
-  if (family == "multinom") {
-    pred[[dep_var]] <- as.factor(pred[[dep_var]])
-    if (!is.null(reference)) {
-      pred[[dep_var]] <- stats::relevel(pred[[dep_var]], ref = reference)
-    }
-    thisRequires("nnet", "for multinomial models")
-    base_model       <- nnet::multinom(mod, data = pred, trace = FALSE)
-    fit$coefficients <- stats::coefficients(base_model)
-    fit$t            <- stats::coefficients(base_model) /
-                          summary(base_model)$standard.errors
-    fit$base_model   <- base_model
-    return(fit)
-  }
-
-  if (estimator == "gmm") {
-    thisRequires("gmm", "for GMM estimation")
-    y_vec <- pred[[dep_var]]
-    x_mat <- cbind(1, as.matrix(pred[, main_vars, drop = FALSE]))
-
-    gmm_args <- list(
-      x = list(y = y_vec, x = x_mat),
-      t0 = stats::rnorm(nx + 1),
-      wmatrix = "optimal", vcov = "MDS",
-      optfct = "nlminb",
-      control = list(eval.max = 10000)
-    )
-
-    has_extra_param <- FALSE
-
-    if (family == "binomial") {
-      gmm_args$g <- logit_moments
-      base_model <- do.call(gmm::gmm, gmm_args)
-      resid <- logit_resid(base_model)
-    } else if (family == "poisson") {
-      gmm_args$g <- poisson_moments
-      base_model <- do.call(gmm::gmm, gmm_args)
-      resid <- poisson_resid(base_model)
-    } else if (family == "negbin") {
-      gmm_args$g  <- negbin_moments
-      gmm_args$t0 <- stats::rnorm(nx + 2)
-      base_model   <- do.call(gmm::gmm, gmm_args)
-      resid <- negbin_resid(base_model)
-      has_extra_param <- TRUE
-    } else if (family == "zip") {
-      gmm_args$g  <- zip_moments
-      gmm_args$t0 <- stats::rnorm(nx + 2)
-      base_model   <- do.call(gmm::gmm, gmm_args)
-      resid <- zip_resid(base_model)
-      has_extra_param <- TRUE
-    } else {
-      manynet::snet_abort(
-        c("The GMM estimator is not available for the {.val {family}} family.",
-          i = "It is available for the binomial, poisson, negbin, and zip families."))
-    }
-
-    all_coefs <- base_model$coefficients
-    if (!use_robust_errors) {
-      all_t <- summary(base_model)$coefficients[, 3]
-    }
-
-    if (has_extra_param) {
-      fit$coefficients <- all_coefs[1:(nx + 1)]
-    } else {
-      fit$coefficients <- all_coefs
-    }
-    names(fit$coefficients) <- c("(Intercept)", main_vars)
-
-    if (use_robust_errors) {
-      xv <- as.matrix(pred[, main_vars, drop = FALSE])
-      fit$t <- fit$coefficients / HC3(xv, resid)
-    } else {
-      if (has_extra_param) {
-        fit$t <- all_t[1:(nx + 1)]
-      } else {
-        fit$t <- all_t
-      }
-    }
-    names(fit$t) <- names(fit$coefficients)
-    fit$base_model <- base_model
-    fit$estimator  <- "gmm"
-    return(fit)
-  }
-
-  if (family == "zip" && estimator == "standard") {
+  if (family == "zip") {
     if (has_random) {
-      thisRequires("glmmTMB", "for mixed zero-inflated Poisson models")
-      base_model <- glmmTMB::glmmTMB(mod, data = pred,
-                                     family = stats::poisson(),
-                                     ziformula = ~1)
-      fit$coefficients <- glmmTMB::fixef(base_model)$cond
-      resid <- stats::residuals(base_model, type = "response")
-      fit$t <- summary(base_model)$coefficients$cond[, 3]
-      names(fit$t) <- names(fit$coefficients)
-      fit$zi_coefficients <- glmmTMB::fixef(base_model)$zi
-      fit$random.intercepts <- list()
-      re <- glmmTMB::ranef(base_model)$cond
-      for (rV in names(re)) {
-        fit$random.intercepts[[rV]] <- re[[rV]][, 1]
-      }
+      # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
+      manynet::snet_abort(
+        c("Random intercepts are not available for the {.val zip} family.",
+          i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
       thisRequires("pscl", "for zero-inflated Poisson models")
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
@@ -447,96 +329,35 @@ fit_qap_model <- function(...) {
   }
 
   if (!has_random) {
-    if (use_fixest) {
-      thisRequires("fixest", "for fixed effects and clustered standard errors")
-      fe_family <- if (family == "negbin") "negbin" else family
-      base_model <- fixest::feglm(mod, data = pred,
-                                  family = fe_family,
-                                  cluster = fixest_se_cluster)
-      # {fixest} reports an intercept where no fixed effect is absorbed, and
-      # none where one is. Add the placeholder only in the second case;
-      # otherwise the coefficient vector carries two intercepts.
-      fe_coefs <- base_model$coefficients
-      fit$coefficients <- if ("(Intercept)" %in% names(fe_coefs)) {
-        fe_coefs
-      } else {
-        c("(Intercept)" = NA, fe_coefs)
-      }
-      resid <- stats::residuals(base_model)
-
-      # `HC3()` and `vcov()` both return one standard error per estimated
-      # coefficient, so the placeholder is needed only where the intercept was
-      # absorbed and `fit$coefficients` carries an NA for it.
-      absorbed <- !("(Intercept)" %in% names(fe_coefs))
-      if (use_robust_errors) {
-        xv   <- as.matrix(pred[, main_vars, drop = FALSE])
-        hc   <- HC3(xv, resid)
-        fit$t <- if (absorbed) {
-          fit$coefficients / c(NA, hc[-1])
-        } else {
-          fit$coefficients / hc
-        }
-      } else {
-        fe_se <- sqrt(diag(stats::vcov(base_model)))
-        fe_t  <- fe_coefs / fe_se
-        fit$t <- if (absorbed) c("(Intercept)" = NA, fe_t) else fe_t
-      }
-      names(fit$t) <- names(fit$coefficients)
-
-      if (family == "gaussian") {
-        r2s <- tryCatch(fixest::r2(base_model), error = function(e) NULL)
-        if (!is.null(r2s)) {
-          fit$r.squared     <- r2s[["r2"]]
-          fit$adj.r.squared <- r2s[["ar2"]]
-        }
-      }
+    if (family == "gaussian") {
+      base_model        <- stats::lm(mod, data = pred)
+      fit$r.squared     <- summary(base_model)$r.squared
+      fit$adj.r.squared <- summary(base_model)$adj.r.squared
+    } else if (family == "negbin") {
+      thisRequires("MASS", "for negative binomial models")
+      base_model <- MASS::glm.nb(mod, data = pred)
+      fit$theta  <- base_model$theta
     } else {
-      if (family == "gaussian") {
-        base_model        <- stats::lm(mod, data = pred)
-        fit$r.squared     <- summary(base_model)$r.squared
-        fit$adj.r.squared <- summary(base_model)$adj.r.squared
-      } else if (family == "negbin") {
-        thisRequires("MASS", "for negative binomial models")
-        base_model <- MASS::glm.nb(mod, data = pred)
-        fit$theta  <- base_model$theta
-      } else {
-        base_model <- stats::glm(mod, data = pred, family = family)
-      }
-      fit$coefficients <- base_model$coefficients
-      resid <- stats::residuals(base_model)
+      base_model <- stats::glm(mod, data = pred, family = family)
+    }
+    fit$coefficients <- base_model$coefficients
+    resid <- stats::residuals(base_model)
 
-      if (use_robust_errors) {
-        xv <- as.matrix(pred[, main_vars, drop = FALSE])
-        fit$t <- fit$coefficients / HC3(xv, resid)
-      } else {
-        fit$t <- summary(base_model)$coefficients[, 3]
-      }
+    if (use_robust_errors) {
+      xv <- as.matrix(pred[, main_vars, drop = FALSE])
+      fit$t <- fit$coefficients / HC3(xv, resid)
+    } else {
+      fit$t <- summary(base_model)$coefficients[, 3]
     }
   } else {
     if (family == "gaussian") {
       thisRequires("lme4", "for random effects")
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
-      thisRequires("glmmTMB", "for mixed negative binomial models")
-      base_model <- glmmTMB::glmmTMB(mod, data = pred,
-                                     family = glmmTMB::nbinom2())
-      fit$coefficients <- glmmTMB::fixef(base_model)$cond
-      resid <- stats::residuals(base_model, type = "response")
-      if (use_robust_errors) {
-        xv <- as.matrix(pred[, main_vars, drop = FALSE])
-        fit$t <- fit$coefficients / HC3(xv, resid)
-      } else {
-        fit$t <- summary(base_model)$coefficients$cond[, 3]
-        names(fit$t) <- names(fit$coefficients)
-      }
-      fit$theta <- glmmTMB::sigma(base_model)
-      fit$random.intercepts <- list()
-      re <- glmmTMB::ranef(base_model)$cond
-      for (rV in names(re)) {
-        fit$random.intercepts[[rV]] <- re[[rV]][, 1]
-      }
-      fit$base_model <- base_model
-      return(fit)
+      # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
+      manynet::snet_abort(
+        c("Random intercepts are not available for the {.val negbin} family.",
+          i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
       thisRequires("lme4", "for random effects")
       base_model <- lme4::glmer(mod, data = pred, family = family,
@@ -593,16 +414,16 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
 
 #' @keywords internal
 #' @noRd
-aggregate_perm_results <- function(results, reps) {
+aggregate_perm_results <- function(results, times) {
   results <- Filter(Negate(is.null), results)
   n_valid <- length(results)
   if (n_valid == 0)
     manynet::snet_abort(
-      c("All {reps} permutations failed to converge.",
+      c("All {times} permutations failed to converge.",
         i = "Try a simpler model, another {.arg family}, or fewer predictors."))
-  if (n_valid < reps) {
+  if (n_valid < times) {
     manynet::snet_warn(
-      "{reps - n_valid} of {reps} permutation{?s} failed and {?was/were} excluded.")
+      "{times - n_valid} of {times} permutation{?s} failed and {?was/were} excluded.")
   }
   resL <- unlist(results, recursive = FALSE)
   list(
@@ -613,7 +434,7 @@ aggregate_perm_results <- function(results, reps) {
 }
 
 
-# ---- residualisation for qapspp ---------------------------------------------
+# ---- residualisation for permute = "predictor" ---------------------------------------------
 
 #' @keywords internal
 #' @noRd

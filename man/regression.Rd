@@ -37,24 +37,23 @@ dropped with a warning.}
 \item{control}{Named list of additional controls; unspecified entries fall
 back to the defaults below.
 \itemize{
-\item \code{method}: \code{"qap"} (double semi-partialling plus, default) or \code{"qapy"}
-(permute y only).
+\item \code{permute}: what the null distribution permutes. \code{"predictor"} (the
+default) residualises each main predictor against the others and
+permutes that residual, following Dekker et al. (2007). \code{"outcome"}
+permutes the dependent matrix and leaves the predictors alone. With one
+predictor there is nothing to residualise against, so \code{"predictor"}
+reduces to \code{"outcome"} and says so.
 \item \code{strategy}: future plan, e.g. \code{"sequential"} (default), \code{"multisession"}.
 \item \code{family}: \code{"auto"} (default; gaussian for weighted networks, binomial
 for binary), \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"},
-\code{"zip"}, or \code{"multinom"}.
-\item \code{estimator}: \code{"standard"} (default) or \code{"gmm"} (binomial/poisson/
-negbin/zip).
-\item \code{mode}: \code{"directed"} / \code{"undirected"} (default auto-detected from
-\code{.data}).
+or \code{"zip"}.
+\item \code{directed}: logical, whether a tie from i to j differs from one from j
+to i. Read from \code{.data} unless given, and reported when read.
 \item \code{diag}: logical, include loops (default auto-detected).
 \item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
 \item \code{use_robust_errors}: HC3 standard errors.
-\item \code{fixest_se_cluster}: cluster variable for fixest.
-\item \code{reference}, \code{comparison}: multinomial / pairwise-comparison options.
 \item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
 \item \code{less_mem}: drop the baseline model object from the return.
-\item \code{use_gpu}: torch-based batch OLS (gaussian only).
 }}
 
 \item{x}{A \code{net_regression} object.}
@@ -83,13 +82,12 @@ The formula front-end is the familiar
 object. Internally the response and predictors are packed into matrices
 and handed to a QAP engine (ported from MrQAP) that supports:
 \itemize{
-\item gaussian, binomial, poisson, negbin, zero-inflated Poisson, and
-multinomial families;
-\item \code{"qap"} (Dekker's double semi-partialling plus) and \code{"qapy"}
-(permute-y-only) null hypotheses;
-\item random intercepts (lme4 / glmmTMB) and fixed effects (fixest);
+\item gaussian, binomial, poisson, negative binomial, and zero-inflated
+Poisson families;
+\item two permutation schemes: \code{"predictor"} (Dekker's double semi-partialling)
+and \code{"outcome"};
+\item random intercepts (lme4);
 \item robust (HC3) standard errors;
-\item optional torch-based batch OLS on the GPU;
 \item lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled.
 }
