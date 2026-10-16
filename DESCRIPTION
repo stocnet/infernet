@@ -1,6 +1,6 @@
 Package: infernet
 Title: Inferential Models for Many Different Types of Networks
-Version: 0.2.0
+Version: 0.3.0
 Description: A set of tools for testing networks.
    It includes functions for univariate and multivariate 
    conditional uniform graph and quadratic assignment procedure testing,
@@ -18,7 +18,7 @@ Encoding: UTF-8
 LazyData: true
 Depends: 
     R (>= 4.1.0),
-    manynet (>= 2.3.1),
+    manynet (>= 2.4.0),
     netrics (>= 1.0.1)
 Authors@R: 
     c(person(given = "James",
@@ -55,4 +55,4 @@ Config/Needs/website:
 Config/testthat/parallel: true
 Config/testthat/edition: 3
 Config/testthat/start-first: qap_estimators, model_tests
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

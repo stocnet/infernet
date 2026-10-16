@@ -34,8 +34,8 @@ test_that("net_regression handles ego / alter / sim on a weighted network", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ ego(Age) + alter(Age) + sim(Age),
                         g, times = 10)
-  expect_s3_class(fit, "net_regression")
-  expect_s3_class(fit, "QAPRegression")
+  expect_s3_class(fit, "netreg")
+  expect_s3_class(fit, "netreg_lm")
   expect_true(!is.null(fit$coefficients))
   expect_true(!is.null(fit$lower))
 })
@@ -43,21 +43,21 @@ test_that("net_regression handles ego / alter / sim on a weighted network", {
 test_that("net_regression handles same() on a categorical attribute", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ same(Gender), g, times = 10)
-  expect_s3_class(fit, "net_regression")
+  expect_s3_class(fit, "netreg")
   expect_true("same Gender" %in% names(fit$coefficients))
 })
 
 test_that("net_regression handles dist() on a numeric attribute", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ dist(Age), g, times = 10)
-  expect_s3_class(fit, "net_regression")
+  expect_s3_class(fit, "netreg")
   expect_true("dist Age" %in% names(fit$coefficients))
 })
 
 test_that("net_regression handles tertius() with mean aggregation", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ tertius(Age, mean), g, times = 10)
-  expect_s3_class(fit, "net_regression")
+  expect_s3_class(fit, "netreg")
 })
 
 
@@ -67,14 +67,14 @@ test_that("family 'auto' resolves to gaussian for a weighted network", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ sim(Age), g, times = 10)
   expect_equal(fit$family, "gaussian")
-  expect_s3_class(fit, "QAPRegression")
+  expect_s3_class(fit, "netreg_lm")
 })
 
 test_that("family 'auto' resolves to binomial for a binary network", {
   g <- make_binary_net()
   fit <- net_regression(. ~ sim(Age), g, times = 10)
   expect_equal(fit$family, "binomial")
-  expect_s3_class(fit, "QAPGLM")
+  expect_s3_class(fit, "netreg_glm")
   expect_s3_class(fit$confusion_matrix, "QAPConfusionMatrix")
 })
 
@@ -86,7 +86,7 @@ test_that("gaussian family on binary outcome adds a clamped LPM CM", {
   fit <- net_regression(. ~ sim(Age), g, times = 10,
                         control = list(family = "gaussian"))
   expect_equal(fit$family, "gaussian")
-  expect_s3_class(fit, "QAPRegression")
+  expect_s3_class(fit, "netreg_lm")
   expect_s3_class(fit$confusion_matrix, "QAPConfusionMatrix")
 })
 
@@ -97,8 +97,8 @@ test_that("net_regression fits on a list of graphs", {
   g1 <- make_weighted_net(n = 8, seed = 1)
   g2 <- make_weighted_net(n = 8, seed = 2)
   fit <- net_regression(weight ~ sim(Age), list(g1, g2), times = 10)
-  expect_s3_class(fit, "net_regression")
-  expect_s3_class(fit, "QAPRegression")
+  expect_s3_class(fit, "netreg")
+  expect_s3_class(fit, "netreg_lm")
 })
 
 
@@ -109,7 +109,7 @@ test_that("graphs missing a predictor are dropped", {
   g2 <- manynet::as_tidygraph(matrix(stats::rnorm(8^2), 8, 8))
   gs <- list(A = g1, B = g2)
   fit <- suppressWarnings(net_regression(weight ~ sim(Age), gs, times = 10))
-  expect_s3_class(fit, "net_regression")
+  expect_s3_class(fit, "netreg")
   expect_length(unique(fit$pred$nv), 1L)
 })
 
@@ -124,13 +124,13 @@ test_that("dropping a graph warns", {
 
 # ---- print method ----------------------------------------------------------
 
-test_that("print.net_regression runs without error for QAPRegression", {
+test_that("print.netreg_lm runs without error", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ sim(Age), g, times = 10)
   expect_output(print(fit), "OLS Network Model")
 })
 
-test_that("print.net_regression runs without error for QAPGLM", {
+test_that("print.netreg_glm runs without error", {
   g <- make_binary_net()
   fit <- net_regression(. ~ sim(Age), g, times = 10)
   expect_output(print(fit), "Generalized Linear Network Model")
@@ -175,4 +175,38 @@ test_that("a missing attribute names what is available", {
   g <- make_weighted_net()
   expect_error(net_regression(weight ~ ego(Nope), g, times = 10),
                "Age")
+})
+
+# The class says what the result is, most specific first, so that a method can
+# be written at any level and S3 falls back to the next. `{autograph}` plots a
+# `netreg`, and can add a method for a more specific class later.
+test_that("a result's classes run from the most specific to netreg", {
+  g <- qap_net_gaussian(n = 12)
+  lin <- net_regression(weight ~ ego(Age) + alter(Age), g, times = 5,
+                        control = list(seed = 1))
+  expect_equal(class(lin), c("netreg_lm", "netreg"))
+
+  b <- qap_net_binary(n = 12)
+  glm_fit <- net_regression(. ~ ego(Age) + alter(Age), b, times = 5,
+                            control = list(seed = 1))
+  expect_equal(class(glm_fit), c("netreg_glm", "netreg"))
+
+  css <- suppressMessages(
+    net_regression(advice ~ ego(age) + friends, manynet::ison_hightech,
+                   times = 5, control = list(seed = 1)))
+  expect_equal(class(css), c("netreg_css", "netreg_glm", "netreg"))
+})
+
+test_that("each class prints through its own method", {
+  g <- qap_net_gaussian(n = 12)
+  lin <- net_regression(weight ~ ego(Age) + alter(Age), g, times = 5,
+                        control = list(seed = 1))
+  expect_output(print(lin), "Coefficients")
+  css <- suppressMessages(
+    net_regression(advice ~ ego(age) + friends, manynet::ison_hightech,
+                   times = 5, control = list(seed = 1)))
+  expect_output(print(css), "cognitive social structure")
+  # A bare netreg falls back to a structural summary rather than erroring.
+  bare <- structure(list(coefficients = 1), class = "netreg")
+  expect_output(print(bare), "<netreg>")
 })

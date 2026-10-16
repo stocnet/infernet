@@ -33,12 +33,30 @@ coverage](https://codecov.io/gh/stocnet/infernet/branch/main/graph/badge.svg)](h
   al’s double semi-partialling or a permutation of the dependent network
   alone.
 
-It offers these capabilities for one-mode and two-mode networks, and for unimodal,
-directed, undirected, weighted, or cognitive social structure networks alike. 
-It accepts matrices, edgelists,
-`{igraph}`, `{network}`, `{tidygraph}`, or `stocnet` objects,
-and handles missing-data gracefully. 
-It can run permutations in parallel, and can optionally use a GPU via `{torch}`.
+The package combines the formula interface of `{migraph}` with the
+estimators, missing-data handling, and cognitive social structure
+treatment of Robert Krause’s `MrQAP`.
+
+## Design principles
+
+`{infernet}` and the other [stocnet](https://github.com/stocnet)
+packages aim for three things:
+
+- **Declarative simplicity**: functions do one clearly named thing with
+  few arguments. For example, `test_permutation()` and
+  `net_regression()` are named for what they do, rather than for an
+  acronym.
+- **Pleasant predictability**: users can guess a function’s behaviour
+  from its family. For example, the `test_*()` functions all take a
+  network, a statistic, and a number of `times`.
+- **Graceful inclusivity**: functions accept whatever network users
+  bring and return something they can use. For example,
+  `net_regression()` works on any network that `{manynet}` can convert,
+  one-mode or two-mode, and keeps missing data missing.
+
+See the [contributing
+guide](https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style)
+for how these principles translate into rules for the package.
 
 ## A formula you can reuse
 

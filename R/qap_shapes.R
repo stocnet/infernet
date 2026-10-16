@@ -46,9 +46,9 @@
     css   = TRUE,
     label = "cognitive social structure",
     ndim  = 3L,
-    # A perceiver intercept as well, since each perceiver reports the whole
-    # network and their reports are not independent of each other.
-    rand_slots = c(nets = "nv", perceiver = "pv", sender = "sv", receiver = "rv"),
+    # A reporter intercept as well, since each reporter describes the whole
+    # network and one reporter's reports are not independent of each other.
+    rand_slots = c(nets = "nv", reporter = "bv", sender = "sv", receiver = "rv"),
     # A CSS array is sparse, so a permutation can leave an outcome with one
     # value and nothing to fit. Redraw rather than discard: discarding biases
     # the null towards the draws that happened to be dense.

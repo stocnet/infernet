@@ -1,86 +1,66 @@
 # Cognitive social structures --------------------------------------------------
 #
 # Internal. What a CSS needs that a dyadic network does not: a vectoriser for a
-# sender-by-receiver-by-perceiver array, and a print method. Everything else it
+# sender-by-receiver-by-reporter array, and a print method. Everything else it
 # shares with the dyadic case, and lives in R/qap_engine.R.
 
-#' @keywords internal
-#' @noRd
-array_to_vector <- function(ar, directed., diag.) {
-  v <- c()
-  for (i in 1:nrow(ar)) {
-    if (!directed.) {
-      v <- c(v, as.vector(ar[, , i][upper.tri(ar[, , i], diag = diag.)]))
-    } else {
-      v <- c(v, as.vector(ar[, , i]))
-    }
-  }
-  return(v)
-}
-
+# A CSS array has a row for each sender, a column for each receiver, and a
+# slice for each reporter, so it is read along all three of its axes. A one-mode
+# CSS from `{manynet}` has as many slices as nodes, and a two-mode CSS has a
+# slice for every node of both modes, so the third axis cannot be assumed to
+# match the first. Reading all three from `dim()` is what keeps a two-mode CSS,
+# or one with fewer reporters than nodes, from indexing past an axis.
+#
+# Every array is vectorised with `[valid]`, in R's column-major order: slice by
+# slice, and column by column within a slice. `residuals_to_array()` writes back
+# with `out[valid] <- xR`, so the two orders agree by construction.
 #' @keywords internal
 #' @noRd
 make_css_data <- function(y, x, nets, diag, directed) {
-  n <- dim(y)[1]
+  d <- dim(y)
+  nr <- d[1]; nc <- d[2]; np <- d[3]
+  square <- nr == nc
   nx <- length(x)
-  valid <- array(TRUE, dim = c(n, n, n))
 
-  if (!diag) {
-    for (i in 1:n) {
-      diag(y[, , i]) <- NA
-      for (var in 1:nx) {
-        diag(x[[var]][, , i]) <- NA
-      }
-    }
+  for (var in seq_len(nx)) {
+    if (!identical(dim(x[[var]]), d))
+      manynet::snet_abort(
+        c("Predictor {.val {names(x)[var]}} has dimensions {dim(x[[var]])}.",
+          i = "It must match the outcome, of {d}: sender, receiver, and reporter."))
   }
+
+  slice <- matrix(TRUE, nr, nc)
+  # A tie from a node to itself is a loop, so it is dropped unless loops are
+  # kept. A two-mode CSS has no diagonal: its rows and columns are different
+  # nodes.
+  if (!diag && square) diag(slice) <- FALSE
+  # Each reporter's view of an undirected network holds every dyad twice, so
+  # keep the lower triangle only, as `make_qap_data()` does for one network.
+  if (!directed && square) slice[upper.tri(slice)] <- FALSE
+  valid <- array(slice, dim = d)
 
   valid[is.na(y)] <- FALSE
+  for (var in seq_len(nx)) valid[is.na(x[[var]])] <- FALSE
 
-  for (var in 1:nx) {
-    valid[is.na(x[[var]])] <- FALSE
+  if (!any(valid)) {
+    manynet::snet_abort(
+      c("No valid observations remain in network {nets} after dropping NA and diagonal cells.",
+        i = "Check that the predictors and the outcome are observed for the same reports."))
   }
 
-  if (!directed) {
-    for (i in 1:n) {
-      y[, , i][lower.tri(y[, , i])] <- NA
-      valid[, , i][lower.tri(valid[, , i])] <- FALSE
-      for (var in 1:nx) {
-        x[[var]][, , i][lower.tri(x[[var]][, , i])] <- NA
-      }
-    }
+  pred <- data.frame(yv = y[valid], nv = as.factor(nets))
+  pred$sv <- as.factor(slice.index(y, 1)[valid])
+  pred$rv <- as.factor(slice.index(y, 2)[valid])
+  # `bv` takes its name from the `by` column in which `{manynet}` records who
+  # reported each tie.
+  pred$bv <- as.factor(slice.index(y, 3)[valid])
+  for (var in seq_len(nx)) {
+    pred[[names(x)[var]]] <- x[[var]][valid]
   }
-
-  y[!valid] <- NA
-
-  for (var in 1:nx) {
-    x[[var]][!valid] <- NA
-  }
-
-  vv <- array_to_vector(valid, directed. = directed, diag. = diag)
-  yv <- array_to_vector(y, directed. = directed, diag. = diag)[vv]
-
-  pred <- data.frame(yv = yv, nv = nets)
-
-  per <- sen <- rec <- array(NA, dim = c(n, n, n))
-
-  for (i in 1:n) {
-    sen[i, , ] <- i
-    rec[, i, ] <- i
-    per[, , i] <- i
-  }
-
-  pred$sv <- as.factor(array_to_vector(sen, directed. = directed, diag. = diag)[vv])
-  pred$rv <- as.factor(array_to_vector(rec, directed. = directed, diag. = diag)[vv])
-  pred$pv <- as.factor(array_to_vector(per, directed. = directed, diag. = diag)[vv])
-
-  for (var in c(1:nx)) {
-    pred[[names(x)[var]]] <- array_to_vector(x[[var]],
-                                             directed. = directed, diag. = diag)[vv]
-  }
-  return(list(pred = pred, valid = valid))
+  list(pred = pred, valid = valid)
 }
 
-# Coefficient-table helper used by print.QAPCSS
+# Coefficient-table helper used by print.netreg_css
 #' @keywords internal
 #' @noRd
 glm_tab <- function(x) {
@@ -109,14 +89,27 @@ glm_tab <- function(x) {
 
 # Registered so that a CSS fit prints as a model rather than as a list. The
 # class is internal, so the method is registered without a help topic.
-#' @exportS3Method print QAPCSS
-print.QAPCSS <- function(x, ...) {
+# A CSS result prints its own way, whatever its family: it says how many
+# reporters it was fitted on, which a reader needs to interpret it.
+#' @rdname regression
+#' @export
+print.netreg_css <- function(x, ...) {
 
   if (!any(x$random)) {
-    cat("\nGeneralized Linear Network Model for CSS\n\n")
+    cat("\nGeneralized Linear Network Model for a cognitive social structure\n\n")
   } else {
-    cat("\nGeneralized Linear Mixed Network Model for CSS fit by REML\n\n")
+    cat("\nGeneralized Linear Mixed Network Model for a cognitive social structure\n\n")
   }
+
+  # A result should say what it was fitted on: how many reporters, and how many
+  # of their reports reached the model after missing ones were dropped.
+  if (!is.null(x$pred$bv)) {
+    reporters <- length(unique(x$pred$bv))
+    cat("Fitted on", format(nrow(x$pred)), "reported dyads from",
+        reporters, if (reporters == 1) "reporter.\n" else "reporters.\n")
+  }
+  if (isTRUE(x$random[["reporter"]]))
+    cat("Each reporter has a random intercept.\n")
 
   if (!is.null(x$theta))
     cat("Negative binomial dispersion (theta):", format(round(x$theta, 4)), "\n")
