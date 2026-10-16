@@ -1,3 +1,10 @@
+# infernet 0.3.0
+
+## Package
+
+- Added design principles to the README and the contributing guide
+- Raised the minimum version of `{manynet}` to 2.4.0, for its CSS construct
+
 # infernet 0.2.0
 
 ## Package
