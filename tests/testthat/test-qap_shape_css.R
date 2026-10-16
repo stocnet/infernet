@@ -23,7 +23,7 @@ test_that("the engine fits a CSS and counts its observations", {
   n <- 8
   fit <- QAPengine(ties ~ cov, css_fixture(n), css = TRUE,
                    family = "binomial", times = 20, seed = 1)
-  expect_s3_class(fit, "QAPCSS")
+  expect_s3_class(fit, "netreg_css")
   expect_named(fit$coefficients, c("(Intercept)", "cov"))
   # Every cell of every reporter's report, less the diagonals.
   expect_equal(nrow(fit$pred), n * n * n - n * n)

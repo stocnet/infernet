@@ -21,6 +21,11 @@
 - Fixed a list of `stocnet` networks being read as one network
 - Fixed the CSS shape assuming one reporter per node and a square array
 - Improved the CSS print method to say how many reporters it was fitted on
+- Renamed the classes of a `net_regression()` result to a hierarchy under `netreg`
+  - `c("netreg_lm", "netreg")` for a gaussian model, `c("netreg_glm", "netreg")`
+    for any other family, and `"netreg_css"` in front for a CSS
+  - Replaces `net_regression`, `QAPRegression`, `QAPGLM`, and `QAPCSS`
+  - Each specific class prints through its own method
 - Fixed `print.QAPConfusionMatrix()` not being registered as an S3 method
   - `print(fit$confusion_matrix)` printed a raw list from the console
 

@@ -433,10 +433,12 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
     out$lower  <- pres <= bres
     out$larger <- pres >= bres
     out$abs    <- abs(pres) >= abs(bres)
+    out$t      <- perm_t
   } else {
     out$lower  <- (pres <= bres)[, xi]
     out$larger <- (pres >= bres)[, xi]
     out$abs    <- (abs(pres) >= abs(bres))[, xi]
+    out$t      <- perm_t[xi]
   }
   return(out)
 }
@@ -459,7 +461,11 @@ aggregate_perm_results <- function(results, times) {
   list(
     lower  = Reduce("+", resL[names(resL) == "lower"],  0) / n_valid,
     larger = Reduce("+", resL[names(resL) == "larger"], 0) / n_valid,
-    abs    = Reduce("+", resL[names(resL) == "abs"],    0) / n_valid
+    abs    = Reduce("+", resL[names(resL) == "abs"],    0) / n_valid,
+    # The permuted test statistics themselves, one row per permutation that
+    # succeeded. The three shares above are summaries of this; keeping it lets a
+    # plot draw the null distribution the shares were read from.
+    testdist = do.call(rbind, lapply(results, function(r) r$t))
   )
 }
 

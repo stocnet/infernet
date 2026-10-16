@@ -176,6 +176,7 @@ vocabulary; the front end's words won, since those are the ones users read:
 | `net` | one coerced network, inside the formula front end | `data` |
 | reporter | the person whose report a CSS slice holds, after `{manynet}`'s `by` column | perceiver |
 | `bv` | the reporter index in the dyad-level data, after `by` | `pv` |
+| `testdist` | a null distribution: the statistics from every permutation or simulation, on a test or a fit | `dist` |
 
 `mode` is reserved for a nodeset, as in one-mode and two-mode, which is what it
 means everywhere else in the ecosystem. Do not use it for directedness.
@@ -318,12 +319,26 @@ regression entry point. Its control flow is:
    `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
    Report each resolution with `snet_info()`: a model the user did not state is
    one they cannot describe in a paper.
-4. Call `QAPglm()`, which parses the formula, fits the baseline model once
+4. Call `QAPengine()`, which parses the formula, fits the baseline model once
    via `fit_qap_model()`, then runs `times` permutations and aggregates them.
-5. Attach a probabilistic confusion matrix where the outcome is binary,
-   and class the result `net_regression`.
+5. Attach a probabilistic confusion matrix where the outcome is binary.
 
-Inside `QAPglm()` the `permute` control names what the null distribution
+The result is a `netreg`, with more specific classes in front of it:
+
+| Result | Class |
+|---|---|
+| gaussian | `c("netreg_lm", "netreg")` |
+| any other family | `c("netreg_glm", "netreg")` |
+| a CSS | `c("netreg_css", <family class>, "netreg")` |
+
+Write a method at the level where behaviour actually differs, and let S3 fall
+back for the rest: `print()` has a method for each of the three specific
+classes, while `{autograph}` needs only `plot.netreg()` until a CSS wants a plot
+of its own. The names say what the result is, not the procedure that made it,
+so they carry no `qap`, and none repeats a function's name. A new kind of result
+gets a new specific class in front of `netreg`, not a new parent.
+
+Inside `QAPengine()` the `permute` control names what the null distribution
 permutes: `"outcome"` permutes the dependent matrix only, while `"predictor"`
 implements Dekker et al.'s double semi-partialling, running one permutation set
 per main predictor after residualising it against the others.
@@ -331,7 +346,12 @@ With one predictor there is nothing to residualise against, so `"predictor"`
 falls back to `"outcome"` and says so.
 Permuted coefficients and test statistics are then compared against the baseline
 by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
-p-value matrices by `aggregate_perm_results()`.
+p-value matrices by `aggregate_perm_results()`, which also keeps the permuted
+test statistics as `testdist`. Keep that matrix whenever the summaries change:
+the summaries are read from it, `test-qap_testdist.R` checks that they agree,
+and `{autograph}` draws it. The name is the one the test family already uses;
+`{sna}` and `{migraph}` call the same thing `dist`, which `{autograph}`'s
+`plot.netlm()` reads, but `dist()` is a formula term here.
 ### One engine, two shapes
 
 `QAPengine()` fits a dyadic network and a cognitive social structure through the
@@ -575,6 +595,7 @@ and are grouped by contract for the engine:
 | `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
 | `test-net_regression_css.R` | CSS models through `net_regression()`, from `{manynet}` networks |
+| `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 
 [tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
 holds the shared fixtures and expectations:

@@ -60,7 +60,7 @@ make_css_data <- function(y, x, nets, diag, directed) {
   list(pred = pred, valid = valid)
 }
 
-# Coefficient-table helper used by print.QAPCSS
+# Coefficient-table helper used by print.netreg_css
 #' @keywords internal
 #' @noRd
 glm_tab <- function(x) {
@@ -89,8 +89,11 @@ glm_tab <- function(x) {
 
 # Registered so that a CSS fit prints as a model rather than as a list. The
 # class is internal, so the method is registered without a help topic.
-#' @exportS3Method print QAPCSS
-print.QAPCSS <- function(x, ...) {
+# A CSS result prints its own way, whatever its family: it says how many
+# reporters it was fitted on, which a reader needs to interpret it.
+#' @rdname regression
+#' @export
+print.netreg_css <- function(x, ...) {
 
   if (!any(x$random)) {
     cat("\nGeneralized Linear Network Model for a cognitive social structure\n\n")

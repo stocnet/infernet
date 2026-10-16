@@ -141,9 +141,11 @@ QAPengine <- function(formula,
                    c(list(times, QAPPermEst, matlist. = matlist,
                           perm_var. = NULL), perm_args))
     agg <- aggregate_perm_results(res, times)
-    fit$lower  <- agg$lower
-    fit$larger <- agg$larger
-    fit$abs    <- agg$abs
+    fit$lower    <- agg$lower
+    fit$larger   <- agg$larger
+    fit$abs      <- agg$abs
+    fit$testdist <- .as_testdist(agg$testdist, names(fit$base$coefficients),
+                                 times)
 
   } else if (permute == "predictor") {
     n_coefs <- length(fit$base$coefficients)
@@ -151,6 +153,10 @@ QAPengine <- function(formula,
                          dimnames = list(c("perm_coefs", "perm_t"),
                                          names(fit$base$coefficients)))
     fit$larger <- fit$abs <- fit$lower
+    # Each predictor is permuted in its own set of draws, so a row pairs the
+    # columns only by its position. The intercept is not permuted at all, and
+    # its column stays NA, as its p-values do.
+    fit$testdist <- .as_testdist(NULL, names(fit$base$coefficients), times)
 
     for (xi in main) {
       test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
@@ -175,6 +181,8 @@ QAPengine <- function(formula,
       fit$lower[, xi]  <- agg$lower
       fit$larger[, xi] <- agg$larger
       fit$abs[, xi]    <- agg$abs
+      draws <- as.vector(agg$testdist)
+      fit$testdist[seq_along(draws), xi] <- draws
     }
   }
 
@@ -210,13 +218,14 @@ QAPengine <- function(formula,
   fit$dep       <- dep
 
 
-  class(fit) <- if (css) {
-    "QAPCSS"
-  } else if (family == "gaussian") {
-    "QAPRegression"
-  } else {
-    "QAPGLM"
-  }
+  # Most specific first, so that a method can be written at any level and S3
+  # falls back to the next. Every result is a `netreg`. Its family splits it
+  # into linear and generalised, which is where printing differs. A CSS puts
+  # `netreg_css` in front, so that a CSS method can take over and still fall
+  # back to the family's. The names say what the result is, not the procedure
+  # that produced it, as the function names do.
+  family_class <- if (family == "gaussian") "netreg_lm" else "netreg_glm"
+  class(fit) <- c(if (css) "netreg_css", family_class, "netreg")
   fit
 }
 
@@ -287,4 +296,22 @@ QAPPermEst <- function(i,
 
   compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t,
                            fit., xi = perm_var.)
+}
+
+
+# The permuted test statistics as a matrix of one row per permutation and one
+# column per coefficient, named as the coefficients are. The test family keeps
+# its null distribution as `testdist` too, so the word means one thing across
+# the package. A permutation that failed leaves its row NA rather than shifting
+# the others up, so every column has `times` rows.
+#' @keywords internal
+#' @noRd
+.as_testdist <- function(draws, coef_names, times) {
+  out <- matrix(NA_real_, nrow = times, ncol = length(coef_names),
+                dimnames = list(NULL, coef_names))
+  if (!is.null(draws)) {
+    draws <- matrix(draws, ncol = length(coef_names))
+    out[seq_len(nrow(draws)), ] <- draws
+  }
+  out
 }

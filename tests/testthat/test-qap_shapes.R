@@ -128,7 +128,7 @@ test_that("a two-mode network accepts a grouping factor for either mode", {
   for (grp in list(rows, cols)) {
     fit <- net_regression(. ~ ego(Att), g, times = 5,
                           control = list(seed = 1, groups = grp))
-    expect_s3_class(fit, "net_regression")
+    expect_s3_class(fit, "netreg")
     expect_equal(nrow(fit$pred), 12 * 40)
   }
   expect_error(

@@ -7,7 +7,7 @@
 #' @keywords internal
 #' @noRd
 combine_qap_estimates <- function(res, res2 = NULL) {
-  if (inherits(res, c("QAPCSS", "QAPRegression", "QAPGLM")) &&
+  if (inherits(res, "netreg") &&
       !is.null(res2)) {
     res <- list(res, res2)
   }

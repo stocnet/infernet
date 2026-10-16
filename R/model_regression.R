@@ -93,11 +93,27 @@
 #'   - `random_intercept_reporter`: an lme4-style random intercept for each
 #'     reporter of a cognitive social structure.
 #'   - `less_mem`: drop the baseline model object from the return.
-#' @return An object of class `net_regression` inheriting from either
-#'   `QAPRegression` (gaussian) or `QAPGLM` (other families).  When the
-#'   outcome is binary -- either `family = "binomial"` or `"gaussian"` with
-#'   a 0/1 dependent -- a probabilistic confusion matrix is attached as
-#'   `$confusion_matrix`; for the gaussian-binary case the linear
+#' @return An object of class `netreg`, with a more specific class in front:
+#'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
+#'   A cognitive social structure also puts `netreg_css` first, so
+#'   `c("netreg_css", "netreg_glm", "netreg")` for a binomial CSS model.
+#'   A method can be written for any of these, and falls back to the next.
+#'   Among its elements:
+#'   - `coefficients` and `t`, the estimates and test statistics of the
+#'     observed model;
+#'   - `lower`, `larger`, and `abs`, the share of permutations whose
+#'     coefficient (first row) or test statistic (second row) is at or below,
+#'     at or above, or beyond the observed one;
+#'   - `testdist`, the permuted test statistics themselves, as a matrix of one
+#'     row per permutation and one column per coefficient. The shares in
+#'     `lower`, `larger`, and `abs` are read from it. Under
+#'     `permute = "predictor"` each column comes from its own set of
+#'     permutations, so rows pair columns only by position, and the intercept
+#'     column is `NA`. A permutation that failed leaves its row `NA`.
+#'
+#'   When the outcome is binary -- either `family = "binomial"` or
+#'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
+#'   attached as `$confusion_matrix`; for the gaussian-binary case the linear
 #'   probability fitted values are clamped to 0/1 before sampling.
 #' @name regression
 #' @family models
@@ -209,7 +225,6 @@ net_regression <- function(formula,
     fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
   }
 
-  class(fit) <- c("net_regression", class(fit))
   fit
 }
 
@@ -414,26 +429,34 @@ net_regression <- function(formula,
 
 # ---- print method ----------------------------------------------------------
 
+# S3 dispatches on the most specific class, so each kind of result has its own
+# method and none of them branches on the class of another. `print.netreg()` is
+# the fallback for a `netreg` with no more specific class.
+
 #' @rdname regression
-#' @param x A `net_regression` object.
+#' @param x A `netreg` object, as returned by `net_regression()`.
 #' @param ... Additional arguments passed to the underlying print helpers.
 #' @param print_b Logical; also print coefficient-based (not t-based)
 #'   permutation p-values.
 #' @param print_random Logical; print random intercepts when present.
 #' @export
-print.net_regression <- function(x, ...,
-                                 print_b = FALSE,
-                                 print_random = FALSE) {
-  if (inherits(x, "QAPRegression")) {
-    .print_qap_regression(x, print_b = print_b, print_random = print_random)
-  } else if (inherits(x, "QAPGLM")) {
-    .print_qap_glm(x, print_b = print_b, print_random = print_random)
-  } else if (inherits(x, "QAPCSS")) {
-    print.QAPCSS(x)
-  } else {
-    cat("<net_regression>\n")
-    utils::str(x, max.level = 1)
-  }
+print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_qap_regression(x, print_b = print_b, print_random = print_random)
+  invisible(x)
+}
+
+#' @rdname regression
+#' @export
+print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_qap_glm(x, print_b = print_b, print_random = print_random)
+  invisible(x)
+}
+
+#' @rdname regression
+#' @export
+print.netreg <- function(x, ...) {
+  cat("<netreg>\n")
+  utils::str(unclass(x), max.level = 1)
   invisible(x)
 }
 

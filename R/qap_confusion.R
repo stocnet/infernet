@@ -77,7 +77,7 @@ probabilistic_confusion_matrix <- function(actual,
 
 # Registered so that `print(fit$confusion_matrix)` dispatches from the console
 # too, and not only from inside the package. The class is internal, so the
-# method is registered without a help topic, as `print.QAPCSS()` is.
+# method is registered without a help topic.
 #' @exportS3Method print QAPConfusionMatrix
 print.QAPConfusionMatrix <- function(x, ...) {
   cat("\nProbabilistic Confusion Matrix\n")

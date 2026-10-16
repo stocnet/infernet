@@ -56,8 +56,8 @@ FORM_HT <- advice ~ ego(age) + alter(age) + same(dept) + reports
 test_that("a CSS layer is detected and fitted as one", {
   fit <- suppressMessages(
     net_regression(FORM_HT, HT, times = 10, control = list(seed = 1)))
-  expect_s3_class(fit, "net_regression")
-  expect_s3_class(fit, "QAPCSS")
+  expect_s3_class(fit, "netreg")
+  expect_s3_class(fit, "netreg_css")
   expect_named(fit$coefficients,
                c("(Intercept)", "ego age", "alter age", "same dept", "reports"))
   # 21 reporters, each describing the 21 x 20 ordered dyads.
@@ -87,7 +87,7 @@ test_that("a layer that is not a CSS is the outcome of a dyadic model", {
   fit <- suppressMessages(
     net_regression(reports ~ ego(age) + alter(age), HT, times = 5,
                    control = list(seed = 1)))
-  expect_false(inherits(fit, "QAPCSS"))
+  expect_false(inherits(fit, "netreg_css"))
   expect_equal(nrow(fit$pred), 21 * 20)
 })
 
@@ -251,7 +251,7 @@ test_that("a list of CSS networks is pooled", {
   fit <- suppressMessages(
     net_regression(advice ~ ego(age) + friends, list(HT, HT), times = 5,
                    control = list(seed = 1)))
-  expect_s3_class(fit, "QAPCSS")
+  expect_s3_class(fit, "netreg_css")
   expect_equal(nrow(fit$pred), 2 * 21 * 21 * 20)
 })
 

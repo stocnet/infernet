@@ -101,7 +101,7 @@ qap_reference_data <- function(formula, .data, directed = NULL, diag = FALSE) {
 # The p-value matrices are the product of the permutation loop, so their shape
 # is the contract every estimator has to meet, whatever it fits underneath.
 expect_qap_shape <- function(fit, coefs) {
-  testthat::expect_s3_class(fit, "net_regression")
+  testthat::expect_s3_class(fit, "netreg")
   testthat::expect_named(fit$coefficients, coefs)
   for (el in c("lower", "larger", "abs")) {
     m <- fit[[el]]
