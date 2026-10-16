@@ -22,8 +22,8 @@ unweighted graph).  The right-hand side accepts:
 \item \code{sim(attr)} — proportional similarity in a numeric attribute,
 \item \code{tertius(attr, fn)} — aggregate of an attribute across a node's
 other ties (\code{fn} is \code{"mean"} or \code{"sum"}),
-\item plain tie-attribute names, which pull in a second network as a
-dyadic covariate.
+\item plain layer or tie-attribute names, which pull in a second network as
+a dyadic covariate.
 }}
 
 \item{.data}{A manynet-consistent network (see
@@ -53,6 +53,8 @@ to i. Read from \code{.data} unless given, and reported when read.
 \item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
 \item \code{use_robust_errors}: HC3 standard errors.
 \item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
+\item \code{random_intercept_reporter}: an lme4-style random intercept for each
+reporter of a cognitive social structure.
 \item \code{less_mem}: drop the baseline model object from the return.
 }}
 
@@ -89,9 +91,49 @@ and \code{"outcome"};
 \item random intercepts (lme4);
 \item robust (HC3) standard errors;
 \item lists of networks, in which graphs that are missing any predictor are
-dropped with a warning and the remaining networks are pooled.
+dropped with a warning and the remaining networks are pooled;
+\item cognitive social structures, detected rather than declared (see below).
 }
 }
+\section{Cognitive social structures}{
+
+A cognitive social structure (CSS) records each person's report of the
+whole network (Krackhardt 1987). \code{{manynet}} holds one as a network whose
+ties carry a \code{by} column naming the reporter, and \code{manynet::is_cognitive()}
+says whether a network is one. Where the outcome is a CSS, the model is
+fitted on every reported dyad: one observation for each sender, receiver,
+and reporter, rather than for each sender and receiver.
+\itemize{
+\item A nodal term such as \code{ego(age)} is the same in every report.
+\item A layer that is itself a CSS, such as another relation that every
+reporter described, enters as each reporter's own report of it.
+\item A layer that is not a CSS, such as a formal reporting structure, enters
+as one matrix that every report shares.
+\item \code{tertius()} is computed within each report, since each reporter sees a
+different set of a node's other ties.
+}
+
+A permutation relabels the nodes, and a reporter is a node, so the senders,
+receivers, and reporters are relabelled together.
+\code{control = list(random_intercept_reporter = TRUE)} adds a random intercept
+for each reporter.
+
+A person who was not asked has a report of zeros unless the network marks
+them as missing, for example with
+\code{manynet::mutate_nodes(net, na = label \%in\% c(...))}.
+Their reports are then dropped. A report of zeros that is not so marked is
+kept, and named in a warning, since it may be either.
+}
+
+\section{Multiplex networks}{
+
+The left-hand side of the formula can name a layer of a multiplex network,
+and the right-hand side can name other layers as dyadic covariates,
+e.g. \code{advice ~ friends + reports} on \code{manynet::ison_hightech}.
+A multiplex network whose layers cannot be combined into one matrix,
+such as one with a CSS layer, must name its outcome layer.
+}
+
 \examples{
 \dontrun{
 networkers <- manynet::ison_networkers |>
@@ -101,8 +143,17 @@ model1 <- net_regression(
   networkers, times = 20)
 print(model1)
 }
+# A cognitive social structure: each of 21 managers' report of who goes to
+# whom for advice, against the formal reporting structure that all share.
+css_model <- net_regression(advice ~ same(dept) + reports,
+                            manynet::ison_hightech, times = 5)
 }
 \references{
+Krackhardt, David. 1987.
+"Cognitive Social Structures."
+\emph{Social Networks} 9(2): 109-134.
+\doi{10.1016/0378-8733(87)90009-8}.
+
 Krackhardt, David. 1988.
 "Predicting with Networks: Nonparametric Multiple Regression Analysis
 of Dyadic Data."

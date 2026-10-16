@@ -5,6 +5,25 @@
 - Added design principles to the README and the contributing guide
 - Raised the minimum version of `{manynet}` to 2.4.0, for its CSS construct
 
+## Regression
+
+- Added cognitive social structures to `net_regression()`
+  - A CSS is detected from the `by` column of its ties, not declared
+  - Each reported dyad is one observation: sender, receiver, and reporter
+  - A permutation relabels senders, receivers, and reporters together
+  - Added `random_intercept_reporter` to `control`
+  - `tertius()` is computed within each report
+  - One-mode, two-mode, undirected, and pooled CSS networks all fit
+  - Removed `df_to_mat()`, since `{manynet}` now builds CSS arrays
+- Added a warning naming each reporter whose report holds no ties
+- Added layer names to the formula, e.g. `advice ~ friends + reports`
+- Fixed a dyadic covariate named on its own, as in `y ~ reports`
+- Fixed a list of `stocnet` networks being read as one network
+- Fixed the CSS shape assuming one reporter per node and a square array
+- Improved the CSS print method to say how many reporters it was fitted on
+- Fixed `print.QAPConfusionMatrix()` not being registered as an S3 method
+  - `print(fit$confusion_matrix)` printed a raw list from the console
+
 # infernet 0.2.0
 
 ## Package

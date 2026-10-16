@@ -17,7 +17,42 @@
 #' - random intercepts (lme4);
 #' - robust (HC3) standard errors;
 #' - lists of networks, in which graphs that are missing any predictor are
-#'   dropped with a warning and the remaining networks are pooled.
+#'   dropped with a warning and the remaining networks are pooled;
+#' - cognitive social structures, detected rather than declared (see below).
+#'
+#' @section Cognitive social structures:
+#'   A cognitive social structure (CSS) records each person's report of the
+#'   whole network (Krackhardt 1987). `{manynet}` holds one as a network whose
+#'   ties carry a `by` column naming the reporter, and `manynet::is_cognitive()`
+#'   says whether a network is one. Where the outcome is a CSS, the model is
+#'   fitted on every reported dyad: one observation for each sender, receiver,
+#'   and reporter, rather than for each sender and receiver.
+#'
+#'   - A nodal term such as `ego(age)` is the same in every report.
+#'   - A layer that is itself a CSS, such as another relation that every
+#'     reporter described, enters as each reporter's own report of it.
+#'   - A layer that is not a CSS, such as a formal reporting structure, enters
+#'     as one matrix that every report shares.
+#'   - `tertius()` is computed within each report, since each reporter sees a
+#'     different set of a node's other ties.
+#'
+#'   A permutation relabels the nodes, and a reporter is a node, so the senders,
+#'   receivers, and reporters are relabelled together.
+#'   `control = list(random_intercept_reporter = TRUE)` adds a random intercept
+#'   for each reporter.
+#'
+#'   A person who was not asked has a report of zeros unless the network marks
+#'   them as missing, for example with
+#'   `manynet::mutate_nodes(net, na = label %in% c(...))`.
+#'   Their reports are then dropped. A report of zeros that is not so marked is
+#'   kept, and named in a warning, since it may be either.
+#'
+#' @section Multiplex networks:
+#'   The left-hand side of the formula can name a layer of a multiplex network,
+#'   and the right-hand side can name other layers as dyadic covariates,
+#'   e.g. `advice ~ friends + reports` on `manynet::ison_hightech`.
+#'   A multiplex network whose layers cannot be combined into one matrix,
+#'   such as one with a CSS layer, must name its outcome layer.
 #'
 #' @param formula A formula describing the model.  The left-hand side is the
 #'   dependent network (e.g. `weight` for a weighted graph, or `.` for an
@@ -29,8 +64,8 @@
 #'   - `sim(attr)` — proportional similarity in a numeric attribute,
 #'   - `tertius(attr, fn)` — aggregate of an attribute across a node's
 #'     other ties (`fn` is `"mean"` or `"sum"`),
-#'   - plain tie-attribute names, which pull in a second network as a
-#'     dyadic covariate.
+#'   - plain layer or tie-attribute names, which pull in a second network as
+#'     a dyadic covariate.
 #' @param .data A manynet-consistent network (see
 #'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
 #'   supplied the model is fit jointly; graphs missing any predictor are
@@ -55,6 +90,8 @@
 #'   - `seed`, `groups`, `ncores`: passed through to the engine.
 #'   - `use_robust_errors`: HC3 standard errors.
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
+#'   - `random_intercept_reporter`: an lme4-style random intercept for each
+#'     reporter of a cognitive social structure.
 #'   - `less_mem`: drop the baseline model object from the return.
 #' @return An object of class `net_regression` inheriting from either
 #'   `QAPRegression` (gaussian) or `QAPGLM` (other families).  When the
@@ -65,6 +102,11 @@
 #' @name regression
 #' @family models
 #' @references
+#'   Krackhardt, David. 1987.
+#'   "Cognitive Social Structures."
+#'   _Social Networks_ 9(2): 109-134.
+#'   \doi{10.1016/0378-8733(87)90009-8}.
+#'
 #'   Krackhardt, David. 1988.
 #'   "Predicting with Networks: Nonparametric Multiple Regression Analysis
 #'   of Dyadic Data."
@@ -85,6 +127,10 @@
 #'   networkers, times = 20)
 #' print(model1)
 #' }
+#' # A cognitive social structure: each of 21 managers' report of who goes to
+#' # whom for advice, against the formal reporting structure that all share.
+#' css_model <- net_regression(advice ~ same(dept) + reports,
+#'                             manynet::ison_hightech, times = 5)
 #' @export
 net_regression <- function(formula,
                            .data,
@@ -95,17 +141,26 @@ net_regression <- function(formula,
 
   if (.is_list_of_graphs(.data)) {
     prepared <- .prepare_list_of_graphs(formula, .data)
-    matlist   <- prepared$matlist
-    formula <- prepared$formula
+    matlist     <- prepared$matlist
+    formula     <- prepared$formula
     first_graph <- prepared$first_graph
+    css         <- prepared$css
   } else {
     ml <- convertToMatrixList(formula, .data)
-    matlist  <- ml$mydata
-    formula <- ml$formula
+    matlist     <- ml$mydata
+    formula     <- ml$formula
     first_graph <- manynet::as_tidygraph(.data)
+    css         <- ml$css
   }
 
   dep <- .dep_name(formula)
+
+  # A cognitive social structure is detected from the network, as directedness
+  # is, rather than declared: `{manynet}` records who reported each tie in a
+  # `by` column, and the outcome then arrives with a slice for each reporter.
+  if (css) {
+    .report_css(matlist[[dep]])
+  }
 
   # Each of these is resolved from the data rather than stated by the user, so
   # each is reported. A defaulted family or a fallback that nobody sees is a
@@ -132,7 +187,7 @@ net_regression <- function(formula,
   fit <- QAPengine(
     formula   = formula,
     matlist   = matlist,
-    css       = FALSE,
+    css       = css,
     family    = ctrl$family,
     directed  = ctrl$directed,
     diag      = ctrl$diag,
@@ -145,6 +200,7 @@ net_regression <- function(formula,
     random_intercept_nets     = ctrl$random_intercept_nets,
     random_intercept_sender   = ctrl$random_intercept_sender,
     random_intercept_receiver = ctrl$random_intercept_receiver,
+    random_intercept_reporter = ctrl$random_intercept_reporter,
     use_robust_errors = ctrl$use_robust_errors,
     less_mem = ctrl$less_mem
   )
@@ -222,6 +278,7 @@ net_regression <- function(formula,
     random_intercept_nets     = FALSE,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,
+    random_intercept_reporter = FALSE,
     less_mem = FALSE
   )
 }
@@ -231,11 +288,14 @@ net_regression <- function(formula,
 
 .is_list_of_graphs <- function(x) {
   if (!is.list(x)) return(FALSE)
-  if (inherits(x, c("igraph", "tbl_graph", "network", "data.frame")))
+  # A 'stocnet' is itself a list, of its nodes, ties, and so on, so it has to
+  # be recognised as one network before it is mistaken for a list of them.
+  if (inherits(x, c("igraph", "tbl_graph", "network", "data.frame", "stocnet")))
     return(FALSE)
   if (length(x) == 0) return(FALSE)
   first <- x[[1]]
-  inherits(first, c("igraph", "tbl_graph", "network")) || is.matrix(first)
+  inherits(first, c("igraph", "tbl_graph", "network", "stocnet")) ||
+    is.matrix(first)
 }
 
 
@@ -301,10 +361,21 @@ net_regression <- function(formula,
   first_graph <- manynet::as_tidygraph(glist[[keep[1]]])
   specificationAdvice(getRHSNames(formula)$IVnames, first_graph)
 
+  # A pooled model fits one kind of observation. A dyad in a network and a dyad
+  # in one person's report of a network are different observations, so a list
+  # cannot mix the two.
+  css <- vapply(kept_mls, function(ml) isTRUE(ml$css), logical(1))
+  if (length(unique(css)) > 1) {
+    manynet::snet_abort(
+      c("Cannot pool cognitive social structures with networks that are not.",
+        i = "Networks {.val {which(css)}} are cognitive social structures; the others are not."))
+  }
+
   list(
-    matlist        = matlist,
+    matlist     = matlist,
     formula     = kept_mls[[1]]$formula,
-    first_graph = first_graph
+    first_graph = first_graph,
+    css         = all(css)
   )
 }
 
@@ -357,6 +428,8 @@ print.net_regression <- function(x, ...,
     .print_qap_regression(x, print_b = print_b, print_random = print_random)
   } else if (inherits(x, "QAPGLM")) {
     .print_qap_glm(x, print_b = print_b, print_random = print_random)
+  } else if (inherits(x, "QAPCSS")) {
+    print.QAPCSS(x)
   } else {
     cat("<net_regression>\n")
     utils::str(x, max.level = 1)
@@ -533,7 +606,26 @@ print.net_regression <- function(x, ...,
 #' @noRd
 convertToMatrixList <- function(formula, .data, advise = TRUE) {
   net <- manynet::as_tidygraph(.data)
-  DV <- manynet::as_matrix(net)
+  layers <- .layer_names(net)
+  # The outcome is the layer the formula names, where it names one, and the
+  # whole network otherwise. A layer of a cognitive social structure stays one,
+  # so its matrix is an array of sender, receiver, and reporter, and every
+  # predictor below is lifted to match it.
+  dv_label <- as.character(formula[[2]])
+  outcome <- if (dv_label %in% layers) {
+    manynet::to_uniplex(net, layer = dv_label)
+  } else {
+    net
+  }
+  DV <- manynet::as_matrix(outcome)
+  if (is.list(DV)) {
+    manynet::snet_abort(
+      c("The network has several layers, so the formula must name one as the outcome.",
+        i = "Available layers: {.val {layers}}.",
+        i = "For example: {.code {layers[1]} ~ ego(...)}."))
+  }
+  css <- length(dim(DV)) == 3
+  lift <- if (css) function(x) .lift_to_css(x, DV) else identity
   # The sender and the receiver of a tie come from one nodeset in a one-mode
   # network and from two in a two-mode one, so a dyadic term must read the
   # attribute once per mode rather than once per network.
@@ -575,6 +667,11 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         out
       } else if (IV[[elem]][1] == "same") {
         attrib <- manynet::node_attribute(net, IV[[elem]][2])
+        if (css && manynet::is_twomode(net)) {
+          manynet::snet_abort(
+            c("{.fn same} is not yet available for a two-mode cognitive social structure.",
+              i = "Use {.fn ego} and {.fn alter} on the attribute instead."))
+        }
         if (manynet::is_twomode(.data)) {
           if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
             attrib <- attrib[manynet::node_is_mode(.data)]
@@ -639,32 +736,43 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
         if (manynet::is_twomode(net)) {
           vct <- vct[!manynet::node_attribute(net, "type")]
         }
-        val <- matrix(vct, nrow(DV), ncol(DV)) * DV
         if (is.na(IV[[elem]][3])) {
           IV[[elem]][3] <- "mean"
         }
         # The deparsed term keeps the quotation marks of `tertius(x, "mean")`,
         # so strip them; otherwise only the unquoted spelling is recognised.
         IV[[elem]][3] <- gsub('^"|"$', "", IV[[elem]][3])
-        out <- t(vapply(seq_len(nrow(DV)),
-                        function(x) {
-                          if (IV[[elem]][3] == "mean") {
-                            colMeans(val[-x, ], na.rm = TRUE)
-                          } else if (IV[[elem]][3] == "sum") {
-                            colSums(val[-x, ], na.rm = TRUE)
-                          } else {
-                            manynet::snet_abort(
-                              "{.fn tertius} takes {.val mean} or {.val sum}, not {.val {IV[[elem]][3]}}.")
-                          }
-                        },
-                        FUN.VALUE = numeric(ncol(DV))))
+        fn <- IV[[elem]][3]
+        if (!fn %in% c("mean", "sum")) {
+          manynet::snet_abort(
+            "{.fn tertius} takes {.val mean} or {.val sum}, not {.val {fn}}.")
+        }
+        tertius_of <- function(M) {
+          val <- matrix(vct, nrow(M), ncol(M)) * M
+          t(vapply(seq_len(nrow(M)), function(x) {
+            if (fn == "mean") colMeans(val[-x, , drop = FALSE], na.rm = TRUE)
+            else colSums(val[-x, , drop = FALSE], na.rm = TRUE)
+          }, FUN.VALUE = numeric(ncol(M))))
+        }
+        # In a CSS each reporter sees a different network, and so a different
+        # set of a node's other ties. The term is computed in each report.
+        out <- if (css) {
+          arr <- array(NA_real_, dim = dim(DV), dimnames = dimnames(DV))
+          for (k in seq_len(dim(DV)[3])) arr[, , k] <- tertius_of(DV[, , k])
+          arr
+        } else {
+          tertius_of(DV)
+        }
         out <- list(out)
         names(out) <- paste(IV[[elem]][1:2], collapse = " ")
         out
       } else {
-        if (IV[[elem]][1] %in% manynet::net_tie_attributes(net)) {
+        # A layer name pulls in that layer as a dyadic covariate. A layer that
+        # is itself a CSS gives each reporter's own report of it, and a layer
+        # that is not gives one matrix that every reporter shares.
+        if (IV[[elem]][1] %in% c(layers, manynet::net_tie_attributes(net))) {
           out <- manynet::as_matrix(manynet::to_uniplex(net,
-                                                       tie = IV[[elem]][1]))
+                                                       layer = IV[[elem]][1]))
           out <- list(out)
           names(out) <- IV[[elem]][1]
           out
@@ -676,7 +784,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
     if (length(out) == 2) {
       namo <- paste(vapply(out, names, FUN.VALUE = character(1)),
                     collapse = ":")
-      out <- list(out[[1]][[1]] * out[[2]][[1]])
+      out <- list(lift(out[[1]][[1]]) * lift(out[[2]][[1]]))
       names(out) <- namo
       out
     } else {
@@ -691,6 +799,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
     }
   })
   IVs <- purrr::flatten(IVs)
+  IVs <- lapply(IVs, lift)
   out <- c(list(DV), IVs)
 
   DVname <- formula[[2]]
@@ -702,9 +811,24 @@ convertToMatrixList <- function(formula, .data, advise = TRUE) {
   names(out)[1] <- as.character(DVname)
 
   return(list(mydata = out,
-              formula = out_formula))
+              formula = out_formula,
+              css = css))
 }
 
+
+# The column name of one formula term, as `convertToMatrixList()` names the
+# matrix it builds: "ego Age" for a nodal term, "reports" for a layer named on
+# its own, and "ego Age:alter Age" for an interaction. A layer named on its own
+# has no argument, and pasting the missing one gave "reports NA", so a bare
+# dyadic covariate could never be found in the data.
+#' @keywords internal
+#' @noRd
+.term_label <- function(term) {
+  parts <- vapply(term, function(el) {
+    if (length(el) < 2 || is.na(el[2])) el[1] else paste(el[1:2], collapse = " ")
+  }, character(1))
+  paste(parts, collapse = ":")
+}
 
 #' @keywords internal
 #' @noRd
@@ -767,9 +891,9 @@ getRHSNames <- function(formula) {
 
   if (!any(grepl("\\|", formula))) {
     form <- paste(paste(formula[[2]], "~"),
-                  paste(lapply(rhsn, function(term) {
-                    paste0("`", term[[1]][1], " ", term[[1]][2], "`")
-                  }), collapse = " + "))
+                  paste(vapply(rhsn, function(term) {
+                    paste0("`", .term_label(term), "`")
+                  }, character(1)), collapse = " + "))
   }
   return(list(IVnames = rhsn,
               formula = stats::as.formula(form)))
@@ -782,10 +906,11 @@ getRHSNames <- function(formula) {
   node_fns <- c("ego", "alter", "same", "dist", "sim", "tertius")
   node_attrs <- manynet::net_node_attributes(net)
   # The engine builds these columns itself in `make_qap_data()`: the sender, the
-  # receiver, the network, and the perceiver index. They are what a user names
+  # receiver, the network, and the reporter index. They are what a user names
   # after a `|` to absorb sender or receiver fixed effects, so they are not
   # attributes of the network and must not be looked for among them.
-  tie_attrs  <- c(manynet::net_tie_attributes(net), .structural_vars())
+  layers     <- .layer_names(net)
+  tie_attrs  <- c(manynet::net_tie_attributes(net), layers, .structural_vars())
 
   missing_node <- character(0)
   missing_tie  <- character(0)
@@ -810,20 +935,79 @@ getRHSNames <- function(formula) {
         i = "Available node attributes: {.val {node_attrs}}."))
   }
   if (length(missing_tie) > 0) {
-    available   <- manynet::net_tie_attributes(net)
+    available   <- setdiff(manynet::net_tie_attributes(net), c("by", "layer"))
     structurals <- .structural_vars()
-    manynet::snet_abort(
-      c("Tie attribute or predictor{?s} {.val {unique(missing_tie)}} not found.",
-        i = "Available tie attributes: {.val {available}}.",
-        i = "Sender, receiver, and network indices are also available as {.val {structurals}}."))
+    msg <- c("Tie attribute or predictor{?s} {.val {unique(missing_tie)}} not found.")
+    if (length(layers) > 0) msg <- c(msg, i = "Available layers: {.val {layers}}.")
+    if (length(available) > 0) msg <- c(msg, i = "Available tie attributes: {.val {available}}.")
+    msg <- c(msg, i = "Sender, receiver, and network indices are also available as {.val {structurals}}.")
+    manynet::snet_abort(msg)
   }
   invisible(TRUE)
+}
+
+# Says what was detected, and warns about the one thing a CSS array cannot say
+# for itself. `{manynet}` fills the slice of a node with zeros where that node
+# reported no ties, and also where that node was never asked, unless the network
+# records the second case as missing: a node whose `na` attribute is TRUE gets a
+# slice of NA. A slice of zeros therefore enters the model as a report of no
+# ties, which is wrong for someone who did not report.
+#' @keywords internal
+#' @noRd
+.report_css <- function(y) {
+  arrays <- if (is.list(y)) y else list(y)
+  reporters <- sum(vapply(arrays, function(a) dim(a)[3], integer(1)))
+  manynet::snet_info(
+    "Reading the outcome as a cognitive social structure, with {reporters} reporter{?s}.")
+  empty <- unlist(lapply(arrays, function(a) {
+    which(apply(a, 3, function(slice) !anyNA(slice) && all(slice == 0)))
+  }))
+  if (length(empty) > 0) {
+    labels <- names(empty)
+    who <- if (!is.null(labels) && all(nzchar(labels))) labels else unname(empty)
+    manynet::snet_warn(
+      c("{length(empty)} reporter{?s} named no ties: {.val {who}}.",
+        i = "If they were not asked, mark them so their reports are dropped rather than read as reporting no ties.",
+        i = "For example: {.code manynet::mutate_nodes(net, na = label %in% c(...))}."))
+  }
+  invisible(NULL)
+}
+
+# The layers of a multiplex network, which a formula can name as its outcome or
+# as a dyadic covariate. A network with one layer has none to name.
+#' @keywords internal
+#' @noRd
+.layer_names <- function(net) {
+  if (!isTRUE(manynet::is_multiplex(net))) return(character(0))
+  out <- tryCatch(manynet::layer_names(net), error = function(e) character(0))
+  as.character(out)
+}
+
+# A predictor of a CSS model needs the outcome's three axes. A nodal term, or a
+# layer that is not itself a CSS, is the same for every reporter, so its matrix
+# is repeated along the third axis. A CSS layer already has the axis, and only
+# has to agree with the outcome.
+#' @keywords internal
+#' @noRd
+.lift_to_css <- function(x, DV) {
+  d <- dim(DV)
+  if (length(dim(x)) == 3) {
+    if (!identical(dim(x), d))
+      manynet::snet_abort(
+        c("A CSS predictor has dimensions {dim(x)}, but the outcome has {d}.",
+          i = "Both must have the same senders, receivers, and reporters."))
+    return(x)
+  }
+  if (!identical(dim(x), d[1:2]))
+    manynet::snet_abort(
+      "A predictor has dimensions {dim(x)}, but each report of the outcome has {d[1:2]}.")
+  array(x, dim = d, dimnames = dimnames(DV))
 }
 
 # Columns the engine builds for every dyad, rather than reads off the network.
 #' @keywords internal
 #' @noRd
-.structural_vars <- function() c("sv", "rv", "nv", "pv")
+.structural_vars <- function() c("sv", "rv", "nv", "bv")
 
 
 #' @keywords internal

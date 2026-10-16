@@ -26,7 +26,7 @@ QAPengine <- function(formula,
                       random_intercept_nets      = FALSE,
                       random_intercept_sender    = FALSE,
                       random_intercept_receiver  = FALSE,
-                      random_intercept_perceiver = FALSE,
+                      random_intercept_reporter  = FALSE,
                       use_robust_errors = FALSE,
                       less_mem  = FALSE) {
 
@@ -46,9 +46,9 @@ QAPengine <- function(formula,
   requested <- c(nets      = random_intercept_nets,
                  sender    = random_intercept_sender,
                  receiver  = random_intercept_receiver,
-                 perceiver = random_intercept_perceiver)
+                 reporter  = random_intercept_reporter)
   # A slot a shape does not have cannot be asked for. A dyadic network has no
-  # perceiver, so a perceiver intercept there is a mistake worth naming.
+  # reporter, so a reporter intercept there is a mistake worth naming.
   unavailable <- names(requested)[requested &
                                     !(names(requested) %in% names(shape$rand_slots))]
   if (length(unavailable) > 0) {

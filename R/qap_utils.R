@@ -35,13 +35,13 @@ parse_qap_formula <- function(formula) {
 #' @noRd
 build_internal_formula <- function(formula,
                                    rin = FALSE, ris = FALSE,
-                                   rir = FALSE, rip = FALSE) {
+                                   rir = FALSE, rib = FALSE) {
   mod_str <- paste(deparse(formula, width.cutoff = 500), collapse = " ")
   rand_int <- ""
   if (rin) rand_int <- paste(rand_int, "+ (1|nv)")
   if (ris) rand_int <- paste(rand_int, "+ (1|sv)")
   if (rir) rand_int <- paste(rand_int, "+ (1|rv)")
-  if (rip) rand_int <- paste(rand_int, "+ (1|pv)")
+  if (rib) rand_int <- paste(rand_int, "+ (1|bv)")
   if (nchar(trimws(rand_int)) > 0) {
     stats::as.formula(paste(mod_str, rand_int))
   } else {
@@ -59,7 +59,7 @@ validate_qap_input <- function(matlist, parsed, css = FALSE) {
   if (!(dep %in% names(matlist))) {
     manynet::snet_abort("Dependent variable {.val {dep}} not found in the data.")
   }
-  structural_vars <- c("sv", "rv", "nv", "pv")
+  structural_vars <- .structural_vars()
   for (v in parsed$all_data_vars) {
     if (v %in% structural_vars) next
     if (!(v %in% names(matlist))) {
@@ -142,12 +142,44 @@ run_permutations <- function(times, FUN, ...) {
   unsplit(lapply(split(seq_len(n), groups), FUN = sample), groups)
 }
 
+# One permutation of a CSS array. A permutation relabels the nodes, and in a
+# CSS a reporter is a node too, so the same relabelling applies to the slices:
+# the report of the node now called j is the report node j made, re-read under
+# the new labels. Permuting the senders and receivers but not the reporters
+# would break the tie between a reporter and their own position in the network.
+#
+# A one-mode CSS has one nodeset on all three axes, so one order serves all of
+# them. A two-mode CSS from `{manynet}` has the first mode on its rows, the
+# second on its columns, and every node of both modes on its slices, so the
+# slice order is the row order followed by the column order, offset by the
+# number of rows.
+#' @keywords internal
+#' @noRd
+.perm_css <- function(m, groups = NULL) {
+  d <- dim(m)
+  nr <- d[1]; nc <- d[2]; np <- d[3]
+  if (nr == nc && nc == np) {
+    o <- .perm_order(nr, groups)
+    out <- m[o, o, o, drop = FALSE]
+  } else if (np == nr + nc) {
+    or <- .perm_order(nr, groups)
+    oc <- .perm_order(nc, groups)
+    out <- m[or, oc, c(or, nr + oc), drop = FALSE]
+  } else {
+    manynet::snet_abort(
+      c("Cannot permute a CSS array of dimensions {d}.",
+        i = "Its reporters must be its nodes: as many as its rows, or as its rows and columns together."))
+  }
+  dimnames(out) <- dimnames(m)
+  out
+}
+
 #' @keywords internal
 #' @noRd
 RMPerm <- function(m, groups = NULL, CSS = FALSE) {
 
   if (is.list(m)) {
-    return(lapply(m, RMPerm, groups = groups))
+    return(lapply(m, RMPerm, groups = groups, CSS = CSS))
   }
 
   if (is.null(groups)) {
@@ -172,9 +204,7 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
     }
     dimnames(p) <- dimnames(m)
   } else if (CSS) {
-    p <- array(dim = c(dim(m)[1], dim(m)[2], dim(m)[3]))
-    o <- unsplit(lapply(split(1:dim(m)[2], groups), FUN = sample), groups)
-    p[, , ] <- array(m[o, o, o])
+    p <- .perm_css(m, groups)
   } else {
     p <- array(dim = c(dim(m)[1], dim(m)[2], dim(m)[3]))
     for (i in 1:dim(m)[1]) {
@@ -503,8 +533,8 @@ residuals_to_matrix <- function(xR, original_matrix, pred, large = FALSE) {
 residuals_to_array <- function(xR, original_array, valid, pred,
                                large = FALSE, valid_list = NULL) {
   if (!large) {
-    n <- dim(original_array)[1]
-    out <- array(NA, dim = c(n, n, n))
+    out <- array(NA, dim = dim(original_array),
+                 dimnames = dimnames(original_array))
     out[valid] <- xR
     return(out)
   } else {
