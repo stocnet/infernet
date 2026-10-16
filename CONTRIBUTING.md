@@ -104,17 +104,88 @@ not), GitHub updates the status of the issue automatically.
 
 ## Style
 
-In terms of style, we are aiming for “pleasant predictability” in terms
-of user experience. To that end, we have a regular syntax that users can
-rely on producing expected effects. Functions in the same family
-(`test_*()`, etc.) should share argument order and naming, so that
-behaviour is guessable across the family.
+All `stocnet` packages aim for the same three things: declarative
+simplicity, pleasant predictability, and graceful inclusivity. The
+principles are shared across the packages; the rules and examples below
+are those of [infernet](https://stocnet.github.io/infernet/).
 
-We are also aiming for “declarative simplicity”, where functions carry
-as few arguments as possible to reduce the documentation burden, as well
-as the burden on users to understand all of the options. Use sensible
-defaults instead. Function and argument names should also follow the
-house rules (see below).
+### Declarative simplicity
+
+Functions should do one clearly named thing with few arguments.
+
+- **Names describe actions, not acronyms or progenitors.** A function is
+  named after what it does, and the name of the procedure and its
+  authors are given in the documentation. Example:
+  [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md),
+  [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
+  and
+  [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md)
+  rather than names built on QAP or CUG, and
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  rather than a name built on MRQAP.
+- **Few arguments per function.** Every argument is something the user
+  must read about before they can trust the result, so use sensible
+  defaults instead. Example:
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  takes a formula, a network, and `times`, and everything less common
+  goes through its `control` list.
+- **Features are detected, not declared.** A function finds out whether
+  a network is directed or two-mode, and adjusts, so the user does not
+  supply an argument for it. Example:
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  reads directedness from the outcome network with
+  `manynet::is_directed()`, unless `control` overrides it.
+
+### Pleasant predictability
+
+Users should be able to guess a function’s behaviour from its family.
+
+- **Families share a prefix and their arguments.** Example:
+  [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
+  [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md),
+  and
+  [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md)
+  all take `.data`, `FUN`, and `times`, in that order.
+- **One word means one thing.** Function and argument names follow the
+  house rules (see [Vocabulary](#vocabulary) below).
+- **A specification can be reused.** Models are specified with a
+  formula, so the same specification can be moved between networks and
+  between model types, and its terms (`ego()`, `alter()`, `same()`,
+  `sim()`) mean the same in each.
+
+### Graceful inclusivity
+
+Functions should accept whatever network users bring and return
+something they can use.
+
+- **Inputs span the common classes.** Every function accepts any network
+  that [manynet](https://stocnet.github.io/manynet/) can coerce:
+  matrices, edgelists, and `igraph`, `network`, `tidygraph`, and
+  `stocnet` objects.
+- **Many types of network work.** A function should give a considered
+  answer for a signed, a weighted, a directed, a two-mode, a multiplex,
+  a multilevel, and a longitudinal network, and its documentation should
+  say how it treats each type it treats differently (see [Input
+  shapes](#input-shapes)).
+- **Missing data stays missing.** An unobserved dyad is never read as a
+  zero tie, and a function reports what it dropped rather than quietly
+  shrinking the sample.
+- **Only truly unsupported cases fail.** Where a function really cannot
+  proceed, the error says why and suggests what would work. Example:
+  [`dist()`](https://rdrr.io/r/stats/dist.html) on a categorical
+  attribute points users to `same()`.
+- **Key steps are reported.** Functions say what they did at the
+  verbosity the user has chosen (see [Console
+  messaging](#console-messaging)). Example:
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  reports the family and the directedness it read from the outcome.
+- **Results describe themselves.** A printed result is short, and
+  carries what the user needs to interpret it. Example: a printed
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  says what was permuted and how many times, how loops were treated, and
+  whether the outcome was read as directed.
+
+### Vocabulary
 
 One word means one thing, on both sides of the seam between the formula
 front end and the engine. The engine was ported from `MrQAP` and used
@@ -129,6 +200,9 @@ users read:
 | `.data` | the network the user passes in | — |
 | `matlist` | the named list of matrices the engine fits | `data` |
 | `net` | one coerced network, inside the formula front end | `data` |
+| reporter | the person whose report a CSS slice holds, after [manynet](https://stocnet.github.io/manynet/)’s `by` column | perceiver |
+| `bv` | the reporter index in the dyad-level data, after `by` | `pv` |
+| `testdist` | a null distribution: the statistics from every permutation or simulation, on a test or a fit | `dist` |
 
 `mode` is reserved for a nodeset, as in one-mode and two-mode, which is
 what it means everywhere else in the ecosystem. Do not use it for
@@ -305,22 +379,46 @@ is the single regression entry point. Its control flow is:
     [`manynet::is_complex()`](https://stocnet.github.io/manynet/reference/mark_format_tie.html).
     Report each resolution with `snet_info()`: a model the user did not
     state is one they cannot describe in a paper.
-4.  Call `QAPglm()`, which parses the formula, fits the baseline model
-    once via `fit_qap_model()`, then runs `times` permutations and
+4.  Call `QAPengine()`, which parses the formula, fits the baseline
+    model once via `fit_qap_model()`, then runs `times` permutations and
     aggregates them.
-5.  Attach a probabilistic confusion matrix where the outcome is binary,
-    and class the result `net_regression`.
+5.  Attach a probabilistic confusion matrix where the outcome is binary.
 
-Inside `QAPglm()` the `permute` control names what the null distribution
-permutes: `"outcome"` permutes the dependent matrix only, while
-`"predictor"` implements Dekker et al.’s double semi-partialling,
+The result is a `netreg`, with more specific classes in front of it:
+
+| Result           | Class                                       |
+|------------------|---------------------------------------------|
+| gaussian         | `c("netreg_lm", "netreg")`                  |
+| any other family | `c("netreg_glm", "netreg")`                 |
+| a CSS            | `c("netreg_css", <family class>, "netreg")` |
+
+Write a method at the level where behaviour actually differs, and let S3
+fall back for the rest: [`print()`](https://rdrr.io/r/base/print.html)
+has a method for each of the three specific classes, while
+[autograph](https://stocnet.github.io/autograph/) needs only
+`plot.netreg()` until a CSS wants a plot of its own. The names say what
+the result is, not the procedure that made it, so they carry no `qap`,
+and none repeats a function’s name. A new kind of result gets a new
+specific class in front of `netreg`, not a new parent.
+
+Inside `QAPengine()` the `permute` control names what the null
+distribution permutes: `"outcome"` permutes the dependent matrix only,
+while `"predictor"` implements Dekker et al.’s double semi-partialling,
 running one permutation set per main predictor after residualising it
 against the others. With one predictor there is nothing to residualise
 against, so `"predictor"` falls back to `"outcome"` and says so.
 Permuted coefficients and test statistics are then compared against the
 baseline by `compare_perm_to_baseline()` and reduced to
-`lower`/`larger`/`abs` p-value matrices by `aggregate_perm_results()`.
-\### One engine, two shapes
+`lower`/`larger`/`abs` p-value matrices by `aggregate_perm_results()`,
+which also keeps the permuted test statistics as `testdist`. Keep that
+matrix whenever the summaries change: the summaries are read from it,
+`test-qap_testdist.R` checks that they agree, and
+[autograph](https://stocnet.github.io/autograph/) draws it. The name is
+the one the test family already uses; [sna](https://statnet.org) and
+[migraph](https://stocnet.github.io/migraph/) call the same thing
+`dist`, which [autograph](https://stocnet.github.io/autograph/)’s
+`plot.netlm()` reads, but [`dist()`](https://rdrr.io/r/stats/dist.html)
+is a formula term here. \### One engine, two shapes
 
 `QAPengine()` fits a dyadic network and a cognitive social structure
 through the same skeleton. They differ in four places and nowhere else,
@@ -329,10 +427,10 @@ and those four live in a *shape* returned by `.qap_shape()`
 
 | Field | Dyadic | Cognitive |
 |----|----|----|
-| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per perceiver |
-| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)` |
+| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per reporter |
+| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)`, which calls `.perm_css()` |
 | `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
-| `rand_slots` | sender, receiver, network | and perceiver |
+| `rand_slots` | sender, receiver, network | and reporter |
 
 A fifth field, `max_trials`, says how many permutations to redraw before
 giving up: one for a dyadic network, since a degenerate draw is simply
@@ -340,9 +438,52 @@ dropped and counted, and 10,000 for a CSS, whose sparse arrays often
 permute into an outcome with a single value.
 
 Add a shape rather than a second engine. A random-intercept slot a shape
-does not list cannot be requested, so a perceiver intercept on a dyadic
+does not list cannot be requested, so a reporter intercept on a dyadic
 network aborts by name rather than producing a formula that will not
 parse.
+
+### Cognitive social structures
+
+A CSS is [manynet](https://stocnet.github.io/manynet/)’s to define, and
+this package follows it. A network is one where its ties carry a `by`
+column naming the reporter,
+[`manynet::is_cognitive()`](https://stocnet.github.io/manynet/reference/mark_format_cognitive.html)
+says so, and
+[`manynet::as_matrix()`](https://stocnet.github.io/manynet/reference/coerce_matrix.html)
+returns the array the engine fits. Do not build CSS arrays here:
+`df_to_mat()` did, and it is gone.
+
+- **Detected, not declared.** `convertToMatrixList()` reads the
+  outcome’s matrix and passes `css = TRUE` where it has three axes.
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  reports the detection and the number of reporters.
+- **Read all three axes.** A one-mode CSS from
+  [manynet](https://stocnet.github.io/manynet/) has a slice for every
+  node; a two-mode CSS has rows of one mode, columns of the other, and a
+  slice for every node of both. `make_css_data()` and `.perm_css()` read
+  each axis from [`dim()`](https://rdrr.io/r/base/dim.html). The
+  two-mode defect of phase one was a shape read off one axis, and the
+  CSS version of it was the same mistake one axis further in.
+- **A reporter is a node.** A permutation relabels senders, receivers,
+  and reporters together. For a two-mode CSS the slice order is the row
+  order followed by the column order, offset by the number of rows.
+- **Lift predictors to the outcome.** A nodal term or a layer that is
+  not a CSS is repeated along the reporter axis by `.lift_to_css()`. A
+  CSS layer keeps its own reports. `tertius()` is computed within each
+  report.
+- **Missing stays missing.**
+  [manynet](https://stocnet.github.io/manynet/) gives a node whose `na`
+  attribute is `TRUE` a slice of `NA`, and those reports are dropped. A
+  slice of zeros that is not so marked could be a report of no ties or a
+  person who was not asked, so `.report_css()` keeps it and names it in
+  a warning.
+
+Test a CSS change on
+[`manynet::ison_hightech`](https://stocnet.github.io/manynet/reference/ison_hightech.html),
+a real CSS whose `reports` layer is not one, and on the constructed
+networks in
+[tests/testthat/test-net_regression_css.R](https://stocnet.github.io/tests/testthat/test-net_regression_css.R)
+for the shapes and the missing reports it does not have.
 
 Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same
 code, and every fix had to be made twice. One of them was made in only
@@ -358,7 +499,12 @@ to `getRHSNames()` and `convertToMatrixList()` together:
 - `sim(attr)` — the proportional similarity in a numeric attribute,
 - `tertius(attr, fn)` — an aggregate of an attribute over a node’s other
   ties,
-- a plain name — another network, used as a dyadic covariate.
+- a plain name — another layer or network, used as a dyadic covariate.
+
+A multiplex outcome is named by its layer, e.g. `advice ~ ...`, and
+other layers can be named on the right-hand side. `.term_label()` gives
+each term the column name `convertToMatrixList()` gives its matrix, so
+the two must change together.
 
 A formula is meant to be reusable across models, so a term must mean the
 same thing whichever family or engine consumes it. Where a term cannot
@@ -507,11 +653,11 @@ the
 stack plus [reformulas](https://github.com/bbolker/reformulas) for
 formula surgery.
 
-Everything that only one estimator needs is in `Suggests`: `lme4` and
-`glmmTMB` (random effects), `fixest` (fixed effects), `gmm` (GMM
-estimation), `MASS` (negative binomial), `pscl` (zero-inflated Poisson),
-`nnet` (multinomial), and `torch` (the GPU path). A code path that
-depends on a suggested package must guard with
+Everything that only one estimator needs is in `Suggests`: `lme4`
+(random effects), `MASS` (negative binomial), and `pscl` (zero-inflated
+Poisson). The other five are on the branches listed under [Parked
+extensions](#parked-extensions). A code path that depends on a suggested
+package must guard with
 [`requireNamespace()`](https://rdrr.io/r/base/ns-load.html) and abort
 with an actionable message, and its tests must
 `skip_if_not_installed()`. Keeping these optional is deliberate: the
@@ -519,12 +665,24 @@ common case — a gaussian or binomial MRQAP — must install and run with
 no compiler and no heavy dependency tree.
 
 The declared minimum of each `stocnet` dependency is the version on
-CRAN, so that CI can install it. Where `infernet` needs something that
-only a newer, unreleased [manynet](https://stocnet.github.io/manynet/)
-has, reach it through a shim rather than by raising the minimum, and
-resolve the name at call time from the namespace. Test for the function
-rather than for the version string, because a pre-release development
-build can carry the version without yet exporting the function.
+CRAN, so that CI can install it.
+[manynet](https://stocnet.github.io/manynet/) is at 2.4.0, the first
+version with the CSS construct; check a change against that version, not
+only against the development build:
+
+``` r
+
+lib <- tempfile(); dir.create(lib)
+install.packages("manynet", lib = lib)   # the CRAN version
+# then run the tests with R_LIBS=<lib> set, so the test workers see it too
+```
+
+Where `infernet` needs something that only a newer, unreleased
+[manynet](https://stocnet.github.io/manynet/) has, reach it through a
+shim rather than by raising the minimum, and resolve the name at call
+time from the namespace. Test for the function rather than for the
+version string, because a pre-release development build can carry the
+version without yet exporting the function.
 
 ### Tests
 
@@ -541,10 +699,14 @@ grouped by contract for the engine:
 
 | File | Asserts |
 |----|----|
-| `test-qap_estimators.R` | each `family` and `estimator` combination, against the equivalent standard fit |
+| `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |
 | `test-qap_shapes.R` | the dyads that reach the model, for each shape of network |
 | `test-qap_reproducibility.R` | that a seed reproduces a run, sequentially and in parallel |
 | `test-qap_control.R` | the `control` list and the choice of null hypothesis |
+| `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
+| `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
+| `test-net_regression_css.R` | CSS models through [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md), from [manynet](https://stocnet.github.io/manynet/) networks |
+| `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 
 [tests/testthat/helper-infernet.R](https://stocnet.github.io/tests/testthat/helper-infernet.R)
 holds the shared fixtures and expectations:
@@ -560,8 +722,7 @@ holds the shared fixtures and expectations:
   [`MASS::glm.nb()`](https://rdrr.io/pkg/MASS/man/glm.nb.html),
   [`pscl::zeroinfl()`](https://rdrr.io/pkg/pscl/man/zeroinfl.html),
   [`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html) or
-  [`fixest::feglm()`](https://lrberge.github.io/fixest/reference/feglm.html)
-  on identical data.
+  `fixest::feglm()` on identical data.
 - `expect_qap_shape()` — the shape contract every estimator meets,
   whatever it fits underneath: named coefficients, and
   `lower`/`larger`/`abs` as two-row matrices of proportions with
@@ -597,10 +758,9 @@ Note that `skip_if_not_installed()` is weaker than it looks. CI installs
 every `Suggests`, so the skip does not fire there, and an installed
 package is not always a working one:
 [torch](https://torch.mlverse.org/docs) installs as an R package before
-its Lantern backend is downloaded, and
-[`torch::cuda_is_available()`](https://torch.mlverse.org/docs/reference/cuda_is_available.html)
-then throws rather than returning `FALSE`. Guard on the capability, not
-on the package.
+its Lantern backend is downloaded, and `torch::cuda_is_available()` then
+throws rather than returning `FALSE`. Guard on the capability, not on
+the package.
 
 A test must not depend on a
 [manynet](https://stocnet.github.io/manynet/) feature newer than the

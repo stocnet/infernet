@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,47 @@
       <small>Source: <a href="https://github.com/stocnet/infernet/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="infernet-030">infernet 0.3.0<a class="anchor" aria-label="anchor" href="#infernet-030"></a></h2>
+<div class="section level3">
+<h3 id="package-0-3-0">Package<a class="anchor" aria-label="anchor" href="#package-0-3-0"></a></h3>
+<ul><li>Added design principles to the README and the contributing guide</li>
+<li>Raised the minimum version of <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> to 2.4.0, for its CSS construct</li>
+</ul></div>
+<div class="section level3">
+<h3 id="regression-0-3-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-3-0"></a></h3>
+<ul><li>Added cognitive social structures to <code><a href="../reference/regression.html">net_regression()</a></code>
+<ul><li>A CSS is detected from the <code>by</code> column of its ties, not declared</li>
+<li>Each reported dyad is one observation: sender, receiver, and reporter</li>
+<li>A permutation relabels senders, receivers, and reporters together</li>
+<li>Added <code>random_intercept_reporter</code> to <code>control</code>
+</li>
+<li>
+<code>tertius()</code> is computed within each report</li>
+<li>One-mode, two-mode, undirected, and pooled CSS networks all fit</li>
+<li>Removed <code>df_to_mat()</code>, since <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> now builds CSS arrays</li>
+</ul></li>
+<li>Added a warning naming each reporter whose report holds no ties</li>
+<li>Added layer names to the formula, e.g. <code>advice ~ friends + reports</code>
+</li>
+<li>Fixed a dyadic covariate named on its own, as in <code>y ~ reports</code>
+</li>
+<li>Fixed a list of <code>stocnet</code> networks being read as one network</li>
+<li>Fixed the CSS shape assuming one reporter per node and a square array</li>
+<li>Improved the CSS print method to say how many reporters it was fitted on</li>
+<li>Renamed the classes of a <code><a href="../reference/regression.html">net_regression()</a></code> result to a hierarchy under <code>netreg</code>
+<ul><li>
+<code>c("netreg_lm", "netreg")</code> for a gaussian model, <code>c("netreg_glm", "netreg")</code> for any other family, and <code>"netreg_css"</code> in front for a CSS</li>
+<li>Replaces <code>net_regression</code>, <code>QAPRegression</code>, <code>QAPGLM</code>, and <code>QAPCSS</code>
+</li>
+<li>Each specific class prints through its own method</li>
+</ul></li>
+<li>Fixed <code>print.QAPConfusionMatrix()</code> not being registered as an S3 method
+<ul><li>
+<code>print(fit$confusion_matrix)</code> printed a raw list from the console</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="infernet-020">infernet 0.2.0<a class="anchor" aria-label="anchor" href="#infernet-020"></a></h2>
 <div class="section level3">

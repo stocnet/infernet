@@ -73,7 +73,7 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 #> 
 #> Observed Value: -0.8571429 
 #> Pr(X>=Obs): 1 
-#> Pr(X<=Obs): 0 
+#> Pr(X<=Obs): 0.01 
 #> 
 # plot(cugtest)
 # (qaptest <- test_permutation(marvel_friends, 

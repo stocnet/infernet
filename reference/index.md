@@ -14,5 +14,8 @@ Functions for testing network statistics against a null distribution:
 Functions for regressing networks on nodal and dyadic covariates:
 
 - [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
-  [`print(`*`<net_regression>`*`)`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`print(`*`<netreg_lm>`*`)`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`print(`*`<netreg_glm>`*`)`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`print(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`print(`*`<netreg_css>`*`)`](https://stocnet.github.io/infernet/reference/regression.md)
   : Regression for network data

@@ -23,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,7 +67,21 @@
 <li>
 <strong>Network regression.</strong> <code><a href="reference/regression.html">net_regression()</a></code> fits a multiple regression quadratic assignment procedure (MRQAP) model, using either Dekker et al’s double semi-partialling or a permutation of the dependent network alone.</li>
 </ul>
-<p>It offers these capabilities for one-mode and two-mode networks, and for unimodal, directed, undirected, weighted, or cognitive social structure networks alike. It accepts matrices, edgelists, <a href="https://r.igraph.org/" class="external-link">igraph</a>, <a href="https://statnet.org/" class="external-link">network</a>, <a href="https://tidygraph.data-imaginist.com" class="external-link">tidygraph</a>, or <code>stocnet</code> objects, and handles missing-data gracefully. It can run permutations in parallel, and can optionally use a GPU via <a href="https://torch.mlverse.org/docs" class="external-link">torch</a>.</p>
+<p>The package combines the formula interface of <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> with the estimators, missing-data handling, and cognitive social structure treatment of Robert Krause’s <code>MrQAP</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
+</h2>
+<p><a href="https://stocnet.github.io/infernet/">infernet</a> and the other <a href="https://github.com/stocnet" class="external-link">stocnet</a> packages aim for three things:</p>
+<ul>
+<li>
+<strong>Declarative simplicity</strong>: functions do one clearly named thing with few arguments. For example, <code><a href="reference/tests.html">test_permutation()</a></code> and <code><a href="reference/regression.html">net_regression()</a></code> are named for what they do, rather than for an acronym.</li>
+<li>
+<strong>Pleasant predictability</strong>: users can guess a function’s behaviour from its family. For example, the <code>test_*()</code> functions all take a network, a statistic, and a number of <code>times</code>.</li>
+<li>
+<strong>Graceful inclusivity</strong>: functions accept whatever network users bring and return something they can use. For example, <code><a href="reference/regression.html">net_regression()</a></code> works on any network that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> can convert, one-mode or two-mode, and keeps missing data missing.</li>
+</ul>
+<p>See the <a href="https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style" class="external-link">contributing guide</a> for how these principles translate into rules for the package.</p>
 </div>
 <div class="section level2">
 <h2 id="a-formula-you-can-reuse">A formula you can reuse<a class="anchor" aria-label="anchor" href="#a-formula-you-can-reuse"></a>
