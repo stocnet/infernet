@@ -5,6 +5,24 @@
 - Updated CONTRIBUTING with formula conventions for the stocnet packages
 - Removed `{purrr}` from `Imports`, since the new formula parser does not need it
 
+## Regression
+
+- Improved the formula of `net_regression()`, which is now parsed into a specification
+  - Added named arguments to formula terms, e.g. `indeg(friends, type = "ego")`
+  - Added interactions of any order, e.g. `ego(age) * alter(age) * ego(tenure)`
+  - Added `info$focal` as the outcome of `. ~`, and a named outcome still takes priority
+  - Added a clear error for a bar in the formula, which never reached a model,
+    pointing to the random intercepts in `control`
+- Fixed `tertius()` with `"mean"` dividing by the number of nodes rather than
+  of in-neighbours, which mixed the receiver's in-degree into the attribute
+  - It is now the mean over the receiver's other in-neighbours, so results change
+  - A receiver with no other in-neighbour takes the mean of the defined cells
+  - Added a layer as its first argument, e.g. `tertius(friends, age)`
+  - `tertius(age)` still reads the outcome's own ties, and now warns that
+    permuting the outcome does not permute this predictor with it
+- Fixed a layer term reading the outcome's own ties: `recip()`, `indeg()`,
+  `outdeg()`, and `tie()` refuse the outcome layer
+
 # infernet 0.3.0
 
 ## Package

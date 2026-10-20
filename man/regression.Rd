@@ -21,19 +21,43 @@ net_regression(formula, .data, times = 1000, control = list())
 }
 \arguments{
 \item{formula}{A formula describing the model.  The left-hand side is the
-dependent network (e.g. \code{weight} for a weighted graph, or \code{.} for an
-unweighted graph).  The right-hand side accepts:
+dependent network: a layer, a tie attribute such as \code{weight}, or \code{.} for
+the network's focal layer or the whole network.
+The right-hand side accepts these terms, whose arguments can be given by
+position or by name:
 \itemize{
-\item \code{ego(attr)} — matrix of the sender's value of a node attribute,
-\item \code{alter(attr)} — matrix of the receiver's value,
+\item \code{ego(attr)}, \code{alter(attr)} — the sender's or the receiver's value of a
+node attribute; a categorical attribute is dummy-coded,
 \item \code{same(attr)} — 1 where sender and receiver share an attribute value,
-\item \code{dist(attr)} — absolute difference in a numeric attribute,
+\item \code{diff(attr, transformer_fn = abs)} — the transformed difference between
+the sender's and the receiver's values: absolute by default, and signed
+with \code{transformer_fn = identity}. \code{dist(attr)} is a deprecated alias,
 \item \code{sim(attr)} — proportional similarity in a numeric attribute,
-\item \code{tertius(attr, fn)} — aggregate of an attribute across a node's
-other ties (\code{fn} is \code{"mean"} or \code{"sum"}),
-\item plain layer or tie-attribute names, which pull in a second network as
-a dyadic covariate.
-}}
+1 - |d| / range,
+\item \code{match(attr)} — one 0/1 column for each category, 1 where sender and
+receiver both hold it,
+\item \code{mix(attr)} — one 0/1 column for each pair of a sender's and a
+receiver's category, less the first pair as the reference,
+\item \code{tie(layer, weighted = FALSE)} — another layer as a dyadic covariate,
+0/1 unless \code{weighted = TRUE}; a layer or tie attribute named on its own
+enters with its values as stored,
+\item \code{recip(layer)} — the reverse tie, j to i, in another layer,
+\item \code{indeg(layer, type = "alter", weighted = FALSE)} and
+\code{outdeg(layer, type = "alter", weighted = FALSE)} — a node's number of
+incoming or outgoing ties in another layer, for the receiver
+(\code{"alter"}) or the sender (\code{"ego"}),
+\item \code{tertius(layer, attr, summarizer_fn = "mean")} — the mean (or the
+tie-weighted sum, with \code{"sum"}) of an attribute over the receiver's
+in-neighbours in a layer, other than the sender. A receiver with no
+other in-neighbour takes the mean of the defined cells. The older
+\code{tertius(attr)} reads the outcome's own ties, and warns,
+\item \code{tertius_diff(layer, attr, summarizer_fn = "mean")} — how far the
+sender's value lies from that mean, as an absolute difference,
+\item \code{global(var)} — a network-level variable from the network's \code{globals},
+in a list of networks; on one network it is the intercept.
+}
+
+\code{:} and \code{*} give interactions of any order, as the product of the terms.}
 
 \item{.data}{A manynet-consistent network (see
 \code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
@@ -106,10 +130,12 @@ probability fitted values are clamped to 0/1 before sampling.
 Fits a regression model to one (or a list of) manynet-compatible network(s)
 using the multiple regression quadratic assignment procedure (MRQAP).
 
-The formula front-end is the familiar
-\code{y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) + tertius(attr, fn)} syntax, plus plain references to other networks in the
-object. Internally the response and predictors are packed into matrices
-and handed to a QAP engine (ported from MrQAP) that supports:
+The formula front end is the familiar
+\code{y ~ ego(attr) + alter(attr) + same(attr) + diff(attr)} syntax, plus terms
+computed on other layers of the network, such as \code{recip(friends)}, and plain
+references to those layers. Its terms follow \code{{goldfish}}'s where the two
+packages share them. Internally the response and predictors are packed into
+matrices and handed to a QAP engine (ported from MrQAP) that supports:
 \itemize{
 \item gaussian, binomial, poisson, negative binomial, and zero-inflated
 Poisson families;
@@ -136,8 +162,8 @@ and reporter, rather than for each sender and receiver.
 reporter described, enters as each reporter's own report of it.
 \item A layer that is not a CSS, such as a formal reporting structure, enters
 as one matrix that every report shares.
-\item \code{tertius()} is computed within each report, since each reporter sees a
-different set of a node's other ties.
+\item \code{tertius()}, \code{recip()}, \code{indeg()}, and \code{outdeg()} on a CSS layer are
+computed within each report, since each reporter sees different ties.
 }
 
 A permutation relabels the nodes, and a reporter is a node, so the senders,
@@ -157,8 +183,15 @@ kept, and named in a warning, since it may be either.
 The left-hand side of the formula can name a layer of a multiplex network,
 and the right-hand side can name other layers as dyadic covariates,
 e.g. \code{advice ~ friends + reports} on \code{manynet::ison_hightech}.
+A network that declares a focal layer, as \code{info$focal}, takes it as the
+outcome of \verb{. ~}, and says so. A named left-hand side takes priority.
 A multiplex network whose layers cannot be combined into one matrix,
-such as one with a CSS layer, must name its outcome layer.
+such as one with a CSS layer, must name its outcome layer or declare one.
+
+A term built from a layer must not read the outcome's own ties, since
+permuting the outcome does not permute such a predictor with it.
+\code{tie()}, \code{recip()}, \code{indeg()}, and \code{outdeg()} refuse the outcome layer.
+\code{tertius()} and \code{tertius_diff()} without a layer read the outcome, and warn.
 }
 
 \examples{
@@ -186,6 +219,12 @@ Krackhardt, David. 1988.
 of Dyadic Data."
 \emph{Social Networks} 10(4):359-81.
 \doi{10.1016/0378-8733(88)90004-4}.
+
+Haunss, Sebastian, and James Hollway. 2023.
+"Multimodal mechanisms of political discourse dynamics and the case of
+Germany's nuclear energy phase-out."
+\emph{Network Science} 11(2): 205-223.
+\doi{10.1017/nws.2022.31}.
 
 Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
 "Sensitivity of MRQAP tests to collinearity and autocorrelation

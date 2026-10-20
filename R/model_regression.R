@@ -4,11 +4,12 @@
 #' Fits a regression model to one (or a list of) manynet-compatible network(s)
 #' using the multiple regression quadratic assignment procedure (MRQAP).
 #'
-#' The formula front-end is the familiar
-#' `y ~ ego(attr) + alter(attr) + same(attr) + dist(attr) + sim(attr) +
-#' tertius(attr, fn)` syntax, plus plain references to other networks in the
-#' object. Internally the response and predictors are packed into matrices
-#' and handed to a QAP engine (ported from MrQAP) that supports:
+#' The formula front end is the familiar
+#' `y ~ ego(attr) + alter(attr) + same(attr) + diff(attr)` syntax, plus terms
+#' computed on other layers of the network, such as `recip(friends)`, and plain
+#' references to those layers. Its terms follow `{goldfish}`'s where the two
+#' packages share them. Internally the response and predictors are packed into
+#' matrices and handed to a QAP engine (ported from MrQAP) that supports:
 #'
 #' - gaussian, binomial, poisson, negative binomial, and zero-inflated
 #'   Poisson families;
@@ -33,8 +34,8 @@
 #'     reporter described, enters as each reporter's own report of it.
 #'   - A layer that is not a CSS, such as a formal reporting structure, enters
 #'     as one matrix that every report shares.
-#'   - `tertius()` is computed within each report, since each reporter sees a
-#'     different set of a node's other ties.
+#'   - `tertius()`, `recip()`, `indeg()`, and `outdeg()` on a CSS layer are
+#'     computed within each report, since each reporter sees different ties.
 #'
 #'   A permutation relabels the nodes, and a reporter is a node, so the senders,
 #'   receivers, and reporters are relabelled together.
@@ -51,21 +52,52 @@
 #'   The left-hand side of the formula can name a layer of a multiplex network,
 #'   and the right-hand side can name other layers as dyadic covariates,
 #'   e.g. `advice ~ friends + reports` on `manynet::ison_hightech`.
+#'   A network that declares a focal layer, as `info$focal`, takes it as the
+#'   outcome of `. ~`, and says so. A named left-hand side takes priority.
 #'   A multiplex network whose layers cannot be combined into one matrix,
-#'   such as one with a CSS layer, must name its outcome layer.
+#'   such as one with a CSS layer, must name its outcome layer or declare one.
+#'
+#'   A term built from a layer must not read the outcome's own ties, since
+#'   permuting the outcome does not permute such a predictor with it.
+#'   `tie()`, `recip()`, `indeg()`, and `outdeg()` refuse the outcome layer.
+#'   `tertius()` and `tertius_diff()` without a layer read the outcome, and warn.
 #'
 #' @param formula A formula describing the model.  The left-hand side is the
-#'   dependent network (e.g. `weight` for a weighted graph, or `.` for an
-#'   unweighted graph).  The right-hand side accepts:
-#'   - `ego(attr)` — matrix of the sender's value of a node attribute,
-#'   - `alter(attr)` — matrix of the receiver's value,
+#'   dependent network: a layer, a tie attribute such as `weight`, or `.` for
+#'   the network's focal layer or the whole network.
+#'   The right-hand side accepts these terms, whose arguments can be given by
+#'   position or by name:
+#'   - `ego(attr)`, `alter(attr)` — the sender's or the receiver's value of a
+#'     node attribute; a categorical attribute is dummy-coded,
 #'   - `same(attr)` — 1 where sender and receiver share an attribute value,
-#'   - `dist(attr)` — absolute difference in a numeric attribute,
+#'   - `diff(attr, transformer_fn = abs)` — the transformed difference between
+#'     the sender's and the receiver's values: absolute by default, and signed
+#'     with `transformer_fn = identity`. `dist(attr)` is a deprecated alias,
 #'   - `sim(attr)` — proportional similarity in a numeric attribute,
-#'   - `tertius(attr, fn)` — aggregate of an attribute across a node's
-#'     other ties (`fn` is `"mean"` or `"sum"`),
-#'   - plain layer or tie-attribute names, which pull in a second network as
-#'     a dyadic covariate.
+#'     1 - |d| / range,
+#'   - `match(attr)` — one 0/1 column for each category, 1 where sender and
+#'     receiver both hold it,
+#'   - `mix(attr)` — one 0/1 column for each pair of a sender's and a
+#'     receiver's category, less the first pair as the reference,
+#'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
+#'     0/1 unless `weighted = TRUE`; a layer or tie attribute named on its own
+#'     enters with its values as stored,
+#'   - `recip(layer)` — the reverse tie, j to i, in another layer,
+#'   - `indeg(layer, type = "alter", weighted = FALSE)` and
+#'     `outdeg(layer, type = "alter", weighted = FALSE)` — a node's number of
+#'     incoming or outgoing ties in another layer, for the receiver
+#'     (`"alter"`) or the sender (`"ego"`),
+#'   - `tertius(layer, attr, summarizer_fn = "mean")` — the mean (or the
+#'     tie-weighted sum, with `"sum"`) of an attribute over the receiver's
+#'     in-neighbours in a layer, other than the sender. A receiver with no
+#'     other in-neighbour takes the mean of the defined cells. The older
+#'     `tertius(attr)` reads the outcome's own ties, and warns,
+#'   - `tertius_diff(layer, attr, summarizer_fn = "mean")` — how far the
+#'     sender's value lies from that mean, as an absolute difference,
+#'   - `global(var)` — a network-level variable from the network's `globals`,
+#'     in a list of networks; on one network it is the intercept.
+#'
+#'   `:` and `*` give interactions of any order, as the product of the terms.
 #' @param .data A manynet-consistent network (see
 #'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
 #'   supplied the model is fit jointly; graphs missing any predictor are
@@ -128,6 +160,12 @@
 #'   of Dyadic Data."
 #'   _Social Networks_ 10(4):359-81.
 #'   \doi{10.1016/0378-8733(88)90004-4}.
+#'
+#'   Haunss, Sebastian, and James Hollway. 2023.
+#'   "Multimodal mechanisms of political discourse dynamics and the case of
+#'   Germany's nuclear energy phase-out."
+#'   _Network Science_ 11(2): 205-223.
+#'   \doi{10.1017/nws.2022.31}.
 #'
 #'   Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
 #'   "Sensitivity of MRQAP tests to collinearity and autocorrelation
@@ -321,7 +359,7 @@ net_regression <- function(formula,
 
   for (i in seq_along(glist)) {
     res <- tryCatch(
-      convertToMatrixList(formula, glist[[i]], advise = FALSE),
+      convertToMatrixList(formula, glist[[i]], advise = FALSE, pooled = TRUE),
       error = function(e) list(error = conditionMessage(e))
     )
     if (!is.null(res$error)) {
@@ -374,7 +412,7 @@ net_regression <- function(formula,
   }
 
   first_graph <- manynet::as_tidygraph(glist[[keep[1]]])
-  specificationAdvice(getRHSNames(formula)$IVnames, first_graph)
+  specificationAdvice(.specify(formula), first_graph)
 
   # A pooled model fits one kind of observation. A dyad in a network and a dyad
   # in one person's report of a network are different observations, so a list
@@ -625,348 +663,13 @@ print.netreg <- function(x, ...) {
 # Formula -> matrix-list front end
 # ============================================================================
 
+# The formula is parsed and evaluated in `R/model_formula.R`. This keeps the
+# shape the engine and the list path read: the matrices, the formula over their
+# column names, and whether the outcome is a cognitive social structure.
 #' @keywords internal
 #' @noRd
-convertToMatrixList <- function(formula, .data, advise = TRUE) {
-  net <- manynet::as_tidygraph(.data)
-  layers <- .layer_names(net)
-  # The outcome is the layer the formula names, where it names one, and the
-  # whole network otherwise. A layer of a cognitive social structure stays one,
-  # so its matrix is an array of sender, receiver, and reporter, and every
-  # predictor below is lifted to match it.
-  dv_label <- as.character(formula[[2]])
-  outcome <- if (dv_label %in% layers) {
-    manynet::to_uniplex(net, layer = dv_label)
-  } else {
-    net
-  }
-  DV <- manynet::as_matrix(outcome)
-  if (is.list(DV)) {
-    manynet::snet_abort(
-      c("The network has several layers, so the formula must name one as the outcome.",
-        i = "Available layers: {.val {layers}}.",
-        i = "For example: {.code {layers[1]} ~ ego(...)}."))
-  }
-  css <- length(dim(DV)) == 3
-  lift <- if (css) function(x) .lift_to_css(x, DV) else identity
-  # The sender and the receiver of a tie come from one nodeset in a one-mode
-  # network and from two in a two-mode one, so a dyadic term must read the
-  # attribute once per mode rather than once per network.
-  side_matrices <- function(attrib, DV, twomode, type) {
-    if (twomode) {
-      rows <- matrix(attrib[!type], nrow(DV), ncol(DV))
-      cols <- matrix(attrib[type], nrow(DV), ncol(DV), byrow = TRUE)
-    } else {
-      rows <- matrix(attrib, nrow(DV), ncol(DV))
-      cols <- matrix(attrib, nrow(DV), ncol(DV), byrow = TRUE)
-    }
-    list(rows = rows, cols = cols)
-  }
-  twomode <- manynet::is_twomode(net)
-  node_type <- if (twomode) manynet::node_attribute(net, "type") else NULL
-
-  names_form <- getRHSNames(formula)
-  .check_formula_vars(names_form$IVnames, net)
-  if (advise) specificationAdvice(names_form$IVnames, net)
-  IVs <- lapply(names_form$IVnames, function(IV) {
-    out <- lapply(seq_along(IV), function(elem) {
-      if (IV[[elem]][1] == "ego") {
-        vct <- manynet::node_attribute(net, IV[[elem]][2])
-        if (manynet::is_twomode(net)) {
-          vct <- vct[!manynet::node_attribute(net, "type")]
-        }
-        out <- matrix(vct, nrow(DV), ncol(DV))
-        out <- list(out)
-        names(out) <- paste(IV[[elem]], collapse = " ")
-        out
-      } else if (IV[[elem]][1] == "alter") {
-        vct <- manynet::node_attribute(net, IV[[elem]][2])
-        if (manynet::is_twomode(net)) {
-          vct <- vct[manynet::node_attribute(net, "type")]
-        }
-        out <- matrix(vct, nrow(DV), ncol(DV), byrow = TRUE)
-        out <- list(out)
-        names(out) <- paste(IV[[elem]], collapse = " ")
-        out
-      } else if (IV[[elem]][1] == "same") {
-        attrib <- manynet::node_attribute(net, IV[[elem]][2])
-        if (css && manynet::is_twomode(net)) {
-          manynet::snet_abort(
-            c("{.fn same} is not yet available for a two-mode cognitive social structure.",
-              i = "Use {.fn ego} and {.fn alter} on the attribute instead."))
-        }
-        if (manynet::is_twomode(.data)) {
-          if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
-            attrib <- attrib[manynet::node_is_mode(.data)]
-            out <- vapply(1:length(attrib), function(x) {
-              held_out <- manynet::as_matrix(
-                manynet::delete_nodes(.data, manynet::net_dims(.data)[1] + x))
-              rowSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
-                                        nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
-                rowSums(held_out)
-            }, FUN.VALUE = numeric(nrow(DV)))
-            out[is.nan(out)] <- 0
-          } else {
-            attrib <- attrib[!manynet::node_is_mode(.data)]
-            out <- t(vapply(1:length(attrib), function(x) {
-              held_out <- manynet::as_matrix(manynet::delete_nodes(.data, x))
-              colSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
-                                        nrow(DV) - 1, ncol(DV))) /
-                colSums(held_out)
-            }, FUN.VALUE = numeric(ncol(DV))))
-            out[is.nan(out)] <- 0
-          }
-        } else {
-          rows <- matrix(attrib, nrow(DV), ncol(DV))
-          cols <- matrix(attrib, nrow(DV), ncol(DV), byrow = TRUE)
-          out <- (rows == cols) * 1
-        }
-        out <- list(out)
-        names(out) <- paste(IV[[elem]], collapse = " ")
-        out
-      } else if (IV[[elem]][1] == "dist") {
-        if (is.character(manynet::node_attribute(net, IV[[elem]][2]))) {
-          manynet::snet_abort(
-            c("{.fn dist} is undefined for a categorical attribute.",
-              i = "Try {.fn same} instead."))
-        }
-        sides <- side_matrices(manynet::node_attribute(net, IV[[elem]][2]),
-                               DV, twomode, node_type)
-        rows <- sides$rows
-        cols <- sides$cols
-        out <- abs(rows - cols)
-        out <- list(out)
-        names(out) <- paste(IV[[elem]], collapse = " ")
-        out
-      } else if (IV[[elem]][1] == "sim") {
-        if (is.character(manynet::node_attribute(net, IV[[elem]][2]))) {
-          manynet::snet_abort(
-            c("{.fn sim} is undefined for a categorical attribute.",
-              i = "Try {.fn same} instead."))
-        }
-        sides <- side_matrices(manynet::node_attribute(net, IV[[elem]][2]),
-                               DV, twomode, node_type)
-        rows <- sides$rows
-        cols <- sides$cols
-        denom <- max(abs(rows - cols), na.rm = TRUE)
-        if (!is.finite(denom) || denom == 0) denom <- 1
-        out <- abs(1 - abs(rows - cols) / denom)
-        out <- list(out)
-        names(out) <- paste(IV[[elem]], collapse = " ")
-        out
-      } else if (IV[[elem]][1] == "tertius") {
-        vct <- manynet::node_attribute(net, IV[[elem]][2])
-        if (manynet::is_twomode(net)) {
-          vct <- vct[!manynet::node_attribute(net, "type")]
-        }
-        if (is.na(IV[[elem]][3])) {
-          IV[[elem]][3] <- "mean"
-        }
-        # The deparsed term keeps the quotation marks of `tertius(x, "mean")`,
-        # so strip them; otherwise only the unquoted spelling is recognised.
-        IV[[elem]][3] <- gsub('^"|"$', "", IV[[elem]][3])
-        fn <- IV[[elem]][3]
-        if (!fn %in% c("mean", "sum")) {
-          manynet::snet_abort(
-            "{.fn tertius} takes {.val mean} or {.val sum}, not {.val {fn}}.")
-        }
-        tertius_of <- function(M) {
-          val <- matrix(vct, nrow(M), ncol(M)) * M
-          t(vapply(seq_len(nrow(M)), function(x) {
-            if (fn == "mean") colMeans(val[-x, , drop = FALSE], na.rm = TRUE)
-            else colSums(val[-x, , drop = FALSE], na.rm = TRUE)
-          }, FUN.VALUE = numeric(ncol(M))))
-        }
-        # In a CSS each reporter sees a different network, and so a different
-        # set of a node's other ties. The term is computed in each report.
-        out <- if (css) {
-          arr <- array(NA_real_, dim = dim(DV), dimnames = dimnames(DV))
-          for (k in seq_len(dim(DV)[3])) arr[, , k] <- tertius_of(DV[, , k])
-          arr
-        } else {
-          tertius_of(DV)
-        }
-        out <- list(out)
-        names(out) <- paste(IV[[elem]][1:2], collapse = " ")
-        out
-      } else {
-        # A layer name pulls in that layer as a dyadic covariate. A layer that
-        # is itself a CSS gives each reporter's own report of it, and a layer
-        # that is not gives one matrix that every reporter shares.
-        if (IV[[elem]][1] %in% c(layers, manynet::net_tie_attributes(net))) {
-          out <- manynet::as_matrix(manynet::to_uniplex(net,
-                                                       layer = IV[[elem]][1]))
-          out <- list(out)
-          names(out) <- IV[[elem]][1]
-          out
-        } else {
-          manynet::snet_abort("Predictor {.val {IV[[elem]][1]}} not found in the network.")
-        }
-      }
-    })
-    if (length(out) == 2) {
-      namo <- paste(vapply(out, names, FUN.VALUE = character(1)),
-                    collapse = ":")
-      out <- list(lift(out[[1]][[1]]) * lift(out[[2]][[1]]))
-      names(out) <- namo
-      out
-    } else {
-      if (is.list(out[[1]])) {
-        out[[1]]
-      } else {
-        out <- list(out[[1]])
-        names(out) <- attr(out[[1]], "names")[1]
-        attr(out[[1]], "names") <- NULL
-        out
-      }
-    }
-  })
-  IVs <- purrr::flatten(IVs)
-  IVs <- lapply(IVs, lift)
-  out <- c(list(DV), IVs)
-
-  DVname <- formula[[2]]
-  out_formula <- names_form$formula
-  if (DVname == ".") {
-    DVname <- "ties"
-    out_formula[[2]] <- as.name("ties")
-  }
-  names(out)[1] <- as.character(DVname)
-
-  return(list(mydata = out,
-              formula = out_formula,
-              css = css))
-}
-
-
-# The column name of one formula term, as `convertToMatrixList()` names the
-# matrix it builds: "ego Age" for a nodal term, "reports" for a layer named on
-# its own, and "ego Age:alter Age" for an interaction. A layer named on its own
-# has no argument, and pasting the missing one gave "reports NA", so a bare
-# dyadic covariate could never be found in the data.
-#' @keywords internal
-#' @noRd
-.term_label <- function(term) {
-  parts <- vapply(term, function(el) {
-    if (length(el) < 2 || is.na(el[2])) el[1] else paste(el[1:2], collapse = " ")
-  }, character(1))
-  paste(parts, collapse = ":")
-}
-
-#' @keywords internal
-#' @noRd
-getRHSNames <- function(formula) {
-  rhs <- c(attr(stats::terms(formula), "term.labels"))
-  rhs <- strsplit(rhs, ":")
-  rhs <- lapply(rhs, function(term) {
-    strsplit(term, "\\|")
-  })
-  if (!is.list(rhs)) {
-    rhs <- list(rhs)
-  }
-  if (any(grepl("\\|", formula))) {
-    rand <- c(1:length(rhs))[unlist(lapply(rhs, function(term) {
-      length(term[[1]]) > 1
-    }))]
-    rhs2 <- rhs[c(1:length(rhs))[-rand]]
-    rhsn <- lapply(rhs2, function(term) {
-      strsplit(gsub("\\)", "", term), "\\(|,|, ")
-    })
-    term_names <- lapply(rhsn, function(term) {
-      paste0("`", term[[1]][1], " ", term[[1]][2], "`")
-    })
-    form <- paste(paste(formula[[2]], "~"),
-                  paste(term_names, collapse = " + "))
-    for (term in rand) {
-      form <- paste(form, "+", "(")
-      for (i in 1:length(rhs[[term]][[1]])) {
-        string <- gsub("[[:space:]]", "", rhs[[term]][[1]][[i]])
-        string <- strsplit(string, "\\+")[[1]]
-
-        for (j in 1:length(string)) {
-          n <- strsplit(gsub("\\)", "", string[j]), "\\(|,|, ")
-          if (i == 1) {
-            if (length(n[[1]]) == 1) {
-              form <- paste0(form, n)
-            } else {
-              n <- paste0("`", paste(n[[1]], collapse = " "), "`")
-              form <- paste(form, n)
-            }
-            if (j < length(string)) {
-              form <- paste(form, "+")
-            }
-          } else {
-            n <- paste0("`", paste(n[[1]], collapse = " "), "`")
-            form <- paste(form, "|", n)
-          }
-          if (string[j] != "1" && !(string[j] %in% unlist(rhs2))) {
-            rhs2 <- append(rhs2, string[j])
-          }
-        }
-      }
-      form <- paste0(form, ")")
-    }
-    rhs <- rhs2
-  }
-  rhsn <- lapply(rhs, function(term) {
-    strsplit(gsub("\\)", "", term), "\\(|,|, ")
-  })
-
-  if (!any(grepl("\\|", formula))) {
-    form <- paste(paste(formula[[2]], "~"),
-                  paste(vapply(rhsn, function(term) {
-                    paste0("`", .term_label(term), "`")
-                  }, character(1)), collapse = " + "))
-  }
-  return(list(IVnames = rhsn,
-              formula = stats::as.formula(form)))
-}
-
-
-#' @keywords internal
-#' @noRd
-.check_formula_vars <- function(IVnames, net) {
-  node_fns <- c("ego", "alter", "same", "dist", "sim", "tertius")
-  node_attrs <- manynet::net_node_attributes(net)
-  # The engine builds these columns itself in `make_qap_data()`: the sender, the
-  # receiver, the network, and the reporter index. They are what a user names
-  # after a `|` to absorb sender or receiver fixed effects, so they are not
-  # attributes of the network and must not be looked for among them.
-  layers     <- .layer_names(net)
-  tie_attrs  <- c(manynet::net_tie_attributes(net), layers, .structural_vars())
-
-  missing_node <- character(0)
-  missing_tie  <- character(0)
-
-  for (IV in IVnames) {
-    for (term in IV) {
-      fn  <- term[1]
-      arg <- term[2]
-      if (fn %in% node_fns) {
-        if (is.na(arg) || !(arg %in% node_attrs))
-          missing_node <- c(missing_node, arg)
-      } else {
-        if (!(fn %in% tie_attrs))
-          missing_tie <- c(missing_tie, fn)
-      }
-    }
-  }
-
-  if (length(missing_node) > 0) {
-    manynet::snet_abort(
-      c("Node attribute{?s} {.val {unique(missing_node)}} not found.",
-        i = "Available node attributes: {.val {node_attrs}}."))
-  }
-  if (length(missing_tie) > 0) {
-    available   <- setdiff(manynet::net_tie_attributes(net), c("by", "layer"))
-    structurals <- .structural_vars()
-    msg <- c("Tie attribute or predictor{?s} {.val {unique(missing_tie)}} not found.")
-    if (length(layers) > 0) msg <- c(msg, i = "Available layers: {.val {layers}}.")
-    if (length(available) > 0) msg <- c(msg, i = "Available tie attributes: {.val {available}}.")
-    msg <- c(msg, i = "Sender, receiver, and network indices are also available as {.val {structurals}}.")
-    manynet::snet_abort(msg)
-  }
-  invisible(TRUE)
+convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE) {
+  .evaluate_spec(.specify(formula), .data, advise = advise, pooled = pooled)
 }
 
 # Says what was detected, and warns about the one thing a CSS array cannot say
@@ -1038,37 +741,4 @@ getRHSNames <- function(formula) {
 getDependentName <- function(formula) {
   dep <- list(formula[[2]])
   unlist(lapply(dep, deparse))
-}
-
-
-#' @keywords internal
-#' @noRd
-specificationAdvice <- function(formula, net) {
-  formdf <- t(data.frame(formula))
-  if (any(formdf[, 1] %in% c("sim", "same"))) {
-    vars <- formdf[formdf[, 1] %in% c("sim", "same"), 2]
-    suggests <- vapply(vars, function(x) {
-      incl <- unname(formdf[formdf[, 2] == x, 1])
-      if (manynet::is_twomode(net)) {
-        excl <- setdiff(c("ego", "tertius"), incl)
-      } else excl <- setdiff(c("ego", "alter"), incl)
-      if (length(excl) > 0) {
-        paste0(excl, "(", x, ")", collapse = ", ")
-      } else {
-        NA_character_
-      }
-    }, FUN.VALUE = character(1))
-    suggests <- suggests[!is.na(suggests)]
-    if (!manynet::is_directed(net)) {
-      suggests <- suggests[!grepl("ego\\(", suggests)]
-    }
-    if (length(suggests) > 0) {
-      if (length(suggests) > 1) {
-        suggests <- paste0(suggests, collapse = ", ")
-      }
-      manynet::snet_info(
-        "When testing for homophily, include all the more fundamental effects.",
-        "Try adding {suggests} to the model specification.")
-    }
-  }
 }
