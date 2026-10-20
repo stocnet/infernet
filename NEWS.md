@@ -1,3 +1,10 @@
+# infernet 0.4.0
+
+## Package
+
+- Updated CONTRIBUTING with formula conventions for the stocnet packages
+- Removed `{purrr}` from `Imports`, since the new formula parser does not need it
+
 # infernet 0.3.0
 
 ## Package
