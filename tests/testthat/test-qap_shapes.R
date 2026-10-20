@@ -71,13 +71,13 @@ test_that("RMPerm() keeps the row and column order aligned for a square matrix",
   expect_setequal(diag(p), diag(m))
 })
 
-test_that("dist() and sim() read each mode of a two-mode network separately", {
+test_that("diff() and sim() read each mode of a two-mode network separately", {
   sw <- qap_net_twomode()
-  ml <- convertToMatrixList(. ~ ego(Att) + alter(Att) + dist(Att) + sim(Att),
+  ml <- convertToMatrixList(. ~ ego(Att) + alter(Att) + diff(Att) + sim(Att),
                             sw, advise = FALSE)
   ego <- ml$mydata[["ego Att"]]
   alt <- ml$mydata[["alter Att"]]
-  expect_equal(ml$mydata[["dist Att"]], abs(ego - alt))
+  expect_equal(ml$mydata[["diff Att"]], abs(ego - alt))
   denom <- max(abs(ego - alt))
   expect_equal(ml$mydata[["sim Att"]], abs(1 - abs(ego - alt) / denom))
 })

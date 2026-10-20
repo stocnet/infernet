@@ -47,16 +47,16 @@ test_that("net_regression handles same() on a categorical attribute", {
   expect_true("same Gender" %in% names(fit$coefficients))
 })
 
-test_that("net_regression handles dist() on a numeric attribute", {
+test_that("net_regression handles diff() on a numeric attribute", {
   g <- make_weighted_net()
-  fit <- net_regression(weight ~ dist(Age), g, times = 10)
+  fit <- net_regression(weight ~ diff(Age), g, times = 10)
   expect_s3_class(fit, "netreg")
-  expect_true("dist Age" %in% names(fit$coefficients))
+  expect_true("diff Age" %in% names(fit$coefficients))
 })
 
 test_that("net_regression handles tertius() with mean aggregation", {
   g <- make_weighted_net()
-  fit <- net_regression(weight ~ tertius(Age, mean), g, times = 10)
+  fit <- suppressWarnings(net_regression(weight ~ tertius(Age, mean), g, times = 10))
   expect_s3_class(fit, "netreg")
 })
 
@@ -152,17 +152,18 @@ test_that("permute = 'outcome' runs and is recorded on the fit", {
 
 test_that("tertius() accepts a quoted and an unquoted summary function", {
   g <- make_weighted_net()
-  quoted   <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
-  unquoted <- net_regression(weight ~ tertius(Age, mean), g, times = 10)
-  bare     <- net_regression(weight ~ tertius(Age), g, times = 10)
+  # The old spelling names no layer, so it reads the outcome, and warns.
+  quoted   <- suppressWarnings(net_regression(weight ~ tertius(Age, "mean"), g, times = 10))
+  unquoted <- suppressWarnings(net_regression(weight ~ tertius(Age, mean), g, times = 10))
+  bare     <- suppressWarnings(net_regression(weight ~ tertius(Age), g, times = 10))
   expect_equal(quoted$coefficients, unquoted$coefficients)
   expect_equal(quoted$coefficients, bare$coefficients)
 })
 
 test_that("tertius() sum differs from mean, and rejects anything else", {
   g <- make_weighted_net()
-  mean_fit <- net_regression(weight ~ tertius(Age, "mean"), g, times = 10)
-  sum_fit  <- net_regression(weight ~ tertius(Age, "sum"), g, times = 10)
+  mean_fit <- suppressWarnings(net_regression(weight ~ tertius(Age, "mean"), g, times = 10))
+  sum_fit  <- suppressWarnings(net_regression(weight ~ tertius(Age, "sum"), g, times = 10))
   expect_false(isTRUE(all.equal(mean_fit$coefficients, sum_fit$coefficients)))
   expect_error(net_regression(weight ~ tertius(Age, "median"), g, times = 10),
                "mean")

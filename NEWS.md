@@ -13,6 +13,18 @@
   - Added `info$focal` as the outcome of `. ~`, and a named outcome still takes priority
   - Added a clear error for a bar in the formula, which never reached a model,
     pointing to the random intercepts in `control`
+- Added formula terms from goldfish, computed on another layer
+  - Added `recip()`, the reverse tie
+  - Added `indeg()` and `outdeg()`, a node's degree on the receiver's or the sender's side
+  - Added `tertius_diff()`, how far ego lies from the receiver's other in-neighbours
+  - Added `tie()`, a layer as a dyadic covariate, 0/1 unless `weighted = TRUE`
+  - Added `global()`, a network-level variable, in a list of networks
+- Added formula terms from ergm for categorical attributes
+  - Added `match()`, one dummy for each category that sender and receiver share
+  - Added `mix()`, one dummy for each pair of categories, less a reference pair
+- Renamed `dist()` to `diff()`, as goldfish calls it
+  - Added `transformer_fn =`, so `diff(x, transformer_fn = identity)` is signed
+  - `dist()` still works, with its old column name, and warns that it is deprecated
 - Fixed `tertius()` with `"mean"` dividing by the number of nodes rather than
   of in-neighbours, which mixed the receiver's in-degree into the attribute
   - It is now the mean over the receiver's other in-neighbours, so results change

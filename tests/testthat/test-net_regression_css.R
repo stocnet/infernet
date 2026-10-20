@@ -124,9 +124,9 @@ test_that("a nodal predictor is the same for every reporter", {
 
 test_that("tertius() is computed within each report", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + tertius(age), HT, times = 5,
+    net_regression(advice ~ ego(age) + tertius(friends, age), HT, times = 5,
                    control = list(seed = 1)))
-  per_dyad <- tapply(fit$pred[["tertius age"]],
+  per_dyad <- tapply(fit$pred[["tertius friends age"]],
                      interaction(fit$pred$sv, fit$pred$rv, drop = TRUE),
                      function(v) length(unique(v)))
   expect_true(any(per_dyad > 1))
