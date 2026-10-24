@@ -41,6 +41,14 @@
   - Each column names its reference category, e.g. `ego Discipline Sociology [Anthropology]`,
     and a message names it too
 
+## Results
+
+- Added `tidy()` and `glance()` methods for `netreg` and `network_test` results
+  - `tidy()` gives the permutation p-value that `alternative` names, two-sided by default
+  - Moved from `{migraph}` the methods for `netlm`, `netlogit`, `ergm`, and `sienaFit`, and the print methods for `netlm` and `netlogit`
+  - Fixed `tidy()` on a `netlm` or `netlogit` ignoring `conf.level`
+  - Fixed `glance()` on an `ergm` adding the MCMC columns when it says they are omitted
+- Moved `print()`, `tidy()`, and `glance()` to one help page, `?results`
 
 # infernet 0.3.0
 

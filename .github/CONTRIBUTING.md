@@ -266,7 +266,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | File | Contains |
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
-| `model_regression.R` | `net_regression()`, the list path, and the `print.*` methods for its results |
+| `model_regression.R` | `net_regression()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
@@ -615,6 +616,7 @@ and are grouped by contract for the engine:
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
+| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
 
 [tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
 holds the shared fixtures and expectations:

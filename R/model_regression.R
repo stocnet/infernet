@@ -471,26 +471,21 @@ net_regression <- function(formula,
 # method and none of them branches on the class of another. `print.netreg()` is
 # the fallback for a `netreg` with no more specific class.
 
-#' @rdname regression
-#' @param x A `netreg` object, as returned by `net_regression()`.
-#' @param ... Additional arguments passed to the underlying print helpers.
-#' @param print_b Logical; also print coefficient-based (not t-based)
-#'   permutation p-values.
-#' @param print_random Logical; print random intercepts when present.
+#' @rdname results
 #' @export
 print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
   .print_qap_regression(x, print_b = print_b, print_random = print_random)
   invisible(x)
 }
 
-#' @rdname regression
+#' @rdname results
 #' @export
 print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
   .print_qap_glm(x, print_b = print_b, print_random = print_random)
   invisible(x)
 }
 
-#' @rdname regression
+#' @rdname results
 #' @export
 print.netreg <- function(x, ...) {
   cat("<netreg>\n")

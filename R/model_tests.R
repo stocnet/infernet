@@ -171,6 +171,7 @@ test_permutation <- function(.data, FUN, ...,
   out
 }
 
+#' @rdname results
 #' @export
 print.network_test <- function(x, ...,
                              max.length = 6,
