@@ -33,6 +33,25 @@ test_that("dist() is a deprecated alias that keeps its column name", {
   expect_no_warning(terms_of(a ~ dist(x)))
 })
 
+test_that("ego() and alter() dummy-code a categorical attribute, naming the reference", {
+  m <- suppressMessages(terms_of(a ~ ego(grp) + alter(grp)))
+  expect_named(m, c("a", "ego grp q [p]", "alter grp q [p]"))
+  expect_equal(unname(m[["ego grp q [p]"]]),
+               matrix(GRP == "q", 6, 6) * 1)
+  expect_equal(unname(m[["alter grp q [p]"]]),
+               matrix(GRP == "q", 6, 6, byrow = TRUE) * 1)
+  old <- options(snet_verbosity = "verbose")
+  on.exit(options(old), add = TRUE)
+  expect_message(terms_of(a ~ ego(grp)), "reference")
+})
+
+test_that("a categorical ego() gets a p-value under double semi-partialling", {
+  fit <- suppressMessages(
+    net_regression(a ~ ego(grp) + alter(grp) + same(grp), formula_net(),
+                   times = 5, control = list(seed = 1)))
+  expect_false(anyNA(fit$abs[, -1]))
+})
+
 test_that("match() gives one dummy per category where both hold it", {
   m <- terms_of(a ~ match(grp))
   expect_named(m, c("a", "match grp p", "match grp q"))

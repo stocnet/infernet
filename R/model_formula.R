@@ -365,11 +365,35 @@
 }
 
 .build_ego <- function(op, ctx) {
-  .named(.side_matrices(ctx, op$name)$rows, paste("ego", op$name))
+  .build_side(op, ctx, "ego", .side_matrices(ctx, op$name)$rows)
 }
 
 .build_alter <- function(op, ctx) {
-  .named(.side_matrices(ctx, op$name)$cols, paste("alter", op$name))
+  .build_side(op, ctx, "alter", .side_matrices(ctx, op$name)$cols)
+}
+
+# A categorical attribute is dummy-coded here, one numeric column per category
+# less the first as the reference, as `migraph` did. Left as a character matrix,
+# the fitter would dummy-code it instead, but then double semi-partialling has
+# no numeric column to residualise and every level's p-value is NA. The
+# reference goes into each column's name, so that the table says what a level
+# is compared with.
+#' @keywords internal
+#' @noRd
+.build_side <- function(op, ctx, side, m) {
+  label <- paste(side, op$name)
+  v <- .node_values(ctx, op$name, side)
+  if (!is.character(v) && !is.factor(v)) return(.named(m, label))
+  cats <- if (is.factor(v)) levels(droplevels(v)) else
+    sort(unique(stats::na.omit(v)))
+  if (length(cats) < 2) {
+    manynet::snet_abort(
+      "{.fn {side}} needs at least two categories of {.val {op$name}}.")
+  }
+  manynet::snet_info(
+    "{.fn {side}} leaves out {.val {cats[1]}} of {.val {op$name}} as the reference.")
+  out <- lapply(cats[-1], function(k) (m == k) * 1)
+  stats::setNames(out, paste0(label, " ", cats[-1], " [", cats[1], "]"))
 }
 
 .build_same <- function(op, ctx) {

@@ -34,6 +34,13 @@
     permuting the outcome does not permute this predictor with it
 - Fixed a layer term reading the outcome's own ties: `recip()`, `indeg()`,
   `outdeg()`, and `tie()` refuse the outcome layer
+- Fixed `ego()` and `alter()` of a categorical attribute returning NA p-values
+  under `permute = "predictor"`, since the fitter dummy-coded the attribute and
+  left nothing numeric to residualise
+  - They are dummy-coded again, one column per category less the first, as in `{migraph}`
+  - Each column names its reference category, e.g. `ego Discipline Sociology [Anthropology]`,
+    and a message names it too
+
 
 # infernet 0.3.0
 
