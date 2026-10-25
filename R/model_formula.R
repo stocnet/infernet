@@ -370,17 +370,83 @@
   if (advise) specificationAdvice(spec, ctx$net)
 
   lift <- if (css) function(x) .lift_to_css(x, DV) else identity
-  IVs <- lapply(spec$terms, function(term) {
-    parts <- lapply(term$operands, function(op) lapply(.build_operand(op, ctx), lift))
-    Reduce(.interact, parts)
+  built <- lapply(spec$terms, function(term) {
+    ops <- lapply(term$operands, .build_operand, ctx = ctx)
+    cols <- Reduce(.interact, lapply(ops, function(o) lapply(o, lift)))
+    parts <- if (length(ops) == 1) attr(ops[[1]], "parts")
+      else .interaction_parts(names(cols), lapply(ops, names))
+    list(cols = cols, parts = parts)
   })
-  IVs <- unlist(IVs, recursive = FALSE)
+  IVs <- unlist(lapply(built, `[[`, "cols"), recursive = FALSE)
+  terms <- do.call(rbind, lapply(built, `[[`, "parts"))
 
   rhs <- Reduce(function(a, b) call("+", a, b), lapply(names(IVs), as.name))
   out_formula <- eval(call("~", as.name(out$label), rhs))
   mydata <- c(list(DV), IVs)
   names(mydata)[1] <- out$label
-  list(mydata = mydata, formula = out_formula, css = css)
+  list(mydata = mydata, formula = out_formula, css = css, terms = terms)
+}
+
+# ---- the term table ----------------------------------------------------------
+
+# A column's name is a label that cannot be parsed back into its parts, since an
+# attribute or a category can hold underscores. So each operand also records its
+# parts, one row per column: the term it comes from (`effect`), and its layer,
+# attribute, category, and reference category. The fit keeps these as
+# `fit$terms`, and `tidy()` joins them to the coefficients. `term` is the
+# column's name, as in `{broom}`; goldfish's `coef_layout()` calls it `name`.
+#' @keywords internal
+#' @noRd
+.term_table <- function(term, effect = NA_character_, layer = NA_character_,
+                        attribute = NA_character_, category = NA_character_,
+                        reference = NA_character_, operands = NULL) {
+  n <- length(term)
+  out <- data.frame(term = term,
+                    effect = rep_len(as.character(effect), n),
+                    layer = rep_len(as.character(layer), n),
+                    attribute = rep_len(as.character(attribute), n),
+                    category = rep_len(as.character(category), n),
+                    reference = rep_len(as.character(reference), n),
+                    stringsAsFactors = FALSE)
+  out$operands <- if (is.null(operands)) rep(list(character(0)), n) else operands
+  out
+}
+
+# The parts of one operand's columns, from the operand and its term's kind. A
+# builder that knows more, such as the category of each column, leaves it in
+# the "parts" attribute of what it returns, as arguments of `.term_table()`.
+#' @keywords internal
+#' @noRd
+.operand_parts <- function(out, op, kind) {
+  parts <- list(term = names(out),
+                effect = if (is.na(op$fn)) "tie" else op$fn,
+                layer = if (kind %in% c("layer", "covariate")) op$name else NA_character_,
+                attribute = if (kind %in% c("attribute", "global")) op$name else NA_character_)
+  given <- attr(out, "parts")
+  parts[names(given)] <- given
+  do.call(.term_table, parts)
+}
+
+# An interaction names its operands: the columns it multiplies, in the order
+# that `.interact()` makes them.
+#' @keywords internal
+#' @noRd
+.interaction_parts <- function(cols, operand_names) {
+  operands <- Reduce(function(a, b) {
+    unlist(lapply(a, function(i) lapply(b, function(j) c(i, j))), recursive = FALSE)
+  }, lapply(operand_names, as.list))
+  .term_table(cols, effect = "interaction", operands = operands)
+}
+
+# The term table of a fit: one row for each coefficient, in their order.
+#' @keywords internal
+#' @noRd
+.coef_terms <- function(coefs, terms) {
+  terms <- rbind(.term_table("(Intercept)", effect = "intercept"), terms)
+  out <- terms[match(coefs, terms$term), , drop = FALSE]
+  out$term <- coefs
+  rownames(out) <- NULL
+  tibble::as_tibble(out)
 }
 
 # What every builder reads: the network, its outcome, and its shape. `out` is
@@ -506,7 +572,11 @@
 #' @keywords internal
 #' @noRd
 .build_operand <- function(op, ctx) {
-  if (is.na(op$fn)) return(.build_covariate(op, ctx))
+  if (is.na(op$fn)) {
+    out <- .build_covariate(op, ctx)
+    attr(out, "parts") <- .operand_parts(out, op, "covariate")
+    return(out)
+  }
   entry <- .formula_terms()[[op$fn]]
   if (is.null(entry$build)) {
     manynet::snet_abort(
@@ -518,7 +588,9 @@
       c("{.fn {op$fn}} is not defined for a two-mode network.",
         i = entry$hint))
   }
-  entry$build(op, ctx)
+  out <- entry$build(op, ctx)
+  attr(out, "parts") <- .operand_parts(out, op, entry$kind)
+  out
 }
 
 # The product of two operands, each a named list of matrices. An operand that
@@ -592,9 +664,9 @@
 # A categorical attribute is dummy-coded here, one numeric column per category
 # less the first as the reference, as `migraph` did. Left as a character matrix,
 # the fitter would dummy-code it instead, but then double semi-partialling has
-# no numeric column to residualise and every level's p-value is NA. The
-# reference is named in a message, since a column's name holds only its own
-# category.
+# no numeric column to residualise and every level's p-value is NA. A column's
+# name holds only its own category, so the reference is named in a message and
+# in the term table.
 #' @keywords internal
 #' @noRd
 .build_side <- function(op, ctx, side, m) {
@@ -610,7 +682,8 @@
   manynet::snet_info(
     "{.fn {side}} leaves out {.val {cats[1]}} of {.val {op$name}} as the reference.")
   out <- lapply(cats[-1], function(k) (m == k) * 1)
-  stats::setNames(out, vapply(cats[-1], function(k) .col_name(label, k), ""))
+  out <- stats::setNames(out, vapply(cats[-1], function(k) .col_name(label, k), ""))
+  structure(out, parts = list(category = cats[-1], reference = cats[1]))
 }
 
 .build_same <- function(op, ctx) {
@@ -689,7 +762,8 @@
   sides <- .side_matrices(ctx, op$name)
   cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
   out <- lapply(cats, function(k) (sides$rows == k & sides$cols == k) * 1)
-  stats::setNames(out, vapply(cats, function(k) .col_name("match", op$name, k), ""))
+  out <- stats::setNames(out, vapply(cats, function(k) .col_name("match", op$name, k), ""))
+  structure(out, parts = list(category = cats))
 }
 
 # Mixing: one column per pair of a sender's and a receiver's category, less the
@@ -718,7 +792,11 @@
     if (!ordered) cell <- cell | (sides$rows == b & sides$cols == a)
     cell * 1
   })
-  stats::setNames(out, labels[-1])
+  # In the term table, a pair is written as a tie is in DOT: `->` from the
+  # sender's category to the receiver's, or `--` where the pair is unordered.
+  pair <- paste(pairs$ego, pairs$alter, sep = if (ordered) " -> " else " -- ")
+  structure(stats::setNames(out, labels[-1]),
+            parts = list(category = pair[-1], reference = pair[1]))
 }
 
 # ---- builders: layers ----------------------------------------------------------
@@ -940,7 +1018,14 @@
 .build_tertius <- function(op, ctx) {
   ta <- .tertius_args(op, ctx)
   out <- .per_report(ta$m, function(s) .tertius_matrix(s, ta$v, ta$fn))
-  .named(out, .col_name(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x))
+  .tertius_named(out, op, ta)
+}
+
+#' @keywords internal
+#' @noRd
+.tertius_named <- function(out, op, ta) {
+  structure(.named(out, .col_name(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x)),
+            parts = list(layer = ta$layer, attribute = ta$x))
 }
 
 # goldfish's `tertius_diff()` with its default `transformer_fn = abs`: how far
@@ -951,7 +1036,7 @@
     agg <- .tertius_matrix(s, ta$v, ta$fn, fill = FALSE)
     .fill_undefined(abs(matrix(ta$v, nrow(s), ncol(s)) - agg), nrow(s) == ncol(s))
   })
-  .named(out, .col_name(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x))
+  .tertius_named(out, op, ta)
 }
 
 # ---- builders: network-level variables -------------------------------------------

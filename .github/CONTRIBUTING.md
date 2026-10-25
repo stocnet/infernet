@@ -379,6 +379,8 @@ regression entry point. Its control flow is:
 5. Call `QAPengine()`, which parses the formula, fits the baseline model once
    via `fit_qap_model()`, then runs `times` permutations and aggregates them.
 6. Attach a probabilistic confusion matrix where the outcome is binary.
+7. Attach the term table, `fit$terms`, from the parts that `.evaluate_spec()`
+   records for each column, in the order of the coefficients.
 
 The result is a `netreg`, with more specific classes in front of it:
 
@@ -586,8 +588,17 @@ correspond to those in other packages.
   becomes one underscore, and an interaction joins its columns with `:`.
   The name is a label: since attributes and categories can hold underscores,
   do not parse it back into its parts.
-  A categorical `ego()` or `alter()` names its reference category in a message,
-  not in each column.
+  The parts are kept instead in the fit's term table, `fit$terms`,
+  one row for each coefficient, and `tidy()` adds them to the estimates:
+  `effect` (the term, such as `"match"`, or `"intercept"` or `"interaction"`),
+  `layer`, `attribute`, `category` as the data hold it, `reference`,
+  and, for an interaction, `operands`, the columns it multiplies.
+  A `mix()` pair is written as a tie is in DOT,
+  `"sales -> hr"`, or `"sales -- hr"` where the pair is unordered.
+  A categorical `ego()`, `alter()`, or `mix()` names its reference category
+  in a message and in the term table, not in each column.
+  `term` is the column's name, as in `{broom}`;
+  goldfish's `coef_layout()` calls the same field `name`.
 
 #### The dictionary
 
@@ -681,6 +692,9 @@ Two terms still differ from goldfish:
 2. Write the builder. It takes the parsed operand and the context, and returns
    a named list of matrices: one for most terms, several for a term like
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
+   `.build_operand()` records each column's term, layer, and attribute
+   from the term's `kind`. A builder that knows more, such as each column's
+   category, gives it in a `parts` attribute of the list it returns.
 3. Add a row to the dictionary above, with its MRQAP status,
    a row to `expected_status` in `test-model_specify_record.R`, with its
    status in each model, and a test to `test-formula_terms.R` that

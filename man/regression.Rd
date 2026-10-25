@@ -118,6 +118,13 @@ row per permutation and one column per coefficient. The shares in
 \code{permute = "predictor"} each column comes from its own set of
 permutations, so rows pair columns only by position, and the intercept
 column is \code{NA}. A permutation that failed leaves its row \code{NA}.
+\item \code{terms}, a tibble of one row for each coefficient, with the parts that
+its name joins: \code{term}, the coefficient's name; \code{effect}, the formula
+term it comes from, such as \code{"ego"} or \code{"match"}, or \code{"intercept"} or
+\code{"interaction"}; its \code{layer} and \code{attribute}; its \code{category} and the
+\code{reference} category it is compared with, where the term is
+categorical; and for an interaction, its \code{operands}, the names of the
+columns it multiplies. \code{tidy()} adds these columns to the estimates.
 }
 
 When the outcome is binary -- either \code{family = "binomial"} or

@@ -159,6 +159,13 @@
 #'     `permute = "predictor"` each column comes from its own set of
 #'     permutations, so rows pair columns only by position, and the intercept
 #'     column is `NA`. A permutation that failed leaves its row `NA`.
+#'   - `terms`, a tibble of one row for each coefficient, with the parts that
+#'     its name joins: `term`, the coefficient's name; `effect`, the formula
+#'     term it comes from, such as `"ego"` or `"match"`, or `"intercept"` or
+#'     `"interaction"`; its `layer` and `attribute`; its `category` and the
+#'     `reference` category it is compared with, where the term is
+#'     categorical; and for an interaction, its `operands`, the names of the
+#'     columns it multiplies. `tidy()` adds these columns to the estimates.
 #'
 #'   When the outcome is binary -- either `family = "binomial"` or
 #'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
@@ -223,12 +230,14 @@ estimate_mrqap <- function(formula,
     formula     <- prepared$formula
     first_graph <- prepared$first_graph
     css         <- prepared$css
+    terms       <- prepared$terms
   } else {
     ml <- convertToMatrixList(formula, .data)
     matlist     <- ml$mydata
     formula     <- ml$formula
     first_graph <- manynet::as_tidygraph(.data)
     css         <- ml$css
+    terms       <- ml$terms
   }
 
   dep <- .dep_name(formula)
@@ -286,6 +295,7 @@ estimate_mrqap <- function(formula,
   if (user_requested_gaussian_binary) {
     fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
   }
+  fit$terms <- .coef_terms(names(fit$coefficients), terms)
 
   fit
 }
@@ -467,6 +477,7 @@ net_regression <- function(formula,
   list(
     matlist     = matlist,
     formula     = kept_mls[[1]]$formula,
+    terms       = kept_mls[[1]]$terms,
     first_graph = first_graph,
     css         = all(css)
   )

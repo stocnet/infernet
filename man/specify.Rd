@@ -152,7 +152,8 @@ fits one report of one network.
 \section{goldfish and infernet}{
 
 goldfish's terms are infernet's where the two packages share them.
-\code{sim()} is 1 - |d| / range in infernet and -|d| in goldfish, and
+\code{sim()} is 1 - |d| / range in infernet and -|d| in goldfish,
+which changes the scale of its coefficient but not its test, and
 \code{tertius()} and \code{tertius_diff()} leave out the sender in infernet and
 include it in goldfish. Both are kept and named.
 

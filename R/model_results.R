@@ -53,7 +53,12 @@
 #' @return `print()` returns `x`, invisibly.
 #'   `tidy()` and `glance()` return a tibble.
 #'   `tidy()` gives the columns `term`, `estimate`, `statistic`, and
-#'   `p.value` for a regression,
+#'   `p.value` for a regression.
+#'   For a `netreg`, it also adds the columns of the fit's term table,
+#'   `fit$terms`: the `effect` (the formula term) each coefficient comes from,
+#'   its `layer`, `attribute`, `category`, and `reference` category,
+#'   and for an interaction its `operands`.
+#'   These group the coefficients without parsing their names.
 #'   and `glance()` gives the fit statistics that the model keeps.
 #'   For a `network_test`, both give one row with the observed statistic,
 #'   the mean and standard deviation of the null distribution,
@@ -93,10 +98,14 @@ tidy.netreg <- function(x, exponentiate = FALSE,
       manynet::snet_warn("The estimates are exponentiated, but the model is gaussian.")
     estimate <- exp(estimate)
   }
-  tibble::tibble(term = names(x$coefficients),
-                estimate = estimate,
-                statistic = as.numeric(x$obs),
-                p.value = as.numeric(p[2, ]))
+  out <- tibble::tibble(term = names(x$coefficients),
+                        estimate = estimate,
+                        statistic = as.numeric(x$obs),
+                        p.value = as.numeric(p[2, ]))
+  # A fit made before the term table was kept has none to join.
+  if (is.null(x$terms)) return(out)
+  parts <- x$terms[match(out$term, x$terms$term), setdiff(names(x$terms), "term")]
+  tibble::as_tibble(c(out, parts))
 }
 
 #' @rdname results

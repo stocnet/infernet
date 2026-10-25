@@ -28,6 +28,12 @@
 - Renamed `net_regression()` to `estimate_mrqap()` to match other stocnet packages
   - `net_regression()` still works, and warns once that it is deprecated
   - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`
+- Added a term table to the fit, `fit$terms`, with the parts of each coefficient's name
+  - Gives the `effect`, `layer`, `attribute`, `category`, and `reference` of each coefficient
+  - Gives the `operands` of each interaction
+  - Keeps a category as the data hold it, e.g. `"Social Science"` for `alter_dept_Social_Science`
+  - Writes a `mix()` pair as `"sales -> hr"`, or `"sales -- hr"` where the pair is unordered
+  - `tidy()` adds these columns to the estimates
 
 # infernet 0.4.0
 

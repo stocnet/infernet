@@ -110,7 +110,12 @@ or the MCMC settings.}
 \code{print()} returns \code{x}, invisibly.
 \code{tidy()} and \code{glance()} return a tibble.
 \code{tidy()} gives the columns \code{term}, \code{estimate}, \code{statistic}, and
-\code{p.value} for a regression,
+\code{p.value} for a regression.
+For a \code{netreg}, it also adds the columns of the fit's term table,
+\code{fit$terms}: the \code{effect} (the formula term) each coefficient comes from,
+its \code{layer}, \code{attribute}, \code{category}, and \code{reference} category,
+and for an interaction its \code{operands}.
+These group the coefficients without parsing their names.
 and \code{glance()} gives the fit statistics that the model keeps.
 For a \code{network_test}, both give one row with the observed statistic,
 the mean and standard deviation of the null distribution,

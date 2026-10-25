@@ -317,6 +317,81 @@ test_that("every registered term says what each model makes of it", {
   expect_equal(registry$trans$saom, "transTrip")
 })
 
+# ---- the term table ----------------------------------------------------------
+# A column's name cannot be parsed back into its parts, so each column also has
+# a row of them in the term table.
+
+table_of <- function(formula, .data = formula_net(), ...) {
+  suppressMessages(convertToMatrixList(formula, .data, advise = FALSE, ...)$terms)
+}
+
+test_that("the term table has one row for each column, in their order", {
+  tt <- table_of(a ~ ego(x) + ego(grp) + match(grp) + b + tie(b))
+  m <- suppressMessages(terms_of(a ~ ego(x) + ego(grp) + match(grp) + b + tie(b)))
+  expect_equal(tt$term, names(m)[-1])
+  expect_named(tt, c("term", "effect", "layer", "attribute", "category",
+                     "reference", "operands"))
+  expect_equal(tt$effect, c("ego", "ego", "match", "match", "tie", "tie"))
+  expect_equal(tt$attribute, c("x", "grp", "grp", "grp", NA, NA))
+  expect_equal(tt$layer, c(NA, NA, NA, NA, "b", "b"))
+})
+
+test_that("the term table names a categorical term's category and reference", {
+  tt <- table_of(a ~ ego(grp) + match(grp))
+  expect_equal(tt$category, c("q", "p", "q"))
+  expect_equal(tt$reference, c("p", NA, NA))
+})
+
+test_that("the term table keeps a category that the column name changes", {
+  g <- manynet::mutate(formula_net(), grp = rep(c("a_1", "b c"), 3))
+  tt <- table_of(a ~ alter(grp), g)
+  expect_equal(tt$term, "alter_grp_b_c")
+  expect_equal(tt$category, "b c")
+  expect_equal(tt$reference, "a_1")
+})
+
+test_that("the term table writes a mix() pair as a tie, directed or not", {
+  tt <- table_of(a ~ mix(grp))
+  expect_equal(tt$category, c("p -> q", "q -> p", "q -> q"))
+  expect_equal(unique(tt$reference), "p -> p")
+  g <- manynet::mutate(qap_net_undirected(n = 8), grp = rep(c("p", "q"), 4))
+  tt <- table_of(weight ~ mix(grp), g)
+  expect_equal(tt$category, c("p -- q", "q -- q"))
+})
+
+test_that("the term table gives the layer and attribute of tertius()", {
+  tt <- suppressWarnings(table_of(a ~ tertius(b, x) + indeg(b, type = "ego")))
+  expect_equal(tt$effect, c("tertius", "indeg"))
+  expect_equal(tt$layer, c("b", "b"))
+  expect_equal(tt$attribute, c("x", NA))
+})
+
+test_that("the term table names the operands of each interaction column", {
+  tt <- table_of(a ~ ego(x):match(grp))
+  expect_equal(tt$term, c("ego_x:match_grp_p", "ego_x:match_grp_q"))
+  expect_equal(tt$effect, c("interaction", "interaction"))
+  expect_equal(tt$operands, list(c("ego_x", "match_grp_p"), c("ego_x", "match_grp_q")))
+  expect_true(all(is.na(tt$attribute)))
+})
+
+test_that("a fit keeps the term table, one row for each coefficient", {
+  fit <- suppressMessages(suppressWarnings(
+    estimate_mrqap(a ~ ego(x) + alter(grp) + ego(x):b, formula_net(),
+                   times = 5, control = list(seed = 1))))
+  expect_s3_class(fit$terms, "tbl_df")
+  expect_equal(fit$terms$term, names(fit$coefficients))
+  expect_equal(fit$terms$effect, c("intercept", "ego", "alter", "interaction"))
+  expect_equal(fit$terms$reference[3], "p")
+})
+
+test_that("a list of networks keeps the term table of the first", {
+  fit <- suppressMessages(suppressWarnings(
+    estimate_mrqap(a ~ ego(x) + match(grp), list(formula_net(), formula_net()),
+                   times = 5, control = list(seed = 1))))
+  expect_equal(fit$terms$term, names(fit$coefficients))
+  expect_equal(fit$terms$category, c(NA, NA, "p", "q"))
+})
+
 # ---- the registry and the dictionary -----------------------------------------
 
 test_that("every registered term is in the dictionary in CONTRIBUTING", {

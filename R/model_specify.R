@@ -104,7 +104,8 @@
 #'
 #' @section goldfish and infernet:
 #'   goldfish's terms are infernet's where the two packages share them.
-#'   `sim()` is 1 - |d| / range in infernet and -|d| in goldfish, and
+#'   `sim()` is 1 - |d| / range in infernet and -|d| in goldfish,
+#'   which changes the scale of its coefficient but not its test, and
 #'   `tertius()` and `tertius_diff()` leave out the sender in infernet and
 #'   include it in goldfish. Both are kept and named.
 #'
@@ -673,7 +674,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 .interpreted_dynam <- function(labels, input, target) {
   if ((input %in% c("dynam", "rem")) == (target == "dynam")) return(.no_record())
   differs <- c(
-    sim          = "is 1 - |d| / range in infernet, and -|d| in goldfish",
+    sim          = "is 1 - |d| / range in infernet, and -|d| in goldfish, so its coefficient is on another scale, though its test is the same",
     tertius      = "leaves out the sender in infernet, and includes it in goldfish",
     tertius_diff = "leaves out the sender in infernet, and includes it in goldfish")
   out <- .no_record()
