@@ -49,15 +49,16 @@ test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
 
 - strategy:
 
-  If `{furrr}` is installed, then multiple cores can be used to
-  accelerate the function. By default `"sequential"`, but if multiple
-  cores available, then `"multisession"` or `"multicore"` may be useful.
+  A `{future}` plan, so that multiple cores can be used to accelerate
+  the function. By default `"sequential"`, but if multiple cores
+  available, then `"multisession"` or `"multicore"` may be useful.
   Generally this is useful only when `times` \> 1000. See
-  [`{furrr}`](https://furrr.futureverse.org) for more.
+  [`{future.apply}`](https://future.apply.futureverse.org) for more.
 
 ## See also
 
 Other models:
+[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/results.md),
 [`regression`](https://stocnet.github.io/infernet/reference/regression.md)
 
 ## Examples
@@ -73,7 +74,7 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 #> 
 #> Observed Value: -0.8571429 
 #> Pr(X>=Obs): 1 
-#> Pr(X<=Obs): 0.01 
+#> Pr(X<=Obs): 0 
 #> 
 # plot(cugtest)
 # (qaptest <- test_permutation(marvel_friends, 

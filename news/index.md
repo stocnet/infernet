@@ -1,5 +1,117 @@
 # Changelog
 
+## infernet 0.4.0
+
+### Package
+
+- Updated CONTRIBUTING with formula conventions for the stocnet packages
+- Removed [purrr](https://purrr.tidyverse.org/) from `Imports`
+- Removed [furrr](https://github.com/futureverse/furrr) from `Imports`:
+  [future.apply](https://future.apply.futureverse.org) now maps the
+  simulations of the test family too
+- Removed [reformulas](https://github.com/bbolker/reformulas) from
+  `Imports`: a few lines of base R drop the random-effect terms
+
+### Regression
+
+- Improved the formula of
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md),
+  which is now parsed into a specification
+  - Added named arguments to formula terms,
+    e.g. `indeg(friends, type = "ego")`
+  - Added interactions of any order,
+    e.g. `ego(age) * alter(age) * ego(tenure)`
+  - Added `info$focal` as the outcome of `. ~`, and a named outcome
+    still takes priority
+  - Added random intercepts to the formula, as in
+    [lme4](https://github.com/lme4/lme4/): `(1 | sender)`,
+    `(1 | receiver)`, `(1 | reporter)`, and `(1 | network)` set the same
+    switches as their controls (thanks
+    [@auzaheta](https://github.com/auzaheta) and
+    [@RWKrause](https://github.com/RWKrause),
+    [\#8](https://github.com/stocnet/infernet/issues/8))
+  - A bar never reached a model before: the grouping index it named was
+    looked for among the layers
+- Added formula terms from goldfish, computed on another layer
+  - Added `exchange()` and `recip()`, the reverse tie in another layer
+  - Added `recip` on its own, or `recip()`, as the outcome’s reverse
+    tie, as goldfish reads it, with a warning
+  - Added `indeg()` and `outdeg()`, a node’s degree on the receiver’s or
+    the sender’s side
+  - Added `tertius_diff()`, how far ego lies from the receiver’s other
+    in-neighbours
+  - Added `tie()`, a layer as a dyadic covariate, 0/1 unless
+    `weighted = TRUE`
+  - Added `global()`, a network-level variable, in a list of networks
+- Added formula terms from ergm for categorical attributes
+  - Added [`match()`](https://rdrr.io/r/base/match.html), one dummy for
+    each category that sender and receiver share
+  - Added `mix()`, one dummy for each pair of categories, less a
+    reference pair
+- Renamed [`dist()`](https://rdrr.io/r/stats/dist.html) to
+  [`diff()`](https://rdrr.io/r/base/diff.html), as goldfish calls it
+  - Added `transformer_fn =`, so `diff(x, transformer_fn = identity)` is
+    signed
+  - [`dist()`](https://rdrr.io/r/stats/dist.html) still works, with its
+    old column name, and warns that it is deprecated
+- Fixed `tertius()` with `"mean"` dividing by the number of nodes rather
+  than of in-neighbours, which mixed the receiver’s in-degree into the
+  attribute
+  - It is now the mean over the receiver’s other in-neighbours, so
+    results change
+  - A receiver with no other in-neighbour takes the mean of the defined
+    cells
+  - Added a layer as its first argument, e.g. `tertius(friends, age)`
+  - `tertius(age)` still reads the outcome’s own ties, and now warns
+    that permuting the outcome does not permute this predictor with it
+- Fixed a layer term reading the outcome’s own ties: `indeg()`,
+  `outdeg()`, and `tie()` refuse the outcome layer, and `recip()` warns
+- Fixed `ego()` and `alter()` of a categorical attribute returning NA
+  p-values under `permute = "predictor"`, since the fitter dummy-coded
+  the attribute and left nothing numeric to residualise
+  - They are dummy-coded again, one column per category less the first,
+    as in [migraph](https://stocnet.github.io/migraph/)
+  - A message names the reference category
+- Changed the column names of formula terms to join their parts with
+  underscores
+  - For example, `ego_Age` rather than `ego Age`
+  - A name needs no backticks in `coef(fit)[...]` or in
+    [`tidy()`](https://generics.r-lib.org/reference/tidy.html) output
+  - Code that looked up a coefficient by its old name must use the new
+    one
+
+### Results
+
+- Moved
+  [`print.netlm()`](https://stocnet.github.io/infernet/reference/results.md)
+  and
+  [`print.netlogit()`](https://stocnet.github.io/infernet/reference/results.md)
+  from [migraph](https://stocnet.github.io/migraph/)
+- Added [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
+  [`glance()`](https://generics.r-lib.org/reference/glance.html) methods
+  for `netreg` and `network_test` results
+  - [`tidy()`](https://generics.r-lib.org/reference/tidy.html) gives the
+    permutation p-value that `alternative` names, two-sided by default
+  - Fixed [`tidy()`](https://generics.r-lib.org/reference/tidy.html) on
+    a `netlm` or `netlogit` ignoring `conf.level`
+  - Fixed [`glance()`](https://generics.r-lib.org/reference/glance.html)
+    on an `ergm` adding the MCMC columns when it says they are omitted
+- Moved [`print()`](https://rdrr.io/r/base/print.html),
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
+  [`glance()`](https://generics.r-lib.org/reference/glance.html) to one
+  help page,
+  [`?results`](https://stocnet.github.io/infernet/reference/results.md)
+- Renamed the observed test statistics of a `netreg` from `t` to `obs`
+
+### Tutorials
+
+- Added the “Diversity and Regression” tutorial from
+  [migraph](https://stocnet.github.io/migraph/), now teaching
+  [infernet](https://stocnet.github.io/infernet/)
+  - Replaced `over_membership()`, which stays in
+    [migraph](https://stocnet.github.io/migraph/), with
+    [`to_subgraphs()`](https://stocnet.github.io/manynet/reference/modif_split.html)
+
 ## infernet 0.3.0
 
 ### Package
