@@ -27,13 +27,13 @@ e.g. the name of the attribute.}
 \item{times}{Integer.  Number of permutations for the null distribution.
 1000 is the default; publication-ready work usually needs 1000-10000.}
 
-\item{strategy}{If \code{{furrr}} is installed,
-then multiple cores can be used to accelerate the function.
+\item{strategy}{A \code{{future}} plan, so that multiple cores can be used
+to accelerate the function.
 By default \code{"sequential"},
 but if multiple cores available,
 then \code{"multisession"} or \code{"multicore"} may be useful.
 Generally this is useful only when \code{times} > 1000.
-See \href{https://furrr.futureverse.org}{\code{{furrr}}} for more.}
+See \href{https://future.apply.futureverse.org}{\code{{future.apply}}} for more.}
 }
 \description{
 These functions conduct tests of any network-level statistic:

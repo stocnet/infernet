@@ -3,7 +3,9 @@
 ## Package
 
 - Updated CONTRIBUTING with formula conventions for the stocnet packages
-- Removed `{purrr}` from `Imports`, since the new formula parser does not need it
+- Removed `{purrr}` from `Imports`
+- Removed `{furrr}` from `Imports`: `{future.apply}` now maps the simulations of the test family too
+- Removed `{reformulas}` from `Imports`: a few lines of base R drop the random-effect terms
 
 ## Regression
 

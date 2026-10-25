@@ -447,8 +447,8 @@ Every simulation-heavy function takes:
   set with `future::plan(strategy)` and restored via `on.exit()`.
   In `net_regression()` this is passed through the `control` list.
 
-The `test_*()` family maps simulations with `furrr::future_map*()` using
-`furrr::furrr_options(seed = TRUE)` for reproducible parallel RNG.
+The `test_*()` family maps simulations with `future.apply::future_lapply()`
+and `future_vapply()`, using `future.seed = TRUE` for reproducible parallel RNG.
 The regression engine wraps the same machinery in `setup_future_plan()` and
 `run_permutations()` ([R/qap_utils.R](../R/qap_utils.R)); use those rather than
 calling `future::plan()` from a new engine function.
@@ -618,6 +618,7 @@ and are grouped by contract for the engine:
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
+| `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 
 [tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
 holds the shared fixtures and expectations:
@@ -648,7 +649,7 @@ Four things are worth asserting for every estimator that is added:
    and a stray placeholder intercept broke the `{fixest}` path.
 3. That a given `seed` reproduces the same p-values.
    Permutation results are only comparable across runs if the RNG is,
-   and `furrr_options(seed = TRUE)` and `future.seed = TRUE` are what make that
+   and `future.seed = TRUE` is what makes that
    true in parallel.
 4. That the estimator is reached at all.
    Several paths in `fit_qap_model()` are selected by a combination of `family`,

@@ -32,14 +32,13 @@ Authors@R:
              comment = c(ORCID = "0000-0003-4288-4732"))
     )
 Imports:
-    furrr,
     future,
     future.apply,
     generics,
-    reformulas,
     tibble
 Suggests:
     ergm,
+    knitr,
     lme4,
     MASS,
     pscl,
@@ -49,10 +48,12 @@ Config/Needs/build:
     devtools
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd"))
 Config/Needs/check:
+    autograph,
     covr,
     lintr,
     spelling
 Config/Needs/website:
+    learnr,
     pkgdown
 Config/testthat/parallel: true
 Config/testthat/edition: 3
