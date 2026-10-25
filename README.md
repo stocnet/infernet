@@ -1,9 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# infernet
-
-<img src="man/figures/logo.png" align="right" alt="infernet logo" width="150"/>
+# infernet <img src="man/figures/logo.png" align="right" alt="infernet logo" width="150"/>
 
 <!-- badges: start -->
 
@@ -58,7 +56,7 @@ See the [contributing
 guide](https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style)
 for how these principles translate into rules for the package.
 
-## A formula you can reuse
+## Reuseable formulas
 
 Models are specified with a formula, so the same specification can be
 moved between networks and between model types:
