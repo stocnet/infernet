@@ -7,17 +7,17 @@ FORM <- weight ~ ego(Age) + alter(Age)
 test_that("an unknown control name is rejected, with the nearest match", {
   g <- qap_net_gaussian(n = 15)
   expect_error(
-    net_regression(FORM, g, times = 5, control = list(strateggy = "sequential")),
+    estimate_mrqap(FORM, g, times = 5, control = list(strateggy = "sequential")),
     "strategy")
   expect_error(
-    net_regression(FORM, g, times = 5, control = list(nonsense = 1)),
+    estimate_mrqap(FORM, g, times = 5, control = list(nonsense = 1)),
     "nonsense")
 })
 
 test_that("an unnamed control entry is rejected", {
   g <- qap_net_gaussian(n = 15)
   expect_error(
-    net_regression(FORM, g, times = 5, control = list("sequential")),
+    estimate_mrqap(FORM, g, times = 5, control = list("sequential")),
     "named")
 })
 
@@ -42,20 +42,20 @@ test_that("permute takes only the two spellings it documents", {
 
 test_that("permute = 'outcome' is recorded on the fit and gives a full matrix", {
   g <- qap_net_gaussian(n = 20)
-  fit <- net_regression(FORM, g, times = 10,
+  fit <- estimate_mrqap(FORM, g, times = 10,
                         control = list(seed = 1, permute = "outcome"))
   expect_equal(fit$permute, "outcome")
   # Permuting y alone tests every coefficient, the intercept included, whereas
   # double semi-partialling residualises one predictor at a time.
   expect_false(anyNA(fit$lower))
-  spp <- net_regression(FORM, g, times = 10, control = list(seed = 1))
+  spp <- estimate_mrqap(FORM, g, times = 10, control = list(seed = 1))
   expect_equal(spp$permute, "predictor")
   expect_true(all(is.na(spp$lower[, "(Intercept)"])))
 })
 
 test_that("a single predictor falls back to permuting the outcome", {
   g <- qap_net_gaussian(n = 20)
-  fit <- net_regression(weight ~ ego(Age), g, times = 10,
+  fit <- estimate_mrqap(weight ~ ego(Age), g, times = 10,
                         control = list(seed = 1, permute = "predictor"))
   # Double semi-partialling residualises a predictor against the others, and
   # with one predictor there are none.
@@ -64,12 +64,12 @@ test_that("a single predictor falls back to permuting the outcome", {
 
 test_that("directed and diag are read from the network unless set", {
   g <- qap_net_gaussian(n = 15)
-  expect_true(net_regression(FORM, g, times = 5,
+  expect_true(estimate_mrqap(FORM, g, times = 5,
                              control = list(seed = 1))$directed)
-  expect_false(net_regression(FORM, g, times = 5,
+  expect_false(estimate_mrqap(FORM, g, times = 5,
                               control = list(seed = 1,
                                              directed = FALSE))$directed)
-  loops <- net_regression(FORM, g, times = 5,
+  loops <- estimate_mrqap(FORM, g, times = 5,
                           control = list(seed = 1, diag = TRUE))
   expect_true(loops$diag)
   expect_equal(nrow(loops$pred), 15 * 15)

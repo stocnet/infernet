@@ -19,7 +19,7 @@ shares_from_testdist <- function(fit) {
 }
 
 test_that("testdist has a row per permutation and a column per coefficient", {
-  fit <- net_regression(FORM, qap_net_gaussian(), times = 30,
+  fit <- estimate_mrqap(FORM, qap_net_gaussian(), times = 30,
                         control = list(seed = 1, permute = "outcome"))
   expect_true(is.matrix(fit$testdist))
   expect_equal(dim(fit$testdist), c(30L, 4L))
@@ -28,7 +28,7 @@ test_that("testdist has a row per permutation and a column per coefficient", {
 })
 
 test_that("the p-values can be read back from testdist when the outcome is permuted", {
-  fit <- net_regression(FORM, qap_net_gaussian(), times = 40,
+  fit <- estimate_mrqap(FORM, qap_net_gaussian(), times = 40,
                         control = list(seed = 2, permute = "outcome"))
   s <- shares_from_testdist(fit)
   expect_equal(unname(s["lower", ]),  unname(fit$lower["perm_t", ]))
@@ -37,7 +37,7 @@ test_that("the p-values can be read back from testdist when the outcome is permu
 })
 
 test_that("the p-values can be read back from testdist when predictors are permuted", {
-  fit <- net_regression(FORM, qap_net_gaussian(), times = 40,
+  fit <- estimate_mrqap(FORM, qap_net_gaussian(), times = 40,
                         control = list(seed = 3, permute = "predictor"))
   # The intercept is not permuted, so its column is NA, as its p-values are.
   expect_true(all(is.na(fit$testdist[, "(Intercept)"])))
@@ -48,14 +48,14 @@ test_that("the p-values can be read back from testdist when predictors are permu
 })
 
 test_that("testdist reproduces under the same seed", {
-  a <- net_regression(FORM, qap_net_gaussian(), times = 20, control = list(seed = 9))
-  b <- net_regression(FORM, qap_net_gaussian(), times = 20, control = list(seed = 9))
+  a <- estimate_mrqap(FORM, qap_net_gaussian(), times = 20, control = list(seed = 9))
+  b <- estimate_mrqap(FORM, qap_net_gaussian(), times = 20, control = list(seed = 9))
   expect_equal(a$testdist, b$testdist)
 })
 
 test_that("a CSS fit keeps testdist too", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + friends, manynet::ison_hightech,
+    estimate_mrqap(advice ~ ego(age) + friends, manynet::ison_hightech,
                    times = 15, control = list(seed = 1, permute = "outcome")))
   expect_equal(dim(fit$testdist), c(15L, 3L))
   expect_equal(colnames(fit$testdist), names(fit$coefficients))
@@ -73,6 +73,6 @@ test_that("the test family and the regression share the word testdist", {
   g <- qap_net_gaussian(n = 15)
   cug <- test_random(g, netrics::net_by_density, times = 10)
   expect_length(cug$testdist, 10)
-  fit <- net_regression(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
+  fit <- estimate_mrqap(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
   expect_equal(nrow(fit$testdist), 10)
 })

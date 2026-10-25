@@ -28,7 +28,7 @@ coverage](https://codecov.io/gh/stocnet/infernet/branch/main/graph/badge.svg)](h
   degree sequence, and `test_permutation()` runs a quadratic assignment
   procedure (QAP) test. Each takes any graph-level statistic and
   compares it against a simulated null distribution.
-- **Network regression.** `net_regression()` fits a multiple regression
+- **Network regression.** `estimate_mrqap()` fits a multiple regression
   quadratic assignment procedure (MRQAP) model, using either Dekker et
   al’s double semi-partialling or a permutation of the dependent network
   alone.
@@ -43,15 +43,15 @@ treatment of Robert Krause’s `MrQAP`.
 packages aim for three things:
 
 - **Declarative simplicity**: functions do one clearly named thing with
-  few arguments. For example, `test_permutation()` and
-  `net_regression()` are named for what they do, rather than for an
-  acronym.
+  few arguments. For example, `test_permutation()` is named for the null
+  distribution it draws, and `estimate_mrqap()` follows the
+  `estimate_*()` verb of `{goldfish}`.
 - **Pleasant predictability**: users can guess a function’s behaviour
   from its family. For example, the `test_*()` functions all take a
   network, a statistic, and a number of `times`.
 - **Graceful inclusivity**: functions accept whatever network users
   bring and return something they can use. For example,
-  `net_regression()` works on any network that `{manynet}` can convert,
+  `estimate_mrqap()` works on any network that `{manynet}` can convert,
   one-mode or two-mode, and keeps missing data missing.
 
 See the [contributing
@@ -69,7 +69,7 @@ library(infernet)
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 
-net_regression(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
                networkers, times = 200)
 ```
 

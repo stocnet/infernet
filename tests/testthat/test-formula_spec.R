@@ -37,9 +37,9 @@ test_that("a bar is a random intercept for an index the engine builds", {
 test_that("a random intercept in the formula fits as its control does", {
   skip_if_not_installed("lme4")
   g <- qap_net_gaussian(n = 12)
-  a <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age) + (1 | sender),
+  a <- suppressMessages(estimate_mrqap(weight ~ ego(Age) + alter(Age) + (1 | sender),
                                        g, times = 5, control = list(seed = 1)))
-  b <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age), g, times = 5,
+  b <- suppressMessages(estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 5,
                                        control = list(seed = 1, random_intercept_sender = TRUE)))
   expect_equal(a$coefficients, b$coefficients)
   expect_true(any(a$random))
@@ -55,7 +55,7 @@ test_that("an interaction of any order is the product of its operands", {
   m <- ml$mydata
   expect_equal(m[["ego_Age:alter_Age:ego_Cit"]],
                m[["ego_Age"]] * m[["alter_Age"]] * m[["ego_Cit"]])
-  fit <- net_regression(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
+  fit <- estimate_mrqap(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
                         times = 5, control = list(seed = 1))
   expect_length(fit$coefficients, 8)
 })
@@ -70,7 +70,7 @@ test_that("`. ~` takes the outcome from the network's focal layer", {
   ht <- manynet::ison_hightech
   ht$info$focal <- "advice"
   fit <- suppressMessages(
-    net_regression(. ~ ego(age) + friends, ht, times = 5,
+    estimate_mrqap(. ~ ego(age) + friends, ht, times = 5,
                    control = list(seed = 1)))
   expect_equal(fit$dep, "advice")
   expect_s3_class(fit, "netreg_css")

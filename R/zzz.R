@@ -19,7 +19,7 @@
       "i" = "If too many messages appear in the console, run {.run base::options(snet_verbosity = 'quiet')}",
       "i" = "Explore changes since the last version with {.run [news(package = 'infernet')](utils::news(package = 'infernet'))}.",
       # "i" = "Test any network statistic against a null distribution with {.fn test_random}, {.fn test_configuration}, or {.fn test_permutation}.",
-      # "i" = "Regress a network on nodal and dyadic covariates with {.fn net_regression}.",
+      # "i" = "Regress a network on nodal and dyadic covariates with {.fn estimate_mrqap}.",
       # "i" = "Write {.code ego()}, {.code alter()}, {.code same()}, {.code dist()}, {.code sim()}, or {.code tertius()} in a formula to build a predictor from a nodal attribute.",
       "i" = "Speed up a long run with {.code control = list(strategy = 'multisession')}.",
       # "i" = "Measures to test are in {.tric netrics}; plots of results are in {.auto autograph}.",

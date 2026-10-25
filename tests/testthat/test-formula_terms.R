@@ -47,7 +47,7 @@ test_that("ego() and alter() dummy-code a categorical attribute, naming the refe
 
 test_that("a categorical ego() gets a p-value under double semi-partialling", {
   fit <- suppressMessages(
-    net_regression(a ~ ego(grp) + alter(grp) + same(grp), formula_net(),
+    estimate_mrqap(a ~ ego(grp) + alter(grp) + same(grp), formula_net(),
                    times = 5, control = list(seed = 1)))
   expect_false(anyNA(fit$abs[, -1]))
 })
@@ -232,7 +232,7 @@ test_that("tertius() sum is unchanged: the tie-weighted sum over the others", {
 
 test_that("global() gives each pooled network its own value", {
   nets <- list(formula_net(gdp = 5), formula_net(gdp = 8), formula_net(gdp = 2))
-  fit <- net_regression(a ~ ego(x) + global(gdp), nets, times = 5,
+  fit <- estimate_mrqap(a ~ ego(x) + global(gdp), nets, times = 5,
                         control = list(seed = 1))
   expect_true("global_gdp" %in% names(fit$coefficients))
   expect_equal(sort(unique(fit$pred[["global_gdp"]])), c(2, 5, 8))
@@ -247,7 +247,7 @@ test_that("global() on one network is refused, since it is the intercept", {
 test_that("the layer terms fit a CSS under both permutation schemes", {
   for (permute in c("predictor", "outcome")) {
     fit <- suppressMessages(
-      net_regression(advice ~ recip(friends) + indeg(friends) + same(dept),
+      estimate_mrqap(advice ~ recip(friends) + indeg(friends) + same(dept),
                      manynet::ison_hightech, times = 5,
                      control = list(seed = 1, permute = permute)))
     expect_s3_class(fit, "netreg_css")
@@ -259,7 +259,7 @@ test_that("the layer terms fit a CSS under both permutation schemes", {
 test_that("the new terms fit a dyadic network under both permutation schemes", {
   for (permute in c("predictor", "outcome")) {
     fit <- suppressMessages(
-      net_regression(a ~ recip(b) + indeg(b) + match(grp) + tertius(b, x),
+      estimate_mrqap(a ~ recip(b) + indeg(b) + match(grp) + tertius(b, x),
                      formula_net(), times = 5,
                      control = list(seed = 1, permute = permute)))
     expect_s3_class(fit, "netreg")

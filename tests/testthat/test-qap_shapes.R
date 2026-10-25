@@ -5,7 +5,7 @@
 
 test_that("a directed network contributes every ordered dyad", {
   g <- qap_net_gaussian(n = 20)
-  fit <- net_regression(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
+  fit <- estimate_mrqap(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
   expect_true(fit$directed)
   expect_equal(nrow(fit$pred), 20 * 19)
 })
@@ -13,7 +13,7 @@ test_that("a directed network contributes every ordered dyad", {
 test_that("an undirected network contributes each dyad once", {
   g <- qap_net_undirected(n = 24)
   expect_false(manynet::is_directed(g))
-  fit <- net_regression(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
+  fit <- estimate_mrqap(weight ~ ego(Age), g, times = 10, control = list(seed = 1))
   # Both halves of a symmetric matrix hold the same dyad. Keeping both doubles
   # the sample and shrinks every standard error by about a factor of root two.
   expect_false(fit$directed)
@@ -23,7 +23,7 @@ test_that("an undirected network contributes each dyad once", {
 test_that("a two-mode network contributes every cell of the incidence matrix", {
   sw <- qap_net_twomode()
   dims <- manynet::net_dims(sw)
-  fit <- net_regression(. ~ ego(Att) + alter(Att), sw, times = 10,
+  fit <- estimate_mrqap(. ~ ego(Att) + alter(Att), sw, times = 10,
                         control = list(seed = 1))
   # An incidence matrix is rectangular, and has no diagonal to drop. Reading it
   # as square wrapped past the last column and invented dyads.
@@ -37,7 +37,7 @@ test_that("a wide two-mode network fits, and counts its dyads", {
   # count came back as NA rather than a number.
   g <- qap_net_twomode_wide(nr = 12, nc = 40)
   expect_true(manynet::is_twomode(g))
-  fit <- net_regression(weight ~ same(GONGO) + same(province), g, times = 10,
+  fit <- estimate_mrqap(weight ~ same(GONGO) + same(province), g, times = 10,
                         control = list(seed = 1))
   expect_equal(nrow(fit$pred), 12 * 40)
   expect_false(anyNA(fit$coefficients))
@@ -85,14 +85,14 @@ test_that("diff() and sim() read each mode of a two-mode network separately", {
 test_that("a list of networks is pooled, and one missing a predictor is dropped", {
   good <- list(qap_net_gaussian(n = 18, seed = 1),
                qap_net_gaussian(n = 18, seed = 2))
-  fit <- net_regression(weight ~ ego(Age), good, times = 10,
+  fit <- estimate_mrqap(weight ~ ego(Age), good, times = 10,
                         control = list(seed = 1))
   expect_equal(nrow(fit$pred), 2 * 18 * 17)
   expect_length(unique(fit$pred$nv), 2L)
 
   bare <- manynet::as_tidygraph(matrix(stats::rnorm(18^2), 18, 18))
   dropped <- suppressWarnings(
-    net_regression(weight ~ ego(Age), list(good[[1]], bare, good[[2]]),
+    estimate_mrqap(weight ~ ego(Age), list(good[[1]], bare, good[[2]]),
                    times = 10, control = list(seed = 1)))
   expect_equal(nrow(dropped$pred), 2 * 18 * 17)
 })
@@ -101,7 +101,7 @@ test_that("dropping a network from a list warns", {
   good <- qap_net_gaussian(n = 18, seed = 1)
   bare <- manynet::as_tidygraph(matrix(stats::rnorm(18^2), 18, 18))
   expect_snet_warning(
-    net_regression(weight ~ ego(Age), list(good, bare), times = 10,
+    estimate_mrqap(weight ~ ego(Age), list(good, bare), times = 10,
                    control = list(seed = 1)),
     "Dropping")
 })
@@ -112,7 +112,7 @@ test_that("a missing dyad is dropped from the model", {
   m[1, 2] <- NA
   holed <- manynet::mutate(manynet::as_tidygraph(m),
                            Age = manynet::node_attribute(g, "Age"))
-  fit <- net_regression(weight ~ ego(Age), holed, times = 10,
+  fit <- estimate_mrqap(weight ~ ego(Age), holed, times = 10,
                         control = list(seed = 1))
   expect_equal(nrow(fit$pred), 20 * 19 - 1)
 })
@@ -126,13 +126,13 @@ test_that("a two-mode network accepts a grouping factor for either mode", {
   rows <- rep(c("a", "b"), length.out = 12)
   cols <- rep(c("a", "b", "c", "d"), length.out = 40)
   for (grp in list(rows, cols)) {
-    fit <- net_regression(. ~ ego(Att), g, times = 5,
+    fit <- estimate_mrqap(. ~ ego(Att), g, times = 5,
                           control = list(seed = 1, groups = grp))
     expect_s3_class(fit, "netreg")
     expect_equal(nrow(fit$pred), 12 * 40)
   }
   expect_error(
-    net_regression(. ~ ego(Att), g, times = 5,
+    estimate_mrqap(. ~ ego(Att), g, times = 5,
                    control = list(seed = 1, groups = rep("a", 7))),
     "length 7")
 })

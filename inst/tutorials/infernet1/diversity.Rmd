@@ -573,7 +573,7 @@ simulations or more.
 ```
 
 ```{r qapmax-hint-1, purl = FALSE}
-net_regression(____, ison_networkers, times = 200)
+estimate_mrqap(____, ison_networkers, times = 200)
 # If the model runs into a timeout error, please reduce the number of 'times' in the function above.
 ```
 
@@ -583,7 +583,7 @@ weight ~ ego(Citations) + alter(Citations) + sim(Citations) +
 ```
 
 ```{r qapmax-solution}
-model1 <- net_regression(weight ~ ego(Citations) + alter(Citations) + sim(Citations) + 
+model1 <- estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations) + 
                       ego(Discipline) + same(Discipline), 
                       ison_networkers, times = 200)
 ```

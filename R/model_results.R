@@ -3,7 +3,7 @@
 #' Reporting network regression and test results
 #'
 #' @description
-#'   `print()` shows the result of `net_regression()` or of a test as a
+#'   `print()` shows the result of `estimate_mrqap()` or of a test as a
 #'   report: how the null distribution was made, the estimates,
 #'   and the permutation p-values.
 #'
@@ -12,7 +12,7 @@
 #'   `glance()` gives one row for the whole model. They cover:
 #'
 #'   - `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`,
-#'     from `net_regression()`
+#'     from `estimate_mrqap()`
 #'   - `network_test`, from `test_random()`, `test_configuration()`, and
 #'     `test_permutation()`
 #'   - `netlm` and `netlogit`, from `net_regression()` in `{migraph}`
@@ -32,7 +32,7 @@
 #'   permuted test statistics. These describe the null distribution,
 #'   not an interval around the estimate.
 #' @param x A model or test result, e.g. a `netreg` object, as returned by
-#'   `net_regression()`, or a `network_test` object, as returned by
+#'   `estimate_mrqap()`, or a `network_test` object, as returned by
 #'   `test_random()`, `test_configuration()`, or `test_permutation()`.
 #' @param print_b Logical; also print coefficient-based (not t-based)
 #'   permutation p-values.
@@ -61,7 +61,7 @@
 #'   and at or above (`p.upper`) the observed statistic.
 #' @family models
 #' @examples
-#' css_model <- net_regression(advice ~ same(dept) + reports,
+#' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)
 #' print(css_model, print_b = TRUE)
 #' tidy(css_model)

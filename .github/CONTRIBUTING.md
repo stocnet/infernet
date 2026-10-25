@@ -122,7 +122,7 @@ Division of labour to keep in mind when adding functions:
 - `{infernet}` (this package): testing and modelling, e.g. CUG/QAP/MRQAP.
 - `{migraph}`: the software companion to *Multimodal Political Networks*, holding the
   `mpn_*` datasets and the diffusion models.
-  `{migraph}` still carries older copies of `net_regression()` and the `test_*()` family;
+  `{migraph}` still carries older copies, as `net_regression()`, and the `test_*()` family;
   those are what `{infernet}` supersedes, so a fix made there needs porting here,
   and a fix made here does not need porting back.
 - `{goldfish}`: another stocnet package for estimating network event models 
@@ -140,21 +140,24 @@ the rules and examples below are those of `{infernet}`.
 
 Functions should do one clearly named thing with few arguments.
 
-- **Names describe actions, not acronyms or progenitors.**
+- **Names describe actions, not progenitors.**
   A function is named after what it does,
-  and the name of the procedure and its authors are given in the documentation.
-  Example: `test_permutation()`, `test_random()`, and `test_configuration()`
-  rather than names built on QAP or CUG,
-  and `net_regression()` rather than a name built on MRQAP.
+  and the authors of a procedure are given in the documentation.
+  A test is named for the null distribution it draws:
+  `test_permutation()`, `test_random()`, and `test_configuration()`
+  rather than names built on QAP or CUG.
+  An estimator is named `estimate_<model>()`, as across stocnet,
+  so that a user who moves between packages finds the same verb:
+  `estimate_mrqap()` here, and `estimate_dynam()` and `estimate_rem()` in `{goldfish}`.
 - **Few arguments per function.**
   Every argument is something the user must read about before they can trust the result,
   so use sensible defaults instead.
-  Example: `net_regression()` takes a formula, a network, and `times`,
+  Example: `estimate_mrqap()` takes a formula, a network, and `times`,
   and everything less common goes through its `control` list.
 - **Features are detected, not declared.**
   A function finds out whether a network is directed or two-mode, and adjusts,
   so the user does not supply an argument for it.
-  Example: `net_regression()` reads directedness from the outcome network with
+  Example: `estimate_mrqap()` reads directedness from the outcome network with
   `manynet::is_directed()`, unless `control` overrides it.
 
 ### Pleasant predictability
@@ -192,10 +195,10 @@ Functions should accept whatever network users bring and return something they c
 - **Key steps are reported.**
   Functions say what they did at the verbosity the user has chosen
   (see [Console messaging](#console-messaging)).
-  Example: `net_regression()` reports the family and the directedness it read from the outcome.
+  Example: `estimate_mrqap()` reports the family and the directedness it read from the outcome.
 - **Results describe themselves.**
   A printed result is short, and carries what the user needs to interpret it.
-  Example: a printed `net_regression()` says what was permuted and how many times,
+  Example: a printed `estimate_mrqap()` says what was permuted and how many times,
   how loops were treated, and whether the outcome was read as directed.
 
 ### Vocabulary
@@ -242,8 +245,8 @@ Run these from an R console with the working directory set to the package root
 - Load package for interactive development: `devtools::load_all()`
 - Regenerate docs & NAMESPACE after editing roxygen comments: `devtools::document()`
 - Run full test suite: `devtools::test()`
-- Run a single test file: `devtools::test(filter = "net_regression")`
-  (matches `test-net_regression.R`), or `testthat::test_file("tests/testthat/test-net_regression.R")`
+- Run a single test file: `devtools::test(filter = "estimate_mrqap")`
+  (matches `test-estimate_mrqap.R`), or `testthat::test_file("tests/testthat/test-estimate_mrqap.R")`
 - Full package check (mirrors CI): `devtools::check()` or `rcmdcheck::rcmdcheck()`
 - Lint: `lintr::lint_package()`
 - Spell check: `spelling::spell_check_package()`
@@ -266,7 +269,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | File | Contains |
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
-| `model_regression.R` | `net_regression()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
@@ -310,7 +313,7 @@ the engine fits. Do not build CSS arrays here: `df_to_mat()` did, and it is gone
 
 - **Detected, not declared.** `convertToMatrixList()` reads the outcome's
   matrix and passes `css = TRUE` where it has three axes.
-  `net_regression()` reports the detection and the number of reporters.
+  `estimate_mrqap()` reports the detection and the number of reporters.
 - **Read all three axes.** A one-mode CSS from `{manynet}` has a slice for
   every node; a two-mode CSS has rows of one mode, columns of the other, and a
   slice for every node of both. `make_css_data()` and `.perm_css()` read each
@@ -329,7 +332,7 @@ the engine fits. Do not build CSS arrays here: `df_to_mat()` did, and it is gone
 
 Test a CSS change on `manynet::ison_hightech`, a real CSS whose `reports` layer
 is not one, and on the constructed networks in
-[tests/testthat/test-net_regression_css.R](../tests/testthat/test-net_regression_css.R)
+[tests/testthat/test-estimate_mrqap_css.R](../tests/testthat/test-estimate_mrqap_css.R)
 for the shapes and the missing reports it does not have.
 
 Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same code, and
@@ -353,7 +356,7 @@ Test functions consistently:
 
 #### Multivariate
 
-`net_regression()` ([R/model_regression.R](../R/model_regression.R)) is the single
+`estimate_mrqap()` ([R/model_regression.R](../R/model_regression.R)) is the single
 regression entry point. Its control flow is:
 
 1. Merge the user's `control` list over `.default_control()`,
@@ -445,7 +448,7 @@ Every simulation-heavy function takes:
 - `strategy` — a `{future}` plan name (default `"sequential"`;
   `"multisession"`/`"multicore"` for multiple cores),
   set with `future::plan(strategy)` and restored via `on.exit()`.
-  In `net_regression()` this is passed through the `control` list.
+  In `estimate_mrqap()` this is passed through the `control` list.
 
 The `test_*()` family maps simulations with `future.apply::future_lapply()`
 and `future_vapply()`, using `future.seed = TRUE` for reproducible parallel RNG.
@@ -518,7 +521,7 @@ correspond to those in other packages.
 
 | | infernet | goldfish | ergm | RSiena | MoNAn |
 |---|---|---|---|---|---|
-| Model | `net_regression(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
+| Model | `estimate_mrqap(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
 | Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
 | A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
@@ -606,7 +609,7 @@ Two terms still differ from goldfish:
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
 3. Add a row to the dictionary above, and a test to `test-formula_terms.R` that
    checks the matrix against a value computed by hand or by a loop.
-4. Add the term to the `formula` parameter of `net_regression()`.
+4. Add the term to the `formula` parameter of `estimate_mrqap()`.
 
 ## Preparing Contributions
 
@@ -619,7 +622,7 @@ Please see the [testthat website](https://testthat.r-lib.org) for more details.
 `Config/testthat/start-first` should prioritise the test files that take longest to run.
 
 Tests in `tests/testthat/` mirror the `R/` files for the exported functions
-(`test-net_regression.R`, `test-model_tests.R`),
+(`test-estimate_mrqap.R`, `test-model_tests.R`),
 and are grouped by contract for the engine:
 
 | File | Asserts |
@@ -630,7 +633,7 @@ and are grouped by contract for the engine:
 | `test-qap_control.R` | the `control` list and the choice of null hypothesis |
 | `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
-| `test-net_regression_css.R` | CSS models through `net_regression()`, from `{manynet}` networks |
+| `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
@@ -718,7 +721,7 @@ Run `devtools::document()` after changing any roxygen comment.
 - Related functions share one roxygen block via `@name`/`@rdname`,
   matching the file organisation above.
 - Document each argument once.
-  `net_regression()` takes its options through a `control` list, so document
+  `estimate_mrqap()` takes its options through a `control` list, so document
   each entry of that list as a bullet under `@param control` rather than as its
   own `@param`. A stray `@param` for something that is no longer a formal
   argument is an R CMD check warning, and the duplicated blocks that the
@@ -766,7 +769,7 @@ so keep the two in step.
 `NEWS.md` groups each version's changes under `##` headings that mirror the website
 function overview (`pkgdown/_pkgdown.yml` `reference:` titles).
 Lead with `## Package` (package-wide/website/infrastructure changes),
-then `## Tests` (the `test_*()` family) and `## Regression` (`net_regression()`
+then `## Tests` (the `test_*()` family) and `## Regression` (`estimate_mrqap()`
 and the engine behind it).
 Each heading appears at most once per version.
 

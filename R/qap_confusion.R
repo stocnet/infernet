@@ -1,6 +1,6 @@
 # Probabilistic confusion matrix ---------------------------------------------
 #
-# Internal Monte-Carlo confusion matrix used by net_regression() when the
+# Internal Monte-Carlo confusion matrix used by estimate_mrqap() when the
 # outcome is binary (binomial family, or gaussian family with 0/1 outcome --
 # in the latter case fitted values are clamped to [0, 1] before sampling).
 

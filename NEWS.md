@@ -1,3 +1,11 @@
+# infernet 0.5.0
+
+## Regression
+
+- Renamed `net_regression()` to `estimate_mrqap()` to match other stocnet packages
+  - `net_regression()` still works, and warns once that it is deprecated
+  - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`
+
 # infernet 0.4.0
 
 ## Package

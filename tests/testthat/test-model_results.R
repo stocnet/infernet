@@ -1,5 +1,5 @@
 # The results are built by hand, so that each field is known and small.
-# The fits through net_regression() are in the last block.
+# The fits through estimate_mrqap() are in the last block.
 
 fake_netreg <- function(family = "gaussian", permute = "predictor") {
   y <- c(1.2, 0.4, 2.8, 1.9, 3.1, 0.7, 2.2, 1.5)
@@ -95,15 +95,15 @@ test_that("tidy() of a netlm uses conf.level for its null interval", {
   expect_equal(out$conf.high, c(0.5, 1))
 })
 
-test_that("tidy() and glance() read the fits of net_regression()", {
-  fit <- net_regression(weight ~ ego(Age) + alter(Age), qap_net_gaussian(),
+test_that("tidy() and glance() read the fits of estimate_mrqap()", {
+  fit <- estimate_mrqap(weight ~ ego(Age) + alter(Age), qap_net_gaussian(),
                         times = 5, control = list(seed = 1))
   out <- tidy(fit)
   expect_equal(out$estimate, unname(fit$coefficients))
   expect_equal(out$p.value[-1], unname(fit$abs[2, -1]))
   expect_equal(glance(fit)$r.squared, fit$r.squared)
   css <- suppressMessages(
-    net_regression(advice ~ same(dept) + reports, manynet::ison_hightech,
+    estimate_mrqap(advice ~ same(dept) + reports, manynet::ison_hightech,
                    times = 5, control = list(seed = 1)))
   expect_equal(glance(css)$reporters, 21)
 })

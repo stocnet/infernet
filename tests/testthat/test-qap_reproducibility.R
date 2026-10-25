@@ -5,8 +5,8 @@ FORM <- weight ~ ego(Age) + alter(Age) + sim(Age)
 
 test_that("the same seed gives the same p-values", {
   g <- qap_net_gaussian()
-  a <- net_regression(FORM, g, times = 30, control = list(seed = 99))
-  b <- net_regression(FORM, g, times = 30, control = list(seed = 99))
+  a <- estimate_mrqap(FORM, g, times = 30, control = list(seed = 99))
+  b <- estimate_mrqap(FORM, g, times = 30, control = list(seed = 99))
   expect_equal(a$lower, b$lower)
   expect_equal(a$larger, b$larger)
   expect_equal(a$abs, b$abs)
@@ -22,8 +22,8 @@ test_that("a different seed gives a different null distribution", {
   m <- matrix(stats::rnorm(n^2), n, n)
   diag(m) <- 0
   g <- manynet::mutate(manynet::as_tidygraph(m), Age = stats::runif(n, 20, 60))
-  a <- net_regression(FORM, g, times = 60, control = list(seed = 99))
-  b <- net_regression(FORM, g, times = 60, control = list(seed = 7))
+  a <- estimate_mrqap(FORM, g, times = 60, control = list(seed = 99))
+  b <- estimate_mrqap(FORM, g, times = 60, control = list(seed = 7))
   # The observed model does not depend on the seed; only the null does.
   expect_equal(a$coefficients, b$coefficients)
   expect_false(isTRUE(all.equal(a$lower, b$lower)))
@@ -31,16 +31,16 @@ test_that("a different seed gives a different null distribution", {
 
 test_that("an outer set.seed() reproduces a run with no seed control", {
   g <- qap_net_gaussian()
-  set.seed(5); a <- net_regression(FORM, g, times = 30)
-  set.seed(5); b <- net_regression(FORM, g, times = 30)
+  set.seed(5); a <- estimate_mrqap(FORM, g, times = 30)
+  set.seed(5); b <- estimate_mrqap(FORM, g, times = 30)
   expect_equal(a$lower, b$lower)
 })
 
 test_that("a parallel plan gives the same answer as a sequential one", {
   skip_on_cran()
   g <- qap_net_gaussian()
-  seq <- net_regression(FORM, g, times = 30, control = list(seed = 99))
-  par <- net_regression(FORM, g, times = 30,
+  seq <- estimate_mrqap(FORM, g, times = 30, control = list(seed = 99))
+  par <- estimate_mrqap(FORM, g, times = 30,
                         control = list(seed = 99, strategy = "multisession"))
   # `future.seed = TRUE` is what makes this true; without it the plan would
   # change the result.
@@ -50,7 +50,7 @@ test_that("a parallel plan gives the same answer as a sequential one", {
 
 test_that("the future plan is restored after a run", {
   before <- class(future::plan())
-  net_regression(FORM, qap_net_gaussian(), times = 10,
+  estimate_mrqap(FORM, qap_net_gaussian(), times = 10,
                  control = list(seed = 1, strategy = "multisession"))
   expect_equal(class(future::plan()), before)
 })

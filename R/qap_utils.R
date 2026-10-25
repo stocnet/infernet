@@ -1,6 +1,6 @@
 # QAP utilities ---------------------------------------------------------------
 #
-# Support functions for the QAPglm / net_regression engine.  Ported from the
+# Support functions for the QAPglm / estimate_mrqap engine.  Ported from the
 # MrQAP package (Robert W. Krause).  All functions are internal.
 
 # ---- formula parsing --------------------------------------------------------

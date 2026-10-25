@@ -1,6 +1,6 @@
 # QAP engine ------------------------------------------------------------------
 #
-# Internal. The matrix-level engine behind net_regression(): it performs the
+# Internal. The matrix-level engine behind estimate_mrqap(): it performs the
 # baseline fit and the permutation inference on a pre-built list of matrices,
 # for both a dyadic network and a cognitive social structure.
 #
