@@ -101,6 +101,16 @@
 #'
 #'   `:` and `*` give interactions of any order, as the product of the terms.
 #'
+#'   A formula written for `{goldfish}` or `{ergm}` can be used as it is.
+#'   It is first read by [specify_mrqap()], which rewrites each term that has
+#'   an MRQAP equivalent, such as ergm's `nodematch("dept")` as `same(dept)`,
+#'   and drops each term that an MRQAP cannot fit, such as goldfish's
+#'   `inertia` or ergm's `gwesp()`, which read the outcome's own ties.
+#'   One warning names each dropped term and the reason, and the rest of the
+#'   model is fitted.
+#'   A name that no model knows aborts and suggests the nearest term,
+#'   as does a formula with no term left to fit.
+#'
 #'   A bar adds a random intercept, as in `{lme4}`: `(1 | sender)`,
 #'   `(1 | receiver)`, `(1 | reporter)` for a cognitive social structure, or
 #'   `(1 | network)` for a list of networks. Each sets the same switch as its
@@ -199,6 +209,9 @@ estimate_mrqap <- function(formula,
                            control = list()) {
 
   ctrl <- .resolve_control(control)
+  # A formula written for another model is read as an MRQAP reads it, and the
+  # terms it cannot fit are dropped and named.
+  formula <- specify_mrqap(formula, .data)
   # `(1 | sender)` in the formula sets the same switch as its control.
   for (group in .specify(formula)$random) {
     ctrl[[.random_groups()[[group]]]] <- TRUE

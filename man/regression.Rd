@@ -52,6 +52,16 @@ in a list of networks; on one network it is the intercept.
 
 \code{:} and \code{*} give interactions of any order, as the product of the terms.
 
+A formula written for \code{{goldfish}} or \code{{ergm}} can be used as it is.
+It is first read by \code{\link[=specify_mrqap]{specify_mrqap()}}, which rewrites each term that has
+an MRQAP equivalent, such as ergm's \code{nodematch("dept")} as \code{same(dept)},
+and drops each term that an MRQAP cannot fit, such as goldfish's
+\code{inertia} or ergm's \code{gwesp()}, which read the outcome's own ties.
+One warning names each dropped term and the reason, and the rest of the
+model is fitted.
+A name that no model knows aborts and suggests the nearest term,
+as does a formula with no term left to fit.
+
 A bar adds a random intercept, as in \code{{lme4}}: \code{(1 | sender)},
 \code{(1 | receiver)}, \code{(1 | reporter)} for a cognitive social structure, or
 \code{(1 | network)} for a list of networks. Each sets the same switch as its
@@ -230,6 +240,7 @@ conditions."
 \seealso{
 Other models:
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
+\code{\link{specify}},
 \code{\link{tests}}
 }
 \concept{models}

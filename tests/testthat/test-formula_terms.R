@@ -267,6 +267,56 @@ test_that("the new terms fit a dyadic network under both permutation schemes", {
   }
 })
 
+# ---- terms of other models ---------------------------------------------------
+
+# The warnings a call raises, in order, so that two can be checked at once.
+warnings_of <- function(expr) {
+  out <- character(0)
+  value <- withCallingHandlers(expr, warning = function(w) {
+    out <<- c(out, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+  list(value = value, warnings = out)
+}
+
+test_that("a goldfish formula fits without the terms that read the outcome", {
+  res <- warnings_of(suppressMessages(
+    estimate_mrqap(a ~ inertia + recip + trans(b) + ego(x), formula_net(),
+                   times = 5, control = list(seed = 1))))
+  expect_named(res$value$coefficients, c("(Intercept)", "recip", "ego_x"))
+  # One warning names every dropped term and why; `recip` keeps its own.
+  dropped <- grep("Dropped", res$warnings, value = TRUE)
+  expect_length(dropped, 1)
+  expect_match(dropped, "Dropped 2 terms")
+  expect_match(dropped, "`inertia` depends on the outcome's own ties", fixed = TRUE)
+  expect_match(dropped, "`trans(b)` reads another layer", fixed = TRUE)
+  expect_length(grep("reads the outcome's own ties", res$warnings), 1)
+})
+
+test_that("a list of networks says once which terms it dropped", {
+  res <- warnings_of(suppressMessages(
+    estimate_mrqap(a ~ four + ego(x), list(formula_net(), formula_net(gdp = 6)),
+                   times = 5, control = list(seed = 1))))
+  expect_length(grep("Dropped", res$warnings), 1)
+  expect_named(res$value$coefficients, c("(Intercept)", "ego_x"))
+})
+
+test_that("every registered term says what each model makes of it", {
+  registry <- .formula_terms()
+  for (term in names(registry)) {
+    entry <- registry[[term]]
+    expect_true(entry$mrqap %in% c("fits", "warns", "drops", "refuses"), info = term)
+    expect_true(all(c("goldfish", "siena", "ergm") %in% names(entry)), info = term)
+    if (entry$mrqap == "drops") {
+      expect_true(is.character(entry$reason) && nzchar(entry$reason), info = term)
+    } else {
+      expect_true(is.function(entry$build), info = term)
+    }
+  }
+  expect_equal(registry$trans$goldfish, "trans")
+  expect_equal(registry$trans$siena, "transTrip")
+})
+
 # ---- the registry and the dictionary -----------------------------------------
 
 test_that("every registered term is in the dictionary in CONTRIBUTING", {
@@ -277,8 +327,12 @@ test_that("every registered term is in the dictionary in CONTRIBUTING", {
   expect_length(start, 1)
   stop <- start + grep("^#", guide[(start + 1):length(guide)])[1]
   rows <- guide[start:stop]
-  for (term in names(.formula_terms())) {
-    expect_true(any(grepl(paste0("`", term, "("), rows, fixed = TRUE)),
-                info = term)
+  registry <- .formula_terms()
+  for (term in names(registry)) {
+    has <- rows[grepl(paste0("`", term, "("), rows, fixed = TRUE)]
+    expect_true(length(has) > 0, info = term)
+    # The MRQAP column, the second, begins with the registry's status.
+    status <- vapply(strsplit(has, "|", fixed = TRUE), function(r) trimws(r[3]), "")
+    expect_true(any(startsWith(status, registry[[term]]$mrqap)), info = term)
   }
 })

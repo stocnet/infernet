@@ -6,6 +6,10 @@
 
 ## Specification
 
+- Improved the term registry behind the formula
+  - Added goldfish's effects, e.g. `inertia`, `trans`, `four`
+  - Added each term's MRQAP status, and its goldfish, RSiena, and ergm names
+  - Added the nearest term to the error for an unknown term
 - Added `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()` to move a formula between models
   - Reads the model a formula is for from `input =`, the formula's class, or its names
   - Rewrites each term with an equivalent, e.g. `nodematch("dept")` as `same(dept)`
