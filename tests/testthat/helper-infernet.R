@@ -125,3 +125,20 @@ expect_qap_shape <- function(fit, coefs) {
 expect_snet_warning <- function(object, regexp) {
   testthat::expect_warning(object, regexp)
 }
+
+# A small multiplex network whose matrices can be checked by hand: two directed
+# layers, `a` and `b`, a numeric attribute `x`, and a categorical one `grp`.
+# `gdp` is a global variable, for the list path.
+formula_net <- function(gdp = 5) {
+  ties <- data.frame(
+    from  = c(1L, 2L, 3L, 4L, 5L, 6L, 1L, 3L,   2L, 3L, 4L, 5L, 6L, 1L),
+    to    = c(2L, 3L, 1L, 1L, 1L, 2L, 3L, 2L,   1L, 4L, 5L, 6L, 1L, 4L),
+    layer = c(rep("a", 8), rep("b", 6)))
+  manynet::make_stocnet(
+    nodes   = data.frame(label = LETTERS[1:6],
+                         x     = c(3, 1, 4, 1, 5, 9),
+                         grp   = c("p", "q", "p", "q", "p", "q")),
+    ties    = ties,
+    info    = list(directed = TRUE),
+    globals = data.frame(var = "gdp", value = gdp))
+}

@@ -4,13 +4,13 @@
 # The test family keeps its null distribution under the same name.
 
 FORM <- weight ~ ego(Age) + alter(Age) + sim(Age)
-COEFS <- c("(Intercept)", "ego Age", "alter Age", "sim Age")
+COEFS <- c("(Intercept)", "ego_Age", "alter_Age", "sim_Age")
 
 # The share of permutations at or below, at or above, and beyond the observed
 # statistic, read from `testdist` rather than from the fit's own summaries.
 shares_from_testdist <- function(fit) {
   td <- fit$testdist
-  t  <- fit$t[colnames(td)]
+  t  <- fit$obs[colnames(td)]
   rbind(
     lower  = vapply(colnames(td), function(j) mean(td[, j] <= t[[j]], na.rm = TRUE), numeric(1)),
     larger = vapply(colnames(td), function(j) mean(td[, j] >= t[[j]], na.rm = TRUE), numeric(1)),

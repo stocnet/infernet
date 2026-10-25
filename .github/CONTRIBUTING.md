@@ -91,8 +91,46 @@ GitHub updates the status of the issue automatically.
   The merge that created the current engine silently dropped three function
   headers and left an orphan function body, so the package did not parse at all.
 
-## Style
+## Design Principles
 
+### Project overview
+
+`infernet` is an R package (part of the [stocnet](https://github.com/stocnet) ecosystem)
+providing the *inferential layer* for network analysis:
+conditional uniform graph (CUG) and quadratic assignment procedure (QAP) tests of network
+statistics, and multiple regression QAP (MRQAP) for network data.
+Because it builds on `{manynet}`, every function accepts matrices, edgelists,
+`{igraph}`, `{network}`, `{tidygraph}` or `stocnet` objects, 
+and one-mode or two-mode networks alike.
+
+`infernet` combines two lines of work:
+
+- the formula front end, multimodal treatment, 
+  and ease of use of `{migraph}`'s `net_regression()`, and
+- the estimator range, missing-data handling, and cognitive social structure (CSS)
+  treatment of Robert Krause's `MrQAP`, which is where the `R/qap_*.R` engine
+  files were ported from.
+
+Division of labour to keep in mind when adding functions:
+
+- `{manynet}`: network classes/coercion (`as_*()`), making and manipulating networks,
+  and network-level logical tests (e.g. `is_directed()`, `is_twomode()`).
+- `{netrics}`: everything analytic — marks, measures, memberships, motifs —
+  at the node, tie, and network level.
+- `{autograph}`: drawing graphs and plotting analytic, modelling, or diagnostic results,
+  along with deep (often institutional) theming. *All* plot methods should live there.
+- `{infernet}` (this package): testing and modelling, e.g. CUG/QAP/MRQAP.
+- `{migraph}`: the software companion to *Multimodal Political Networks*, holding the
+  `mpn_*` datasets and the diffusion models.
+  `{migraph}` still carries older copies of `net_regression()` and the `test_*()` family;
+  those are what `{infernet}` supersedes, so a fix made there needs porting here,
+  and a fix made here does not need porting back.
+- `{goldfish}`: another stocnet package for estimating network event models 
+  such as relational event models and dynamic network actor models. 
+  Note that these two packages, `{infernet}` and `{goldfish}`, 
+  should reuse similar vocabulary and syntax where possible 
+  to improve the "pleasant predictability" of each package.
+  
 All `stocnet` packages aim for the same three things:
 declarative simplicity, pleasant predictability, and graceful inclusivity.
 The principles are shared across the packages;
@@ -193,64 +231,7 @@ Make it clear when you are referring to functions by adding backticks and parent
 e.g. `a_function()`, and arguments by adding an equals sign, e.g. `argument=`.
 Argument values or variables can be in double quotation marks, e.g. "value".
 
-## Parked extensions
-
-Five model extensions sit on `feature/*` branches while the architecture
-settles, each tracked by a Github issue and each reinstated by reverting one
-commit on `develop`:
-
-| Branch | Removes | Issue |
-|---|---|---|
-| `feature/multinomial-comparison` | `family = "multinom"`, and the `comparison`/`reference` controls | [#7](https://github.com/stocnet/infernet/issues/7) |
-| `feature/fixest-fixed-effects` | the `fixest_se_cluster` control and the `{fixest}` branch | [#8](https://github.com/stocnet/infernet/issues/8) |
-| `feature/glmmtmb-mixed` | mixed negbin and mixed zip | [#9](https://github.com/stocnet/infernet/issues/9) |
-| `feature/gmm-estimator` | the `estimator` control and `R/qap_gmm.R` | [#10](https://github.com/stocnet/infernet/issues/10) |
-| `feature/torch-gpu` | `R/qap_gpu.R` and the `use_gpu` control | [#11](https://github.com/stocnet/infernet/issues/11) |
-
-Do not reinstate one by reverting onto `develop` without reading its issue:
-several need rewriting against the merged engine rather than reverting onto it.
-Do not add a new model family that needs a new `Suggests` package until the
-two engines are one, for the same reason these left.
-
 ## Package architecture
-
-### Project overview
-
-`infernet` is an R package (part of the [stocnet](https://github.com/stocnet) ecosystem)
-providing the *inferential layer* for network analysis:
-conditional uniform graph (CUG) and quadratic assignment procedure (QAP) tests of network
-statistics, and multiple regression QAP (MRQAP) for network data.
-Because it builds on `{manynet}`, every function accepts matrices, edgelists,
-`{igraph}`, `{network}`, `{tidygraph}` or `stocnet` objects, 
-and one-mode or two-mode networks alike.
-
-`infernet` combines two lines of work:
-
-- the formula front end, multimodal treatment, 
-  and ease of use of `{migraph}`'s `net_regression()`, and
-- the estimator range, missing-data handling, and cognitive social structure (CSS)
-  treatment of Robert Krause's `MrQAP`, which is where the `R/qap_*.R` engine
-  files were ported from.
-
-Division of labour to keep in mind when adding functions:
-
-- `{manynet}`: network classes/coercion (`as_*()`), making and manipulating networks,
-  and network-level logical tests (e.g. `is_directed()`, `is_twomode()`).
-- `{netrics}`: everything analytic — marks, measures, memberships, motifs —
-  at the node, tie, and network level.
-- `{autograph}`: drawing graphs and plotting analytic, modelling, or diagnostic results,
-  along with deep (often institutional) theming. *All* plot methods should live there.
-- `{infernet}` (this package): testing and modelling, e.g. CUG/QAP/MRQAP.
-- `{migraph}`: the software companion to *Multimodal Political Networks*, holding the
-  `mpn_*` datasets and the diffusion models.
-  `{migraph}` still carries older copies of `net_regression()` and the `test_*()` family;
-  those are what `{infernet}` supersedes, so a fix made there needs porting here,
-  and a fix made here does not need porting back.
-- `{goldfish}`: another stocnet package for estimating network event models 
-  such as relational event models and dynamic network actor models. 
-  Note that these two packages, `{infernet}` and `{goldfish}`, 
-  should reuse similar vocabulary and syntax where possible 
-  to improve the "pleasant predictability" of each package.
 
 ### Common commands
 
@@ -285,7 +266,9 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | File | Contains |
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
-| `model_regression.R` | `net_regression()`, the formula front end (`convertToMatrixList()`, `getRHSNames()`, `specificationAdvice()`), and the `print.*` methods for its results |
+| `model_regression.R` | `net_regression()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
+| `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_utils.R` | formula parsing, input validation, `future` plumbing, matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
@@ -302,80 +285,23 @@ Everything in `qap_*.R` is internal, and carries `@keywords internal` and `@noRd
 Keep it that way: the engine's argument names are the `MrQAP` ones, and
 exporting them would freeze an interface we still intend to tidy.
 
-### The `net_regression()` pipeline
+### Input shapes
 
-`net_regression()` ([R/model_regression.R](../R/model_regression.R)) is the single
-regression entry point. Its control flow is:
+Most defects reported against this package are not wrong arithmetic.
+They are a network shape the function did not expect.
+Before finishing a function, run it on a signed, a weighted, a directed, a two-mode,
+a multiplex, a multilevel and a longitudinal network, and decide each case deliberately.
+Document each decision in the roxygen block with an `@section` named for the shape,
+e.g. `@section Two-mode networks:`.
 
-1. Merge the user's `control` list over `.default_control()`,
-   so an unnamed entry falls back to the default rather than to `NULL`.
-2. Dispatch on the input shape.
-   A single network goes to `convertToMatrixList()`;
-   a list of networks goes to `.prepare_list_of_graphs()`, which converts each
-   network, drops the ones that are missing a predictor with a warning,
-   and pools the rest.
-3. Resolve `family = "auto"` against the dependent variable
-   (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
-   `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
-   Report each resolution with `snet_info()`: a model the user did not state is
-   one they cannot describe in a paper.
-4. Call `QAPengine()`, which parses the formula, fits the baseline model once
-   via `fit_qap_model()`, then runs `times` permutations and aggregates them.
-5. Attach a probabilistic confusion matrix where the outcome is binary.
+Missing data deserves particular care here, since handling it well is a reason
+this package exists.
+An unobserved dyad is `NA`, never a zero tie and never a source's numeric code.
+`make_qap_data()` drops NA and diagonal cells before fitting, so a predictor
+that introduces `NA` silently shrinks the sample:
+report what was dropped rather than letting the count change without comment.
 
-The result is a `netreg`, with more specific classes in front of it:
-
-| Result | Class |
-|---|---|
-| gaussian | `c("netreg_lm", "netreg")` |
-| any other family | `c("netreg_glm", "netreg")` |
-| a CSS | `c("netreg_css", <family class>, "netreg")` |
-
-Write a method at the level where behaviour actually differs, and let S3 fall
-back for the rest: `print()` has a method for each of the three specific
-classes, while `{autograph}` needs only `plot.netreg()` until a CSS wants a plot
-of its own. The names say what the result is, not the procedure that made it,
-so they carry no `qap`, and none repeats a function's name. A new kind of result
-gets a new specific class in front of `netreg`, not a new parent.
-
-Inside `QAPengine()` the `permute` control names what the null distribution
-permutes: `"outcome"` permutes the dependent matrix only, while `"predictor"`
-implements Dekker et al.'s double semi-partialling, running one permutation set
-per main predictor after residualising it against the others.
-With one predictor there is nothing to residualise against, so `"predictor"`
-falls back to `"outcome"` and says so.
-Permuted coefficients and test statistics are then compared against the baseline
-by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
-p-value matrices by `aggregate_perm_results()`, which also keeps the permuted
-test statistics as `testdist`. Keep that matrix whenever the summaries change:
-the summaries are read from it, `test-qap_testdist.R` checks that they agree,
-and `{autograph}` draws it. The name is the one the test family already uses;
-`{sna}` and `{migraph}` call the same thing `dist`, which `{autograph}`'s
-`plot.netlm()` reads, but `dist()` is a formula term here.
-### One engine, two shapes
-
-`QAPengine()` fits a dyadic network and a cognitive social structure through the
-same skeleton. They differ in four places and nowhere else, and those four live
-in a *shape* returned by `.qap_shape()`
-([R/qap_shapes.R](../R/qap_shapes.R)):
-
-| Field | Dyadic | Cognitive |
-|---|---|---|
-| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per reporter |
-| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)`, which calls `.perm_css()` |
-| `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
-| `rand_slots` | sender, receiver, network | and reporter |
-
-A fifth field, `max_trials`, says how many permutations to redraw before giving
-up: one for a dyadic network, since a degenerate draw is simply dropped and
-counted, and 10,000 for a CSS, whose sparse arrays often permute into an
-outcome with a single value.
-
-Add a shape rather than a second engine. A random-intercept slot a shape does
-not list cannot be requested, so a reporter intercept on a dyadic network
-aborts by name rather than producing a formula that will not parse.
-
-### Cognitive social structures
+#### Cognitive social structures
 
 A CSS is `{manynet}`'s to define, and this package follows it.
 A network is one where its ties carry a `by` column naming the reporter,
@@ -409,27 +335,9 @@ for the shapes and the missing reports it does not have.
 Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same code, and
 every fix had to be made twice. One of them was made in only one place.
 
-The formula front end accepts these terms, and a new one should be added
-to `getRHSNames()` and `convertToMatrixList()` together:
+### Control flows
 
-- `ego(attr)` — the sender's value of a nodal attribute,
-- `alter(attr)` — the receiver's value,
-- `same(attr)` — 1 where sender and receiver share an attribute value,
-- `dist(attr)` — the absolute difference in a numeric attribute,
-- `sim(attr)` — the proportional similarity in a numeric attribute,
-- `tertius(attr, fn)` — an aggregate of an attribute over a node's other ties,
-- a plain name — another layer or network, used as a dyadic covariate.
-
-A multiplex outcome is named by its layer, e.g. `advice ~ ...`, and other layers
-can be named on the right-hand side. `.term_label()` gives each term the column
-name `convertToMatrixList()` gives its matrix, so the two must change together.
-
-A formula is meant to be reusable across models,
-so a term must mean the same thing whichever family or engine consumes it.
-Where a term cannot apply, say so through `snet_abort()` rather than
-silently dropping it.
-
-### Function body conventions
+#### Bivariate
 
 Test functions consistently:
 
@@ -443,18 +351,93 @@ Test functions consistently:
    simulated distribution, one- and two-tailed p-values,
    and the network's properties (`is_directed()`, `is_complex()`).
 
-Properties of the dependent network — modes, directedness, loops — must always be
-respected in permutations and analysis;
-one-mode and two-mode cases are branched on explicitly rather than projected away.
-All `manynet`, `netrics`, `furrr`, and `future` calls use explicit `::` namespacing
-(with per-file `@importFrom` roxygen tags for NAMESPACE generation).
-Plot methods belong in `{autograph}`, not here.
+#### Multivariate
 
-Every `print.*` method returns `invisible(x)`.
-A print method that returns the result of its last `cat()` prints `NULL` when its
-value is used, which is what `print.network_test()` did before this was fixed.
+`net_regression()` ([R/model_regression.R](../R/model_regression.R)) is the single
+regression entry point. Its control flow is:
 
-### Parallelism
+1. Merge the user's `control` list over `.default_control()`,
+   so an unnamed entry falls back to the default rather than to `NULL`.
+2. Dispatch on the input shape.
+   A single network goes to `convertToMatrixList()`, which parses the formula
+   with `.specify()` and builds its matrices with `.evaluate_spec()`;
+   a list of networks goes to `.prepare_list_of_graphs()`, which converts each
+   network, drops the ones that are missing a predictor with a warning,
+   and pools the rest.
+3. Resolve `family = "auto"` against the dependent variable
+   (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
+   `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
+   Report each resolution with `snet_info()` so that the user can describe 
+   these (default) choices in a paper.
+4. Call `QAPengine()`, which parses the formula, fits the baseline model once
+   via `fit_qap_model()`, then runs `times` permutations and aggregates them.
+5. Attach a probabilistic confusion matrix where the outcome is binary.
+
+The result is a `netreg`, with more specific classes in front of it:
+
+| Result | Class |
+|---|---|
+| gaussian | `c("netreg_lm", "netreg")` |
+| any other family | `c("netreg_glm", "netreg")` |
+| a CSS | `c("netreg_css", <family class>, "netreg")` |
+
+Write a method at the level where behaviour actually differs, and let S3 fall
+back for the rest: 
+`print()` has a method for each of the three specific classes, 
+while `{autograph}` needs only `plot.netreg()` until a CSS wants a plot of its own. 
+The names say what the result is, not the procedure that made it,
+so they carry no `qap`, and none repeats a function's name. 
+A new kind of result gets a new specific class in front of `netreg`.
+
+Inside `QAPengine()` the `permute` control names what the null distribution
+permutes: `"outcome"` permutes the dependent matrix only, while `"predictor"`
+implements Dekker et al.'s double semi-partialling, running one permutation set
+per main predictor after residualising it against the others.
+With one predictor there is nothing to residualise against, so `"predictor"`
+falls back to `"outcome"` and says so.
+Permuted coefficients and test statistics are then compared against the baseline
+by `compare_perm_to_baseline()` and reduced to `lower`/`larger`/`abs`
+p-value matrices by `aggregate_perm_results()`, which also keeps the permuted
+test statistics as `testdist`. Keep that matrix whenever the summaries change:
+the summaries are read from it, `test-qap_testdist.R` checks that they agree,
+and `{autograph}` draws it. The name is the one the test family already uses;
+`{sna}` and `{migraph}` call the same thing `dist`, which `{autograph}`'s
+`plot.netlm()` reads, but `dist()` is a formula term here.
+
+#### One engine, two shapes
+
+`QAPengine()` fits a dyadic network and a cognitive social structure through the
+same skeleton. They differ in four places and nowhere else, and those four live
+in a *shape* returned by `.qap_shape()`
+([R/qap_shapes.R](../R/qap_shapes.R)):
+
+| Field | Dyadic | Cognitive |
+|---|---|---|
+| `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per reporter |
+| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)`, which calls `.perm_css()` |
+| `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
+| `rand_slots` | sender, receiver, network | and reporter |
+
+A fifth field, `max_trials`, says how many permutations to redraw before giving
+up: one for a dyadic network, since a degenerate draw is simply dropped and
+counted, and 10,000 for a CSS, whose sparse arrays often permute into an
+outcome with a single value.
+
+Add a shape rather than a second engine. A random-intercept slot a shape does
+not list cannot be requested, so a reporter intercept on a dyadic network
+aborts by name rather than producing a formula that will not parse.
+
+Everything that only one estimator needs is in `Suggests`:
+`lme4` (random effects), `MASS` (negative binomial), and `pscl`
+(zero-inflated Poisson). The other five are on the branches listed under
+[Parked extensions](#parked-extensions).
+A code path that depends on a suggested package must guard with
+`requireNamespace()` and abort with an actionable message,
+and its tests must `skip_if_not_installed()`.
+Keeping these optional is deliberate: the common case — a gaussian or binomial
+MRQAP — must install and run with no compiler and no heavy dependency tree.
+
+#### Parallelism
 
 Every simulation-heavy function takes:
 
@@ -464,8 +447,8 @@ Every simulation-heavy function takes:
   set with `future::plan(strategy)` and restored via `on.exit()`.
   In `net_regression()` this is passed through the `control` list.
 
-The `test_*()` family maps simulations with `furrr::future_map*()` using
-`furrr::furrr_options(seed = TRUE)` for reproducible parallel RNG.
+The `test_*()` family maps simulations with `future.apply::future_lapply()`
+and `future_vapply()`, using `future.seed = TRUE` for reproducible parallel RNG.
 The regression engine wraps the same machinery in `setup_future_plan()` and
 `run_permutations()` ([R/qap_utils.R](../R/qap_utils.R)); use those rather than
 calling `future::plan()` from a new engine function.
@@ -474,23 +457,7 @@ Progress reporting is not a separate argument.
 It is read from `options(snet_verbosity)`, so that one option governs how
 talkative every stocnet package is.
 
-### Input shapes
-
-Most defects reported against this package are not wrong arithmetic.
-They are a network shape the function did not expect.
-Before finishing a function, run it on a signed, a weighted, a directed, a two-mode,
-a multiplex, a multilevel and a longitudinal network, and decide each case deliberately.
-Document each decision in the roxygen block with an `@section` named for the shape,
-e.g. `@section Two-mode networks:`.
-
-Missing data deserves particular care here, since handling it well is a reason
-this package exists.
-An unobserved dyad is `NA`, never a zero tie and never a source's numeric code.
-`make_qap_data()` drops NA and diagonal cells before fitting, so a predictor
-that introduces `NA` silently shrinks the sample:
-report what was dropped rather than letting the count change without comment.
-
-### Console messaging
+#### Console messaging
 
 All user-facing messages go through the `snet_*()` wrappers exported by `{manynet}`,
 rather than base `message()`/`stop()`/`warning()` or `{cli}` calls directly:
@@ -541,38 +508,107 @@ Where a function needs a package from `Suggests`, name it and say how to get it:
 The model specification advice printed by `specificationAdvice()` is
 informational, not load-bearing, so it belongs at `snet_info()`.
 
-### Dependencies
+### Formula conventions
 
-`infernet` `Depends` on `{manynet}` (network classes, coercion and logical tests)
-and `{netrics}` (measures), and `Imports` the `{future}`/`{furrr}`/`{purrr}`
-stack plus `{reformulas}` for formula surgery.
+A formula is meant to be reusable across models and across stocnet packages,
+even if the calculation or interpretation may differ across models.
+Currently only infernet, goldfish, and ergm use a formula.
+This section records the rules `{infernet}` follows and how terms might
+correspond to those in other packages.
 
-Everything that only one estimator needs is in `Suggests`:
-`lme4` (random effects), `MASS` (negative binomial), and `pscl`
-(zero-inflated Poisson). The other five are on the branches listed under
-[Parked extensions](#parked-extensions).
-A code path that depends on a suggested package must guard with
-`requireNamespace()` and abort with an actionable message,
-and its tests must `skip_if_not_installed()`.
-Keeping these optional is deliberate: the common case — a gaussian or binomial
-MRQAP — must install and run with no compiler and no heavy dependency tree.
+| | infernet | goldfish | ergm | RSiena | MoNAn |
+|---|---|---|---|---|---|
+| Model | `net_regression(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
+| Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
+| An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
+| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
+| The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
+| Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
+| Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
+| Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
+| Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
+| Specification | internal: `.specify()` | the formula, or `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
 
-The declared minimum of each `stocnet` dependency is the version on CRAN,
-so that CI can install it. `{manynet}` is at 2.4.0, the first version with the
-CSS construct; check a change against that version, not only against the
-development build:
+#### Rules
 
-```r
-lib <- tempfile(); dir.create(lib)
-install.packages("manynet", lib = lib)   # the CRAN version
-# then run the tests with R_LIBS=<lib> set, so the test workers see it too
-```
-Where `infernet` needs something that only a newer, unreleased `{manynet}` has,
-reach it through a shim rather than by raising the minimum,
-and resolve the name at call time from the namespace.
-Test for the function rather than for the version string,
-because a pre-release development build can carry the version
-without yet exporting the function.
+1. **A term is a function named for the matrix or statistics it builds.** 
+  Its first argument is a bare name, and options are named arguments 
+  that can also be given by position.
+2. **The left-hand side names the outcome layer.** 
+  `.` means the layer the network declares as `info$focal` (in stocnet objects), 
+  or the whole network where it declares none. 
+  A named left-hand side takes priority over `info$focal`.
+3. **A bare name is a layer, tie attribute, or dyadic covariate.** 
+  Both `layer` and `tie(layer)` work, and `tie()` gives 0/1 unless `weighted = TRUE`. 
+  Where no layer or tie attribute has the name, a term that can stand alone
+  is that term with its defaults, so `~ recip` reads the outcome's reverse tie,
+  as goldfish's endogenous `recip` does.
+  A name that is both a layer and such a term aborts.
+  The argument of a term is read by the term's kind: a node attribute for
+  `ego()`, a layer for `indeg()`.
+4. **`:` and `*` make interactions of any order.**
+  These are the product of the operands. 
+  An operand with several columns, e.g. `match()`, gives one product for each.
+5. **A two-mode attribute is read on the mode of each side.**
+6. **A term a model cannot fit aborts and says why.**
+  For example, since MRQAPs rely on permutation, 
+  permuting an outcome-based predictor cannot work and will be refused.
+7. **A column name joins its parts with underscores.**
+  The term comes first, then its layer, attribute, and category:
+  `ego_age`, `indeg_friends`, `tertius_friends_age`, `match_dept_sales`,
+  and `mix_dept_sales_hr` (the sender's category, then the receiver's).
+  `indeg(friends, type = "ego")` gives `ego_indeg_friends`.
+  A character that a name cannot hold, such as a space in a category,
+  becomes one underscore, and an interaction joins its columns with `:`.
+  The name is a label: since attributes and categories can hold underscores,
+  do not parse it back into its parts.
+  A categorical `ego()` or `alter()` names its reference category in a message,
+  not in each column.
+
+#### The dictionary
+
+| infernet / goldfish | Meaning | ergm | RSiena | MoNAn |
+|---|---|---|---|---|
+| `ego(x)` | the sender's value | `nodeocov`, `nodeofactor` | `egoX` | — |
+| `alter(x)` | the receiver's value | `nodeicov`, `nodeifactor` | `altX` | `alter_covariate` |
+| `same(x)` | 1 where both share a value | `nodematch` | `sameX` | `same_covariate` |
+| `diff(x)` | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
+| `diff(x, transformer_fn = identity)` | the signed difference | `diff` | `diffX` | — |
+| `dist(x)` | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
+| `sim(x)` | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
+| `match(x)` | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
+| `mix(x)` | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
+| `tie(layer)`, or the bare name | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
+| `exchange(layer)`, `recip(layer)` | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `recip`, `recip()` | the reverse tie in the outcome; warns, since it is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
+| `indeg(layer)`, `outdeg(layer)` | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
+| `tertius(layer, x)` | the mean of x over j's other in-neighbours | `edgecov` | — | — |
+| `tertius_diff(layer, x)` | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
+| `global(x)` | a network-level variable, in a list of networks; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
+| `(1 \| sender)` | a random intercept for each sender, receiver, reporter, or network | — | — | — |
+| `a:b`, `a*b` | the product, of any order | `:` and `*` | `set_interaction()` | — |
+
+Two terms still differ from goldfish:
+
+- goldfish defines `sim(x)` as `-transformer_fn(x_i - x_j)`, with `abs` by
+  default, where infernet uses 1 − |d| / range.
+- goldfish includes ego in `tertius()` and `tertius_diff()`, where infernet
+  reads only j's other in-neighbours.
+
+#### Adding a term
+
+1. Add an entry to `.formula_terms()` in
+   [R/model_formula.R](../R/model_formula.R): its `formals`, its `kind`, its
+   builder, whether it accepts a two-mode network, what it does with the outcome
+   layer, and its nearest ergm term.
+2. Write the builder. It takes the parsed operand and the context, and returns
+   a named list of matrices: one for most terms, several for a term like
+   `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
+3. Add a row to the dictionary above, and a test to `test-formula_terms.R` that
+   checks the matrix against a value computed by hand or by a loop.
+4. Add the term to the `formula` parameter of `net_regression()`.
+
+## Preparing Contributions
 
 ### Tests
 
@@ -596,6 +632,10 @@ and are grouped by contract for the engine:
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
 | `test-net_regression_css.R` | CSS models through `net_regression()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
+| `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
+| `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
+| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
+| `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 
 [tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
 holds the shared fixtures and expectations:
@@ -604,6 +644,8 @@ holds the shared fixtures and expectations:
   `qap_net_undirected()`, `qap_net_twomode()` — each seeded, and each carrying
   real signal, so that every family converges and the comparison is not testing
   noise against noise.
+- `formula_net()` — a six-node multiplex network with two layers, small enough
+  that a term's matrix can be checked by hand.
 - `qap_reference_data()` — rebuilds the dyad-level data frame the engine fits,
   so a baseline coefficient can be compared against `lm()`, `glm()`,
   `MASS::glm.nb()`, `pscl::zeroinfl()`, `lme4::lmer()` or `fixest::feglm()`
@@ -624,7 +666,7 @@ Four things are worth asserting for every estimator that is added:
    and a stray placeholder intercept broke the `{fixest}` path.
 3. That a given `seed` reproduces the same p-values.
    Permutation results are only comparable across runs if the RNG is,
-   and `furrr_options(seed = TRUE)` and `future.seed = TRUE` are what make that
+   and `future.seed = TRUE` is what makes that
    true in parallel.
 4. That the estimator is reached at all.
    Several paths in `fit_qap_model()` are selected by a combination of `family`,

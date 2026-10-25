@@ -189,9 +189,11 @@ QAPengine <- function(formula,
   # ---- assemble -------------------------------------------------------------
 
   # Lift what a reader of the result needs out of the baseline fit, so that
-  # `fit$coefficients` works without reaching into `fit$base`.
+  # `fit$coefficients` works without reaching into `fit$base`. The observed
+  # test statistics are `obs` here rather than the baseline's `t`, which reads
+  # as `t()` or as time.
   fit$coefficients <- fit$base$coefficients
-  fit$t            <- fit$base$t
+  fit$obs          <- fit$base$t
   for (el in c("r.squared", "adj.r.squared", "random.intercepts",
                "theta", "zi_coefficients")) {
     if (!is.null(fit$base[[el]])) fit[[el]] <- fit$base[[el]]

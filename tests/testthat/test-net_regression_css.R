@@ -59,7 +59,7 @@ test_that("a CSS layer is detected and fitted as one", {
   expect_s3_class(fit, "netreg")
   expect_s3_class(fit, "netreg_css")
   expect_named(fit$coefficients,
-               c("(Intercept)", "ego age", "alter age", "same dept", "reports"))
+               c("(Intercept)", "ego_age", "alter_age", "same_dept", "reports"))
   # 21 reporters, each describing the 21 x 20 ordered dyads.
   expect_equal(nrow(fit$pred), 21 * 21 * 20)
   expect_equal(length(unique(fit$pred$bv)), 21)
@@ -78,7 +78,7 @@ test_that("a CSS baseline matches glm() on the same reported dyads", {
   fit <- suppressMessages(
     net_regression(FORM_HT, HT, times = 5, control = list(seed = 1)))
   ref <- stats::glm(stats::reformulate(
-    c("`ego age`", "`alter age`", "`same dept`", "reports"), "advice"),
+    c("ego_age", "alter_age", "same_dept", "reports"), "advice"),
     data = fit$pred, family = stats::binomial())
   expect_equal(unname(fit$coefficients), unname(stats::coef(ref)))
 })
@@ -116,7 +116,7 @@ test_that("a nodal predictor is the same for every reporter", {
   fit <- suppressMessages(
     net_regression(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1)))
-  per_dyad <- tapply(fit$pred[["ego age"]],
+  per_dyad <- tapply(fit$pred[["ego_age"]],
                      interaction(fit$pred$sv, fit$pred$rv, drop = TRUE),
                      function(v) length(unique(v)))
   expect_true(all(per_dyad == 1))
@@ -124,9 +124,9 @@ test_that("a nodal predictor is the same for every reporter", {
 
 test_that("tertius() is computed within each report", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + tertius(age), HT, times = 5,
+    net_regression(advice ~ ego(age) + tertius(friends, age), HT, times = 5,
                    control = list(seed = 1)))
-  per_dyad <- tapply(fit$pred[["tertius age"]],
+  per_dyad <- tapply(fit$pred[["tertius_friends_age"]],
                      interaction(fit$pred$sv, fit$pred$rv, drop = TRUE),
                      function(v) length(unique(v)))
   expect_true(any(per_dyad > 1))
@@ -136,7 +136,7 @@ test_that("an interaction between a CSS layer and a nodal term fits", {
   fit <- suppressMessages(
     net_regression(advice ~ friends + ego(age):friends, HT, times = 5,
                    control = list(seed = 1)))
-  expect_named(fit$coefficients, c("(Intercept)", "friends", "friends:ego age"))
+  expect_named(fit$coefficients, c("(Intercept)", "friends", "friends:ego_age"))
 })
 
 test_that("a layer named on its own is found as a predictor", {

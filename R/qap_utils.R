@@ -18,7 +18,7 @@ parse_qap_formula <- function(formula) {
   has_random <- grepl("\\|", formula_str)
 
   main <- if (has_random) {
-    all.vars(reformulas::nobars(formula))[-1]
+    .drop_bars(formula)
   } else {
     all.vars(formula[-1])
   }
@@ -27,6 +27,18 @@ parse_qap_formula <- function(formula) {
        main          = main,
        has_random    = has_random,
        all_data_vars = main)
+}
+
+
+# The variables of a formula's right-hand side, leaving out its random-effect
+# terms. `stats::terms()` gives each `(1 | g)` as one label, so dropping the
+# labels that hold a bar leaves the fixed part.
+#' @keywords internal
+#' @noRd
+.drop_bars <- function(formula) {
+  labels <- attr(stats::terms(formula), "term.labels")
+  labels <- labels[!grepl("|", labels, fixed = TRUE)]
+  unique(unlist(lapply(labels, function(l) all.vars(str2lang(l)))))
 }
 
 
@@ -308,7 +320,8 @@ HC3 <- function(X, e) {
 
 # ---- baseline + perm fitting ------------------------------------------------
 
-# The predictor names carry spaces ("ego Age"), so the model formula quotes them
+# An interaction's name carries a colon ("ego_Age:alter_Age"), and a layer's
+# name can carry a space, so the model formula quotes them
 # and several fitters hand the backticks back in the coefficient names. Double
 # semi-partialling then looks a column up by the unquoted name and fails with a
 # subscript error. The inner function has many early returns, one per family,

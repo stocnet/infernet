@@ -1,3 +1,69 @@
+# infernet 0.4.0
+
+## Package
+
+- Updated CONTRIBUTING with formula conventions for the stocnet packages
+- Removed `{purrr}` from `Imports`
+- Removed `{furrr}` from `Imports`: `{future.apply}` now maps the simulations of the test family too
+- Removed `{reformulas}` from `Imports`: a few lines of base R drop the random-effect terms
+
+## Regression
+
+- Improved the formula of `net_regression()`, which is now parsed into a specification
+  - Added named arguments to formula terms, e.g. `indeg(friends, type = "ego")`
+  - Added interactions of any order, e.g. `ego(age) * alter(age) * ego(tenure)`
+  - Added `info$focal` as the outcome of `. ~`, and a named outcome still takes priority
+  - Added random intercepts to the formula, as in `{lme4}`: `(1 | sender)`, `(1 | receiver)`,
+    `(1 | reporter)`, and `(1 | network)` set the same switches as their controls
+    (thanks @auzaheta and @RWKrause, #8)
+  - A bar never reached a model before: the grouping index it named was looked for among the layers
+- Added formula terms from goldfish, computed on another layer
+  - Added `exchange()` and `recip()`, the reverse tie in another layer
+  - Added `recip` on its own, or `recip()`, as the outcome's reverse tie, as goldfish reads it, with a warning
+  - Added `indeg()` and `outdeg()`, a node's degree on the receiver's or the sender's side
+  - Added `tertius_diff()`, how far ego lies from the receiver's other in-neighbours
+  - Added `tie()`, a layer as a dyadic covariate, 0/1 unless `weighted = TRUE`
+  - Added `global()`, a network-level variable, in a list of networks
+- Added formula terms from ergm for categorical attributes
+  - Added `match()`, one dummy for each category that sender and receiver share
+  - Added `mix()`, one dummy for each pair of categories, less a reference pair
+- Renamed `dist()` to `diff()`, as goldfish calls it
+  - Added `transformer_fn =`, so `diff(x, transformer_fn = identity)` is signed
+  - `dist()` still works, with its old column name, and warns that it is deprecated
+- Fixed `tertius()` with `"mean"` dividing by the number of nodes rather than
+  of in-neighbours, which mixed the receiver's in-degree into the attribute
+  - It is now the mean over the receiver's other in-neighbours, so results change
+  - A receiver with no other in-neighbour takes the mean of the defined cells
+  - Added a layer as its first argument, e.g. `tertius(friends, age)`
+  - `tertius(age)` still reads the outcome's own ties, and now warns that
+    permuting the outcome does not permute this predictor with it
+- Fixed a layer term reading the outcome's own ties: `indeg()`, `outdeg()`,
+  and `tie()` refuse the outcome layer, and `recip()` warns
+- Fixed `ego()` and `alter()` of a categorical attribute returning NA p-values
+  under `permute = "predictor"`, since the fitter dummy-coded the attribute and
+  left nothing numeric to residualise
+  - They are dummy-coded again, one column per category less the first, as in `{migraph}`
+  - A message names the reference category
+- Changed the column names of formula terms to join their parts with underscores
+  - For example, `ego_Age` rather than `ego Age`
+  - A name needs no backticks in `coef(fit)[...]` or in `tidy()` output
+  - Code that looked up a coefficient by its old name must use the new one
+
+## Results
+
+- Moved `print.netlm()` and `print.netlogit()` from `{migraph}`
+- Added `tidy()` and `glance()` methods for `netreg` and `network_test` results
+  - `tidy()` gives the permutation p-value that `alternative` names, two-sided by default
+  - Fixed `tidy()` on a `netlm` or `netlogit` ignoring `conf.level`
+  - Fixed `glance()` on an `ergm` adding the MCMC columns when it says they are omitted
+- Moved `print()`, `tidy()`, and `glance()` to one help page, `?results`
+- Renamed the observed test statistics of a `netreg` from `t` to `obs`
+  
+## Tutorials  
+  
+- Added the "Diversity and Regression" tutorial from `{migraph}`, now teaching `{infernet}`
+  - Replaced `over_membership()`, which stays in `{migraph}`, with `to_subgraphs()`
+
 # infernet 0.3.0
 
 ## Package

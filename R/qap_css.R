@@ -87,11 +87,9 @@ glm_tab <- function(x) {
   cat("\n")
 }
 
-# Registered so that a CSS fit prints as a model rather than as a list. The
-# class is internal, so the method is registered without a help topic.
 # A CSS result prints its own way, whatever its family: it says how many
 # reporters it was fitted on, which a reader needs to interpret it.
-#' @rdname regression
+#' @rdname results
 #' @export
 print.netreg_css <- function(x, ...) {
 

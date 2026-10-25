@@ -8,7 +8,7 @@
 # inference is the novel part, the point estimates are not. Second, the result
 # meets the shape contract in `expect_qap_shape()`.
 
-COEFS3 <- c("(Intercept)", "ego Age", "alter Age", "sim Age")
+COEFS3 <- c("(Intercept)", "ego_Age", "alter_Age", "sim_Age")
 FORM   <- weight ~ ego(Age) + alter(Age) + sim(Age)
 FORM_B <- . ~ ego(Age) + alter(Age) + sim(Age)
 
@@ -23,7 +23,7 @@ test_that("gaussian baseline matches lm() on the same dyads", {
   fit <- net_regression(FORM, g, times = 10, control = list(seed = 1))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(lm_fit)))
-  expect_equal(unname(fit$t), unname(summary(lm_fit)$coefficients[, 3]))
+  expect_equal(unname(fit$obs), unname(summary(lm_fit)$coefficients[, 3]))
   expect_equal(fit$r.squared, summary(lm_fit)$r.squared)
   expect_equal(fit$adj.r.squared, summary(lm_fit)$adj.r.squared)
   expect_equal(fit$family, "gaussian")
@@ -36,7 +36,7 @@ test_that("gaussian with HC3 keeps the coefficients and changes the t values", {
                            control = list(seed = 1, use_robust_errors = TRUE))
   expect_qap_shape(robust, COEFS3)
   expect_equal(robust$coefficients, plain$coefficients)
-  expect_false(isTRUE(all.equal(robust$t, plain$t)))
+  expect_false(isTRUE(all.equal(robust$obs, plain$obs)))
   expect_true(robust$robust_se)
 })
 
@@ -53,7 +53,7 @@ test_that("binomial baseline matches glm() on the same dyads", {
                         control = list(seed = 1, family = "binomial"))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(glm_fit)))
-  expect_equal(unname(fit$t), unname(summary(glm_fit)$coefficients[, 3]))
+  expect_equal(unname(fit$obs), unname(summary(glm_fit)$coefficients[, 3]))
 })
 
 test_that("family = 'auto' picks binomial for a binary outcome", {

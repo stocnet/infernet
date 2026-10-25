@@ -16,13 +16,13 @@
 #'   of the original network.
 #'   
 #' @inheritParams regression
-#' @param strategy If `{furrr}` is installed, 
-#'   then multiple cores can be used to accelerate the function.
+#' @param strategy A `{future}` plan, so that multiple cores can be used
+#'   to accelerate the function.
 #'   By default `"sequential"`, 
 #'   but if multiple cores available,
 #'   then `"multisession"` or `"multicore"` may be useful.
 #'   Generally this is useful only when `times` > 1000.
-#'   See [`{furrr}`](https://furrr.futureverse.org) for more.
+#'   See [`{future.apply}`](https://future.apply.futureverse.org) for more.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
@@ -42,31 +42,14 @@ NULL
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
                         strategy = "sequential"){
-  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
-  rands <- furrr::future_map(1:times, manynet::generate_random, n = .data, 
-                             .progress = verbose, 
-                             .options = furrr::furrr_options(seed = TRUE))
-  if (length(args) > 0) {
-    rands <- furrr::future_map(rands, 
-                               manynet::bind_node_attributes, object2 = .data, 
-                               .progress = verbose, 
-                               .options = furrr::furrr_options(seed = TRUE))
-  }
-  if (!is.null(args)) {
-    simd <- furrr::future_map_dbl(rands,
-                  FUN, args)
-  } else {
-    simd <- furrr::future_map_dbl(rands,
-                   FUN)
-  }
+  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+                              draw = manynet::generate_random, bind = TRUE)
   out <- list(test = "CUG",
               testval = obsd,
               testdist = simd,
@@ -86,32 +69,14 @@ test_random <- function(.data, FUN, ...,
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
                         strategy = "sequential"){
-  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
-  rands <- furrr::future_map(1:times, 
-                             ~ manynet::generate_configuration(.data), 
-                             .progress = verbose, 
-                             .options = furrr::furrr_options(seed = TRUE))
-  if (length(args) > 0) {
-    rands <- furrr::future_map(rands, 
-                               manynet::bind_node_attributes, object2 = .data, 
-                               .progress = verbose, 
-                               .options = furrr::furrr_options(seed = TRUE))
-  }
-  if (!is.null(args)) {
-    simd <- furrr::future_map_dbl(rands,
-                                  FUN, args)
-  } else {
-    simd <- furrr::future_map_dbl(rands,
-                                  FUN)
-  }
+  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+                              draw = manynet::generate_configuration, bind = TRUE)
   out <- list(test = "configuration",
               testval = obsd,
               testdist = simd,
@@ -135,30 +100,14 @@ test_configuration <- function(.data, FUN, ...,
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
                              strategy = "sequential"){
-  verbose <- ifelse(is.null(getOption("snet_verbosity")), FALSE, getOption("snet_verbosity") == "verbose")
   args <- unlist(list(...))
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
-  rands <- furrr::future_map(1:times, 
-                  function(x) manynet::to_permuted(.data), 
-                  .progress = verbose, 
-                  .options = furrr::furrr_options(seed = TRUE))
-  if (!is.null(args)) {
-    simd <- furrr::future_map_dbl(rands,
-                   FUN, args, 
-                   .progress = verbose, 
-                   .options = furrr::furrr_options(seed = TRUE))
-  } else {
-    simd <- furrr::future_map_dbl(rands,
-                   FUN, 
-                   .progress = verbose, 
-                   .options = furrr::furrr_options(seed = TRUE))
-  }
+  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+                              draw = manynet::to_permuted, bind = FALSE)
   out <- list(test = "QAP",
               testval = obsd,
               testdist = simd,
@@ -171,6 +120,25 @@ test_permutation <- function(.data, FUN, ...,
   out
 }
 
+# The statistic on each of `times` simulated networks. Each draw gets its own
+# stream of random numbers, so a seed set before the call reproduces the result
+# sequentially and in parallel alike. A simulated network takes the observed
+# node attributes where the statistic needs one.
+#' @keywords internal
+#' @noRd
+.simulate_statistic <- function(.data, FUN, args, times, strategy, draw, bind) {
+  oplan <- future::plan(strategy)
+  on.exit(future::plan(oplan), add = TRUE)
+  rands <- future.apply::future_lapply(seq_len(times), function(i) draw(.data),
+                                       future.seed = TRUE)
+  if (bind && length(args) > 0) {
+    rands <- lapply(rands, manynet::bind_node_attributes, object2 = .data)
+  }
+  measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
+  future.apply::future_vapply(rands, measure, numeric(1), future.seed = TRUE)
+}
+
+#' @rdname results
 #' @export
 print.network_test <- function(x, ...,
                              max.length = 6,
