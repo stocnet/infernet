@@ -49,6 +49,11 @@
   - Fixed `tidy()` on a `netlm` or `netlogit` ignoring `conf.level`
   - Fixed `glance()` on an `ergm` adding the MCMC columns when it says they are omitted
 - Moved `print()`, `tidy()`, and `glance()` to one help page, `?results`
+  
+## Tutorials  
+  
+- Added the "Diversity and Regression" tutorial from `{migraph}`, now teaching `{infernet}`
+  - Replaced `over_membership()`, which stays in `{migraph}`, with `to_subgraphs()`
 
 # infernet 0.3.0
 
