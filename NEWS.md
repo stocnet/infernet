@@ -37,20 +37,23 @@
   - Added a layer as its first argument, e.g. `tertius(friends, age)`
   - `tertius(age)` still reads the outcome's own ties, and now warns that
     permuting the outcome does not permute this predictor with it
-- Fixed a layer term reading the outcome's own ties: `recip()`, `indeg()`,
-  `outdeg()`, and `tie()` refuse the outcome layer
+- Fixed a layer term reading the outcome's own ties: `indeg()`, `outdeg()`,
+  and `tie()` refuse the outcome layer, and `recip()` warns
 - Fixed `ego()` and `alter()` of a categorical attribute returning NA p-values
   under `permute = "predictor"`, since the fitter dummy-coded the attribute and
   left nothing numeric to residualise
   - They are dummy-coded again, one column per category less the first, as in `{migraph}`
-  - Each column names its reference category, e.g. `ego Discipline Sociology [Anthropology]`,
-    and a message names it too
+  - A message names the reference category
+- Changed the column names of formula terms to join their parts with underscores
+  - For example, `ego_Age` rather than `ego Age`
+  - A name needs no backticks in `coef(fit)[...]` or in `tidy()` output
+  - Code that looked up a coefficient by its old name must use the new one
 
 ## Results
 
+- Moved `print.netlm()` and `print.netlogit()` from `{migraph}`
 - Added `tidy()` and `glance()` methods for `netreg` and `network_test` results
   - `tidy()` gives the permutation p-value that `alternative` names, two-sided by default
-  - Moved from `{migraph}` the methods for `netlm`, `netlogit`, `ergm`, and `sienaFit`, and the print methods for `netlm` and `netlogit`
   - Fixed `tidy()` on a `netlm` or `netlogit` ignoring `conf.level`
   - Fixed `glance()` on an `ergm` adding the MCMC columns when it says they are omitted
 - Moved `print()`, `tidy()`, and `glance()` to one help page, `?results`

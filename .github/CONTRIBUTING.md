@@ -518,11 +518,12 @@ correspond to those in other packages.
 
 | | infernet | goldfish | ergm | RSiena | MoNAn |
 |---|---|---|---|---|---|
-| Model | `net_regression(advice ~ ego(age) + friends, net)` | `make_specification(choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
-| Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | `layer =`, by default `info$focal` | the network on the left-hand side | named in the data object | named in the state object |
+| Model | `net_regression(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
+| Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
-| A bare name | a layer or a tie attribute | a layer, then a node attribute, then a global variable; a name in two places aborts | — | — | — |
-| Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
+| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
+| The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
+| Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
 | Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
@@ -538,9 +539,13 @@ correspond to those in other packages.
   or the whole network where it declares none. 
   A named left-hand side takes priority over `info$focal`.
 3. **A bare name is a layer, tie attribute, or dyadic covariate.** 
-  Both `layer` and `tie(layer)` work, and gives 0/1 unless `weighted = TRUE`. 
-  A bare name resolves to a node attribute or a global variable, 
-  and aborts where a name is in two places.
+  Both `layer` and `tie(layer)` work, and `tie()` gives 0/1 unless `weighted = TRUE`. 
+  Where no layer or tie attribute has the name, a term that can stand alone
+  is that term with its defaults, so `~ recip` reads the outcome's reverse tie,
+  as goldfish's endogenous `recip` does.
+  A name that is both a layer and such a term aborts.
+  The argument of a term is read by the term's kind: a node attribute for
+  `ego()`, a layer for `indeg()`.
 4. **`:` and `*` make interactions of any order.**
   These are the product of the operands. 
   An operand with several columns, e.g. `match()`, gives one product for each.
@@ -548,6 +553,17 @@ correspond to those in other packages.
 6. **A term a model cannot fit aborts and says why.**
   For example, since MRQAPs rely on permutation, 
   permuting an outcome-based predictor cannot work and will be refused.
+7. **A column name joins its parts with underscores.**
+  The term comes first, then its layer, attribute, and category:
+  `ego_age`, `indeg_friends`, `tertius_friends_age`, `match_dept_sales`,
+  and `mix_dept_sales_hr` (the sender's category, then the receiver's).
+  `indeg(friends, type = "ego")` gives `ego_indeg_friends`.
+  A character that a name cannot hold, such as a space in a category,
+  becomes one underscore, and an interaction joins its columns with `:`.
+  The name is a label: since attributes and categories can hold underscores,
+  do not parse it back into its parts.
+  A categorical `ego()` or `alter()` names its reference category in a message,
+  not in each column.
 
 #### The dictionary
 

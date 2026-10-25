@@ -339,6 +339,29 @@
   NA_character_
 }
 
+# A bare name is a layer or a tie attribute, as before. Where none has that name
+# and a term can be named on its own, it is that term with its defaults, so
+# `~ recip` reads as it does in goldfish. A name that is both aborts.
+#' @keywords internal
+#' @noRd
+.resolve_bare_terms <- function(spec, ctx) {
+  registry <- .formula_terms()
+  bare <- names(registry)[vapply(registry, function(e) isTRUE(e$bare), logical(1))]
+  spec$terms <- lapply(spec$terms, function(term) {
+    term$operands <- lapply(term$operands, function(op) {
+      if (!is.na(op$fn) || !(op$name %in% bare)) return(op)
+      if (op$name %in% ctx$tie_names) {
+        manynet::snet_abort(
+          c("{.val {op$name}} is both a layer of the network and a formula term.",
+            i = "Write {.code tie({op$name})} for the layer, or {.code {op$name}()} for the term."))
+      }
+      .specify_operand(call(op$name))
+    })
+    term
+  })
+  spec
+}
+
 # Builds one operand: a registered term, or a layer named on its own.
 #' @keywords internal
 #' @noRd
@@ -391,6 +414,18 @@
 #' @noRd
 .named <- function(m, label) stats::setNames(list(m), label)
 
+# A column name: the term, then its layer, attribute, and category, joined by
+# underscores. A syntactic name needs no backticks in the internal formula or in
+# `coef(fit)[...]`. A category such as "Social Science" can hold characters a
+# name cannot, so each run of them becomes one underscore. The name is a label,
+# and is not parsed back into its parts.
+#' @keywords internal
+#' @noRd
+.col_name <- function(...) {
+  parts <- as.character(c(...))
+  paste(gsub("[^[:alnum:]._]+", "_", parts), collapse = "_")
+}
+
 #' @keywords internal
 #' @noRd
 .refuse_categorical <- function(ctx, op) {
@@ -413,12 +448,12 @@
 # less the first as the reference, as `migraph` did. Left as a character matrix,
 # the fitter would dummy-code it instead, but then double semi-partialling has
 # no numeric column to residualise and every level's p-value is NA. The
-# reference goes into each column's name, so that the table says what a level
-# is compared with.
+# reference is named in a message, since a column's name holds only its own
+# category.
 #' @keywords internal
 #' @noRd
 .build_side <- function(op, ctx, side, m) {
-  label <- paste(side, op$name)
+  label <- .col_name(side, op$name)
   v <- .node_values(ctx, op$name, side)
   if (!is.character(v) && !is.factor(v)) return(.named(m, label))
   cats <- if (is.factor(v)) levels(droplevels(v)) else
@@ -430,7 +465,7 @@
   manynet::snet_info(
     "{.fn {side}} leaves out {.val {cats[1]}} of {.val {op$name}} as the reference.")
   out <- lapply(cats[-1], function(k) (m == k) * 1)
-  stats::setNames(out, paste0(label, " ", cats[-1], " [", cats[1], "]"))
+  stats::setNames(out, vapply(cats[-1], function(k) .col_name(label, k), ""))
 }
 
 .build_same <- function(op, ctx) {
@@ -468,7 +503,7 @@
     sides <- .side_matrices(ctx, op$name)
     out <- (sides$rows == sides$cols) * 1
   }
-  .named(out, paste("same", op$name))
+  .named(out, .col_name("same", op$name))
 }
 
 # goldfish's `diff()`: the transformed difference between the sender's and the
@@ -477,7 +512,7 @@
   .refuse_categorical(ctx, op)
   f <- .arg_fun(op$args$transformer_fn, ctx$env, "transformer_fn")
   sides <- .side_matrices(ctx, op$name)
-  .named(f(sides$rows - sides$cols), paste("diff", op$name))
+  .named(f(sides$rows - sides$cols), .col_name("diff", op$name))
 }
 
 # The old name, kept so that existing scripts run, with its old column name.
@@ -490,7 +525,7 @@
   }
   .refuse_categorical(ctx, op)
   sides <- .side_matrices(ctx, op$name)
-  .named(abs(sides$rows - sides$cols), paste("dist", op$name))
+  .named(abs(sides$rows - sides$cols), .col_name("dist", op$name))
 }
 
 .build_sim <- function(op, ctx) {
@@ -499,7 +534,7 @@
   d <- abs(sides$rows - sides$cols)
   denom <- max(d, na.rm = TRUE)
   if (!is.finite(denom) || denom == 0) denom <- 1
-  .named(abs(1 - d / denom), paste("sim", op$name))
+  .named(abs(1 - d / denom), .col_name("sim", op$name))
 }
 
 # Differential homophily: one column per category, 1 where the sender and the
@@ -509,12 +544,13 @@
   sides <- .side_matrices(ctx, op$name)
   cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
   out <- lapply(cats, function(k) (sides$rows == k & sides$cols == k) * 1)
-  stats::setNames(out, paste("match", op$name, cats))
+  stats::setNames(out, vapply(cats, function(k) .col_name("match", op$name, k), ""))
 }
 
 # Mixing: one column per pair of a sender's and a receiver's category, less the
 # first pair as the reference. An undirected tie has no sender, so its pairs are
-# unordered; a two-mode network pairs the categories of its two modes.
+# unordered; a two-mode network pairs the categories of its two modes. A
+# column names the sender's category, then the receiver's.
 .build_mix <- function(op, ctx) {
   sides <- .side_matrices(ctx, op$name)
   ego_cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
@@ -526,8 +562,9 @@
   if (nrow(pairs) < 2) {
     manynet::snet_abort("{.fn mix} needs at least two categories of {.val {op$name}}.")
   }
-  sep <- if (ordered) "->" else "--"
-  labels <- paste0("mix ", op$name, " ", pairs$ego, sep, pairs$alter)
+  labels <- vapply(seq_len(nrow(pairs)), function(p) {
+    .col_name("mix", op$name, pairs$ego[p], pairs$alter[p])
+  }, "")
   manynet::snet_info("{.fn mix} leaves out {.val {labels[1]}} as the reference.")
   out <- lapply(seq_len(nrow(pairs))[-1], function(p) {
     a <- pairs$ego[p]
@@ -571,16 +608,23 @@
       c("{.fn {op$fn}} cannot read the outcome layer {.val {layer}}.",
         i = "It would predict the outcome's ties from those same ties. Name another layer."))
   }
-  .warn_outcome_ties(op$fn)
+  .warn_outcome_ties(op$fn, .outcome_example(op$fn))
 }
 
 #' @keywords internal
 #' @noRd
-.warn_outcome_ties <- function(fn) {
+.outcome_example <- function(fn) {
+  if (identical(.formula_terms()[[fn]]$kind, "tertius")) paste0(fn, "(friends, age)")
+  else paste0(fn, "(friends)")
+}
+
+#' @keywords internal
+#' @noRd
+.warn_outcome_ties <- function(fn, example = paste0(fn, "(friends, age)")) {
   manynet::snet_warn(
     c("{.fn {fn}} reads the outcome's own ties.",
       i = "Permuting the outcome does not permute this predictor with it, so its test is not exact.",
-      i = "Name another layer as its first argument, for example {.code {fn}(friends, age)}."))
+      i = "Name another layer as its first argument, for example {.code {example}}."))
 }
 
 .build_covariate <- function(op, ctx) {
@@ -597,7 +641,7 @@
   weighted <- .arg_flag(op$args$weighted, ctx$env, "weighted")
   m <- .layer_matrix(ctx, op$name)
   if (!weighted) m <- (m > 0) * 1
-  .named(m, paste("tie", op$name))
+  .named(m, .col_name("tie", op$name))
 }
 
 # The reverse tie: the transpose of a layer. `exchange(layer)` names the layer,
@@ -654,8 +698,7 @@
     deg <- if (direction == "in") colSums(w, na.rm = TRUE) else rowSums(w, na.rm = TRUE)
     matrix(deg, nrow(s), ncol(s), byrow = type == "alter")
   }
-  fn_label <- paste(op$fn, op$name)
-  if (type == "ego") fn_label <- paste("ego", fn_label)
+  fn_label <- .col_name(if (type == "ego") "ego", op$fn, op$name)
   .named(.per_report(m, degree_of), fn_label)
 }
 
@@ -737,8 +780,7 @@
 .build_tertius <- function(op, ctx) {
   ta <- .tertius_args(op, ctx)
   out <- .per_report(ta$m, function(s) .tertius_matrix(s, ta$v, ta$fn))
-  label <- paste(c(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x), collapse = " ")
-  .named(out, label)
+  .named(out, .col_name(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x))
 }
 
 # goldfish's `tertius_diff()` with its default `transformer_fn = abs`: how far
@@ -749,8 +791,7 @@
     agg <- .tertius_matrix(s, ta$v, ta$fn, fill = FALSE)
     .fill_undefined(abs(matrix(ta$v, nrow(s), ncol(s)) - agg), nrow(s) == ncol(s))
   })
-  label <- paste(c(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x), collapse = " ")
-  .named(out, label)
+  .named(out, .col_name(op$fn, if (!is.na(ta$layer)) ta$layer, ta$x))
 }
 
 # ---- builders: network-level variables -------------------------------------------
@@ -775,7 +816,7 @@
         i = "A network regression reads one value for each network."))
   }
   .named(matrix(row$value[[1]], nrow(ctx$DV), ncol(ctx$DV)),
-         paste("global", op$name))
+         .col_name("global", op$name))
 }
 
 # ---- checks and advice -------------------------------------------------------------
@@ -798,6 +839,10 @@
         if (is.na(op$name) || !(op$name %in% node_attrs))
           missing_node <- c(missing_node, op$name)
       } else if (kind %in% c("layer", "covariate")) {
+        if (is.na(op$name)) {
+          if (isTRUE(.formula_terms()[[op$fn]]$bare)) next
+          manynet::snet_abort("{.fn {op$fn}} needs a layer, for example {.code {op$fn}(friends)}.")
+        }
         if (!(op$name %in% tie_names)) missing_tie <- c(missing_tie, op$name)
       } else if (kind == "tertius") {
         first <- op$name

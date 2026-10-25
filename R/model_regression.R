@@ -39,8 +39,7 @@
 #'
 #'   A permutation relabels the nodes, and a reporter is a node, so the senders,
 #'   receivers, and reporters are relabelled together.
-#'   `control = list(random_intercept_reporter = TRUE)` adds a random intercept
-#'   for each reporter.
+#'   `(1 | reporter)` in the formula adds a random intercept for each reporter.
 #'
 #'   A person who was not asked has a report of zeros unless the network marks
 #'   them as missing, for example with
@@ -59,8 +58,9 @@
 #'
 #'   A term built from a layer must not read the outcome's own ties, since
 #'   permuting the outcome does not permute such a predictor with it.
-#'   `tie()`, `recip()`, `indeg()`, and `outdeg()` refuse the outcome layer.
-#'   `tertius()` and `tertius_diff()` without a layer read the outcome, and warn.
+#'   `tie()`, `indeg()`, and `outdeg()` refuse the outcome layer.
+#'   `recip()`, `tertius()`, and `tertius_diff()` without a layer read the
+#'   outcome, and warn.
 #'
 #' @param formula A formula describing the model.  The left-hand side is the
 #'   dependent network: a layer, a tie attribute such as `weight`, or `.` for
