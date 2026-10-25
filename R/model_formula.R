@@ -60,9 +60,14 @@
       build = .build_tie, outcome = "refuse", ergm = "edgecov"),
     recip = list(
       formals = alist(layer = ), kind = "layer", build = .build_recip,
+      twomode = FALSE, bare = TRUE,
+      hint = "A two-mode tie has no reverse tie of the same shape.",
+      outcome = "warn", ergm = "mutual, or edgecov of the transpose"),
+    exchange = list(
+      formals = alist(layer = ), kind = "layer", build = .build_recip,
       twomode = FALSE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
-      outcome = "refuse", ergm = "edgecov of the transpose"),
+      outcome = "warn", ergm = "edgecov of the transpose"),
     indeg = list(
       formals = alist(layer = , type = "alter", weighted = FALSE),
       kind = "layer", build = .build_indeg, outcome = "refuse",
@@ -563,12 +568,25 @@
   .named(m, paste("tie", op$name))
 }
 
+# The reverse tie: the transpose of a layer. `exchange(layer)` names the layer,
+# as goldfish proposes for its exogenous twin (stocnet/goldfish#122), and
+# `recip()` without one reads the outcome, as goldfish's endogenous `recip` does.
 .build_recip <- function(op, ctx) {
-  .outcome_layer_check(op, ctx, op$name)
-  m <- .layer_matrix(ctx, op$name)
+  if (is.na(op$name)) {
+    if (identical(op$fn, "exchange")) {
+      manynet::snet_abort("{.fn exchange} needs a layer, for example {.code exchange(friends)}.")
+    }
+    .warn_outcome_ties(op$fn, "exchange(friends)")
+    m <- ctx$DV
+    label <- op$fn
+  } else {
+    .outcome_layer_check(op, ctx, op$name)
+    m <- .layer_matrix(ctx, op$name)
+    label <- .col_name(op$fn, op$name)
+  }
   out <- if (length(dim(m)) == 3) aperm(m, c(2, 1, 3)) else t(m)
   dimnames(out) <- dimnames(m)
-  .named(out, paste("recip", op$name))
+  .named(out, label)
 }
 
 .build_indeg <- function(op, ctx) .build_degree(op, ctx, "in")

@@ -14,7 +14,8 @@
   - Added a clear error for a bar in the formula, which never reached a model,
     pointing to the random intercepts in `control`
 - Added formula terms from goldfish, computed on another layer
-  - Added `recip()`, the reverse tie
+  - Added `exchange()` and `recip()`, the reverse tie in another layer
+  - Added `recip` on its own, or `recip()`, as the outcome's reverse tie, as goldfish reads it, with a warning
   - Added `indeg()` and `outdeg()`, a node's degree on the receiver's or the sender's side
   - Added `tertius_diff()`, how far ego lies from the receiver's other in-neighbours
   - Added `tie()`, a layer as a dyadic covariate, 0/1 unless `weighted = TRUE`

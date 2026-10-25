@@ -563,7 +563,8 @@ correspond to those in other packages.
 | `match(x)` | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
 | `mix(x)` | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
 | `tie(layer)`, or the bare name | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
-| `recip(layer)` | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `exchange(layer)`, `recip(layer)` | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `recip`, `recip()` | the reverse tie in the outcome; warns, since it is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
 | `indeg(layer)`, `outdeg(layer)` | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
 | `tertius(layer, x)` | the mean of x over j's other in-neighbours | `edgecov` | — | — |
 | `tertius_diff(layer, x)` | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
