@@ -10,7 +10,7 @@ COEFS <- c("(Intercept)", "ego Age", "alter Age", "sim Age")
 # statistic, read from `testdist` rather than from the fit's own summaries.
 shares_from_testdist <- function(fit) {
   td <- fit$testdist
-  t  <- fit$t[colnames(td)]
+  t  <- fit$obs[colnames(td)]
   rbind(
     lower  = vapply(colnames(td), function(j) mean(td[, j] <= t[[j]], na.rm = TRUE), numeric(1)),
     larger = vapply(colnames(td), function(j) mean(td[, j] >= t[[j]], na.rm = TRUE), numeric(1)),

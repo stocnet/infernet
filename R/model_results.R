@@ -95,7 +95,7 @@ tidy.netreg <- function(x, exponentiate = FALSE,
   }
   tibble::tibble(term = names(x$coefficients),
                 estimate = estimate,
-                statistic = as.numeric(x$t),
+                statistic = as.numeric(x$obs),
                 p.value = as.numeric(p[2, ]))
 }
 
@@ -177,7 +177,8 @@ tidy.network_test <- function(x, ...) {
                 null.sd = stats::sd(x$testdist, na.rm = TRUE),
                 p.lower = x$plteobs,
                 p.upper = x$pgteobs,
-                times = x$times)
+                # {migraph}'s tests call it reps
+                times = if (is.null(x$times)) x$reps else x$times)
 }
 
 #' @rdname results

@@ -87,8 +87,8 @@ A cognitive social structure also puts \code{netreg_css} first, so
 A method can be written for any of these, and falls back to the next.
 Among its elements:
 \itemize{
-\item \code{coefficients} and \code{t}, the estimates and test statistics of the
-observed model;
+\item \code{coefficients} and \code{obs}, the estimates and the observed test
+statistics of the model;
 \item \code{lower}, \code{larger}, and \code{abs}, the share of permutations whose
 coefficient (first row) or test statistic (second row) is at or below,
 at or above, or beyond the observed one;

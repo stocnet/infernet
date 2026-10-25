@@ -49,6 +49,7 @@
   - Fixed `tidy()` on a `netlm` or `netlogit` ignoring `conf.level`
   - Fixed `glance()` on an `ergm` adding the MCMC columns when it says they are omitted
 - Moved `print()`, `tidy()`, and `glance()` to one help page, `?results`
+- Renamed the observed test statistics of a `netreg` from `t` to `obs`
   
 ## Tutorials  
   
