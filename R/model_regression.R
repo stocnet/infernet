@@ -82,7 +82,9 @@
 #'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
 #'     0/1 unless `weighted = TRUE`; a layer or tie attribute named on its own
 #'     enters with its values as stored,
-#'   - `recip(layer)` — the reverse tie, j to i, in another layer,
+#'   - `exchange(layer)` — the reverse tie, j to i, in another layer;
+#'     `recip(layer)` is the same, and `recip()`, or `recip` on its own,
+#'     reads the outcome's own reverse tie, and warns,
 #'   - `indeg(layer, type = "alter", weighted = FALSE)` and
 #'     `outdeg(layer, type = "alter", weighted = FALSE)` — a node's number of
 #'     incoming or outgoing ties in another layer, for the receiver
@@ -98,6 +100,11 @@
 #'     in a list of networks; on one network it is the intercept.
 #'
 #'   `:` and `*` give interactions of any order, as the product of the terms.
+#'
+#'   A bar adds a random intercept, as in `{lme4}`: `(1 | sender)`,
+#'   `(1 | receiver)`, `(1 | reporter)` for a cognitive social structure, or
+#'   `(1 | network)` for a list of networks. Each sets the same switch as its
+#'   `random_intercept_*` control. Random slopes are not supported.
 #' @param .data A manynet-consistent network (see
 #'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
 #'   supplied the model is fit jointly; graphs missing any predictor are
@@ -131,8 +138,8 @@
 #'   `c("netreg_css", "netreg_glm", "netreg")` for a binomial CSS model.
 #'   A method can be written for any of these, and falls back to the next.
 #'   Among its elements:
-#'   - `coefficients` and `t`, the estimates and test statistics of the
-#'     observed model;
+#'   - `coefficients` and `obs`, the estimates and the observed test
+#'     statistics of the model;
 #'   - `lower`, `larger`, and `abs`, the share of permutations whose
 #'     coefficient (first row) or test statistic (second row) is at or below,
 #'     at or above, or beyond the observed one;
@@ -192,6 +199,10 @@ net_regression <- function(formula,
                            control = list()) {
 
   ctrl <- .resolve_control(control)
+  # `(1 | sender)` in the formula sets the same switch as its control.
+  for (group in .specify(formula)$random) {
+    ctrl[[.random_groups()[[group]]]] <- TRUE
+  }
 
   if (.is_list_of_graphs(.data)) {
     prepared <- .prepare_list_of_graphs(formula, .data)

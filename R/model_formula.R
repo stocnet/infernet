@@ -24,8 +24,10 @@
 # global variable. `twomode` is FALSE where a two-mode network has no meaning
 # for the term, and `hint` then says what to use instead. `outcome` says what
 # happens where a layer term names the outcome: "refuse", or "warn" where the
-# term is defined on the outcome but is then not permuted with it. `ergm` is the
-# nearest ergm term, or `edgecov` of the matrix the term builds.
+# term is defined on the outcome but is then not permuted with it. `bare` is
+# TRUE where the term can be named on its own, as goldfish's endogenous effects
+# are: `~ recip` is then `recip()` of the outcome. `ergm` is the nearest ergm
+# term, or `edgecov` of the matrix the term builds.
 #' @keywords internal
 #' @noRd
 .formula_terms <- function() {
@@ -102,15 +104,12 @@
   }
   tt <- stats::terms(formula)
   labels <- attr(tt, "term.labels")
-  # A bar has no settled meaning here yet (stocnet/infernet#8), and the old
-  # rewrite of it never reached a model: the grouping index it named was looked
-  # for among the layers and not found.
+  # A bar means what it means in {lme4}: `(1 | sender)` is a random intercept
+  # for each sender (stocnet/infernet#8). It names one of the indices the engine
+  # builds, and sets the same switch as its control.
   bars <- grepl("|", labels, fixed = TRUE)
-  if (any(bars)) {
-    manynet::snet_abort(
-      c("A bar in the formula is not yet supported: {.code {labels[bars]}}.",
-        i = "Random intercepts are set in {.arg control}, for example {.code control = list(random_intercept_sender = TRUE)}."))
-  }
+  random <- vapply(labels[bars], .specify_random, character(1), USE.NAMES = FALSE)
+  labels <- labels[!bars]
   if (!is.null(attr(tt, "offset"))) {
     manynet::snet_abort("{.fn offset} is not yet supported in the formula.")
   }
@@ -125,8 +124,40 @@
   if (is.null(env)) env <- globalenv()
   structure(list(outcome = paste(deparse(formula[[2]]), collapse = ""),
                  terms   = terms,
+                 random  = unique(random),
                  env     = env),
             class = "infernet_spec")
+}
+
+# A random-effect term: an intercept, `1`, for one of the indices the engine
+# builds. Its name in `control` is `random_intercept_` and the index, where the
+# network index is called `nets`.
+#' @keywords internal
+#' @noRd
+.specify_random <- function(label) {
+  expr <- str2lang(label)
+  groups <- names(.random_groups())
+  if (!identical(expr[[2]], 1) && !identical(expr[[2]], 1L)) {
+    manynet::snet_abort(
+      c("{.code ({label})} is a random slope, and only random intercepts are supported.",
+        i = "Write {.code (1 | {deparse(expr[[3]])})}."))
+  }
+  group <- if (is.name(expr[[3]])) as.character(expr[[3]]) else deparse(expr[[3]])
+  if (!group %in% groups) {
+    manynet::snet_abort(
+      c("{.code ({label})} names {.val {group}}, which has no random intercept.",
+        i = "A random intercept can be for {.val {groups}}."))
+  }
+  group
+}
+
+#' @keywords internal
+#' @noRd
+.random_groups <- function() {
+  c(sender   = "random_intercept_sender",
+    receiver = "random_intercept_receiver",
+    reporter = "random_intercept_reporter",
+    network  = "random_intercept_nets")
 }
 
 # `a:b:c` arrives as `(a:b):c`, so the operands of an interaction of any order
@@ -240,6 +271,7 @@
     env           = spec$env,
     pooled        = pooled
   )
+  spec <- .resolve_bare_terms(spec, ctx)
   .check_formula_vars(spec, ctx)
   if (advise) specificationAdvice(spec, net)
 

@@ -42,8 +42,8 @@ test_that("a parallel plan gives the same answer as a sequential one", {
   seq <- net_regression(FORM, g, times = 30, control = list(seed = 99))
   par <- net_regression(FORM, g, times = 30,
                         control = list(seed = 99, strategy = "multisession"))
-  # `furrr_options(seed = TRUE)` and `future.seed = TRUE` are what make this
-  # true; without them the plan would change the result.
+  # `future.seed = TRUE` is what makes this true; without it the plan would
+  # change the result.
   expect_equal(par$lower, seq$lower)
   expect_equal(par$coefficients, seq$coefficients)
 })

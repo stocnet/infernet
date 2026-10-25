@@ -8,7 +8,7 @@
 # inference is the novel part, the point estimates are not. Second, the result
 # meets the shape contract in `expect_qap_shape()`.
 
-COEFS3 <- c("(Intercept)", "ego Age", "alter Age", "sim Age")
+COEFS3 <- c("(Intercept)", "ego_Age", "alter_Age", "sim_Age")
 FORM   <- weight ~ ego(Age) + alter(Age) + sim(Age)
 FORM_B <- . ~ ego(Age) + alter(Age) + sim(Age)
 

@@ -28,7 +28,7 @@ test_that("a two-mode network contributes every cell of the incidence matrix", {
   # An incidence matrix is rectangular, and has no diagonal to drop. Reading it
   # as square wrapped past the last column and invented dyads.
   expect_equal(nrow(fit$pred), dims[1] * dims[2])
-  expect_named(fit$coefficients, c("(Intercept)", "ego Att", "alter Att"))
+  expect_named(fit$coefficients, c("(Intercept)", "ego_Att", "alter_Att"))
 })
 
 test_that("a wide two-mode network fits, and counts its dyads", {
@@ -42,7 +42,7 @@ test_that("a wide two-mode network fits, and counts its dyads", {
   expect_equal(nrow(fit$pred), 12 * 40)
   expect_false(anyNA(fit$coefficients))
   expect_named(fit$coefficients,
-               c("(Intercept)", "same GONGO", "same province"))
+               c("(Intercept)", "same_GONGO", "same_province"))
 })
 
 test_that("make_qap_data() counts a wide predictor's cells, not the mask's", {
@@ -75,11 +75,11 @@ test_that("diff() and sim() read each mode of a two-mode network separately", {
   sw <- qap_net_twomode()
   ml <- convertToMatrixList(. ~ ego(Att) + alter(Att) + diff(Att) + sim(Att),
                             sw, advise = FALSE)
-  ego <- ml$mydata[["ego Att"]]
-  alt <- ml$mydata[["alter Att"]]
-  expect_equal(ml$mydata[["diff Att"]], abs(ego - alt))
+  ego <- ml$mydata[["ego_Att"]]
+  alt <- ml$mydata[["alter_Att"]]
+  expect_equal(ml$mydata[["diff_Att"]], abs(ego - alt))
   denom <- max(abs(ego - alt))
-  expect_equal(ml$mydata[["sim Att"]], abs(1 - abs(ego - alt) / denom))
+  expect_equal(ml$mydata[["sim_Att"]], abs(1 - abs(ego - alt) / denom))
 })
 
 test_that("a list of networks is pooled, and one missing a predictor is dropped", {

@@ -25,21 +25,36 @@ test_that("an unknown term or argument names what is available", {
   expect_error(.specify(y ~ indeg(friends, kind = "ego")), "takes")
 })
 
-test_that("a bar or an offset is refused with a way forward", {
-  expect_error(.specify(y ~ ego(age) + (1 | sv)), "random_intercept_sender")
+test_that("a bar is a random intercept for an index the engine builds", {
+  spec <- .specify(y ~ ego(age) + (1 | sender) + (1 | receiver))
+  expect_equal(spec$random, c("sender", "receiver"))
+  expect_length(spec$terms, 1)
+  expect_error(.specify(y ~ ego(age) + (1 | dept)), "has no random intercept")
+  expect_error(.specify(y ~ ego(age) + (age | sender)), "random slope")
   expect_error(.specify(y ~ ego(age) + offset(z)), "offset")
+})
+
+test_that("a random intercept in the formula fits as its control does", {
+  skip_if_not_installed("lme4")
+  g <- qap_net_gaussian(n = 12)
+  a <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age) + (1 | sender),
+                                       g, times = 5, control = list(seed = 1)))
+  b <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age), g, times = 5,
+                                       control = list(seed = 1, random_intercept_sender = TRUE)))
+  expect_equal(a$coefficients, b$coefficients)
+  expect_true(any(a$random))
 })
 
 test_that("an interaction of any order is the product of its operands", {
   g <- qap_net_gaussian(n = 12)
   ml <- convertToMatrixList(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
                             advise = FALSE)
-  expect_named(ml$mydata, c("weight", "ego Age", "alter Age", "ego Cit",
-                            "ego Age:alter Age", "ego Age:ego Cit",
-                            "alter Age:ego Cit", "ego Age:alter Age:ego Cit"))
+  expect_named(ml$mydata, c("weight", "ego_Age", "alter_Age", "ego_Cit",
+                            "ego_Age:alter_Age", "ego_Age:ego_Cit",
+                            "alter_Age:ego_Cit", "ego_Age:alter_Age:ego_Cit"))
   m <- ml$mydata
-  expect_equal(m[["ego Age:alter Age:ego Cit"]],
-               m[["ego Age"]] * m[["alter Age"]] * m[["ego Cit"]])
+  expect_equal(m[["ego_Age:alter_Age:ego_Cit"]],
+               m[["ego_Age"]] * m[["alter_Age"]] * m[["ego_Cit"]])
   fit <- net_regression(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
                         times = 5, control = list(seed = 1))
   expect_length(fit$coefficients, 8)
@@ -48,7 +63,7 @@ test_that("an interaction of any order is the product of its operands", {
 test_that("an interaction with a term of several columns gives one product each", {
   g <- formula_net()
   ml <- convertToMatrixList(a ~ match(grp):ego(x), g, advise = FALSE)
-  expect_named(ml$mydata, c("a", "match grp p:ego x", "match grp q:ego x"))
+  expect_named(ml$mydata, c("a", "match_grp_p:ego_x", "match_grp_q:ego_x"))
 })
 
 test_that("`. ~` takes the outcome from the network's focal layer", {

@@ -13,8 +13,10 @@
   - Added named arguments to formula terms, e.g. `indeg(friends, type = "ego")`
   - Added interactions of any order, e.g. `ego(age) * alter(age) * ego(tenure)`
   - Added `info$focal` as the outcome of `. ~`, and a named outcome still takes priority
-  - Added a clear error for a bar in the formula, which never reached a model,
-    pointing to the random intercepts in `control`
+  - Added random intercepts to the formula, as in `{lme4}`: `(1 | sender)`, `(1 | receiver)`,
+    `(1 | reporter)`, and `(1 | network)` set the same switches as their controls
+    (thanks @auzaheta and @RWKrause, #8)
+  - A bar never reached a model before: the grouping index it named was looked for among the layers
 - Added formula terms from goldfish, computed on another layer
   - Added `exchange()` and `recip()`, the reverse tie in another layer
   - Added `recip` on its own, or `recip()`, as the outcome's reverse tie, as goldfish reads it, with a warning

@@ -525,8 +525,8 @@ correspond to those in other packages.
 | Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
-| Group effects | random intercepts in `control` | none; a bar is only a boolean OR inside `support_constraint` | — | — | — |
-| Specification | internal: `.specify()` | `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
+| Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
+| Specification | internal: `.specify()` | the formula, or `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
 
 #### Rules
 
@@ -568,15 +568,16 @@ correspond to those in other packages.
 | `indeg(layer)`, `outdeg(layer)` | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
 | `tertius(layer, x)` | the mean of x over j's other in-neighbours | `edgecov` | — | — |
 | `tertius_diff(layer, x)` | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
-| `global(x)` | a network-level variable, in a list of networks | — | — | — |
+| `global(x)` | a network-level variable, in a list of networks; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
+| `(1 \| sender)` | a random intercept for each sender, receiver, reporter, or network | — | — | — |
 | `a:b`, `a*b` | the product, of any order | `:` and `*` | `set_interaction()` | — |
 
-Three terms still differ from goldfish:
+Two terms still differ from goldfish:
 
-- goldfish defines `sim(x)` as −|d|, where infernet uses 1 − |d| / range.
+- goldfish defines `sim(x)` as `-transformer_fn(x_i - x_j)`, with `abs` by
+  default, where infernet uses 1 − |d| / range.
 - goldfish includes ego in `tertius()` and `tertius_diff()`, where infernet
   reads only j's other in-neighbours.
-- goldfish reads a global variable as a bare name, where infernet uses `global(x)`.
 
 #### Adding a term
 

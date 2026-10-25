@@ -44,14 +44,14 @@ test_that("net_regression handles same() on a categorical attribute", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ same(Gender), g, times = 10)
   expect_s3_class(fit, "netreg")
-  expect_true("same Gender" %in% names(fit$coefficients))
+  expect_true("same_Gender" %in% names(fit$coefficients))
 })
 
 test_that("net_regression handles diff() on a numeric attribute", {
   g <- make_weighted_net()
   fit <- net_regression(weight ~ diff(Age), g, times = 10)
   expect_s3_class(fit, "netreg")
-  expect_true("diff Age" %in% names(fit$coefficients))
+  expect_true("diff_Age" %in% names(fit$coefficients))
 })
 
 test_that("net_regression handles tertius() with mean aggregation", {

@@ -6,8 +6,8 @@ fake_netreg <- function(family = "gaussian", permute = "predictor") {
   z <- c(0.5, 0.1, 1.6, 0.9, 1.8, 0.2, 1.0, 0.8)
   fit <- stats::lm(y ~ z)
   structure(list(
-    coefficients = c("(Intercept)" = 0.1, "ego x" = 1.5),
-    t = c("(Intercept)" = 0.4, "ego x" = 3.2),
+    coefficients = c("(Intercept)" = 0.1, "ego_x" = 1.5),
+    obs = c("(Intercept)" = 0.4, "ego_x" = 3.2),
     lower = rbind(c(NA, 0.9), c(NA, 0.95)),
     larger = rbind(c(NA, 0.1), c(NA, 0.05)),
     abs = rbind(c(NA, 0.2), c(NA, 0.1)),
@@ -21,7 +21,7 @@ test_that("tidy() reads a netreg's t-based p-values", {
   x <- fake_netreg()
   out <- tidy(x)
   expect_named(out, c("term", "estimate", "statistic", "p.value"))
-  expect_equal(out$term, c("(Intercept)", "ego x"))
+  expect_equal(out$term, c("(Intercept)", "ego_x"))
   expect_equal(out$p.value, c(NA, 0.1))
   expect_equal(tidy(x, alternative = "greater")$p.value, c(NA, 0.05))
   expect_equal(tidy(x, alternative = "less")$p.value, c(NA, 0.95))

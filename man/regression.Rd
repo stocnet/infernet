@@ -29,7 +29,9 @@ receiver's category, less the first pair as the reference,
 \item \code{tie(layer, weighted = FALSE)} — another layer as a dyadic covariate,
 0/1 unless \code{weighted = TRUE}; a layer or tie attribute named on its own
 enters with its values as stored,
-\item \code{recip(layer)} — the reverse tie, j to i, in another layer,
+\item \code{exchange(layer)} — the reverse tie, j to i, in another layer;
+\code{recip(layer)} is the same, and \code{recip()}, or \code{recip} on its own,
+reads the outcome's own reverse tie, and warns,
 \item \code{indeg(layer, type = "alter", weighted = FALSE)} and
 \code{outdeg(layer, type = "alter", weighted = FALSE)} — a node's number of
 incoming or outgoing ties in another layer, for the receiver
@@ -45,7 +47,12 @@ sender's value lies from that mean, as an absolute difference,
 in a list of networks; on one network it is the intercept.
 }
 
-\code{:} and \code{*} give interactions of any order, as the product of the terms.}
+\code{:} and \code{*} give interactions of any order, as the product of the terms.
+
+A bar adds a random intercept, as in \code{{lme4}}: \code{(1 | sender)},
+\code{(1 | receiver)}, \code{(1 | reporter)} for a cognitive social structure, or
+\code{(1 | network)} for a list of networks. Each sets the same switch as its
+\verb{random_intercept_*} control. Random slopes are not supported.}
 
 \item{.data}{A manynet-consistent network (see
 \code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
@@ -147,8 +154,7 @@ computed within each report, since each reporter sees different ties.
 
 A permutation relabels the nodes, and a reporter is a node, so the senders,
 receivers, and reporters are relabelled together.
-\code{control = list(random_intercept_reporter = TRUE)} adds a random intercept
-for each reporter.
+\code{(1 | reporter)} in the formula adds a random intercept for each reporter.
 
 A person who was not asked has a report of zeros unless the network marks
 them as missing, for example with
@@ -169,8 +175,9 @@ such as one with a CSS layer, must name its outcome layer or declare one.
 
 A term built from a layer must not read the outcome's own ties, since
 permuting the outcome does not permute such a predictor with it.
-\code{tie()}, \code{recip()}, \code{indeg()}, and \code{outdeg()} refuse the outcome layer.
-\code{tertius()} and \code{tertius_diff()} without a layer read the outcome, and warn.
+\code{tie()}, \code{indeg()}, and \code{outdeg()} refuse the outcome layer.
+\code{recip()}, \code{tertius()}, and \code{tertius_diff()} without a layer read the
+outcome, and warn.
 }
 
 \examples{
