@@ -271,6 +271,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
+| `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, and the record of what was rewritten, interpreted differently, or dropped |
+| `model_formula_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
@@ -361,20 +363,22 @@ regression entry point. Its control flow is:
 
 1. Merge the user's `control` list over `.default_control()`,
    so an unnamed entry falls back to the default rather than to `NULL`.
-2. Dispatch on the input shape.
+2. Read the formula with `specify_mrqap()`, which rewrites the terms of other
+   models, drops the terms an MRQAP cannot fit, and names each one.
+3. Dispatch on the input shape.
    A single network goes to `convertToMatrixList()`, which parses the formula
    with `.specify()` and builds its matrices with `.evaluate_spec()`;
    a list of networks goes to `.prepare_list_of_graphs()`, which converts each
    network, drops the ones that are missing a predictor with a warning,
    and pools the rest.
-3. Resolve `family = "auto"` against the dependent variable
+4. Resolve `family = "auto"` against the dependent variable
    (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
    `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
    Report each resolution with `snet_info()` so that the user can describe 
    these (default) choices in a paper.
-4. Call `QAPengine()`, which parses the formula, fits the baseline model once
+5. Call `QAPengine()`, which parses the formula, fits the baseline model once
    via `fit_qap_model()`, then runs `times` permutations and aggregates them.
-5. Attach a probabilistic confusion matrix where the outcome is binary.
+6. Attach a probabilistic confusion matrix where the outcome is binary.
 
 The result is a `netreg`, with more specific classes in front of it:
 
@@ -524,7 +528,7 @@ correspond to those in other packages.
 | Model | `estimate_mrqap(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
 | Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
-| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
+| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
 | The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
 | Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
@@ -553,9 +557,26 @@ correspond to those in other packages.
   These are the product of the operands. 
   An operand with several columns, e.g. `match()`, gives one product for each.
 5. **A two-mode attribute is read on the mode of each side.**
-6. **A term a model cannot fit aborts and says why.**
-  For example, since MRQAPs rely on permutation, 
-  permuting an outcome-based predictor cannot work and will be refused.
+6. **A term a model cannot fit is dropped, and the model says why.**
+  A formula written for another model should still run here, without the terms
+  this model cannot fit, so that it does not stop the investigation.
+  `specify_mrqap()`, which `estimate_mrqap()` calls on every formula,
+  drops them with one warning that names each term and the reason,
+  and the rest is fitted.
+  It rewrites a term that has an MRQAP equivalent, such as ergm's
+  `nodematch("dept")` as `same(dept)`, and names a term that means something
+  different here, such as goldfish's `sim()`, with `snet_info()`.
+  An interaction with such a term is dropped whole.
+  `specify_dynam()` and `specify_ergm()` do the same for goldfish and ergm.
+  Each reads the formula into infernet's terms, and then writes them for its
+  model, so a new model needs one reader and one writer,
+  not a translation from each of the others.
+  For example, since MRQAPs rely on permutation,
+  goldfish's `inertia` or `trans`, which read the outcome's own ties, are dropped.
+  A formula aborts only where a name is known to no model,
+  which is probably a typing error and gets the nearest name as a suggestion,
+  where no term is left, or where a term is refused:
+  `tie()` and `indeg()` of the outcome layer would predict the outcome from itself.
 7. **A column name joins its parts with underscores.**
   The term comes first, then its layer, attribute, and category:
   `ego_age`, `indeg_friends`, `tertius_friends_age`, `match_dept_sales`,
@@ -570,26 +591,60 @@ correspond to those in other packages.
 
 #### The dictionary
 
-| infernet / goldfish | Meaning | ergm | RSiena | MoNAn |
-|---|---|---|---|---|
-| `ego(x)` | the sender's value | `nodeocov`, `nodeofactor` | `egoX` | — |
-| `alter(x)` | the receiver's value | `nodeicov`, `nodeifactor` | `altX` | `alter_covariate` |
-| `same(x)` | 1 where both share a value | `nodematch` | `sameX` | `same_covariate` |
-| `diff(x)` | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
-| `diff(x, transformer_fn = identity)` | the signed difference | `diff` | `diffX` | — |
-| `dist(x)` | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
-| `sim(x)` | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
-| `match(x)` | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
-| `mix(x)` | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
-| `tie(layer)`, or the bare name | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
-| `exchange(layer)`, `recip(layer)` | the reverse tie in another layer | `edgecov` of the transpose | — | — |
-| `recip`, `recip()` | the reverse tie in the outcome; warns, since it is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
-| `indeg(layer)`, `outdeg(layer)` | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
-| `tertius(layer, x)` | the mean of x over j's other in-neighbours | `edgecov` | — | — |
-| `tertius_diff(layer, x)` | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
-| `global(x)` | a network-level variable, in a list of networks; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
-| `(1 \| sender)` | a random intercept for each sender, receiver, reporter, or network | — | — | — |
-| `a:b`, `a*b` | the product, of any order | `:` and `*` | `set_interaction()` | — |
+The MRQAP column is what `estimate_mrqap()` does with the term:
+it **fits** it, it fits it and **warns**, it **drops** it and fits the rest,
+or it **refuses** the formula.
+The registry `.formula_terms()` holds the same for each term,
+with the goldfish, RSiena, and ergm names,
+and a test checks that every registered term has a row here.
+
+The ergm column is also what `specify_ergm()` writes each term as,
+through the term's `to_ergm` function in the registry:
+the first ergm term named, or else `edgecov` of the matrix that infernet builds.
+An undirected network reads `ego()` and `alter()` as `nodecov` or `nodefactor`.
+A term with no ergm name, or with an ergm name but no `to_ergm`,
+such as `common_sender`, is dropped.
+A cognitive social structure and a list of networks abort.
+
+| infernet / goldfish | MRQAP | Meaning | ergm | RSiena | MoNAn |
+|---|---|---|---|---|---|
+| `ego(x)` | fits | the sender's value | `nodeocov`, `nodeofactor`; `b1cov`, `b1factor` in a two-mode network | `egoX` | — |
+| `alter(x)` | fits | the receiver's value | `nodeicov`, `nodeifactor`; `b2cov`, `b2factor` in a two-mode network | `altX` | `alter_covariate` |
+| `same(x)` | fits | 1 where both share a value | `nodematch`; `edgecov` in a two-mode network | `sameX` | `same_covariate` |
+| `diff(x)` | fits | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
+| `diff(x, transformer_fn = identity)` | fits | the signed difference | `diff` | `diffX` | — |
+| `dist(x)` | warns | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
+| `sim(x)` | fits | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
+| `match(x)` | fits | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
+| `mix(x)` | fits | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
+| `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
+| `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `recip`, `recip()` | warns | the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
+| `indeg(layer)`, `outdeg(layer)` | fits; refuses the outcome layer | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
+| `tertius(layer, x)` | fits | the mean of x over j's other in-neighbours | `edgecov` | — | — |
+| `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
+| `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
+| `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
+| `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |
+| `inertia`, `inertia()` | drops | goldfish: the past events from i to j | — | — | — |
+| `trans`, `trans()` | drops | goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |
+| `cycle`, `cycle()` | drops | goldfish: the two-paths j → k → i | `ctriple`, `dgwesp(type = "ITP")` | `cycle3` | — |
+| `common_sender`, `common_sender()` | drops | goldfish: the nodes k with k → i and k → j | `dgwesp(type = "ISP")` | `gwespBF`, nearest | — |
+| `common_receiver`, `common_receiver()` | drops | goldfish: the nodes k with i → k and j → k | `dgwesp(type = "OSP")` | `gwespFB`, nearest | — |
+| `four`, `four()` | drops | goldfish: the four-cycles that a tie from i to j would close | `cycle(4)` | `cycle4` | — |
+| `triangle`, `triangle()` | drops | goldfish: the undirected triangles of the sender, in a rate model | `triangle` | — | — |
+| `node_trans`, `node_trans()` | drops | goldfish: the transitive triangles of a node | — | — | — |
+| `degree`, `degree()` | drops | goldfish: the undirected degree of the sender, in a rate model | `degree` | — | — |
+| `mixed_trans()`, `mixed_cycle()`, `mixed_common_sender()`, `mixed_common_receiver()` | drops | goldfish: a closure through two layers, `list(net1, net2)` | — | — | — |
+| `ego_alter_interaction()` | drops | goldfish: the product of the sender's and the receiver's values; write `ego(x):alter(y)` | `nodeocov(x):nodeicov(y)` | `egoXaltX` | — |
+| `size()`, `dyad()`, `alterdeg()`, `alterpop()`, `egodeg()`, `egopop()`, `intercept()`, `dyadXdiff()`, `dyadXego()`, `sizeXdiff()`, `sizeXego()` | drops | goldfish: DyNAM-i statistics of interaction groups | — | — | — |
+
+goldfish's endogenous effects read the dependent events where no network is named.
+In an MRQAP, such a term reads the outcome's own ties, which permuting the outcome
+does not permute with it, so it is dropped.
+`trans(friends)` names another layer, and goldfish would read that layer instead.
+It is also dropped for now, since its matrix is not yet built here,
+and the warning says so.
 
 Two terms still differ from goldfish:
 
@@ -603,11 +658,19 @@ Two terms still differ from goldfish:
 1. Add an entry to `.formula_terms()` in
    [R/model_formula.R](../R/model_formula.R): its `formals`, its `kind`, its
    builder, whether it accepts a two-mode network, what it does with the outcome
-   layer, and its nearest ergm term.
+   layer, its MRQAP status (`mrqap`), its nearest goldfish, RSiena, and ergm
+   terms (`goldfish`, `siena`, `ergm`), and its writer for ergm (`to_ergm`,
+   in [R/model_formula_ergm.R](../R/model_formula_ergm.R)).
+   A term whose meaning or name differs in goldfish also needs a line in
+   `.dynam_operand()` or `.interpreted_goldfish()` in
+   [R/model_specify.R](../R/model_specify.R).
+   A term of another model that MRQAP cannot fit goes in `.goldfish_terms()`
+   with `mrqap = "drops"` and a `reason`, and needs no builder.
 2. Write the builder. It takes the parsed operand and the context, and returns
    a named list of matrices: one for most terms, several for a term like
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
-3. Add a row to the dictionary above, and a test to `test-formula_terms.R` that
+3. Add a row to the dictionary above, with its MRQAP status,
+   and a test to `test-formula_terms.R` that
    checks the matrix against a value computed by hand or by a loop.
 4. Add the term to the `formula` parameter of `estimate_mrqap()`.
 
@@ -636,6 +699,8 @@ and are grouped by contract for the engine:
 | `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
+| `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, which are dropped, and how the model a formula was written for is read |
+| `test-model_specify_ergm.R` | `specify_ergm()` with a network: each term's ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |

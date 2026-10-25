@@ -22,8 +22,21 @@ test_that("a bare name is a dyadic covariate", {
 
 test_that("an unknown term or argument names what is available", {
   expect_error(.specify(y ~ egoo(age)), "not a formula term")
+  expect_error(.specify(y ~ egoo(age)), "Did you mean `ego\\(\\)`")
   expect_error(.specify(y ~ indeg(friends, kind = "ego")), "takes")
+  # A name that no model knows still aborts, as a bare name or as a term.
+  expect_error(convertToMatrixList(a ~ inertai + ego(x), formula_net(),
+                                   advise = FALSE), "not found")
+  expect_error(convertToMatrixList(a ~ trnas(b) + ego(x), formula_net(),
+                                   advise = FALSE), "Did you mean `trans\\(\\)`")
 })
+
+test_that("a term of another model is read with any of its arguments", {
+  op <- .specify(y ~ trans(friends, window = 10, transformer_fn = sqrt))$terms[[1]]$operands[[1]]
+  expect_equal(op$fn, "trans")
+  expect_equal(op$name, "friends")
+})
+
 
 test_that("a bar is a random intercept for an index the engine builds", {
   spec <- .specify(y ~ ego(age) + (1 | sender) + (1 | receiver))

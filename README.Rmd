@@ -58,7 +58,7 @@ one-mode or two-mode, and keeps missing data missing.
 See the [contributing guide](https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style)
 for how these principles translate into rules for the package.
 
-## A formula you can reuse
+## Reuseable formulas
 
 Models are specified with a formula, so the same specification can be moved
 between networks and between model types:

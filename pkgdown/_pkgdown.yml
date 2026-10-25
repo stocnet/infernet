@@ -45,6 +45,7 @@ reference:
   - title: "Regression"
     desc: "Functions for regressing networks on nodal and dyadic covariates:"
     contents:
+      - specify
       - regression
   - title: "Results"
     desc: "Functions for reporting the results of tests and regressions:"

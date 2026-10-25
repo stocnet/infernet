@@ -159,6 +159,7 @@ glance(css_model)
 \seealso{
 Other models:
 \code{\link{regression}},
+\code{\link{specify}},
 \code{\link{tests}}
 }
 \concept{models}

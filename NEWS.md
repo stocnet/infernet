@@ -1,5 +1,20 @@
 # infernet 0.5.0
 
+## Package
+
+- Updated CONTRIBUTING's formula dictionary with an MRQAP column and goldfish's effects
+
+## Specification
+
+- Added `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()` to move a formula between models
+  - Reads the model a formula is for from `input =`, the formula's class, or its names
+  - Rewrites each term with an equivalent, e.g. `nodematch("dept")` as `same(dept)`
+  - Names each term that means something different, e.g. goldfish's `sim()`
+  - Drops each term the model cannot fit, with one warning naming each
+  - Aborts only where no term is left to fit
+  - `estimate_mrqap()` reads every formula with `specify_mrqap()`
+  - `specify_ergm()` with `.data` writes other terms as `edgecov()` of infernet's matrix
+
 ## Regression
 
 - Renamed `net_regression()` to `estimate_mrqap()` to match other stocnet packages
