@@ -5,6 +5,9 @@
 \alias{specify_mrqap}
 \alias{specify_dynam}
 \alias{specify_ergm}
+\alias{tidy.mrqap_formula}
+\alias{tidy.dynam_formula}
+\alias{tidy.ergm_formula}
 \title{Specify a model from a formula written for many models}
 \usage{
 specify_mrqap(formula, .data = NULL, input = NULL)
@@ -12,26 +15,38 @@ specify_mrqap(formula, .data = NULL, input = NULL)
 specify_dynam(formula, .data = NULL, input = NULL)
 
 specify_ergm(formula, .data = NULL, input = NULL)
+
+\method{tidy}{mrqap_formula}(x, .data = NULL, ...)
+
+\method{tidy}{dynam_formula}(x, ...)
+
+\method{tidy}{ergm_formula}(x, ...)
 }
 \arguments{
 \item{formula}{A formula written for an MRQAP, goldfish, or ergm.}
 
 \item{.data}{Optionally, the network the formula is for.
 With it, a bare name that is a layer of the network stays a layer.
+In \code{tidy()} of an MRQAP formula, the network to build the columns from.
 \code{specify_ergm()} needs it to write the terms that ergm reads as
 \code{edgecov()} of a matrix, and drops them without it.}
 
 \item{input}{The model the formula was written for: \code{"mrqap"}, \code{"dynam"},
 \code{"rem"}, or \code{"ergm"}. \code{NULL}, the default, reads it from the class of the
 formula, or else from the names in the formula.}
+
+\item{x}{A formula returned by a \verb{specify_*()} function.}
+
+\item{...}{Not used.}
 }
 \value{
 A formula of class \code{c("mrqap_formula", "formula")},
 \code{c("dynam_formula", "formula")}, or \code{c("ergm_formula", "formula")}.
-Its \code{input} attribute names the model it was read from, and its \code{changes}
-attribute is a data frame of each term that was rewritten, interpreted
-differently, or dropped, with what it became and why. Printing the
-formula lists them.
+Its \code{input} attribute names the model it was read from, and its \code{record}
+attribute holds what the model makes of each term.
+Printing the formula lists them, and \code{tidy()} returns them as a tibble,
+with the columns \code{term}, \code{status}, \code{as}, and \code{reason}, and for an MRQAP
+also \code{columns}.
 }
 \description{
 These functions read a formula, whichever model it was written for, and
@@ -53,6 +68,27 @@ A formula aborts only where no term is left to fit.
 A name that no model knows is left for the fitting function, which then
 aborts and suggests the nearest name.
 }
+\section{What each model makes of each term}{
+
+\code{tidy()} of the result has one row for each term of the formula, and
+fits nothing. Its \code{status} is what the model makes of the term:
+\itemize{
+\item \code{"fits"}: the model fits the term as it is written;
+\item \code{"adapted"}: the term is rewritten as its equivalent in the model, in \code{as};
+\item \code{"interpreted"}: the model has a term of the same name that it defines
+differently, as \code{reason} says;
+\item \code{"warns"}: the model fits the term, but with a warning, as \code{reason} says;
+\item \code{"drops"}: the model cannot fit the term, so it is left out, and the rest
+is fitted;
+\item \code{"refuses"}: the model aborts, as \code{reason} says.
+}
+
+An MRQAP warns for a term that reads the outcome's own ties, such as
+\code{recip}, and refuses \code{tie()}, \code{indeg()}, and \code{outdeg()} of the outcome
+layer. For an MRQAP, \code{tidy()} with \code{.data} also builds each term and names
+its \code{columns}, as \code{\link[=estimate_mrqap]{estimate_mrqap()}} names them.
+}
+
 \section{Reading the model a formula was written for}{
 
 The model a formula was written for is read, in order, from \code{input},
@@ -139,11 +175,14 @@ specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
 f <- suppressWarnings(
   specify_mrqap(advice ~ inertia + recip + trans + ego(age)))
 f
-attr(f, "changes")
 # An MRQAP formula, written for goldfish
 specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
 # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
+# Each term, and what the model makes of it
+tidy(f)
+g <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends), ison_hightech)
+tidy(g, ison_hightech)
 }
 \seealso{
 Other models:

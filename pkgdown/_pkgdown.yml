@@ -42,10 +42,13 @@ reference:
     desc: "Functions for testing network statistics against a null distribution:"
     contents:
       - starts_with("test")
+  - title: "Formulas"
+    desc: "Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:"
+    contents:
+      - specify
   - title: "Regression"
     desc: "Functions for regressing networks on nodal and dyadic covariates:"
     contents:
-      - specify
       - regression
   - title: "Results"
     desc: "Functions for reporting the results of tests and regressions:"

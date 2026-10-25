@@ -271,7 +271,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
-| `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, and the record of what was rewritten, interpreted differently, or dropped |
+| `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it |
 | `model_formula_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
@@ -594,9 +594,20 @@ correspond to those in other packages.
 The MRQAP column is what `estimate_mrqap()` does with the term:
 it **fits** it, it fits it and **warns**, it **drops** it and fits the rest,
 or it **refuses** the formula.
-The registry `.formula_terms()` holds the same for each term,
-with the goldfish, RSiena, and ergm names,
+The registry `.formula_terms()` holds the same for each term (`mrqap`),
+with the term's name in the other models,
 and a test checks that every registered term has a row here.
+The registry names each model, not its package:
+`dynam` for a DyNAM or REM in goldfish, `saom` for RSiena, and `ergm`.
+
+Each `specify_*()` function records what its model makes of each term of a
+formula, and `tidy()` returns that record.
+The statuses are one vocabulary, `.statuses()`, for every model:
+**fits**, **adapted** (rewritten as the model's equivalent),
+**interpreted** (kept, but the model defines it differently),
+**warns**, **drops**, and **refuses**.
+`test-model_specify_record.R` holds the expected status of every registered
+term in every model.
 
 The ergm column is also what `specify_ergm()` writes each term as,
 through the term's `to_ergm` function in the registry:
@@ -606,7 +617,7 @@ A term with no ergm name, or with an ergm name but no `to_ergm`,
 such as `common_sender`, is dropped.
 A cognitive social structure and a list of networks abort.
 
-| infernet / goldfish | MRQAP | Meaning | ergm | RSiena | MoNAn |
+| infernet / goldfish | MRQAP | Meaning | ERGM (ergm) | SAOM (RSiena) | MoNAn |
 |---|---|---|---|---|---|
 | `ego(x)` | fits | the sender's value | `nodeocov`, `nodeofactor`; `b1cov`, `b1factor` in a two-mode network | `egoX` | — |
 | `alter(x)` | fits | the receiver's value | `nodeicov`, `nodeifactor`; `b2cov`, `b2factor` in a two-mode network | `altX` | `alter_covariate` |
@@ -658,19 +669,21 @@ Two terms still differ from goldfish:
 1. Add an entry to `.formula_terms()` in
    [R/model_formula.R](../R/model_formula.R): its `formals`, its `kind`, its
    builder, whether it accepts a two-mode network, what it does with the outcome
-   layer, its MRQAP status (`mrqap`), its nearest goldfish, RSiena, and ergm
-   terms (`goldfish`, `siena`, `ergm`), and its writer for ergm (`to_ergm`,
+   layer, its MRQAP status (`mrqap`, with a `reason` where it warns or drops),
+   its nearest DyNAM, SAOM, and ERGM terms (`dynam`, `saom`, `ergm`),
+   and its writer for ergm (`to_ergm`,
    in [R/model_formula_ergm.R](../R/model_formula_ergm.R)).
    A term whose meaning or name differs in goldfish also needs a line in
-   `.dynam_operand()` or `.interpreted_goldfish()` in
+   `.dynam_operand()` or `.interpreted_dynam()` in
    [R/model_specify.R](../R/model_specify.R).
-   A term of another model that MRQAP cannot fit goes in `.goldfish_terms()`
+   A term of another model that MRQAP cannot fit goes in `.dynam_terms()`
    with `mrqap = "drops"` and a `reason`, and needs no builder.
 2. Write the builder. It takes the parsed operand and the context, and returns
    a named list of matrices: one for most terms, several for a term like
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
 3. Add a row to the dictionary above, with its MRQAP status,
-   and a test to `test-formula_terms.R` that
+   a row to `expected_status` in `test-model_specify_record.R`, with its
+   status in each model, and a test to `test-formula_terms.R` that
    checks the matrix against a value computed by hand or by a loop.
 4. Add the term to the `formula` parameter of `estimate_mrqap()`.
 
@@ -700,6 +713,7 @@ and are grouped by contract for the engine:
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, which are dropped, and how the model a formula was written for is read |
+| `test-model_specify_record.R` | the status each model gives each registered term, the record of each term, `tidy()` and the columns it names, and formulas from goldfish's documentation |
 | `test-model_specify_ergm.R` | `specify_ergm()` with a network: each term's ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |

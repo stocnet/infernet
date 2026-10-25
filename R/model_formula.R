@@ -32,9 +32,12 @@
 # read by several (see "Formula conventions" in CONTRIBUTING.md). `mrqap` is
 # what `estimate_mrqap()` does with it: "fits", "warns" where it fits but the
 # user should know something, "drops" where the rest of the model can still be
-# fitted without it, or "refuses". A dropped term has a `reason`. `goldfish`,
-# `siena`, and `ergm` name the equivalent term in each, or the nearest, and are
-# NA where there is none. `to_ergm` converts the term for `specify_ergm()`,
+# fitted without it, or "refuses". A term that warns or is dropped has a
+# `reason`. These are the statuses of `.statuses()`, which `specify_*()`
+# records for each term. The other models are named for the model rather than
+# the package: `dynam` (a DyNAM or REM in goldfish), `saom` (RSiena), and
+# `ergm` name the equivalent term in each, or the nearest, and are NA where
+# there is none. `to_ergm` converts the term for `specify_ergm()`,
 # in model_formula_ergm.R: to the named ergm term, or to `edgecov()` of the
 # matrix `build` makes. A term with an `ergm` name and no `to_ergm` is not yet
 # converted.
@@ -44,93 +47,95 @@
   c(list(
     ego = list(
       formals = alist(x = ), kind = "attribute", build = .build_ego,
-      mrqap = "fits", goldfish = "ego", siena = "egoX",
+      mrqap = "fits", dynam = "ego", saom = "egoX",
       ergm = "nodeocov, or nodeofactor for a categorical attribute",
       to_ergm = .ergm_ego),
     alter = list(
       formals = alist(x = ), kind = "attribute", build = .build_alter,
-      mrqap = "fits", goldfish = "alter", siena = "altX",
+      mrqap = "fits", dynam = "alter", saom = "altX",
       ergm = "nodeicov, or nodeifactor for a categorical attribute",
       to_ergm = .ergm_alter),
     same = list(
       formals = alist(x = ), kind = "attribute", build = .build_same,
-      mrqap = "fits", goldfish = "same", siena = "sameX", ergm = "nodematch",
+      mrqap = "fits", dynam = "same", saom = "sameX", ergm = "nodematch",
       to_ergm = .ergm_same),
     diff = list(
       formals = alist(x = , transformer_fn = abs), kind = "attribute",
-      build = .build_diff, mrqap = "fits", goldfish = "diff",
-      siena = "absDiffX, or diffX with transformer_fn = identity",
+      build = .build_diff, mrqap = "fits", dynam = "diff",
+      saom = "absDiffX, or diffX with transformer_fn = identity",
       ergm = "absdiff, or diff with transformer_fn = identity",
       to_ergm = .ergm_diff),
     dist = list(
       formals = alist(x = ), kind = "attribute", build = .build_dist,
-      mrqap = "warns", goldfish = "diff", siena = "absDiffX", ergm = "absdiff",
+      mrqap = "warns", reason = "is a deprecated alias of diff()",
+      dynam = "diff", saom = "absDiffX", ergm = "absdiff",
       to_ergm = .ergm_dist),
     sim = list(
       formals = alist(x = ), kind = "attribute", build = .build_sim,
-      mrqap = "fits", goldfish = "sim, as a negative difference",
-      siena = "simX, centred", ergm = "edgecov",
+      mrqap = "fits", dynam = "sim, as a negative difference",
+      saom = "simX, centred", ergm = "edgecov",
       to_ergm = .ergm_built),
     match = list(
       formals = alist(x = ), kind = "attribute", build = .build_match,
       twomode = FALSE, hint = "Use {.fn mix} for a two-mode network.",
-      mrqap = "fits", goldfish = NA_character_, siena = NA_character_,
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = "nodematch with diff = TRUE",
       to_ergm = .ergm_match),
     mix = list(
       formals = alist(x = ), kind = "attribute", build = .build_mix,
-      mrqap = "fits", goldfish = NA_character_, siena = NA_character_,
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = "nodemix",
       to_ergm = .ergm_mix),
     tie = list(
       formals = alist(layer = , weighted = FALSE), kind = "layer",
       build = .build_tie, outcome = "refuse",
-      mrqap = "fits", goldfish = "tie", siena = "X", ergm = "edgecov",
+      mrqap = "fits", dynam = "tie", saom = "X", ergm = "edgecov",
       to_ergm = .ergm_built),
     recip = list(
       formals = alist(layer = ), kind = "layer", build = .build_recip,
       twomode = FALSE, bare = TRUE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
-      outcome = "warn", mrqap = "warns", goldfish = "recip", siena = "recip",
+      outcome = "warn", mrqap = "warns", reason = .outcome_reason(),
+      dynam = "recip", saom = "recip",
       ergm = "mutual, or edgecov of the transpose",
       to_ergm = .ergm_recip),
     exchange = list(
       formals = alist(layer = ), kind = "layer", build = .build_recip,
       twomode = FALSE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
-      outcome = "warn", mrqap = "fits", goldfish = "recip with a network",
-      siena = NA_character_, ergm = "edgecov of the transpose",
+      outcome = "warn", mrqap = "fits", dynam = "recip with a network",
+      saom = NA_character_, ergm = "edgecov of the transpose",
       to_ergm = .ergm_recip),
     indeg = list(
       formals = alist(layer = , type = "alter", weighted = FALSE),
       kind = "layer", build = .build_indeg, outcome = "refuse",
-      mrqap = "fits", goldfish = "indeg", siena = NA_character_,
+      mrqap = "fits", dynam = "indeg", saom = NA_character_,
       ergm = "edgecov, or nodeicov of the degree",
       to_ergm = .ergm_built),
     outdeg = list(
       formals = alist(layer = , type = "alter", weighted = FALSE),
       kind = "layer", build = .build_outdeg, outcome = "refuse",
-      mrqap = "fits", goldfish = "outdeg", siena = NA_character_,
+      mrqap = "fits", dynam = "outdeg", saom = NA_character_,
       ergm = "edgecov, or nodeocov of the degree",
       to_ergm = .ergm_built),
     tertius = list(
       formals = alist(layer = , x = , summarizer_fn = "mean"),
       kind = "tertius", build = .build_tertius, outcome = "warn",
-      mrqap = "fits", goldfish = "tertius, with ego", siena = NA_character_,
+      mrqap = "fits", dynam = "tertius, with ego", saom = NA_character_,
       ergm = "edgecov",
       to_ergm = .ergm_built),
     tertius_diff = list(
       formals = alist(layer = , x = , summarizer_fn = "mean"),
       kind = "tertius", build = .build_tertius_diff, outcome = "warn",
-      mrqap = "fits", goldfish = "tertius_diff, with ego", siena = NA_character_,
+      mrqap = "fits", dynam = "tertius_diff, with ego", saom = NA_character_,
       ergm = "edgecov",
       to_ergm = .ergm_built),
     global = list(
       formals = alist(x = ), kind = "global", build = .build_global,
-      mrqap = "fits", goldfish = "global", siena = NA_character_,
+      mrqap = "fits", dynam = "global", saom = NA_character_,
       ergm = NA_character_)
   ),
-  .goldfish_terms())
+  .dynam_terms())
 }
 
 # goldfish's effects that `estimate_mrqap()` cannot build, so that a formula
@@ -142,21 +147,21 @@
 # is accepted, since none is read.
 #' @keywords internal
 #' @noRd
-.goldfish_terms <- function() {
-  endogenous <- function(siena, ergm, to_ergm = NULL, kind = "endogenous") {
+.dynam_terms <- function() {
+  endogenous <- function(saom, ergm, to_ergm = NULL, kind = "endogenous") {
     list(formals = alist(layer = , ... = ), kind = kind, bare = TRUE,
          mrqap = "drops", reason = "depends on the outcome's own ties",
-         siena = siena, ergm = ergm, to_ergm = to_ergm)
+         saom = saom, ergm = ergm, to_ergm = to_ergm)
   }
   mixed <- function(ergm = NA_character_) {
     list(formals = alist(layer = , ... = ), kind = "mixed",
          mrqap = "drops", reason = "closes a path through two layers, which is not yet built here",
-         siena = NA_character_, ergm = ergm)
+         saom = NA_character_, ergm = ergm)
   }
   groups <- function() {
     list(formals = alist(... = ), kind = "groups", bare = TRUE,
          mrqap = "drops", reason = "is defined on the groups of a DyNAM-i",
-         siena = NA_character_, ergm = NA_character_)
+         saom = NA_character_, ergm = NA_character_)
   }
   terms <- list(
     inertia         = endogenous(NA_character_, NA_character_),
@@ -179,13 +184,13 @@
     ego_alter_interaction = list(
       formals = alist(x = , ... = ), kind = "interaction",
       mrqap = "drops", reason = "is written {.code ego(x):alter(y)} here",
-      siena = "egoXaltX", ergm = "nodeocov(x):nodeicov(y)"),
+      saom = "egoXaltX", ergm = "nodeocov(x):nodeicov(y)"),
     alterdeg  = groups(), alterpop = groups(), egodeg = groups(),
     egopop    = groups(), dyad     = groups(), dyadXdiff = groups(),
     dyadXego  = groups(), size     = groups(), sizeXdiff = groups(),
     sizeXego  = groups(), intercept = groups()
   )
-  for (nm in names(terms)) terms[[nm]]$goldfish <- nm
+  for (nm in names(terms)) terms[[nm]]$dynam <- nm
   terms
 }
 
@@ -749,6 +754,21 @@
         i = "It would predict the outcome's ties from those same ties. Name another layer."))
   }
   .warn_outcome_ties(op$fn, .outcome_example(op$fn))
+}
+
+#' @keywords internal
+#' @noRd
+.outcome_reason <- function() {
+  "reads the outcome's own ties, which permuting the outcome does not permute with it"
+}
+
+# What a model does with a term: the registry's `mrqap` values, and what a
+# `specify_*()` function records where it rewrites a term ("adapted") or keeps a
+# term that the model defines differently ("interpreted").
+#' @keywords internal
+#' @noRd
+.statuses <- function() {
+  c("fits", "adapted", "interpreted", "warns", "drops", "refuses")
 }
 
 #' @keywords internal

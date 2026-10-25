@@ -306,15 +306,15 @@ test_that("every registered term says what each model makes of it", {
   for (term in names(registry)) {
     entry <- registry[[term]]
     expect_true(entry$mrqap %in% c("fits", "warns", "drops", "refuses"), info = term)
-    expect_true(all(c("goldfish", "siena", "ergm") %in% names(entry)), info = term)
+    expect_true(all(c("dynam", "saom", "ergm") %in% names(entry)), info = term)
     if (entry$mrqap == "drops") {
       expect_true(is.character(entry$reason) && nzchar(entry$reason), info = term)
     } else {
       expect_true(is.function(entry$build), info = term)
     }
   }
-  expect_equal(registry$trans$goldfish, "trans")
-  expect_equal(registry$trans$siena, "transTrip")
+  expect_equal(registry$trans$dynam, "trans")
+  expect_equal(registry$trans$saom, "transTrip")
 })
 
 # ---- the registry and the dictionary -----------------------------------------

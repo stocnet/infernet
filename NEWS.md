@@ -18,6 +18,10 @@
   - Aborts only where no term is left to fit
   - `estimate_mrqap()` reads every formula with `specify_mrqap()`
   - `specify_ergm()` with `.data` writes other terms as `edgecov()` of infernet's matrix
+  - Records what the model makes of every term: it fits, adapts, interprets, warns about, drops, or refuses it
+  - Added `tidy()` for the result, one row for each term, which fits nothing
+  - `tidy()` of an MRQAP formula with `.data` names the columns `estimate_mrqap()` builds
+- Named the other models in the term registry for the model: `dynam`, `saom`, and `ergm`
 
 ## Regression
 

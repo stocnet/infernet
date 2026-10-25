@@ -2,7 +2,7 @@
 # These tests hold what each model's terms become, which are dropped, and how
 # the model a formula was written for is read.
 
-changes_of <- function(f) attr(f, "changes")
+record_of <- function(f) attr(f, "record")
 
 test_that("the model a formula was written for is read from its names", {
   expect_equal(attr(specify_mrqap(y ~ ego(age) + friends), "input"), "mrqap")
@@ -38,9 +38,9 @@ test_that("ergm terms become their infernet equivalents", {
                paste("recip + ego(age) + alter(age) + ego(tenure) + alter(tenure) +",
                      "same(dept) + match(level) + mix(dept) + diff(age) +",
                      "diff(tenure, transformer_fn = identity) + friends"))
-  ch <- changes_of(f)
+  ch <- record_of(f)
   expect_equal(ch$as[ch$term == "edges"], "")
-  expect_equal(ch$action[ch$term == "edges"], "adapted")
+  expect_equal(ch$status[ch$term == "edges"], "adapted")
 })
 
 test_that("an ergm interaction is read operand by operand", {
@@ -58,7 +58,7 @@ test_that("ergm terms of the outcome's own structure and node fixed effects are 
     y ~ edges + ttriple + gwesp(0.5, fixed = TRUE) + sender + nodeocov("age")),
     "Dropped 3 terms")
   expect_equal(deparse(res[[3]]), "ego(age)")
-  ch <- changes_of(res)
+  ch <- record_of(res)
   expect_match(ch$reason[ch$term == "sender"], "(1 | sender)", fixed = TRUE)
 })
 
@@ -84,7 +84,7 @@ test_that("goldfish terms that read the outcome are dropped, in one warning", {
                                     formula_net()),
                  "Dropped 3 terms")
   expect_equal(deparse(f[[3]]), "ego(x)")
-  ch <- changes_of(f)
+  ch <- record_of(f)
   expect_equal(ch$reason[ch$term == "inertia"], "depends on the outcome's own ties")
   expect_equal(ch$reason[ch$term == "cycle(a)"], "depends on the outcome's own ties")
   expect_match(ch$reason[ch$term == "trans(b)"], "reads another layer")
@@ -98,8 +98,8 @@ test_that("an interaction with a dropped term is dropped whole", {
 
 test_that("goldfish terms that mean something different here are named", {
   f <- suppressMessages(suppressWarnings(specify_mrqap(a ~ inertia + sim(x) + tertius(b, x))))
-  ch <- changes_of(f)
-  expect_setequal(ch$term[ch$action == "interpreted"], c("sim(x)", "tertius(b, x)"))
+  ch <- record_of(f)
+  expect_setequal(ch$term[ch$status == "interpreted"], c("sim(x)", "tertius(b, x)"))
   # Kept as they are.
   expect_equal(deparse(f[[3]]), "sim(x) + tertius(b, x)")
   old <- options(snet_verbosity = "verbose")
@@ -111,7 +111,7 @@ test_that("a bare name that is a layer of the network stays a layer", {
   g <- manynet::add_tie_attribute(formula_net(), "size", 1)
   f <- specify_mrqap(a ~ size + ego(x), g)
   expect_equal(deparse(f[[3]]), "size + ego(x)")
-  expect_length(changes_of(f)$term, 0)
+  expect_equal(record_of(f)$status, c("fits", "fits"))
 })
 
 test_that("a formula with nothing left to fit aborts and names each term", {
@@ -145,17 +145,17 @@ test_that("an MRQAP formula is written for goldfish", {
   expect_equal(.deparsed(f[[3]]),
                paste("ego(x) + same(grp) + tie(b, weighted = TRUE) + recip(b) +",
                      "diff(x)"))
-  ch <- changes_of(f)
-  expect_setequal(ch$term[ch$action == "dropped"], c("match(grp)", "(1 | sender)"))
+  ch <- record_of(f)
+  expect_setequal(ch$term[ch$status == "drops"], c("match(grp)", "(1 | sender)"))
 })
 
 test_that("goldfish's own terms pass through, and those that differ are named", {
   f <- suppressMessages(specify_dynam(a ~ inertia + trans(b) + sim(x) + tertius(b, x)))
   expect_equal(.deparsed(f[[3]]), "inertia + trans(b) + sim(x) + tertius(b, x)")
   # Written for goldfish already, so nothing means anything different.
-  expect_equal(nrow(changes_of(f)), 0)
+  expect_equal(unique(record_of(f)$status), "fits")
   f <- specify_dynam(a ~ sim(x) + ego(x))
-  expect_equal(changes_of(f)$action, "interpreted")
+  expect_equal(record_of(f)$status, c("interpreted", "fits"))
 })
 
 test_that("an ergm formula is written for goldfish", {
@@ -188,14 +188,15 @@ test_that("without the network, each term ergm names is written by name", {
 test_that("without the network, a term that needs its matrix is dropped", {
   expect_warning(f <- suppressMessages(specify_ergm(a ~ ego(x) + sim(x) + indeg(b))),
                  "Dropped 2 terms that ergm cannot fit")
-  expect_match(changes_of(f)$reason[changes_of(f)$term == "sim(x)"], "needs .data",
+  expect_match(record_of(f)$reason[record_of(f)$term == "sim(x)"], "needs .data",
                fixed = TRUE)
 })
 
 test_that("an ergm formula is returned as it is", {
   f <- specify_ergm(net ~ edges + mutual + gwesp(0.5, fixed = TRUE))
   expect_equal(.deparsed(f[[3]]), "edges + mutual + gwesp(0.5, fixed = TRUE)")
-  expect_equal(nrow(changes_of(f)), 0)
+  expect_equal(record_of(f)$term, c("edges", "mutual", "gwesp(0.5, fixed = TRUE)"))
+  expect_equal(unique(record_of(f)$status), "fits")
 })
 
 test_that("each specify function reads the class the others give", {

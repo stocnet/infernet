@@ -29,6 +29,24 @@
 #' A name that no model knows is left for the fitting function, which then
 #' aborts and suggests the nearest name.
 #'
+#' @section What each model makes of each term:
+#'   `tidy()` of the result has one row for each term of the formula, and
+#'   fits nothing. Its `status` is what the model makes of the term:
+#'
+#'   - `"fits"`: the model fits the term as it is written;
+#'   - `"adapted"`: the term is rewritten as its equivalent in the model, in `as`;
+#'   - `"interpreted"`: the model has a term of the same name that it defines
+#'     differently, as `reason` says;
+#'   - `"warns"`: the model fits the term, but with a warning, as `reason` says;
+#'   - `"drops"`: the model cannot fit the term, so it is left out, and the rest
+#'     is fitted;
+#'   - `"refuses"`: the model aborts, as `reason` says.
+#'
+#'   An MRQAP warns for a term that reads the outcome's own ties, such as
+#'   `recip`, and refuses `tie()`, `indeg()`, and `outdeg()` of the outcome
+#'   layer. For an MRQAP, `tidy()` with `.data` also builds each term and names
+#'   its `columns`, as [estimate_mrqap()] names them.
+#'
 #' @section Reading the model a formula was written for:
 #'   The model a formula was written for is read, in order, from `input`,
 #'   from the class of the formula, such as `"ergm_formula"`, or from the
@@ -104,6 +122,7 @@
 #' @param formula A formula written for an MRQAP, goldfish, or ergm.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
+#'   In `tidy()` of an MRQAP formula, the network to build the columns from.
 #'   `specify_ergm()` needs it to write the terms that ergm reads as
 #'   `edgecov()` of a matrix, and drops them without it.
 #' @param input The model the formula was written for: `"mrqap"`, `"dynam"`,
@@ -111,10 +130,11 @@
 #'   formula, or else from the names in the formula.
 #' @return A formula of class `c("mrqap_formula", "formula")`,
 #'   `c("dynam_formula", "formula")`, or `c("ergm_formula", "formula")`.
-#'   Its `input` attribute names the model it was read from, and its `changes`
-#'   attribute is a data frame of each term that was rewritten, interpreted
-#'   differently, or dropped, with what it became and why. Printing the
-#'   formula lists them.
+#'   Its `input` attribute names the model it was read from, and its `record`
+#'   attribute holds what the model makes of each term.
+#'   Printing the formula lists them, and `tidy()` returns them as a tibble,
+#'   with the columns `term`, `status`, `as`, and `reason`, and for an MRQAP
+#'   also `columns`.
 #' @name specify
 #' @family models
 NULL
@@ -127,30 +147,29 @@ NULL
 #' f <- suppressWarnings(
 #'   specify_mrqap(advice ~ inertia + recip + trans + ego(age)))
 #' f
-#' attr(f, "changes")
 #' @export
 specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   if (inherits(formula, "mrqap_formula")) return(formula)
   read <- .read_formula(formula, .data, input)
-  changes <- read$changes
+  record <- read$record
   labels <- read$labels
 
   native <- labels %in% read$native
-  changes <- rbind(changes, .change(
-    labels[native], rep("", sum(native)), rep("dropped", sum(native)),
+  record <- rbind(record, .record_row(
+    labels[native], rep("", sum(native)), rep("drops", sum(native)),
     vapply(labels[native], .ergm_native_reason, "", USE.NAMES = FALSE)))
   labels <- labels[!native]
 
   lhs <- .network_lhs(read)
   if (!identical(lhs, read$lhs)) {
-    changes <- rbind(changes, .change(
+    record <- rbind(record, .record_row(
       .deparsed(read$lhs), ".", "adapted",
       "names the network, so the outcome is the network's focal layer or its ties"))
   }
-  changes <- rbind(changes, .interpreted_goldfish(labels, read$input, "mrqap"))
+  record <- rbind(record, .interpreted_dynam(labels, read$input, "mrqap"))
   dropped <- .drop_labels(labels, read$ctx)
-  changes <- rbind(changes, dropped$changes)
-  .finish_formula(lhs, dropped$labels, read$bars, changes, read, "mrqap")
+  record <- rbind(record, dropped$record)
+  .finish_formula(lhs, dropped$labels, read$bars, record, read, "mrqap")
 }
 
 #' @rdname specify
@@ -161,16 +180,16 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
 specify_dynam <- function(formula, .data = NULL, input = NULL) {
   if (inherits(formula, "dynam_formula")) return(formula)
   read <- .read_formula(formula, .data, input)
-  changes <- read$changes
+  record <- read$record
   registry <- .formula_terms()
   out <- character(0)
   for (lab in read$labels) {
     if (lab %in% read$native) {
       new <- .dynam_from_ergm(lab)
       if (is.null(new)) {
-        changes <- rbind(changes, .change(lab, "", "dropped", "has no goldfish term"))
+        record <- rbind(record, .record_row(lab, "", "drops", "has no goldfish term"))
       } else {
-        changes <- rbind(changes, .change(lab, new, "adapted", ""))
+        record <- rbind(record, .record_row(lab, new, "adapted", ""))
         out <- c(out, new)
       }
       next
@@ -179,19 +198,19 @@ specify_dynam <- function(formula, .data = NULL, input = NULL) {
                   registry = registry, ctx = read$ctx)
     reason <- unlist(lapply(ops, `[[`, "reason"))
     if (length(reason) > 0) {
-      changes <- rbind(changes, .change(lab, "", "dropped", reason[1]))
+      record <- rbind(record, .record_row(lab, "", "drops", reason[1]))
       next
     }
     new <- .deparsed(Reduce(function(a, b) call(":", a, b), lapply(ops, `[[`, "expr")))
-    if (!identical(new, lab)) changes <- rbind(changes, .change(lab, new, "adapted", ""))
+    if (!identical(new, lab)) record <- rbind(record, .record_row(lab, new, "adapted", ""))
     out <- c(out, new)
   }
   for (bar in read$bars) {
-    changes <- rbind(changes, .change(paste0("(", bar, ")"), "", "dropped",
+    record <- rbind(record, .record_row(paste0("(", bar, ")"), "", "drops",
                                       "is a random intercept, which goldfish does not fit"))
   }
-  changes <- rbind(changes, .interpreted_goldfish(out, read$input, "dynam"))
-  .finish_formula(read$lhs, unique(out), character(0), changes, read, "dynam")
+  record <- rbind(record, .interpreted_dynam(out, read$input, "dynam"))
+  .finish_formula(read$lhs, unique(out), character(0), record, read, "dynam")
 }
 
 #' @rdname specify
@@ -210,12 +229,12 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   # A formula written for ergm is already one.
   if (read$input == "ergm") {
     return(structure(formula, class = c("ergm_formula", "formula"),
-                     input = "ergm", changes = .no_changes()))
+                     input = "ergm", record = .complete_record(.no_record(), read, "ergm")))
   }
-  changes <- read$changes
+  record <- read$record
   native <- intersect(read$labels, read$native)
   labels <- setdiff(read$labels, native)
-  changes <- rbind(changes, .interpreted_goldfish(labels, read$input, "ergm"))
+  record <- rbind(record, .interpreted_dynam(labels, read$input, "ergm"))
 
   lhs <- .network_lhs(read)
   ctx <- NULL
@@ -251,12 +270,12 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
     }
     for (x in converted) {
       if (!is.null(x$reason)) {
-        changes <- rbind(changes, .change(x$label, "", "dropped", x$reason))
+        record <- rbind(record, .record_row(x$label, "", "drops", x$reason))
         next
       }
       new <- paste(x$terms, collapse = " + ")
       if (!identical(new, x$label)) {
-        changes <- rbind(changes, .change(x$label, new, "adapted", ""))
+        record <- rbind(record, .record_row(x$label, new, "adapted", ""))
       }
       terms <- c(terms, x$terms)
       covariates <- c(covariates, x$covariates)
@@ -266,12 +285,12 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   for (bar in read$bars) {
     group <- trimws(sub(".*\\|", "", bar))
     if (group %in% c("sender", "receiver")) {
-      changes <- rbind(changes, .change(
+      record <- rbind(record, .record_row(
         paste0("(", bar, ")"), group, "adapted",
         "a fixed effect for each node, the nearest ergm has to a random intercept"))
       terms <- c(terms, group)
     } else {
-      changes <- rbind(changes, .change(paste0("(", bar, ")"), "", "dropped",
+      record <- rbind(record, .record_row(paste0("(", bar, ")"), "", "drops",
                                         "is a random intercept, which ergm does not fit"))
     }
   }
@@ -280,7 +299,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   if (length(repeated) > 0) {
     manynet::snet_info("Kept one copy of {.code {repeated}}, which several terms give on an undirected network.")
   }
-  if (!any(c("edges", "density") %in% changes$term)) {
+  if (!any(c("edges", "density") %in% record$term)) {
     manynet::snet_info("Adding {.code edges}, ergm's intercept.")
   }
 
@@ -297,7 +316,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
            envir = env)
     lhs <- as.name(ctx$out$label)
   }
-  .finish_formula(lhs, c("edges", unique(terms), native), character(0), changes,
+  .finish_formula(lhs, c("edges", unique(terms), native), character(0), record,
                   read, "ergm", env = env)
 }
 
@@ -310,22 +329,88 @@ print.dynam_formula <- function(x, ...) .print_specified(x)
 #' @export
 print.ergm_formula <- function(x, ...) .print_specified(x)
 
+#' @rdname specify
+#' @param x A formula returned by a `specify_*()` function.
+#' @param ... Not used.
+#' @examples
+#' # Each term, and what the model makes of it
+#' tidy(f)
+#' g <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends), ison_hightech)
+#' tidy(g, ison_hightech)
+#' @export
+tidy.mrqap_formula <- function(x, .data = NULL, ...) {
+  out <- .tidy_specified(x)
+  out$columns <- rep(list(character(0)), nrow(out))
+  if (is.null(.data)) return(out)
+  .record_columns(x, out, .data)
+}
+
+#' @rdname specify
+#' @export
+tidy.dynam_formula <- function(x, ...) .tidy_specified(x)
+
+#' @rdname specify
+#' @export
+tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
+
+#' @keywords internal
+#' @noRd
+.tidy_specified <- function(x) {
+  record <- attr(x, "record")
+  if (is.null(record)) record <- .no_record()
+  blank <- function(v) ifelse(nzchar(v), v, NA_character_)
+  tibble::tibble(term = record$term, status = record$status,
+                 as = blank(record$as), reason = blank(record$reason))
+}
+
+# The columns that an MRQAP builds for each term the formula keeps, named as
+# `estimate_mrqap()` names them. A term whose matrix cannot be built, such as
+# `tie()` of the outcome layer, is refused, with the reason the builder gives.
+#' @keywords internal
+#' @noRd
+.record_columns <- function(x, out, .data) {
+  spec <- .specify(x)
+  ctx <- .spec_context(spec, .data)
+  spec <- .resolve_bare_terms(spec, ctx)
+  .check_formula_vars(spec, ctx)
+  built <- lapply(spec$terms, function(term) {
+    tryCatch(suppressWarnings(suppressMessages(
+      names(Reduce(.interact, lapply(term$operands, .build_operand, ctx = ctx))))),
+      error = function(e) e)
+  })
+  names(built) <- vapply(spec$terms, `[[`, "", "label")
+  for (k in seq_len(nrow(out))) {
+    if (out$status[k] == "drops" || is.na(out$as[k])) next
+    labels <- strsplit(out$as[k], " + ", fixed = TRUE)[[1]]
+    for (lab in intersect(labels, names(built))) {
+      if (inherits(built[[lab]], "error")) {
+        out$status[k] <- "refuses"
+        msg <- gsub("\033\\[[0-9;]*m", "", conditionMessage(built[[lab]]))
+        out$reason[k] <- strsplit(msg, "\n", fixed = TRUE)[[1]][1]
+      } else {
+        out$columns[[k]] <- c(out$columns[[k]], built[[lab]])
+      }
+    }
+  }
+  out
+}
+
 #' @keywords internal
 #' @noRd
 .print_specified <- function(x) {
-  changes <- attr(x, "changes")
+  record <- attr(x, "record")
   f <- x
-  attr(f, "changes") <- NULL
+  attr(f, "record") <- NULL
   attr(f, "input") <- NULL
   class(f) <- "formula"
   print(f, showEnv = FALSE)
-  if (!is.null(changes) && nrow(changes) > 0) {
+  if (!is.null(record) && nrow(record) > 0) {
     cat("Read from a formula for", attr(x, "input"), "\n")
-    for (k in seq_len(nrow(changes))) {
-      as <- if (nzchar(changes$as[k]) && changes$action[k] != "interpreted")
-        paste0(" -> ", changes$as[k]) else ""
-      why <- if (nzchar(changes$reason[k])) paste0(": ", changes$reason[k]) else ""
-      cat("  ", changes$action[k], " ", changes$term[k], as, why, "\n", sep = "")
+    for (k in seq_len(nrow(record))) {
+      as <- if (nzchar(record$as[k]) && record$as[k] != record$term[k])
+        paste0(" -> ", record$as[k]) else ""
+      why <- if (nzchar(record$reason[k])) paste0(": ", record$reason[k]) else ""
+      cat("  ", record$status[k], " ", record$term[k], as, why, "\n", sep = "")
     }
   }
   invisible(x)
@@ -355,11 +440,12 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   labels <- attr(tt, "term.labels")
   bars <- labels[grepl("|", labels, fixed = TRUE)]
   labels <- labels[!grepl("|", labels, fixed = TRUE)]
-  read <- list(labels = labels, native = character(0), changes = .no_changes())
+  read <- list(labels = labels, native = character(0), record = .no_record())
   if (input == "ergm") read <- .read_ergm_terms(labels, ctx)
   env <- environment(formula)
   c(read, list(lhs = formula[[2]], bars = bars, input = input, ctx = ctx,
-               data = .data, env = if (is.null(env)) globalenv() else env))
+               data = .data, env = if (is.null(env)) globalenv() else env,
+               original = attr(tt, "term.labels")))
 }
 
 # The names a bare name could be, and the outcome's own layer. Without a
@@ -404,10 +490,10 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   if (length(classed) > 0) return(classed[1])
   used <- setdiff(.formula_names(formula[[3]]), ctx$tie_names)
   ergm_only <- intersect(used, setdiff(names(.ergm_terms()), names(.formula_terms())))
-  goldfish_only <- intersect(used, names(.goldfish_terms()))
-  input <- if (length(ergm_only)) "ergm" else if (length(goldfish_only)) "dynam" else "mrqap"
+  dynam_only <- intersect(used, names(.dynam_terms()))
+  input <- if (length(ergm_only)) "ergm" else if (length(dynam_only)) "dynam" else "mrqap"
   if (input != "mrqap") {
-    clue <- c(ergm_only, goldfish_only)[1]
+    clue <- c(ergm_only, dynam_only)[1]
     manynet::snet_info(
       "Reading the formula as one written for {.val {input}}, from {.code {clue}}.")
   }
@@ -446,19 +532,19 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
 #' @noRd
 .deparsed <- function(expr) paste(deparse(expr, width.cutoff = 500L), collapse = "")
 
-# ---- the record of changes ---------------------------------------------------------
+# ---- the record of each term ----------------------------------------------------------
 
 #' @keywords internal
 #' @noRd
-.no_changes <- function() {
-  data.frame(term = character(0), as = character(0), action = character(0),
+.no_record <- function() {
+  data.frame(term = character(0), as = character(0), status = character(0),
              reason = character(0))
 }
 
 #' @keywords internal
 #' @noRd
-.change <- function(term, as, action, reason) {
-  data.frame(term = term, as = as, action = action, reason = reason)
+.record_row <- function(term, as, status, reason) {
+  data.frame(term = term, as = as, status = status, reason = reason)
 }
 
 #' @keywords internal
@@ -467,28 +553,90 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   c(mrqap = "an MRQAP", dynam = "goldfish", ergm = "ergm")[[target]]
 }
 
+# Every term of the formula has a row in the record. A term that was not
+# rewritten, interpreted differently, or dropped is kept as it is, and fits;
+# for an MRQAP it warns or is refused where it reads the outcome's own ties.
+# The rows follow the order of the formula, with the outcome first.
+#' @keywords internal
+#' @noRd
+.complete_record <- function(record, read, target) {
+  original <- read$original
+  bars <- grepl("|", original, fixed = TRUE)
+  original[bars] <- paste0("(", original[bars], ")")
+  kept <- setdiff(original, record$term)
+  rows <- lapply(kept, function(lab) {
+    if (target == "mrqap" && !startsWith(lab, "(")) .mrqap_status(lab, read)
+    else list(status = "fits", reason = "")
+  })
+  record <- rbind(record, .record_row(
+    kept, kept, vapply(rows, `[[`, "", "status"), vapply(rows, `[[`, "", "reason")))
+  lhs <- .deparsed(read$lhs)
+  key <- vapply(record$term, function(term) {
+    if (identical(term, lhs)) return(0)
+    hit <- which(original == term)
+    if (length(hit) == 0) hit <- which(grepl(term, original, fixed = TRUE))
+    if (length(hit) > 0) hit[1] else length(original) + 1
+  }, numeric(1), USE.NAMES = FALSE)
+  record <- record[order(key), , drop = FALSE]
+  rownames(record) <- NULL
+  record
+}
+
+# What an MRQAP makes of a term it keeps. A layer term that reads the outcome,
+# by naming it or by standing alone as `recip` does, warns or is refused as the
+# registry's `outcome` says; another term warns where its registry status does.
+#' @keywords internal
+#' @noRd
+.mrqap_status <- function(label, read) {
+  registry <- .formula_terms()
+  outcome <- c(read$ctx$outcome_layer, .deparsed(read$lhs))
+  outcome <- outcome[!is.na(outcome)]
+  out <- list(status = "fits", reason = "")
+  for (expr in .flatten_interaction(str2lang(label))) {
+    fn <- if (is.call(expr)) as.character(expr[[1]]) else as.character(expr)
+    entry <- registry[[fn]]
+    if (is.null(entry)) next
+    if (is.name(expr) && (fn %in% read$ctx$tie_names || !isTRUE(entry$bare))) next
+    if (!is.null(entry$outcome)) {
+      layer <- if (is.call(expr) && length(expr) > 1) {
+        .arg_name(.specify_operand(expr)$args[[1]])
+      } else NA_character_
+      reads_outcome <- if (is.na(layer)) isTRUE(entry$bare) else layer %in% outcome
+      if (reads_outcome && entry$outcome == "refuse") {
+        return(list(status = "refuses",
+                    reason = "would predict the outcome's ties from those same ties"))
+      }
+      if (reads_outcome) out <- list(status = "warns", reason = .outcome_reason())
+      next
+    }
+    if (identical(entry$mrqap, "warns")) out <- list(status = "warns", reason = entry$reason)
+  }
+  out
+}
+
 # Aborts where nothing is left to fit, reports each change, and returns the
 # formula with its model as its class.
 #' @keywords internal
 #' @noRd
-.finish_formula <- function(lhs, labels, bars, changes, read, target,
+.finish_formula <- function(lhs, labels, bars, record, read, target,
                             env = read$env) {
   model <- .model_label(target)
+  record <- .complete_record(record, read, target)
   if (length(labels) == 0) {
-    lost <- changes[changes$action == "dropped" |
-                      (changes$action == "adapted" & !nzchar(changes$as)), ]
+    lost <- record[record$status == "drops" |
+                      (record$status == "adapted" & !nzchar(record$as)), ]
     manynet::snet_abort(
       c("No term of the formula can be fitted by {model}.",
         .dropped_bullets(data.frame(label = lost$term, reason = lost$reason), "x"),
         i = "Add a term that {model} fits, such as {.code ego(age)}."))
   }
-  .report_changes(changes, read$input, model)
+  .report_record(record, read$input, model)
   rhs <- str2lang(paste(c(labels, if (length(bars)) paste0("(", bars, ")")),
                         collapse = " + "))
   out <- eval(call("~", lhs, rhs))
   environment(out) <- env
   structure(out, class = c(paste0(target, "_formula"), "formula"),
-            input = read$input, changes = changes)
+            input = read$input, record = record)
 }
 
 # Rewritten and differently read terms are information, one line each, since
@@ -496,13 +644,13 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
 # since the model is then not the one the formula describes.
 #' @keywords internal
 #' @noRd
-.report_changes <- function(changes, input, model) {
-  for (k in seq_len(nrow(changes))) {
-    term <- .escape(changes$term[k])
-    as <- .escape(changes$as[k])
-    reason <- changes$reason[k]
+.report_record <- function(record, input, model) {
+  for (k in seq_len(nrow(record))) {
+    term <- .escape(record$term[k])
+    as <- .escape(record$as[k])
+    reason <- record$reason[k]
     why <- if (nzchar(reason)) paste0(", ", reason) else ""
-    switch(changes$action[k],
+    switch(record$status[k],
       adapted = if (nzchar(as)) {
         manynet::snet_info(paste0("Writing {.code {term}} as {.code {as}} for {model}", why, "."))
       } else {
@@ -510,7 +658,7 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
       },
       interpreted = manynet::snet_info("{.code {term}} {reason}."))
   }
-  dropped <- changes[changes$action == "dropped", ]
+  dropped <- record[record$status == "drops", ]
   .warn_dropped(data.frame(label = dropped$term, reason = dropped$reason), model)
 }
 
@@ -522,19 +670,19 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
 # moves between goldfish and the others.
 #' @keywords internal
 #' @noRd
-.interpreted_goldfish <- function(labels, input, target) {
-  if ((input %in% c("dynam", "rem")) == (target == "dynam")) return(.no_changes())
+.interpreted_dynam <- function(labels, input, target) {
+  if ((input %in% c("dynam", "rem")) == (target == "dynam")) return(.no_record())
   differs <- c(
     sim          = "is 1 - |d| / range in infernet, and -|d| in goldfish",
     tertius      = "leaves out the sender in infernet, and includes it in goldfish",
     tertius_diff = "leaves out the sender in infernet, and includes it in goldfish")
-  out <- .no_changes()
+  out <- .no_record()
   for (lab in labels) {
     for (expr in .flatten_interaction(str2lang(lab))) {
       fn <- if (is.call(expr)) as.character(expr[[1]]) else ""
       if (fn %in% names(differs)) {
         term <- .deparsed(expr)
-        out <- rbind(out, .change(term, term, "interpreted", differs[[fn]]))
+        out <- rbind(out, .record_row(term, term, "interpreted", differs[[fn]]))
       }
     }
   }
@@ -568,8 +716,8 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   }, character(1), USE.NAMES = FALSE)
   dropped <- !is.na(reasons)
   list(labels = labels[!dropped],
-       changes = .change(labels[dropped], rep("", sum(dropped)),
-                         rep("dropped", sum(dropped)), reasons[dropped]))
+       record = .record_row(labels[dropped], rep("", sum(dropped)),
+                         rep("drops", sum(dropped)), reasons[dropped]))
 }
 
 # ---- writing for goldfish ----------------------------------------------------------------
@@ -594,7 +742,7 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   switch(fn,
     exchange = list(expr = as.call(c(as.name("recip"), as.list(expr)[-1]))),
     dist     = list(expr = as.call(c(as.name("diff"), as.list(expr)[-1]))),
-    if (is.na(entry$goldfish)) {
+    if (is.na(entry$dynam)) {
       list(reason = "has no goldfish term")
     } else {
       list(expr = expr)
@@ -740,7 +888,7 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
   ergm <- .ergm_terms()
   out <- character(0)
   native <- character(0)
-  changes <- .no_changes()
+  record <- .no_record()
   for (lab in labels) {
     ops <- .flatten_interaction(str2lang(lab))
     parts <- list()
@@ -769,11 +917,11 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
       "becomes two terms, which cannot be interacted"
     } else NA_character_
     if (!is.na(reason)) {
-      changes <- rbind(changes, .change(lab, "", "dropped", reason))
+      record <- rbind(record, .record_row(lab, "", "drops", reason))
       next
     }
     if (any(sizes == 0)) {
-      changes <- rbind(changes, .change(lab, "", "adapted",
+      record <- rbind(record, .record_row(lab, "", "adapted",
                                         "is the intercept that the model always has"))
       next
     }
@@ -783,9 +931,9 @@ print.ergm_formula <- function(x, ...) .print_specified(x)
       .deparsed(Reduce(function(a, b) call(":", a, b), lapply(parts, `[[`, 1)))
     }
     if (!identical(new, lab)) {
-      changes <- rbind(changes, .change(lab, paste(new, collapse = " + "), "adapted", ""))
+      record <- rbind(record, .record_row(lab, paste(new, collapse = " + "), "adapted", ""))
     }
     out <- c(out, new)
   }
-  list(labels = unique(out), native = native, changes = changes)
+  list(labels = unique(out), native = native, record = record)
 }
