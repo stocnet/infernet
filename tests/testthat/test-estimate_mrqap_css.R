@@ -68,7 +68,7 @@ test_that("a CSS layer is detected and fitted as one", {
 test_that("detecting a CSS is reported", {
   old <- options(snet_verbosity = "verbose")
   on.exit(options(old), add = TRUE)
-  expect_message(
+  expect_any_message(
     estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1)),
     "cognitive social structure, with 21 reporters")

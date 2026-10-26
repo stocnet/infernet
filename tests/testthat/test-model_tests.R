@@ -59,6 +59,7 @@ test_that("test_configuration works", {
 
 test_that("print.network_test prints and returns its input invisibly", {
   expect_output(print(cugtest), "CUG Test Results")
-  expect_invisible(print(cugtest))
-  expect_identical(withVisible(print(cugtest))$value, cugtest)
+  expect_output(shown <- withVisible(print(cugtest)))
+  expect_false(shown$visible)
+  expect_identical(shown$value, cugtest)
 })

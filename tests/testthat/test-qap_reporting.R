@@ -18,21 +18,21 @@ FORM <- weight ~ ego(Age) + alter(Age) + sim(Age)
 test_that("every reporting message renders", {
   g <- qap_net_gaussian(n = 15)
   # A message that cli cannot parse aborts, so reaching the end is the test.
-  expect_no_error(verbosely(
-    estimate_mrqap(FORM, g, times = 5, control = list(seed = 1))))
-  expect_no_error(verbosely(
-    estimate_mrqap(weight ~ ego(Age), g, times = 5, control = list(seed = 1))))
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(FORM, g, times = 5, control = list(seed = 1)))))
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(weight ~ ego(Age), g, times = 5, control = list(seed = 1)))))
 })
 
 test_that("a family resolved from the outcome is reported", {
-  expect_message(
+  expect_any_message(
     verbosely(estimate_mrqap(. ~ ego(Age) + alter(Age), qap_net_binary(n = 15),
                              times = 5, control = list(seed = 1))),
     "binomial")
 })
 
 test_that("directedness read from the network is reported", {
-  expect_message(
+  expect_any_message(
     verbosely(estimate_mrqap(weight ~ ego(Age) + alter(Age),
                              qap_net_undirected(n = 14),
                              times = 5, control = list(seed = 1))),
@@ -48,7 +48,7 @@ test_that("a stated family and directedness are not reported", {
 })
 
 test_that("the fallback to permuting the outcome is reported", {
-  expect_message(
+  expect_any_message(
     verbosely(estimate_mrqap(weight ~ ego(Age), qap_net_gaussian(n = 15),
                              times = 5,
                              control = list(seed = 1, permute = "predictor"))),
@@ -57,7 +57,7 @@ test_that("the fallback to permuting the outcome is reported", {
 
 
 test_that("the model advice on homophily terms is reported", {
-  expect_message(
+  expect_any_message(
     verbosely(estimate_mrqap(weight ~ same(Grp), qap_net_gaussian(n = 15),
                              times = 5, control = list(seed = 1))),
     "ego\\(Grp\\)")

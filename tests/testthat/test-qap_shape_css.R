@@ -74,9 +74,9 @@ test_that("a CSS rejects an outcome that is not three-dimensional", {
 test_that("a CSS fit prints as a model", {
   fit <- QAPengine(ties ~ cov, css_fixture(), css = TRUE,
                    family = "binomial", times = 10, seed = 1)
-  expect_output(print(fit), "cognitive social structure")
+  expect_output(shown <- withVisible(print(fit)), "cognitive social structure")
+  expect_false(shown$visible)
   expect_output(print(fit), "Coefficients")
-  expect_invisible(print(fit))
 })
 
 test_that("both shapes reproduce under the same seed", {

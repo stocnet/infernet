@@ -53,6 +53,7 @@
   - Nests each node's group in its network in a pooled list, not in a panel
   - Names a predictor that the fixed effects absorb, e.g. `ego()` with `| sender`
 - Fixed the sender and receiver random intercepts that a two-mode network dropped
+- Improved the speed of a small fit about tenfold, by not searching the permutation function for globals
 - Fixed the permutations of a network with missing data to use the dyads of the observed model
   - Permutes nodes only among nodes with the same unobserved cells
   - Keeps each node with scattered unobserved cells in place

@@ -590,6 +590,9 @@ Because this output is silent by default, a broken message is invisible in
 every other test, so cover it in
 [tests/testthat/test-qap_reporting.R](../tests/testthat/test-qap_reporting.R),
 which runs with `snet_verbosity = "verbose"`.
+Check a message there with `expect_any_message()` from `helper-infernet.R`
+rather than `expect_message()`, which lets every other message of the call
+through to the console.
 Where a function needs a package from `Suggests`, name it and say how to get it:
 `snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))`.
 

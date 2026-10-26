@@ -128,6 +128,10 @@ setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
 }
 
 
+# `FUN` is a function of the package and everything it reads comes in `...`,
+# so there are no globals to look for. Looking for them anyway took nine
+# tenths of a small fit, on a sequential plan too. A worker loads the package
+# for `FUN` instead.
 #' @keywords internal
 #' @noRd
 run_permutations <- function(times, FUN, ...) {
@@ -135,7 +139,9 @@ run_permutations <- function(times, FUN, ...) {
     seq_len(times),
     FUN,
     ...,
-    future.seed = TRUE
+    future.seed = TRUE,
+    future.globals = FALSE,
+    future.packages = "infernet"
   )
 }
 

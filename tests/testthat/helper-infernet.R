@@ -140,6 +140,18 @@ expect_qap_shape <- function(fit, coefs) {
   invisible(fit)
 }
 
+# ---- messages ----------------------------------------------------------------
+
+# `expect_message()` in testthat 3 catches the first message that matches and
+# lets every other one through to the console. This checks that one message of
+# `object` matches `regexp`, and keeps them all off the console.
+expect_any_message <- function(object, regexp, ...) {
+  msgs <- testthat::capture_messages(object)
+  testthat::expect_true(any(grepl(regexp, msgs, ...)),
+                        info = paste(c("Messages:", msgs), collapse = "\n"))
+  invisible(msgs)
+}
+
 # ---- warnings ----------------------------------------------------------------
 
 # `manynet::snet_warn()` raises a catchable warning from manynet 2.3.2, and the
