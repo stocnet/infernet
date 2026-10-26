@@ -454,7 +454,7 @@ regression entry point. Its control flow is:
    and pools the rest.
 4. Resolve `family = "auto"` against the dependent variable
    (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
-   `diag` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
+   `loops` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
    Report each resolution with `snet_info()` so that the user can describe 
    these (default) choices in a paper.
 5. Call `QAPengine()`, which parses the formula, fits the baseline model once
@@ -532,14 +532,20 @@ MRQAP — must install and run with no compiler and no heavy dependency tree.
 Every simulation-heavy function takes:
 
 - `times` — the number of simulations (default `1000`; 1,000–10,000 for publication).
+- `ncores` — a number of cores (default `NULL`).
+  More than one runs on that many `"multisession"` workers, and one runs
+  sequentially, whatever `strategy` says. This is the one to show users first.
 - `strategy` — a `{future}` plan name (default `"sequential"`;
-  `"multisession"`/`"multicore"` for multiple cores),
-  set with `future::plan(strategy)` and restored via `on.exit()`.
-  In `estimate_mrqap()` this is passed through the `control` list.
+  `"multisession"`/`"multicore"` for multiple cores), used where `ncores` is `NULL`.
+
+Set the plan with `setup_future_plan(strategy, ncores)` and restore it via `on.exit()`.
+In `estimate_mrqap()` both are passed through the `control` list.
+Name an argument that says whether ties from a node to itself count `loops`, never `diag`,
+since `diag` masks `base::diag()` in the same functions.
 
 The `test_*()` family maps simulations with `future.apply::future_lapply()`
 and `future_vapply()`, using `future.seed = TRUE` for reproducible parallel RNG.
-The regression engine wraps the same machinery in `setup_future_plan()` and
+The regression engine uses the same `setup_future_plan()`, and
 `run_permutations()` ([R/qap_utils.R](../R/qap_utils.R)); use those rather than
 calling `future::plan()` from a new engine function.
 

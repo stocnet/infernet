@@ -2,9 +2,11 @@
 
 ## Package
 
-- Updated CONTRIBUTING's formula dictionary with an MRQAP column and goldfish's effects
-- Added a rule to CONTRIBUTING on when a categorical term leaves out a reference
-- Added a rule to CONTRIBUTING on `levels =`
+- Updated CONTRIBUTING
+  - Added a formula dictionary with an MRQAP column and goldfish's effects
+  - Added a rule on when a categorical term leaves out a reference
+  - Added a rule on `levels =`
+  - Added a rule on `ncores` before `strategy`, and on `loops` rather than `diag`
 - Added `{fixest}` to `Suggests`, for fixed effects in models that are not gaussian
 - Improved the tutorial test to cap each `times =` at 20, since it checks only that the code runs
 - Added the diversity tutorial to the website, as a static article under "Tutorials"
