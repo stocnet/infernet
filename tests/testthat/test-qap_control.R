@@ -62,7 +62,7 @@ test_that("a single predictor falls back to permuting the outcome", {
   expect_equal(fit$permute, "outcome")
 })
 
-test_that("directed and diag are read from the network unless set", {
+test_that("directed and loops are read from the network unless set", {
   g <- qap_net_gaussian(n = 15)
   expect_true(estimate_mrqap(FORM, g, times = 5,
                              control = list(seed = 1))$directed)
@@ -70,8 +70,8 @@ test_that("directed and diag are read from the network unless set", {
                               control = list(seed = 1,
                                              directed = FALSE))$directed)
   loops <- estimate_mrqap(FORM, g, times = 5,
-                          control = list(seed = 1, diag = TRUE))
-  expect_true(loops$diag)
+                          control = list(seed = 1, loops = TRUE))
+  expect_true(loops$loops)
   expect_equal(nrow(loops$pred), 15 * 15)
 })
 
@@ -103,6 +103,31 @@ test_that("a control prints with the ones that were set marked", {
   expect_match(out, "family +poisson  \\(set\\)", all = FALSE)
   expect_match(out, "directed +NULL, read from the data$", all = FALSE)
   expect_false(any(grepl("permute.*\\(set\\)", out)))
+})
+
+test_that("diag is now called loops, with a warning", {
+  expect_warning(ctrl <- control_mrqap(diag = TRUE), "loops")
+  expect_true(ctrl$loops)
+  expect_null(ctrl$diag)
+  g <- qap_net_gaussian(n = 15)
+  expect_warning(fit <- estimate_mrqap(FORM, g, times = 5,
+                                       control = list(seed = 1, diag = FALSE)),
+                 "loops")
+  expect_false(fit$loops)
+})
+
+test_that("ncores sets the plan, whatever strategy says", {
+  on.exit(future::plan(future::sequential), add = TRUE)
+  old <- setup_future_plan("multisession", ncores = 1)
+  expect_s3_class(future::plan(), "sequential")
+  future::plan(old)
+  old <- setup_future_plan("sequential", ncores = 2)
+  expect_s3_class(future::plan(), "multisession")
+  expect_equal(future::nbrOfWorkers(), 2)
+  future::plan(old)
+  old <- setup_future_plan("sequential", ncores = NULL)
+  expect_s3_class(future::plan(), "sequential")
+  future::plan(old)
 })
 
 test_that("a control with a value it cannot take aborts", {

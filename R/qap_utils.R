@@ -118,10 +118,13 @@ setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
   old_plan <- future::plan()
   old_maxSize <- getOption("future.globals.maxSize")
   options(future.globals.maxSize = +Inf)
-  if (!is.null(ncores) && ncores > 1) {
+  # A number of cores says the plan itself, whatever `strategy` says.
+  if (is.null(ncores)) {
+    future::plan(strategy)
+  } else if (ncores > 1) {
     future::plan(future::multisession, workers = ncores)
   } else {
-    future::plan(strategy)
+    future::plan(future::sequential)
   }
   attr(old_plan, "old_maxSize") <- old_maxSize
   invisible(old_plan)
@@ -194,12 +197,12 @@ run_permutations <- function(times, FUN, ...) {
 # permutes exactly as before.
 #' @keywords internal
 #' @noRd
-.missing_blocks <- function(m, groups = NULL, diag = FALSE, exclude = NULL) {
+.missing_blocks <- function(m, groups = NULL, loops = FALSE, exclude = NULL) {
   d  <- dim(m)
   nr <- d[1]; nc <- d[2]
   css <- length(d) == 3
   use <- matrix(TRUE, nr, nc)
-  if (!diag && nr == nc) diag(use) <- FALSE
+  if (!loops && nr == nc) diag(use) <- FALSE
   if (css) use <- array(use, dim = d)
   # A cell excluded by design must stay in place as an unobserved one does, so
   # it counts here as one, though it keeps its value.
@@ -268,16 +271,16 @@ run_permutations <- function(times, FUN, ...) {
 # observed data.
 #' @keywords internal
 #' @noRd
-.permutation_blocks <- function(target, groups, diag, times, label,
+.permutation_blocks <- function(target, groups, loops, times, label,
                                 panel = FALSE, exclude = NULL) {
   if (panel) {
-    blocks <- .panel_blocks(target, groups, diag, exclude)
+    blocks <- .panel_blocks(target, groups, loops, exclude)
     if (is.null(blocks)) return(NULL)
     parts <- list(blocks)
   } else if (is.list(target)) {
     blocks <- lapply(seq_along(target), function(net) {
       g <- if (is.list(groups)) groups[[net]] else groups
-      .missing_blocks(target[[net]], g, diag, exclude[[net]])
+      .missing_blocks(target[[net]], g, loops, exclude[[net]])
     })
     if (all(vapply(blocks, is.null, logical(1)))) return(NULL)
     # A network with no missing cells keeps the user's groups. `[<-` with a
@@ -288,7 +291,7 @@ run_permutations <- function(times, FUN, ...) {
     }
     parts <- Filter(is.list, blocks)
   } else {
-    blocks <- .missing_blocks(target, groups, diag, exclude)
+    blocks <- .missing_blocks(target, groups, loops, exclude)
     if (is.null(blocks)) return(NULL)
     parts <- list(blocks)
   }
@@ -344,9 +347,9 @@ run_permutations <- function(times, FUN, ...) {
 # is fixed in all of them.
 #' @keywords internal
 #' @noRd
-.panel_blocks <- function(mats, groups = NULL, diag = FALSE, exclude = NULL) {
+.panel_blocks <- function(mats, groups = NULL, loops = FALSE, exclude = NULL) {
   per_wave <- lapply(seq_along(mats), function(w) {
-    .missing_blocks(mats[[w]], NULL, diag, exclude[[w]])
+    .missing_blocks(mats[[w]], NULL, loops, exclude[[w]])
   })
   if (all(vapply(per_wave, is.null, logical(1)))) return(NULL)
   d <- dim(mats[[1]])
@@ -370,7 +373,7 @@ run_permutations <- function(times, FUN, ...) {
 # as `excluded`.
 #' @keywords internal
 #' @noRd
-.missing_summary <- function(matlist, dep, data_vars, diag, directed, large,
+.missing_summary <- function(matlist, dep, data_vars, loops, directed, large,
                              exclude = NULL) {
   vars <- unique(c(dep, data_vars))
   n_nets <- if (large) length(matlist[[dep]]) else 1L
@@ -379,7 +382,7 @@ run_permutations <- function(times, FUN, ...) {
   excluded <- 0L
   for (net in seq_len(n_nets)) {
     get <- function(v) if (large) matlist[[v]][[net]] else matlist[[v]]
-    use <- .structural_mask(dim(get(dep)), diag, directed)
+    use <- .structural_mask(dim(get(dep)), loops, directed)
     ex <- if (large) exclude[[net]] else exclude
     if (!is.null(ex)) {
       excluded <- excluded + sum(ex & use)
@@ -399,11 +402,11 @@ run_permutations <- function(times, FUN, ...) {
 # the same cells.
 #' @keywords internal
 #' @noRd
-.structural_mask <- function(d, diag, directed) {
+.structural_mask <- function(d, loops, directed) {
   nr <- d[1]; nc <- d[2]
   use <- matrix(TRUE, nr, nc)
   if (nr == nc) {
-    if (!diag) diag(use) <- FALSE
+    if (!loops) diag(use) <- FALSE
     if (!directed) use[upper.tri(use)] <- FALSE
   }
   if (length(d) == 3) use <- array(use, dim = d)
@@ -483,7 +486,7 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
 
 #' @keywords internal
 #' @noRd
-make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
+make_qap_data <- function(y, x, g = NULL, loops = FALSE, directed = TRUE,
                           net = 1, perm = FALSE, xi = NULL, exclude = NULL) {
   nx <- length(x)
 
@@ -502,7 +505,7 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
   square <- identical(nr, nc)
 
   valid <- matrix(TRUE, nr, nc)
-  if (!diag && square) diag(valid) <- FALSE
+  if (!loops && square) diag(valid) <- FALSE
   # An undirected one-mode network holds each dyad twice, once on each side of
   # the diagonal. Keeping both halves doubles the sample and shrinks every
   # standard error, so take the lower triangle only. A two-mode incidence

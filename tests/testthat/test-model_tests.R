@@ -17,7 +17,7 @@ test_that("test_random works", {
   expect_equal(as.numeric(cugtest$testval), -0.85714, tolerance = 0.001)
   expect_length(cugtest$testdist, 200) # NB: Stochastic
   expect_false(cugtest$directed)
-  expect_false(cugtest$diag)
+  expect_false(cugtest$loops)
   expect_equal(cugtest$cmode, "edges")
   expect_type(cugtest$plteobs, "double")
   expect_type(cugtest$pgteobs, "double")
@@ -86,4 +86,19 @@ test_that("the draws from a stocnet keep its attributes and its statistic", {
   cug <- test_random(marvel_friends, netrics::net_by_heterophily,
                      attribute = "Gender", times = 20)
   expect_false(anyNA(cug$testdist))
+})
+
+test_that("the tests take ncores, and restore the plan after", {
+  future::plan(future::sequential)
+  set.seed(1)
+  one <- test_permutation(marvel_friends, netrics::net_by_heterophily,
+                          attribute = "Attractive", times = 20, ncores = 1)
+  set.seed(1)
+  two <- test_permutation(marvel_friends, netrics::net_by_heterophily,
+                          attribute = "Attractive", times = 20, ncores = 2)
+  expect_equal(one$testdist, two$testdist)
+  expect_s3_class(future::plan(), "sequential")
+  expect_error(test_random(marvel_friends, netrics::net_by_heterophily,
+                           attribute = "Attractive", times = 5, ncores = 0),
+               "ncores")
 })

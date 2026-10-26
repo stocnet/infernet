@@ -107,14 +107,14 @@ qap_net_panel <- function(n = 15, waves = 3, seed = 108) {
     ties = do.call(rbind, el)))
 }
 
-qap_reference_data <- function(formula, .data, directed = NULL, diag = FALSE) {
+qap_reference_data <- function(formula, .data, directed = NULL, loops = FALSE) {
   ml <- convertToMatrixList(formula, .data, advise = FALSE)
   parsed <- parse_qap_formula(ml$formula)
   g <- manynet::as_tidygraph(.data)
   if (is.null(directed)) directed <- manynet::is_directed(g)
   pred <- make_qap_data(y = ml$mydata[[parsed$dependent]],
                         x = ml$mydata[parsed$main],
-                        diag = diag, directed = directed)
+                        loops = loops, directed = directed)
   names(pred)[names(pred) == "yv"] <- parsed$dependent
   list(pred = pred, formula = ml$formula, parsed = parsed)
 }

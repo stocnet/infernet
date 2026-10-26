@@ -16,7 +16,7 @@ QAPengine <- function(formula,
                       css       = FALSE,
                       family    = "gaussian",
                       directed  = TRUE,
-                      diag      = FALSE,
+                      loops     = FALSE,
                       permute   = "predictor",
                       times     = 1000,
                       seed      = NULL,
@@ -104,9 +104,9 @@ QAPengine <- function(formula,
       paste(deparse(formula, width.cutoff = 500), collapse = " "), "- 1"))
   }
 
-  if (diag && css)
+  if (loops && css)
     manynet::snet_warn(
-      "Results may not be valid where the diagonal is included.")
+      "Results may not be valid where loops are included.")
 
   # ---- vectorise ------------------------------------------------------------
 
@@ -137,7 +137,7 @@ QAPengine <- function(formula,
              else attr(matlist[[dep]], "fixed")
   if (large && all(vapply(exclude, is.null, logical(1)))) exclude <- NULL
 
-  unobserved <- .missing_summary(matlist, dep, data_vars, diag, directed, large,
+  unobserved <- .missing_summary(matlist, dep, data_vars, loops, directed, large,
                                  exclude)
   n_fixed_ties <- unobserved$excluded
   unit <- if (css) "reported dyads" else "dyads"
@@ -151,7 +151,7 @@ QAPengine <- function(formula,
   }
 
   vec <- .vectorise_matlist(shape, matlist, dep, data_vars, groups,
-                            diag, directed, large, exclude)
+                            loops, directed, large, exclude)
   pred <- vec$pred
   names(pred)[names(pred) == "yv"] <- dep
 
@@ -227,7 +227,7 @@ QAPengine <- function(formula,
     options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
   }, add = TRUE)
 
-  perm_args <- list(shape. = shape, directed. = directed, diag. = diag,
+  perm_args <- list(shape. = shape, directed. = directed, loops. = loops,
                     mod. = mod, groups. = groups, fit. = fit$base,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
@@ -238,7 +238,7 @@ QAPengine <- function(formula,
   # that every draw is fitted on the dyads of the observed model.
   fixed <- integer(0)
   .blocks_for <- function(target, label) {
-    blocks <- .permutation_blocks(target, groups, diag, times, label, panel,
+    blocks <- .permutation_blocks(target, groups, loops, times, label, panel,
                                   exclude)
     if (is.null(blocks)) return(groups)
     fixed[[label]] <<- attr(blocks, "fixed")
@@ -339,7 +339,7 @@ QAPengine <- function(formula,
 
   fit$permute   <- permute
   fit$panel     <- panel
-  fit$diag      <- diag
+  fit$loops     <- loops
   fit$family    <- family
   fit$directed  <- directed
   fit$times     <- times
@@ -378,7 +378,7 @@ QAPPermEst <- function(i,
                        perm_var.,
                        shape.,
                        directed.,
-                       diag.,
+                       loops.,
                        mod.,
                        groups.,
                        fit.,
@@ -421,7 +421,7 @@ QAPPermEst <- function(i,
     }
 
     vec <- .vectorise_matlist(shape., d, dep, data_vars., groups.,
-                              diag., directed., large, exclude.)
+                              loops., directed., large, exclude.)
     pred <- vec$pred
     names(pred)[names(pred) == "yv"] <- dep
     # The blocks keep the missing cells in place, so a draw on any other number

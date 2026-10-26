@@ -16,12 +16,14 @@
 #'   of the original network.
 #'   
 #' @inheritParams regression
-#' @param strategy A `{future}` plan, so that multiple cores can be used
-#'   to accelerate the function.
-#'   By default `"sequential"`, 
-#'   but if multiple cores available,
-#'   then `"multisession"` or `"multicore"` may be useful.
+#' @param ncores A number of cores to run the simulations on.
+#'   More than one runs them on that many `"multisession"` workers, and one runs
+#'   them sequentially, whatever `strategy` says.
+#'   `NULL` (the default) leaves the choice to `strategy`.
 #'   Generally this is useful only when `times` > 1000.
+#' @param strategy A `{future}` plan that the simulations run on where `ncores`
+#'   is `NULL`: `"sequential"` (the default), `"multisession"`, `"multicore"`,
+#'   or `"cluster"`.
 #'   See [`{future.apply}`](https://future.apply.futureverse.org) for more.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
@@ -41,6 +43,7 @@ NULL
 #' @export
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
+                        ncores = NULL,
                         strategy = "sequential"){
   args <- unlist(list(...))
   if (!is.null(args)) {
@@ -48,13 +51,13 @@ test_random <- function(.data, FUN, ...,
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
                               draw = manynet::generate_random, bind = TRUE)
   out <- list(test = "CUG",
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              diag = manynet::is_complex(.data),
+              loops = manynet::is_complex(.data),
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
@@ -68,6 +71,7 @@ test_random <- function(.data, FUN, ...,
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
+                        ncores = NULL,
                         strategy = "sequential"){
   args <- unlist(list(...))
   if (!is.null(args)) {
@@ -75,13 +79,13 @@ test_configuration <- function(.data, FUN, ...,
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
                               draw = manynet::generate_configuration, bind = TRUE)
   out <- list(test = "configuration",
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              diag = manynet::is_complex(.data),
+              loops = manynet::is_complex(.data),
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
@@ -99,6 +103,7 @@ test_configuration <- function(.data, FUN, ...,
 #' @export
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
+                             ncores = NULL,
                              strategy = "sequential"){
   args <- unlist(list(...))
   if (!is.null(args)) {
@@ -106,13 +111,13 @@ test_permutation <- function(.data, FUN, ...,
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
                               draw = manynet::to_permuted, bind = FALSE)
   out <- list(test = "QAP",
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              diag = manynet::is_complex(.data),
+              loops = manynet::is_complex(.data),
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
               times = times)
@@ -126,9 +131,14 @@ test_permutation <- function(.data, FUN, ...,
 # node attributes where the statistic needs one.
 #' @keywords internal
 #' @noRd
-.simulate_statistic <- function(.data, FUN, args, times, strategy, draw, bind) {
-  oplan <- future::plan(strategy)
-  on.exit(future::plan(oplan), add = TRUE)
+.simulate_statistic <- function(.data, FUN, args, times, ncores, strategy,
+                                draw, bind) {
+  .check_ncores(ncores)
+  old_plan <- setup_future_plan(.check_strategy(strategy), ncores)
+  on.exit({
+    future::plan(old_plan)
+    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
+  }, add = TRUE)
   measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
   .data <- .draw_from(.data, measure)
   rands <- future.apply::future_lapply(seq_len(times), function(i) draw(.data),

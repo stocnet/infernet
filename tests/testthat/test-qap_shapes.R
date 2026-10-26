@@ -48,7 +48,7 @@ test_that("a wide two-mode network fits, and counts its dyads", {
 test_that("make_qap_data() counts a wide predictor's cells, not the mask's", {
   y <- matrix(stats::rnorm(6 * 15), 6, 15)
   x <- list(a = matrix(stats::rnorm(6 * 15), 6, 15))
-  pred <- make_qap_data(y = y, x = x, diag = FALSE, directed = TRUE)
+  pred <- make_qap_data(y = y, x = x, loops = FALSE, directed = TRUE)
   expect_equal(nrow(pred), 6 * 15)
   expect_false(anyNA(pred$a))
 })

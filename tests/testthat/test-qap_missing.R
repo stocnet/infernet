@@ -164,7 +164,7 @@ test_that("a draw on other dyads than the observed model's is caught", {
   expect_error(
     for (i in seq_len(30)) {
       QAPPermEst(i, matlist. = ml, perm_var. = NULL, shape. = .qap_shape(),
-                 directed. = TRUE, diag. = FALSE, mod. = y ~ ego + alter,
+                 directed. = TRUE, loops. = FALSE, mod. = y ~ ego + alter,
                  groups. = NULL, fit. = base, family. = "gaussian",
                  use_robust_errors. = FALSE, has_random. = FALSE,
                  main_vars. = c("ego", "alter"), data_vars. = c("ego", "alter"),

@@ -13,6 +13,11 @@
 
 ## Tests
 
+- Added `ncores =` to `test_random()`, `test_configuration()`, and `test_permutation()`, 
+  which sets the plan whatever `strategy` says, as in `control_mrqap()`
+  - Restores the `{future}` plan and `future.globals.maxSize` after the test
+  - Checks `strategy` and `ncores` before the simulations start
+- Renamed the `diag` element of a test's result to `loops`
 - Improved the speed of `test_permutation()` ~5x and `test_random()` ~3x on a stocnet
   - Draws from a `tbl_graph` made once, where the statistic gives the same value on it
 
@@ -60,6 +65,12 @@
   - Drops goldfish's estimation options, e.g. `max_iterations`, with one warning that names each
   - Reads the result of goldfish's `set_estimation_opt()` whole
   - Aborts on any other name, with the nearest control
+- Renamed the `diag` control to `loops`, which says what it includes and does not mask `base::diag()`
+  - `control = list(diag = TRUE)` still works, and warns that it is now `loops`
+  - The fit stores it as `fit$loops`, not `fit$diag`
+- Changed `ncores` to set the plan whatever `strategy` says
+  - `ncores = 1` now runs sequentially, where before it left the plan to `strategy`
+  - `ncores` comes before `strategy` in `control_mrqap()`, as the simpler of the two
 - Added fixed effects to `estimate_mrqap()`, as in `{fixest}`: `y ~ x | sender + receiver`
   (thanks @RWKrause, closes #8)
   - Takes `sender`, `receiver`, `reporter` for a CSS, and `network` for a list

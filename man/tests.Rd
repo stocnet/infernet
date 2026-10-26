@@ -7,11 +7,32 @@
 \alias{test_permutation}
 \title{Tests of network measures}
 \usage{
-test_random(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_random(
+  .data,
+  FUN,
+  ...,
+  times = 1000,
+  ncores = NULL,
+  strategy = "sequential"
+)
 
-test_configuration(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_configuration(
+  .data,
+  FUN,
+  ...,
+  times = 1000,
+  ncores = NULL,
+  strategy = "sequential"
+)
 
-test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_permutation(
+  .data,
+  FUN,
+  ...,
+  times = 1000,
+  ncores = NULL,
+  strategy = "sequential"
+)
 }
 \arguments{
 \item{.data}{A manynet-consistent network (see
@@ -27,12 +48,15 @@ e.g. the name of the attribute.}
 \item{times}{Integer.  Number of permutations for the null distribution.
 1000 is the default; publication-ready work usually needs 1000-10000.}
 
-\item{strategy}{A \code{{future}} plan, so that multiple cores can be used
-to accelerate the function.
-By default \code{"sequential"},
-but if multiple cores available,
-then \code{"multisession"} or \code{"multicore"} may be useful.
-Generally this is useful only when \code{times} > 1000.
+\item{ncores}{A number of cores to run the simulations on.
+More than one runs them on that many \code{"multisession"} workers, and one runs
+them sequentially, whatever \code{strategy} says.
+\code{NULL} (the default) leaves the choice to \code{strategy}.
+Generally this is useful only when \code{times} > 1000.}
+
+\item{strategy}{A \code{{future}} plan that the simulations run on where \code{ncores}
+is \code{NULL}: \code{"sequential"} (the default), \code{"multisession"}, \code{"multicore"},
+or \code{"cluster"}.
 See \href{https://future.apply.futureverse.org}{\code{{future.apply}}} for more.}
 }
 \description{

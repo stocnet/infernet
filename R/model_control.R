@@ -40,7 +40,7 @@
 #'   (with `{MASS}`), and `"zip"`, a zero-inflated Poisson (with `{pscl}`).
 #' @param directed Logical, whether a tie from i to j differs from one from
 #'   j to i. `NULL` (the default) reads it from the network, and says so.
-#' @param diag Logical, whether loops, the ties from a node to itself, enter
+#' @param loops Logical, whether loops, the ties from a node to itself, enter
 #'   the model. `NULL` (the default) includes them only where the network has
 #'   loops.
 #' @param seed A number to set the random seed with before the permutations,
@@ -50,12 +50,14 @@
 #'   permuted only among the nodes of its group.
 #'   On a two-mode network, its length says which mode it groups.
 #'   `NULL` (the default) permutes all nodes together.
-#' @param strategy The `{future}` plan that the permutations run on:
-#'   `"sequential"` (the default), `"multisession"`, `"multicore"`, or
-#'   `"cluster"`. The plan that was set before is restored after the fit.
-#' @param ncores A number of parallel workers. More than one runs the
-#'   permutations on that many `"multisession"` workers, whatever `strategy`
-#'   says. `NULL` (the default) uses `strategy`.
+#' @param ncores A number of cores to run the permutations on.
+#'   More than one runs them on that many `"multisession"` workers, and one runs
+#'   them sequentially, whatever `strategy` says.
+#'   `NULL` (the default) leaves the choice to `strategy`.
+#' @param strategy The `{future}` plan that the permutations run on where
+#'   `ncores` is `NULL`: `"sequential"` (the default), `"multisession"`,
+#'   `"multicore"`, or `"cluster"`. The plan that was set before is restored
+#'   after the fit.
 #' @param use_robust_errors Logical, whether to use HC3 robust standard errors
 #'   for the observed model's t values. `FALSE` by default.
 #' @param random_intercept_nets,random_intercept_sender,random_intercept_receiver,random_intercept_reporter
@@ -93,11 +95,11 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           family = c("auto", "gaussian", "binomial", "poisson",
                                      "negbin", "zip"),
                           directed = NULL,
-                          diag = NULL,
+                          loops = NULL,
                           seed = NULL,
                           groups = NULL,
-                          strategy = "sequential",
                           ncores = NULL,
+                          strategy = "sequential",
                           use_robust_errors = FALSE,
                           random_intercept_nets = FALSE,
                           random_intercept_sender = FALSE,
@@ -107,8 +109,8 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           less_mem = FALSE,
                           ...) {
   ctrl <- list(permute = permute, family = family, directed = directed,
-               diag = diag, seed = seed, groups = groups, strategy = strategy,
-               ncores = ncores, use_robust_errors = use_robust_errors,
+               loops = loops, seed = seed, groups = groups, ncores = ncores,
+               strategy = strategy, use_robust_errors = use_robust_errors,
                random_intercept_nets = random_intercept_nets,
                random_intercept_sender = random_intercept_sender,
                random_intercept_receiver = random_intercept_receiver,
@@ -132,7 +134,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
   ctrl$family  <- .check_choice(ctrl$family, .control_families(), "family")
   ctrl$strategy <- .check_strategy(ctrl$strategy)
   .check_missing_control(ctrl$missing)
-  for (nm in c("directed", "diag")) .check_flag(ctrl[[nm]], nm, null = TRUE)
+  for (nm in c("directed", "loops")) .check_flag(ctrl[[nm]], nm, null = TRUE)
   for (nm in c("use_robust_errors", "less_mem",
                grep("^random_intercept_", names(ctrl), value = TRUE))) {
     .check_flag(ctrl[[nm]], nm)
@@ -141,11 +143,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
       !(is.numeric(ctrl$seed) && length(ctrl$seed) == 1 && !is.na(ctrl$seed))) {
     manynet::snet_abort("{.arg seed} must be one number, or {.code NULL}.")
   }
-  if (!is.null(ctrl$ncores) &&
-      !(is.numeric(ctrl$ncores) && length(ctrl$ncores) == 1 &&
-        !is.na(ctrl$ncores) && ctrl$ncores >= 1 && ctrl$ncores %% 1 == 0)) {
-    manynet::snet_abort("{.arg ncores} must be a whole number of at least 1, or {.code NULL}.")
-  }
+  .check_ncores(ctrl$ncores)
   if (!is.null(ctrl$groups) && !is.atomic(ctrl$groups)) {
     manynet::snet_abort("{.arg groups} must be a vector with a group for each node.")
   }
@@ -222,7 +220,8 @@ print.mrqap_control <- function(x, ...) {
                    values = list(digraph = TRUE, directed = TRUE,
                                  graph = FALSE, undirected = FALSE)),
     random_intercept_perceiver = list(to = "random_intercept_reporter",
-                                      since = "0.3.0")
+                                      since = "0.3.0"),
+    diag    = list(to = "loops", since = "0.5.0")
   )
 }
 
@@ -323,6 +322,17 @@ print.mrqap_control <- function(x, ...) {
       manynet::snet_abort("{.arg {what}} must be {.val {TRUE}}, {.val {FALSE}}, or {.code NULL}.")
     }
     manynet::snet_abort("{.arg {what}} must be {.val {TRUE}} or {.val {FALSE}}.")
+  }
+  invisible(value)
+}
+
+#' @keywords internal
+#' @noRd
+.check_ncores <- function(value) {
+  if (!is.null(value) &&
+      !(is.numeric(value) && length(value) == 1 &&
+        !is.na(value) && value >= 1 && value %% 1 == 0)) {
+    manynet::snet_abort("{.arg ncores} must be a whole number of at least 1, or {.code NULL}.")
   }
   invisible(value)
 }

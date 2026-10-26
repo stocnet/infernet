@@ -371,8 +371,8 @@ estimate_mrqap <- function(formula,
     direction <- .directed_label(ctrl$directed)
     manynet::snet_info("Reading the network as {.val {direction}}.")
   }
-  if (is.null(ctrl$diag)) {
-    ctrl$diag <- isTRUE(manynet::is_complex(first_graph))
+  if (is.null(ctrl$loops)) {
+    ctrl$loops <- isTRUE(manynet::is_complex(first_graph))
   }
 
   fit <- QAPengine(
@@ -381,7 +381,7 @@ estimate_mrqap <- function(formula,
     css       = css,
     family    = ctrl$family,
     directed  = ctrl$directed,
-    diag      = ctrl$diag,
+    loops     = ctrl$loops,
     permute   = ctrl$permute,
     times      = times,
     seed      = ctrl$seed,
@@ -672,7 +672,7 @@ print.netreg <- function(x, ...) {
         format(x$times), "permutations.\n")
   }
 
-  if (x$diag) {
+  if (x$loops) {
     cat("Diagonal values (loops) were used in the estimation.\n")
   } else {
     cat("Diagonal values (loops) were ignored.\n")
@@ -759,7 +759,7 @@ print.netreg <- function(x, ...) {
         format(x$times), "permutations.")
   }
 
-  if (x$diag) {
+  if (x$loops) {
     cat("\nDiagonal values (loops) were used in the estimation.")
   } else {
     cat("\nDiagonal values (loops) were ignored.")

@@ -9,11 +9,11 @@ control_mrqap(
   permute = c("predictor", "outcome"),
   family = c("auto", "gaussian", "binomial", "poisson", "negbin", "zip"),
   directed = NULL,
-  diag = NULL,
+  loops = NULL,
   seed = NULL,
   groups = NULL,
-  strategy = "sequential",
   ncores = NULL,
+  strategy = "sequential",
   use_robust_errors = FALSE,
   random_intercept_nets = FALSE,
   random_intercept_sender = FALSE,
@@ -44,7 +44,7 @@ The others are \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"ne
 \item{directed}{Logical, whether a tie from i to j differs from one from
 j to i. \code{NULL} (the default) reads it from the network, and says so.}
 
-\item{diag}{Logical, whether loops, the ties from a node to itself, enter
+\item{loops}{Logical, whether loops, the ties from a node to itself, enter
 the model. \code{NULL} (the default) includes them only where the network has
 loops.}
 
@@ -57,13 +57,15 @@ permuted only among the nodes of its group.
 On a two-mode network, its length says which mode it groups.
 \code{NULL} (the default) permutes all nodes together.}
 
-\item{strategy}{The \code{{future}} plan that the permutations run on:
-\code{"sequential"} (the default), \code{"multisession"}, \code{"multicore"}, or
-\code{"cluster"}. The plan that was set before is restored after the fit.}
+\item{ncores}{A number of cores to run the permutations on.
+More than one runs them on that many \code{"multisession"} workers, and one runs
+them sequentially, whatever \code{strategy} says.
+\code{NULL} (the default) leaves the choice to \code{strategy}.}
 
-\item{ncores}{A number of parallel workers. More than one runs the
-permutations on that many \code{"multisession"} workers, whatever \code{strategy}
-says. \code{NULL} (the default) uses \code{strategy}.}
+\item{strategy}{The \code{{future}} plan that the permutations run on where
+\code{ncores} is \code{NULL}: \code{"sequential"} (the default), \code{"multisession"},
+\code{"multicore"}, or \code{"cluster"}. The plan that was set before is restored
+after the fit.}
 
 \item{use_robust_errors}{Logical, whether to use HC3 robust standard errors
 for the observed model's t values. \code{FALSE} by default.}
