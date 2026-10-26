@@ -73,6 +73,30 @@
 #'   than missing data. `{manynet}` does not mark such cells, so they enter the
 #'   model as observed zeros. Remove them, or set them to `NA`, before fitting.
 #'
+#' @section Longitudinal networks:
+#'   A longitudinal network, one that `manynet::is_longitudinal()` says has
+#'   more than one wave, is fitted as a panel. Each wave but the first is an
+#'   outcome, and the waves are pooled, so the network index is the wave.
+#'   One permutation relabels the nodes the same way in every wave, so that
+#'   each node keeps its own trajectory under the null hypothesis.
+#'
+#'   Three of goldfish's effects then read the outcome's previous wave, as
+#'   goldfish and RSiena read the state of the network before each change:
+#'
+#'   - `inertia`, the tie from i to j in the previous wave;
+#'   - `recip`, the tie from j to i in the previous wave;
+#'   - `trans`, the number of two-paths i -> k -> j in the previous wave,
+#'     counting only observed ties.
+#'
+#'   On a cross-sectional network, `inertia` and `trans` are dropped with a
+#'   warning, since they could only read the outcome's own ties, and `recip`
+#'   reads the outcome's reverse tie, with a warning.
+#'   Every other term, including a layer such as `tie(friends)` and a node
+#'   attribute, reads the same wave as the outcome; see stocnet/infernet#18.
+#'   Every wave must hold the same nodes: mark a node that is absent from a wave
+#'   as missing there. A list of networks is read as independent networks, not
+#'   as a panel, even where it holds the waves of one network.
+#'
 #' @section Multiplex networks:
 #'   The left-hand side of the formula can name a layer of a multiplex network,
 #'   and the right-hand side can name other layers as dyadic covariates,
@@ -191,6 +215,7 @@
 #'     `permute = "predictor"` each column comes from its own set of
 #'     permutations, so rows pair columns only by position, and the intercept
 #'     column is `NA`. A permutation that failed leaves its row `NA`.
+#'   - `panel`, whether the network was fitted as a panel of its waves.
 #'   - `missing`, a list of the treatment of unobserved dyads, the number of
 #'     dyads the model could use (`possible`) and did use (`used`), the number
 #'     unobserved on each variable (`unobserved`), and the number of nodes that
@@ -260,8 +285,10 @@ estimate_mrqap <- function(formula,
     ctrl[[.random_groups()[[group]]]] <- TRUE
   }
 
-  if (.is_list_of_graphs(.data)) {
-    prepared <- .prepare_list_of_graphs(formula, .data)
+  panel <- .is_panel(.data)
+  if (panel || .is_list_of_graphs(.data)) {
+    prepared <- if (panel) .prepare_panel(formula, .data) else
+      .prepare_list_of_graphs(formula, .data)
     matlist     <- prepared$matlist
     formula     <- prepared$formula
     first_graph <- prepared$first_graph
@@ -326,6 +353,7 @@ estimate_mrqap <- function(formula,
     random_intercept_reporter = ctrl$random_intercept_reporter,
     use_robust_errors = ctrl$use_robust_errors,
     missing  = ctrl$missing,
+    panel    = panel,
     less_mem = ctrl$less_mem
   )
 
@@ -607,6 +635,27 @@ print.netreg <- function(x, ...) {
 }
 
 
+# What a result was fitted on, where that is not every cell of one network:
+# the dyads that unobserved cells left, and the waves of a panel. A reader
+# needs both to interpret the estimates.
+#' @keywords internal
+#' @noRd
+.sample_lines <- function(x) {
+  out <- character(0)
+  m <- x$missing
+  if (!is.null(m) && m$used < m$possible) {
+    out <- c(out, paste("Fitted on", format(m$used), "of", format(m$possible),
+                        "dyads; the others were unobserved and dropped."))
+  }
+  if (isTRUE(x$panel)) {
+    waves <- length(unique(x$pred$nv))
+    out <- c(out, paste0("A panel: each of ", waves, " waves was fitted against ",
+                         "the wave before it,"),
+             "  and each permutation relabelled the nodes in every wave alike.")
+  }
+  out
+}
+
 .print_qap_regression <- function(x, print_b = FALSE, print_random = FALSE) {
   if (is.null(x$random.intercepts)) {
     cat("\nOLS Network Model\n\n")
@@ -616,6 +665,8 @@ print.netreg <- function(x, ...) {
 
   if (!is.null(x$groups))
     cat("Permutations were performed within groups only.\n")
+  lines <- .sample_lines(x)
+  if (length(lines)) cat(paste0(lines, "\n"), sep = "")
 
   if (x$permute == "outcome")
     cat("The outcome matrix Y was permuted", format(x$times), "times.\n")
@@ -697,6 +748,8 @@ print.netreg <- function(x, ...) {
   }
   if (!is.null(x$groups))
     cat("\nPermutations were performed within groups only.")
+  lines <- .sample_lines(x)
+  if (length(lines)) cat(paste0("\n", lines), sep = "")
 
   if (x$permute == "outcome")
     cat("\nThe outcome matrix Y was permuted", format(x$times), "times.")
@@ -776,8 +829,63 @@ print.netreg <- function(x, ...) {
 # column names, and whether the outcome is a cognitive social structure.
 #' @keywords internal
 #' @noRd
-convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE) {
-  .evaluate_spec(.specify(formula), .data, advise = advise, pooled = pooled)
+convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE,
+                                previous = NULL) {
+  .evaluate_spec(.specify(formula), .data, advise = advise, pooled = pooled,
+                 previous = previous)
+}
+
+# A longitudinal network of more than one wave is a panel: the same nodes,
+# observed again. A list of networks is not, even where it holds the waves of
+# one network, since nothing then says that its nodes are the same.
+#' @keywords internal
+#' @noRd
+.is_panel <- function(.data) {
+  if (is.null(.data) || .is_list_of_graphs(.data)) return(FALSE)
+  tryCatch(isTRUE(manynet::is_longitudinal(.data)) &&
+             isTRUE(manynet::net_waves(.data) > 1),
+           error = function(e) FALSE)
+}
+
+# A panel is fitted on every wave but the first, each against the wave before
+# it, which `inertia`, `recip`, and `trans` read. The waves are pooled, so the
+# network index of the dyad-level data is the wave, and `QAPengine()` draws one
+# permutation of the nodes for every wave.
+#' @keywords internal
+#' @noRd
+.prepare_panel <- function(formula, .data) {
+  waves <- manynet::to_waves(.data)
+  n_waves <- length(waves)
+  mls <- lapply(seq(2, n_waves), function(t) {
+    convertToMatrixList(formula, waves[[t]], advise = FALSE, pooled = TRUE,
+                        previous = waves[[t - 1]])
+  })
+  if (any(vapply(mls, function(ml) isTRUE(ml$css), logical(1)))) {
+    manynet::snet_abort(
+      "A longitudinal cognitive social structure is not yet supported.")
+  }
+  dep <- names(mls[[1]]$mydata)[1]
+  dims <- lapply(mls, function(ml) dim(ml$mydata[[dep]]))
+  if (length(unique(dims)) > 1) {
+    manynet::snet_abort(
+      c("The waves of the network have different numbers of nodes.",
+        i = "A panel needs the same nodes in every wave. Mark a node that is absent from a wave as missing there."))
+  }
+  ref_names <- names(mls[[1]]$mydata)
+  matlist <- stats::setNames(lapply(ref_names, function(nm) {
+    lapply(mls, function(ml) ml$mydata[[nm]])
+  }), ref_names)
+  first_graph <- manynet::as_tidygraph(waves[[2]])
+  specificationAdvice(.specify(formula), first_graph)
+  fitted <- n_waves - 1
+  manynet::snet_info(
+    "Reading the network as a panel of {n_waves} waves:",
+    "each of the last {fitted} wave{?s} is fitted against the wave before it.")
+  list(matlist     = matlist,
+       formula     = mls[[1]]$formula,
+       terms       = mls[[1]]$terms,
+       first_graph = first_graph,
+       css         = FALSE)
 }
 
 # Says what was detected, and warns about the one thing a CSS array cannot say

@@ -258,8 +258,13 @@ run_permutations <- function(times, FUN, ...) {
 # observed data.
 #' @keywords internal
 #' @noRd
-.permutation_blocks <- function(target, groups, diag, times, label) {
-  if (is.list(target)) {
+.permutation_blocks <- function(target, groups, diag, times, label,
+                                panel = FALSE) {
+  if (panel) {
+    blocks <- .panel_blocks(target, groups, diag)
+    if (is.null(blocks)) return(NULL)
+    parts <- list(blocks)
+  } else if (is.list(target)) {
     blocks <- lapply(seq_along(target), function(net) {
       g <- if (is.list(groups)) groups[[net]] else groups
       .missing_blocks(target[[net]], g, diag)
@@ -302,6 +307,48 @@ run_permutations <- function(times, FUN, ...) {
   }
   attr(blocks, "fixed") <- fixed
   blocks
+}
+
+# One draw for every wave of a panel: the same order of the nodes, applied to
+# each wave's matrix.
+#' @keywords internal
+#' @noRd
+.permute_panel <- function(mats, groups = NULL) {
+  d <- dim(mats[[1]])
+  if (d[1] == d[2]) {
+    or <- oc <- .perm_order(d[1], .mode_groups(groups, "rows"))
+  } else {
+    or <- .perm_order(d[1], .mode_groups(groups, "rows"))
+    oc <- .perm_order(d[2], .mode_groups(groups, "cols"))
+  }
+  lapply(mats, function(m) {
+    p <- m[or, oc, drop = FALSE]
+    dimnames(p) <- dimnames(m)
+    p
+  })
+}
+
+# The blocks of a panel. One draw relabels every wave, so two nodes can be
+# exchanged only where their missing cells match in every wave. A node's
+# signature is its signature in each wave in turn, and a node fixed in any wave
+# is fixed in all of them.
+#' @keywords internal
+#' @noRd
+.panel_blocks <- function(mats, groups = NULL, diag = FALSE) {
+  per_wave <- lapply(mats, .missing_blocks, groups = NULL, diag = diag)
+  if (all(vapply(per_wave, is.null, logical(1)))) return(NULL)
+  d <- dim(mats[[1]])
+  mode_labels <- function(which, n) {
+    labs <- vapply(per_wave, function(b) {
+      if (is.null(b)) rep("complete", n) else b[[which]]
+    }, character(n))
+    labs <- matrix(labs, nrow = n)
+    fixed <- rowSums(matrix(startsWith(labs, "fixed"), nrow = n)) > 0
+    .block_labels(apply(labs, 1, paste, collapse = "/"), fixed, groups)
+  }
+  rows <- mode_labels("rows", d[1])
+  if (d[1] == d[2]) return(list(rows = rows, cols = rows))
+  list(rows = rows, cols = mode_labels("cols", d[2]))
 }
 
 # The cells a model could use, and how many of them are unobserved on each

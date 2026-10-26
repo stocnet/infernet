@@ -288,7 +288,7 @@ test_that("a goldfish formula fits without the terms that read the outcome", {
   dropped <- grep("Dropped", res$warnings, value = TRUE)
   expect_length(dropped, 1)
   expect_match(dropped, "Dropped 2 terms")
-  expect_match(dropped, "`inertia` depends on the outcome's own ties", fixed = TRUE)
+  expect_match(dropped, "`inertia` needs a longitudinal network", fixed = TRUE)
   expect_match(dropped, "`trans(b)` reads another layer", fixed = TRUE)
   expect_length(grep("reads the outcome's own ties", res$warnings), 1)
 })

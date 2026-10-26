@@ -157,11 +157,13 @@ which changes the scale of its coefficient but not its test, and
 \code{tertius()} and \code{tertius_diff()} leave out the sender in infernet and
 include it in goldfish. Both are kept and named.
 
-For an MRQAP, goldfish's endogenous effects, such as \code{inertia}, \code{trans},
-\code{cycle}, \code{common_sender}, \code{common_receiver}, and \code{four}, read the
-outcome's own ties, which permuting the outcome would not permute with
-them, so they are dropped. So are goldfish's closures through two layers
-and the DyNAM-i statistics of groups.
+For an MRQAP, goldfish's endogenous effects, such as \code{cycle},
+\code{common_sender}, \code{common_receiver}, and \code{four}, read the outcome's own
+ties, which permuting the outcome would not permute with them, so they are
+dropped. So are goldfish's closures through two layers and the DyNAM-i
+statistics of groups. \code{inertia}, \code{recip}, and \code{trans} read the outcome's
+previous wave where \code{.data} is a longitudinal network, and fit there; on a
+cross-sectional network, \code{inertia} and \code{trans} are dropped too.
 
 For goldfish, a layer named on its own becomes \code{tie(layer, weighted = TRUE)},
 \code{exchange(layer)} becomes \code{recip(layer)}, and \code{dist(x)} becomes \code{diff(x)}.

@@ -109,11 +109,13 @@
 #'   `tertius()` and `tertius_diff()` leave out the sender in infernet and
 #'   include it in goldfish. Both are kept and named.
 #'
-#'   For an MRQAP, goldfish's endogenous effects, such as `inertia`, `trans`,
-#'   `cycle`, `common_sender`, `common_receiver`, and `four`, read the
-#'   outcome's own ties, which permuting the outcome would not permute with
-#'   them, so they are dropped. So are goldfish's closures through two layers
-#'   and the DyNAM-i statistics of groups.
+#'   For an MRQAP, goldfish's endogenous effects, such as `cycle`,
+#'   `common_sender`, `common_receiver`, and `four`, read the outcome's own
+#'   ties, which permuting the outcome would not permute with them, so they are
+#'   dropped. So are goldfish's closures through two layers and the DyNAM-i
+#'   statistics of groups. `inertia`, `recip`, and `trans` read the outcome's
+#'   previous wave where `.data` is a longitudinal network, and fit there; on a
+#'   cross-sectional network, `inertia` and `trans` are dropped too.
 #'
 #'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
 #'   `exchange(layer)` becomes `recip(layer)`, and `dist(x)` becomes `diff(x)`.
@@ -371,7 +373,13 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @noRd
 .record_columns <- function(x, out, .data) {
   spec <- .specify(x)
-  ctx <- .spec_context(spec, .data)
+  # A panel's columns are those of its second wave, read against its first.
+  ctx <- if (.is_panel(.data)) {
+    waves <- manynet::to_waves(.data)
+    .spec_context(spec, waves[[2]], previous = waves[[1]])
+  } else {
+    .spec_context(spec, .data)
+  }
   spec <- .resolve_bare_terms(spec, ctx)
   .check_formula_vars(spec, ctx)
   built <- lapply(spec$terms, function(term) {
@@ -431,8 +439,12 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
       c("The formula needs an outcome on its left-hand side.",
         i = "For example: {.code weight ~ ego(age)}."))
   }
+  # A list of networks is read as independent networks, not as a panel, even
+  # where it holds the waves of one network.
+  panel <- .is_panel(.data)
   if (.is_list_of_graphs(.data)) .data <- .data[[1]]
   ctx <- .specify_context(.data, .deparsed(formula[[2]]))
+  ctx$panel <- panel
   input <- .read_input(formula, input, ctx)
   tt <- stats::terms(formula)
   if (!is.null(attr(tt, "offset"))) {
@@ -455,7 +467,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @noRd
 .specify_context <- function(.data, lhs) {
   if (is.null(.data)) {
-    return(list(tie_names = character(0), outcome_layer = NA_character_))
+    return(list(tie_names = character(0), outcome_layer = NA_character_,
+                panel = FALSE))
   }
   net <- manynet::as_tidygraph(.data)
   layers <- .layer_names(net)
@@ -492,6 +505,11 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   used <- setdiff(.formula_names(formula[[3]]), ctx$tie_names)
   ergm_only <- intersect(used, setdiff(names(.ergm_terms()), names(.formula_terms())))
   dynam_only <- intersect(used, names(.dynam_terms()))
+  # On a panel, a term that reads the previous wave is an MRQAP term too.
+  if (isTRUE(ctx$panel)) {
+    lagged <- names(Filter(function(e) isTRUE(e$panel), .formula_terms()))
+    dynam_only <- setdiff(dynam_only, lagged)
+  }
   input <- if (length(ergm_only)) "ergm" else if (length(dynam_only)) "dynam" else "mrqap"
   if (input != "mrqap") {
     clue <- c(ergm_only, dynam_only)[1]
@@ -603,6 +621,9 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
         .arg_name(.specify_operand(expr)$args[[1]])
       } else NA_character_
       reads_outcome <- if (is.na(layer)) isTRUE(entry$bare) else layer %in% outcome
+      # On a panel, a bare term reads the previous wave, not the outcome itself.
+      if (reads_outcome && is.na(layer) && isTRUE(entry$panel) &&
+          isTRUE(read$ctx$panel)) next
       if (reads_outcome && entry$outcome == "refuse") {
         return(list(status = "refuses",
                     reason = "would predict the outcome's ties from those same ties"))
@@ -711,6 +732,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
           return("reads another layer, which is not yet built here")
         }
       }
+      if (isTRUE(entry$panel) && isTRUE(ctx$panel)) next
       return(entry$reason)
     }
     NA_character_

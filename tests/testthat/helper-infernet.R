@@ -84,6 +84,29 @@ qap_net_twomode <- function(seed = 106) {
 # coefficient can be compared against the equivalent standard fit on identical
 # data. Anything this returns comes from the engine's own internals, so a
 # comparison against it tests the estimator dispatch, not the vectorisation.
+# A longitudinal network: the same nodes over several waves, each wave's ties
+# depending on the previous wave's ties (inertia), their reverse (reciprocity),
+# and on age.
+qap_net_panel <- function(n = 15, waves = 3, seed = 108) {
+  set.seed(seed)
+  age <- stats::runif(n, 20, 60)
+  m <- matrix(stats::rbinom(n^2, 1, 0.2), n, n)
+  diag(m) <- 0
+  el <- vector("list", waves)
+  for (t in seq_len(waves)) {
+    if (t > 1) {
+      p <- stats::plogis(-2 + 3 * m + 2 * t(m) + 0.03 * outer(age, age, "-"))
+      m <- matrix(stats::rbinom(n^2, 1, p), n, n)
+      diag(m) <- 0
+    }
+    w <- which(m == 1, arr.ind = TRUE)
+    el[[t]] <- data.frame(from = w[, 1], to = w[, 2], time = t)
+  }
+  manynet::as_tidygraph(list(
+    nodes = data.frame(name = paste0("n", seq_len(n)), age = age),
+    ties = do.call(rbind, el)))
+}
+
 qap_reference_data <- function(formula, .data, directed = NULL, diag = FALSE) {
   ml <- convertToMatrixList(formula, .data, advise = FALSE)
   parsed <- parse_qap_formula(ml$formula)

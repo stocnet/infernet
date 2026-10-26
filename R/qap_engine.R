@@ -29,6 +29,7 @@ QAPengine <- function(formula,
                       random_intercept_reporter  = FALSE,
                       use_robust_errors = FALSE,
                       missing   = "available",
+                      panel     = FALSE,
                       less_mem  = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
@@ -41,6 +42,8 @@ QAPengine <- function(formula,
 
   validate_qap_input(matlist, parsed, css = css)
   large <- is.list(matlist[[dep]])
+  if (panel && !large)
+    manynet::snet_abort("A panel needs a list of waves for each variable.")
 
   # ---- random intercepts ----------------------------------------------------
 
@@ -161,12 +164,12 @@ QAPengine <- function(formula,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
                     data_vars. = data_vars, parsed. = parsed,
-                    n_obs. = used)
+                    n_obs. = used, panel. = panel)
   # Each permutation set exchanges only the nodes whose missing cells match, so
   # that every draw is fitted on the dyads of the observed model.
   fixed <- integer(0)
   .blocks_for <- function(target, label) {
-    blocks <- .permutation_blocks(target, groups, diag, times, label)
+    blocks <- .permutation_blocks(target, groups, diag, times, label, panel)
     if (is.null(blocks)) return(groups)
     fixed[[label]] <<- attr(blocks, "fixed")
     blocks
@@ -260,6 +263,7 @@ QAPengine <- function(formula,
   }
 
   fit$permute   <- permute
+  fit$panel     <- panel
   fit$diag      <- diag
   fit$family    <- family
   fit$directed  <- directed
@@ -308,7 +312,8 @@ QAPPermEst <- function(i,
                        data_vars.,
                        parsed.,
                        perm_groups. = groups.,
-                       n_obs. = NULL) {
+                       n_obs. = NULL,
+                       panel. = FALSE) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
@@ -320,7 +325,12 @@ QAPPermEst <- function(i,
     d <- matlist.
     # A pooled list has one set of blocks for each network, where its missing
     # cells differ; the user's groups are one factor for all of them.
-    d[[target]] <- if (large) {
+    # The waves of a panel are the same nodes, observed again, so one draw
+    # relabels them the same way in every wave. Permuting each wave on its own
+    # would break each node's trajectory under the null.
+    d[[target]] <- if (panel.) {
+      .permute_panel(d[[target]], perm_groups.)
+    } else if (large) {
       per_net <- is.list(perm_groups.) && is.null(names(perm_groups.))
       lapply(seq_along(d[[target]]), function(k) {
         shape.$permute(d[[target]][[k]],

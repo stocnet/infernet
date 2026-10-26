@@ -330,6 +330,22 @@ The loops that the model leaves out and the upper half of an undirected network
 are the only cells the engine knows to be structural, and `.structural_mask()`
 keeps them out of the counts.
 
+#### Longitudinal networks
+
+A network that `manynet::is_longitudinal()` says has more than one wave is a
+panel, detected rather than declared. `.prepare_panel()` splits it with
+`manynet::to_waves()`, and builds each wave but the first against the wave
+before it, which `.spec_context()` holds as `ctx$previous`.
+A term whose registry entry has `panel = TRUE` (`inertia`, `recip`, `trans`)
+reads that previous wave, and fits without a warning;
+on a cross-sectional network it keeps its old status.
+`QAPengine(panel = TRUE)` draws one order of the nodes for every wave with
+`.permute_panel()`, and `.panel_blocks()` exchanges only nodes whose missing
+cells match in every wave.
+A list of networks is never a panel, since nothing says its nodes are the same.
+Whether a layer term reads the same wave or the previous one is open:
+see [stocnet/infernet#18](https://github.com/stocnet/infernet/issues/18).
+
 #### Cognitive social structures
 
 A CSS is `{manynet}`'s to define, and this package follows it.
@@ -665,15 +681,15 @@ A cognitive social structure and a list of networks abort.
 | `mix(x)` | fits | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
 | `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
 | `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |
-| `recip`, `recip()` | warns | the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
+| `recip`, `recip()` | warns; fits on a panel | the reverse tie in the previous wave on a panel; otherwise the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
 | `indeg(layer)`, `outdeg(layer)` | fits; refuses the outcome layer | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
 | `tertius(layer, x)` | fits | the mean of x over j's other in-neighbours | `edgecov` | — | — |
 | `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
 | `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
 | `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
 | `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |
-| `inertia`, `inertia()` | drops | goldfish: the past events from i to j | — | — | — |
-| `trans`, `trans()` | drops | goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |
+| `inertia`, `inertia()` | drops; fits on a panel | the tie from i to j in the previous wave; goldfish: the past events from i to j | — | — | — |
+| `trans`, `trans()` | drops; fits on a panel | the two-paths i → k → j in the previous wave; goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |
 | `cycle`, `cycle()` | drops | goldfish: the two-paths j → k → i | `ctriple`, `dgwesp(type = "ITP")` | `cycle3` | — |
 | `common_sender`, `common_sender()` | drops | goldfish: the nodes k with k → i and k → j | `dgwesp(type = "ISP")` | `gwespBF`, nearest | — |
 | `common_receiver`, `common_receiver()` | drops | goldfish: the nodes k with i → k and j → k | `dgwesp(type = "OSP")` | `gwespFB`, nearest | — |
@@ -747,6 +763,7 @@ and are grouped by contract for the engine:
 | `test-qap_control.R` | the `control` list and the choice of null hypothesis |
 | `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
+| `test-qap_panel.R` | a longitudinal network as a panel: the waves, the lagged terms, one permutation for every wave, and its missing cells |
 | `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the `missing` control |
 | `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |

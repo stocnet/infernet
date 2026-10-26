@@ -34,6 +34,10 @@
 - Added `control = list(missing = )` with `"available"` (the default) and `"fail"`
   - Reports the dyads dropped on each variable, and stores them as `fit$missing`
   - Documented a structural zero as a limitation
+- Added panel MRQAP for a longitudinal network
+  - Detects a panel with `manynet::is_longitudinal()`, and fits each wave against the previous one
+  - Permutes the nodes the same way in every wave
+  - Fits `inertia`, `recip`, and `trans` on the previous wave
 - Renamed `net_regression()` to `estimate_mrqap()` to match other stocnet packages
   - `net_regression()` still works, and warns once that it is deprecated
   - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`

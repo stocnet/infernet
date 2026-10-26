@@ -26,7 +26,10 @@
 # happens where a layer term names the outcome: "refuse", or "warn" where the
 # term is defined on the outcome but is then not permuted with it. `bare` is
 # TRUE where the term can be named on its own, as goldfish's endogenous effects
-# are: `~ recip` is then `recip()` of the outcome.
+# are: `~ recip` is then `recip()` of the outcome. `panel` is TRUE where the
+# term reads the outcome's previous wave on a longitudinal network, as goldfish
+# and RSiena read the state of the network before each change. It then fits
+# there without a warning, and `build` reads `ctx$previous`.
 #
 # The rest say what each model makes of the term, so that one formula can be
 # read by several (see "Formula conventions" in CONTRIBUTING.md). `mrqap` is
@@ -93,7 +96,7 @@
       to_ergm = .ergm_built),
     recip = list(
       formals = alist(layer = ), kind = "layer", build = .build_recip,
-      twomode = FALSE, bare = TRUE,
+      twomode = FALSE, bare = TRUE, panel = TRUE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
       outcome = "warn", mrqap = "warns", reason = .outcome_reason(),
       dynam = "recip", saom = "recip",
@@ -163,10 +166,22 @@
          mrqap = "drops", reason = "is defined on the groups of a DyNAM-i",
          saom = NA_character_, ergm = NA_character_)
   }
+  # Fitted on the previous wave of a longitudinal network, and dropped from a
+  # cross-sectional one, where they could only read the outcome's own ties.
+  lagged <- function(entry, build) {
+    entry$panel <- TRUE
+    entry$build <- build
+    entry$twomode <- FALSE
+    entry$hint <- "A two-mode network has no two-paths or repeated ties of this kind."
+    entry$reason <- "needs a longitudinal network, where it reads the outcome's previous wave"
+    entry
+  }
   terms <- list(
-    inertia         = endogenous(NA_character_, NA_character_),
-    trans           = endogenous("transTrip", "ttriple, or dgwesp(type = \"OTP\")",
-                                 .ergm_endogenous("ttriple", "triangle")),
+    inertia         = lagged(endogenous(NA_character_, NA_character_),
+                             .build_inertia),
+    trans           = lagged(endogenous("transTrip", "ttriple, or dgwesp(type = \"OTP\")",
+                                        .ergm_endogenous("ttriple", "triangle")),
+                             .build_trans),
     cycle           = endogenous("cycle3", "ctriple, or dgwesp(type = \"ITP\")",
                                  .ergm_endogenous("ctriple")),
     common_sender   = endogenous("gwespBF, nearest", "dgwesp(type = \"ISP\")"),
@@ -360,8 +375,9 @@
 
 #' @keywords internal
 #' @noRd
-.evaluate_spec <- function(spec, .data, advise = TRUE, pooled = FALSE) {
-  ctx <- .spec_context(spec, .data, pooled)
+.evaluate_spec <- function(spec, .data, advise = TRUE, pooled = FALSE,
+                           previous = NULL) {
+  ctx <- .spec_context(spec, .data, pooled, previous)
   out <- ctx$out
   DV <- ctx$DV
   css <- ctx$css
@@ -453,12 +469,20 @@
 # the resolved outcome, with its label and its network.
 #' @keywords internal
 #' @noRd
-.spec_context <- function(spec, .data, pooled = FALSE) {
+.spec_context <- function(spec, .data, pooled = FALSE, previous = NULL) {
   net <- manynet::as_tidygraph(.data)
   layers <- .layer_names(net)
   out <- .resolve_outcome(spec$outcome, net, layers)
   twomode <- manynet::is_twomode(net)
+  # The outcome in the previous wave of a panel, which `inertia`, `recip`, and
+  # `trans` read. It is NULL for a cross-sectional network.
+  if (!is.null(previous)) {
+    previous <- manynet::as_tidygraph(previous)
+    previous <- manynet::as_matrix(
+      if (!is.na(out$layer)) manynet::to_uniplex(previous, layer = out$layer) else previous)
+  }
   list(
+    previous      = previous,
     data          = .data,
     net           = net,
     layers        = layers,
@@ -890,9 +914,14 @@
     if (identical(op$fn, "exchange")) {
       manynet::snet_abort("{.fn exchange} needs a layer, for example {.code exchange(friends)}.")
     }
-    .warn_outcome_ties(op$fn, "exchange(friends)")
-    m <- ctx$DV
     label <- op$fn
+    if (!is.null(ctx$previous)) {
+      # On a panel, the reverse tie in the previous wave, as goldfish reads it.
+      m <- ctx$previous
+    } else {
+      .warn_outcome_ties(op$fn, "exchange(friends)")
+      m <- ctx$DV
+    }
   } else {
     .outcome_layer_check(op, ctx, op$name)
     m <- .layer_matrix(ctx, op$name)
@@ -901,6 +930,47 @@
   out <- if (length(dim(m)) == 3) aperm(m, c(2, 1, 3)) else t(m)
   dimnames(out) <- dimnames(m)
   .named(out, label)
+}
+
+# The outcome's own tie in the previous wave of a panel, 0/1 as goldfish's
+# `inertia` counts it. An unobserved tie stays NA.
+#' @keywords internal
+#' @noRd
+.build_inertia <- function(op, ctx) {
+  m <- .previous_wave(op, ctx)
+  .named((m > 0) * 1, "inertia")
+}
+
+# The two-paths i -> k -> j in the previous wave of a panel, as goldfish's
+# `trans` and RSiena's `transTrip` count them. A two-path through an unobserved
+# tie is not counted, so the count is of observed two-paths.
+#' @keywords internal
+#' @noRd
+.build_trans <- function(op, ctx) {
+  m <- .previous_wave(op, ctx)
+  a <- (m > 0) * 1
+  a[is.na(a)] <- 0
+  diag(a) <- 0
+  out <- a %*% a
+  diag(out) <- 0
+  dimnames(out) <- dimnames(m)
+  .named(out, "trans")
+}
+
+#' @keywords internal
+#' @noRd
+.previous_wave <- function(op, ctx) {
+  if (is.null(ctx$previous)) {
+    manynet::snet_abort(
+      c("{.fn {op$fn}} needs a longitudinal network, where it reads the outcome's previous wave.",
+        i = "Read the formula with {.fn specify_mrqap} first, which drops it from a cross-sectional network."))
+  }
+  if (!is.na(op$name) && !identical(op$name, ctx$outcome_layer)) {
+    manynet::snet_abort(
+      c("{.fn {op$fn}} reads the outcome's previous wave, not another layer.",
+        i = "See stocnet/infernet#18 for a lagged layer."))
+  }
+  ctx$previous
 }
 
 .build_indeg <- function(op, ctx) .build_degree(op, ctx, "in")

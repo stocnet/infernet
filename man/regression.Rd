@@ -124,6 +124,7 @@ row per permutation and one column per coefficient. The shares in
 \code{permute = "predictor"} each column comes from its own set of
 permutations, so rows pair columns only by position, and the intercept
 column is \code{NA}. A permutation that failed leaves its row \code{NA}.
+\item \code{panel}, whether the network was fitted as a panel of its waves.
 \item \code{missing}, a list of the treatment of unobserved dyads, the number of
 dyads the model could use (\code{possible}) and did use (\code{used}), the number
 unobserved on each variable (\code{unobserved}), and the number of nodes that
@@ -225,6 +226,33 @@ A cell that cannot hold a tie, such as a tie between two levels of a
 multilevel network that the design rules out, is a structural zero rather
 than missing data. \code{{manynet}} does not mark such cells, so they enter the
 model as observed zeros. Remove them, or set them to \code{NA}, before fitting.
+}
+
+\section{Longitudinal networks}{
+
+A longitudinal network, one that \code{manynet::is_longitudinal()} says has
+more than one wave, is fitted as a panel. Each wave but the first is an
+outcome, and the waves are pooled, so the network index is the wave.
+One permutation relabels the nodes the same way in every wave, so that
+each node keeps its own trajectory under the null hypothesis.
+
+Three of goldfish's effects then read the outcome's previous wave, as
+goldfish and RSiena read the state of the network before each change:
+\itemize{
+\item \code{inertia}, the tie from i to j in the previous wave;
+\item \code{recip}, the tie from j to i in the previous wave;
+\item \code{trans}, the number of two-paths i -> k -> j in the previous wave,
+counting only observed ties.
+}
+
+On a cross-sectional network, \code{inertia} and \code{trans} are dropped with a
+warning, since they could only read the outcome's own ties, and \code{recip}
+reads the outcome's reverse tie, with a warning.
+Every other term, including a layer such as \code{tie(friends)} and a node
+attribute, reads the same wave as the outcome; see stocnet/infernet#18.
+Every wave must hold the same nodes: mark a node that is absent from a wave
+as missing there. A list of networks is read as independent networks, not
+as a panel, even where it holds the waves of one network.
 }
 
 \section{Multiplex networks}{

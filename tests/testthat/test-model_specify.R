@@ -85,7 +85,7 @@ test_that("goldfish terms that read the outcome are dropped, in one warning", {
                  "Dropped 3 terms")
   expect_equal(deparse(f[[3]]), "ego(x)")
   ch <- record_of(f)
-  expect_equal(ch$reason[ch$term == "inertia"], "depends on the outcome's own ties")
+  expect_match(ch$reason[ch$term == "inertia"], "needs a longitudinal network")
   expect_equal(ch$reason[ch$term == "cycle(a)"], "depends on the outcome's own ties")
   expect_match(ch$reason[ch$term == "trans(b)"], "reads another layer")
 })
@@ -118,7 +118,7 @@ test_that("a formula with nothing left to fit aborts and names each term", {
   expect_error(specify_mrqap(a ~ inertia + trans + common_sender(a)),
                "No term of the formula can be fitted")
   expect_error(specify_mrqap(a ~ inertia + trans),
-               "`inertia` depends on the outcome", fixed = TRUE)
+               "`inertia` needs a longitudinal network", fixed = TRUE)
   expect_error(specify_mrqap(net ~ edges + ttriple), "`edges` is the intercept")
   # A random intercept is not a term that can stand alone, and it is kept.
   expect_error(specify_mrqap(a ~ inertia + (1 | sender)), "No term of the formula")
