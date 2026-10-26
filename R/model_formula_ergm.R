@@ -89,8 +89,25 @@
   prefix <- if (ctx$twomode) c(ego = "b1", alter = "b2")[[side]]
     else if (ctx$directed) c(ego = "nodeo", alter = "nodei")[[side]]
     else "node"
-  suffix <- if (is.character(v) || is.factor(v)) "factor" else "cov"
-  list(terms = .ergm_call(paste0(prefix, suffix), op$name))
+  if (!is.character(v) && !is.factor(v)) {
+    return(list(terms = .ergm_call(paste0(prefix, "cov"), op$name)))
+  }
+  if (is.null(op$args$levels)) {
+    return(list(terms = .ergm_call(paste0(prefix, "factor"), op$name)))
+  }
+  built <- .ergm_quietly(if (side == "ego") .build_ego(op, ctx) else .build_alter(op, ctx))
+  list(terms = .ergm_call(paste0(prefix, "factor"), op$name,
+                          .ergm_levels(attr(built, "parts")$category)))
+}
+
+# `levels =` for ergm, as the names of the categories that get a column, which
+# ergm reads as infernet does. Positions are written as names, since the
+# categories that infernet leaves out where every one is chosen are not
+# ergm's.
+#' @keywords internal
+#' @noRd
+.ergm_levels <- function(categories, arg = "levels") {
+  paste(arg, "=", paste(deparse(categories), collapse = ""))
 }
 
 # A two-mode `same()` is the share of a node's ties to nodes like the other,
@@ -98,17 +115,31 @@
 .ergm_same <- function(op, ctx) {
   if (.same_by_category(op, ctx$env)) {
     if (ctx$twomode) return(list(reason = "is not defined for a two-mode network"))
-    return(list(terms = .ergm_call("nodematch", op$name, "diff = TRUE")))
+    if (is.null(op$args$levels)) {
+      return(list(terms = .ergm_call("nodematch", op$name, "diff = TRUE")))
+    }
+    built <- .ergm_quietly(.build_same(op, ctx))
+    return(list(terms = .ergm_call("nodematch", op$name, "diff = TRUE",
+                                   .ergm_levels(attr(built, "parts")$category))))
   }
   if (ctx$twomode) return(.ergm_edgecov(.ergm_quietly(.build_same(op, ctx))))
-  list(terms = .ergm_call("nodematch", op$name))
+  if (is.null(op$args$levels)) return(list(terms = .ergm_call("nodematch", op$name)))
+  chosen <- .select_levels(op, .categories(.node_values(ctx, op$name, "ego")), ctx$env)
+  list(terms = .ergm_call("nodematch", op$name, .ergm_levels(chosen)))
 }
 
 .ergm_match <- function(op, ctx) {
   list(terms = .ergm_call("nodematch", op$name, "diff = TRUE"))
 }
 
-.ergm_mix <- function(op, ctx) list(terms = .ergm_call("nodemix", op$name))
+# infernet orders the pairs as ergm does, so the pairs that `levels =` chooses
+# are ergm's `levels2 =` at the same positions.
+.ergm_mix <- function(op, ctx) {
+  if (is.null(op$args$levels)) return(list(terms = .ergm_call("nodemix", op$name)))
+  built <- .ergm_quietly(.build_mix(op, ctx))
+  list(terms = .ergm_call("nodemix", op$name,
+                          .ergm_levels(as.numeric(attr(built, "positions")), "levels2")))
+}
 
 # `abs` is ergm's `absdiff()`, and `identity` is its `diff()`: the tail's value
 # less the head's, as infernet takes the sender's less the receiver's. Another

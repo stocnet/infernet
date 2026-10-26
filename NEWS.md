@@ -4,6 +4,7 @@
 
 - Updated CONTRIBUTING's formula dictionary with an MRQAP column and goldfish's effects
 - Added a rule to CONTRIBUTING on when a categorical term leaves out a reference
+- Added a rule to CONTRIBUTING on `levels =`
 - Added `{fixest}` to `Suggests`, for fixed effects in models that are not gaussian
 
 ## Specification
@@ -29,6 +30,15 @@
   - `same(x, diff = TRUE)` names its columns for `same`, e.g. `same_dept_sales` rather than `match_dept_sales`
   - Aborts where `same()` names one attribute more than once, since `same(x, diff = TRUE)` adds up to `same(x)`
   - `mix()` stays its own term
+- Added `levels =` to `ego()`, `alter()`, `same()`, and `mix()`, as in ergm, to choose the categories that get a column
+  - Takes names, e.g. `ego(dept, levels = c("sales", "hr"))`, or `mix(dept, levels = "sales -> hr")`
+  - Takes positions, and negative positions to leave categories out, e.g. `levels = -1`
+  - The categories left out are the reference together, and where every one is chosen, the first chosen is
+  - An unknown name aborts and lists the categories
+  - Warns where a term has more than ten categories and no `levels =`
+  - `specify_mrqap()` reads ergm's `levels =`, and `levels2 =` of `nodemix()`; `specify_ergm()` writes them
+  - `specify_dynam()` drops a term with `levels =`, which goldfish does not have yet
+- Changed the order of the columns of `mix()` to ergm's, the sender's category changing fastest, so that a position in `levels =` is one in ergm's `levels2 =`
 - Added fixed effects after a bare bar to the `specify_*()` functions
   - `specify_ergm()` writes `| sender + receiver` as ergm's `sender` and `receiver`
   - `specify_dynam()` drops them

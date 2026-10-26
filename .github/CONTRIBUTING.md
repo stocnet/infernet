@@ -611,7 +611,7 @@ correspond to those in other packages.
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
 | A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
 | The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
-| Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
+| Options | named arguments, as goldfish; `levels` as ergm | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, `path_fn`, and `levels` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
 | Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control`; fixed effects after a bare bar, as `{fixest}`: `\| sender + receiver` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
@@ -689,6 +689,19 @@ correspond to those in other packages.
   An option of an existing term is preferred to a new term where the columns
   mean the same thing, as ergm's `nodematch(diff = TRUE)` is;
   `mix()` stays its own term, since most of its pairs are not the same.
+9. **`levels =` chooses the categories that get a column, as in ergm.**
+  `ego()`, `alter()`, `same()`, and `mix()` take it.
+  Its values are names, or positions in the order of the columns, where
+  negative positions leave those out, as ergm's `levels = -1`.
+  A name is a category as the data hold it, or for `mix()`, a pair as the
+  term table writes it, `"sales -> hr"`; `mix()` reads pairs with `levels =`,
+  where ergm uses `levels2 =`, and orders them as ergm does,
+  the sender's category changing fastest, so that the positions agree.
+  The categories left out are the reference together, by rule 8;
+  where every one is chosen, the first chosen is.
+  An unknown name aborts and lists the categories.
+  A term with more than ten categories and no `levels =` warns,
+  as goldfish plans to (stocnet/goldfish#122).
 
 #### The dictionary
 
@@ -720,16 +733,16 @@ A cognitive social structure and a list of networks abort.
 
 | infernet / goldfish | MRQAP | Meaning | ERGM (ergm) | SAOM (RSiena) | MoNAn |
 |---|---|---|---|---|---|
-| `ego(x)` | fits | the sender's value | `nodeocov`, `nodeofactor`; `b1cov`, `b1factor` in a two-mode network | `egoX` | — |
-| `alter(x)` | fits | the receiver's value | `nodeicov`, `nodeifactor`; `b2cov`, `b2factor` in a two-mode network | `altX` | `alter_covariate` |
-| `same(x)` | fits | 1 where both share a value | `nodematch`; `edgecov` in a two-mode network | `sameX` | `same_covariate` |
+| `ego(x)` | fits | the sender's value; `levels =` chooses the categories | `nodeocov`, `nodeofactor`; `b1cov`, `b1factor` in a two-mode network | `egoX` | — |
+| `alter(x)` | fits | the receiver's value; `levels =` chooses the categories | `nodeicov`, `nodeifactor`; `b2cov`, `b2factor` in a two-mode network | `altX` | `alter_covariate` |
+| `same(x)` | fits | 1 where both share a value; with `levels =`, a value of those categories | `nodematch`; `edgecov` in a two-mode network | `sameX` | `same_covariate` |
 | `diff(x)` | fits | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
 | `diff(x, transformer_fn = identity)` | fits | the signed difference | `diff` | `diffX` | — |
 | `dist(x)` | warns | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
 | `sim(x)` | fits | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
-| `same(x, diff = TRUE)` | fits | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
+| `same(x, diff = TRUE)` | fits | one 0/1 column per category both hold, or per category in `levels =` | `nodematch(diff = TRUE)` | — | — |
 | `match(x)` | warns | deprecated alias of `same(x, diff = TRUE)` | `nodematch(diff = TRUE)` | — | — |
-| `mix(x)` | fits | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
+| `mix(x)` | fits | one 0/1 column per pair of categories, less the first, or per pair in `levels =` | `nodemix`, with `levels2 =` | — | — |
 | `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
 | `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |
 | `recip`, `recip()` | warns; fits on a panel | the reverse tie in the previous wave on a panel; otherwise the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |

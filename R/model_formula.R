@@ -49,17 +49,17 @@
 .formula_terms <- function() {
   c(list(
     ego = list(
-      formals = alist(x = ), kind = "attribute", build = .build_ego,
+      formals = alist(x = , levels = NULL), kind = "attribute", build = .build_ego,
       mrqap = "fits", dynam = "ego", saom = "egoX",
       ergm = "nodeocov, or nodeofactor for a categorical attribute",
       to_ergm = .ergm_ego),
     alter = list(
-      formals = alist(x = ), kind = "attribute", build = .build_alter,
+      formals = alist(x = , levels = NULL), kind = "attribute", build = .build_alter,
       mrqap = "fits", dynam = "alter", saom = "altX",
       ergm = "nodeicov, or nodeifactor for a categorical attribute",
       to_ergm = .ergm_alter),
     same = list(
-      formals = alist(x = , diff = FALSE), kind = "attribute",
+      formals = alist(x = , diff = FALSE, levels = NULL), kind = "attribute",
       build = .build_same, mrqap = "fits",
       dynam = "same, without diff = TRUE", saom = "sameX, without diff = TRUE",
       ergm = "nodematch, with the same diff",
@@ -88,7 +88,7 @@
       ergm = "nodematch with diff = TRUE",
       to_ergm = .ergm_match),
     mix = list(
-      formals = alist(x = ), kind = "attribute", build = .build_mix,
+      formals = alist(x = , levels = NULL), kind = "attribute", build = .build_mix,
       mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = "nodemix",
       to_ergm = .ergm_mix),
@@ -784,24 +784,108 @@
 # the fitter would dummy-code it instead, but then double semi-partialling has
 # no numeric column to residualise and every level's p-value is NA. A column's
 # name holds only its own category, so the reference is named in a message and
-# in the term table.
+# in the term table. `levels =` chooses the categories that get a column.
 #' @keywords internal
 #' @noRd
 .build_side <- function(op, ctx, side, m) {
   label <- .col_name(side, op$name)
   v <- .node_values(ctx, op$name, side)
-  if (!is.character(v) && !is.factor(v)) return(.named(m, label))
-  cats <- if (is.factor(v)) levels(droplevels(v)) else
-    sort(unique(stats::na.omit(v)))
+  if (!is.character(v) && !is.factor(v)) {
+    if (!is.null(op$args$levels)) {
+      manynet::snet_abort(
+        c("{.arg levels} needs a categorical attribute, and {.val {op$name}} is numeric.",
+          i = "Convert it with {.fn as.character} to read its values as categories."))
+    }
+    return(.named(m, label))
+  }
+  cats <- .categories(v)
   if (length(cats) < 2) {
     manynet::snet_abort(
       "{.fn {side}} needs at least two categories of {.val {op$name}}.")
   }
+  chosen <- .with_reference(.select_levels(op, cats, ctx$env), cats)
+  .warn_many_levels(op, length(cats), length(chosen$columns))
   manynet::snet_info(
-    "{.fn {side}} leaves out {.val {cats[1]}} of {.val {op$name}} as the reference.")
-  out <- lapply(cats[-1], function(k) (m == k) * 1)
-  out <- stats::setNames(out, vapply(cats[-1], function(k) .col_name(label, k), ""))
-  structure(out, parts = list(category = cats[-1], reference = cats[1]))
+    "{.fn {side}} leaves out {.val {chosen$reference}} of {.val {op$name}} as the reference.")
+  out <- lapply(chosen$columns, function(k) (m == k) * 1)
+  out <- stats::setNames(out, vapply(chosen$columns, function(k) .col_name(label, k), ""))
+  structure(out, parts = list(category = chosen$columns,
+                              reference = paste(chosen$reference, collapse = ", ")))
+}
+
+# The categories of an attribute, in the order of their columns: a factor's
+# levels, or else the sorted values, as ergm orders them. Positions in
+# `levels =` count in this order.
+#' @keywords internal
+#' @noRd
+.categories <- function(v) {
+  if (is.factor(v)) return(levels(droplevels(v)))
+  as.character(sort(unique(stats::na.omit(v))))
+}
+
+# `levels =`, as in ergm: the categories, or for `mix()` the pairs, that get a
+# column, in the order given. A name is a category as the data hold it, or a
+# pair as the term table writes it. A number is a position in `choices`, and
+# negative positions leave those out, so `levels = -1` is every one but the
+# first. NULL keeps the term's default.
+#' @keywords internal
+#' @noRd
+.select_levels <- function(op, choices, env, what = c("category", "categories")) {
+  if (is.null(op$args$levels)) return(NULL)
+  value <- tryCatch(eval(op$args$levels, env), error = function(e) e)
+  if (is.null(value)) return(NULL)
+  if (is.factor(value)) value <- as.character(value)
+  n <- length(choices)
+  if (is.character(value) && length(value) > 0 && !anyNA(value)) {
+    if (what[1] == "pair") value <- gsub("\\s*(->|--)\\s*", " \\1 ", trimws(value))
+    unknown <- setdiff(value, choices)
+    if (length(unknown) > 0) {
+      manynet::snet_abort(
+        c("{.code {op$fn}({op$name})} has no {what[1]} {.val {unknown}}.",
+          i = "The {what[2]} are {.val {choices}}."))
+    }
+    chosen <- unique(value)
+  } else if (is.numeric(value) && length(value) > 0 && !anyNA(value) &&
+             all(value == round(value))) {
+    if (any(value == 0) || any(abs(value) > n) || (any(value > 0) && any(value < 0))) {
+      manynet::snet_abort(
+        c("{.arg levels} must be positions from 1 to {n}, or from -1 to -{n} to leave {what[2]} out.",
+          i = "The {what[2]} of {.code {op$fn}({op$name})} are {.val {choices}}."))
+    }
+    chosen <- choices[unique(value)]
+  } else {
+    manynet::snet_abort(
+      c("{.arg levels} must be names of {what[2]}, or their positions.",
+        i = "The {what[2]} of {.code {op$fn}({op$name})} are {.val {choices}}.",
+        i = "For example: {.code levels = {deparse(choices[1])}} or {.code levels = -1}."))
+  }
+  if (length(chosen) == 0) {
+    manynet::snet_abort("{.arg levels} leaves out every {what[1]} of {.code {op$fn}({op$name})}.")
+  }
+  chosen
+}
+
+# The columns and the reference of a term whose columns cover every dyad. By
+# default the first category is the reference. With `levels =`, the categories
+# not chosen are the reference together; where every one is chosen, the first
+# chosen is.
+#' @keywords internal
+#' @noRd
+.with_reference <- function(chosen, choices) {
+  if (is.null(chosen)) return(list(columns = choices[-1], reference = choices[1]))
+  if (all(choices %in% chosen)) return(list(columns = chosen[-1], reference = chosen[1]))
+  list(columns = chosen, reference = setdiff(choices, chosen))
+}
+
+# Each column is a separate set of permutations under `permute = "predictor"`,
+# so many categories are slow and hard to read. goldfish warns at about ten.
+#' @keywords internal
+#' @noRd
+.warn_many_levels <- function(op, categories, columns) {
+  if (!is.null(op$args$levels) || categories <= 10) return(invisible())
+  manynet::snet_warn(
+    c("{.code {op$fn}({op$name})} reads {categories} categories, and gives {columns} columns.",
+      i = "Choose the categories that get a column with {.arg levels}, e.g. {.code {op$fn}({op$name}, levels = c(...))}."))
 }
 
 .build_same <- function(op, ctx) {
@@ -823,21 +907,26 @@
   }
   if (manynet::is_twomode(.data)) {
     # A two-mode network has no tie between two nodes of one mode, so sameness
-    # is the share of a node's ties that go to nodes like the other one.
+    # is the share of a node's ties that go to nodes like the other one. With
+    # `levels =`, only those of the chosen categories count.
     if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
       attrib <- attrib[manynet::node_is_mode(.data)]
+      chosen <- .select_levels(op, .categories(attrib), ctx$env)
+      if (is.null(chosen)) chosen <- .categories(attrib)
       out <- vapply(seq_along(attrib), function(x) {
         held_out <- manynet::as_matrix(
           manynet::delete_nodes(.data, manynet::net_dims(.data)[1] + x))
-        rowSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
+        rowSums(held_out * matrix((attrib[-x] == attrib[x] & attrib[x] %in% chosen) * 1,
                                   nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
           rowSums(held_out)
       }, FUN.VALUE = numeric(nrow(DV)))
     } else {
       attrib <- attrib[!manynet::node_is_mode(.data)]
+      chosen <- .select_levels(op, .categories(attrib), ctx$env)
+      if (is.null(chosen)) chosen <- .categories(attrib)
       out <- t(vapply(seq_along(attrib), function(x) {
         held_out <- manynet::as_matrix(manynet::delete_nodes(.data, x))
-        colSums(held_out * matrix((attrib[-x] == attrib[x]) * 1,
+        colSums(held_out * matrix((attrib[-x] == attrib[x] & attrib[x] %in% chosen) * 1,
                                   nrow(DV) - 1, ncol(DV))) /
           colSums(held_out)
       }, FUN.VALUE = numeric(ncol(DV))))
@@ -846,6 +935,8 @@
   } else {
     sides <- .side_matrices(ctx, op$name)
     out <- (sides$rows == sides$cols) * 1
+    chosen <- .select_levels(op, .categories(.node_values(ctx, op$name, "ego")), ctx$env)
+    if (!is.null(chosen)) out[!sides$rows %in% chosen] <- 0
   }
   .named(out, .col_name("same", op$name))
 }
@@ -894,9 +985,14 @@
 # receiver both hold it. Numeric columns rather than a factor, so that double
 # semi-partialling can residualise each one. No category is left out: a dyad
 # of two different categories is in none of the columns, and is the reference.
+# `levels =` chooses the categories that get a column; a dyad that shares
+# another category is then in the reference too.
 .same_each <- function(op, ctx, term) {
   sides <- .side_matrices(ctx, op$name)
-  cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
+  all_cats <- .categories(.node_values(ctx, op$name, "ego"))
+  cats <- .select_levels(op, all_cats, ctx$env)
+  if (is.null(cats)) cats <- all_cats
+  .warn_many_levels(op, length(all_cats), length(cats))
   out <- lapply(cats, function(k) (sides$rows == k & sides$cols == k) * 1)
   out <- stats::setNames(out, vapply(cats, function(k) .col_name(term, op$name, k), ""))
   structure(out, parts = list(category = cats))
@@ -916,34 +1012,44 @@
 # Mixing: one column per pair of a sender's and a receiver's category, less the
 # first pair as the reference. An undirected tie has no sender, so its pairs are
 # unordered; a two-mode network pairs the categories of its two modes. A
-# column names the sender's category, then the receiver's.
+# column names the sender's category, then the receiver's. The pairs are in
+# ergm's order for `nodemix()`, the sender's category changing fastest, so that
+# a position in `levels =` is a position in ergm's `levels2 =`.
 .build_mix <- function(op, ctx) {
   sides <- .side_matrices(ctx, op$name)
-  ego_cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
-  alter_cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "alter"))))
+  ego_cats <- .categories(.node_values(ctx, op$name, "ego"))
+  alter_cats <- .categories(.node_values(ctx, op$name, "alter"))
   ordered <- ctx$directed || ctx$twomode
-  pairs <- expand.grid(alter = alter_cats, ego = ego_cats,
-                       stringsAsFactors = FALSE)[, c("ego", "alter")]
-  if (!ordered) pairs <- pairs[pairs$ego <= pairs$alter, , drop = FALSE]
+  pairs <- expand.grid(ego = ego_cats, alter = alter_cats, stringsAsFactors = FALSE)
+  if (!ordered) {
+    pairs <- pairs[match(pairs$ego, ego_cats) <= match(pairs$alter, alter_cats), ,
+                   drop = FALSE]
+  }
   if (nrow(pairs) < 2) {
     manynet::snet_abort("{.fn mix} needs at least two categories of {.val {op$name}}.")
   }
-  labels <- vapply(seq_len(nrow(pairs)), function(p) {
-    .col_name("mix", op$name, pairs$ego[p], pairs$alter[p])
-  }, "")
-  manynet::snet_info("{.fn mix} leaves out {.val {labels[1]}} as the reference.")
-  out <- lapply(seq_len(nrow(pairs))[-1], function(p) {
+  # In the term table, a pair is written as a tie is in DOT: `->` from the
+  # sender's category to the receiver's, or `--` where the pair is unordered.
+  pair <- paste(pairs$ego, pairs$alter, sep = if (ordered) " -> " else " -- ")
+  chosen <- .with_reference(.select_levels(op, pair, ctx$env, c("pair", "pairs")), pair)
+  .warn_many_levels(op, length(union(ego_cats, alter_cats)), length(chosen$columns))
+  manynet::snet_info("{.fn mix} leaves out {.val {chosen$reference}} as the reference.")
+  keep <- match(chosen$columns, pair)
+  out <- lapply(keep, function(p) {
     a <- pairs$ego[p]
     b <- pairs$alter[p]
     cell <- sides$rows == a & sides$cols == b
     if (!ordered) cell <- cell | (sides$rows == b & sides$cols == a)
     cell * 1
   })
-  # In the term table, a pair is written as a tie is in DOT: `->` from the
-  # sender's category to the receiver's, or `--` where the pair is unordered.
-  pair <- paste(pairs$ego, pairs$alter, sep = if (ordered) " -> " else " -- ")
-  structure(stats::setNames(out, labels[-1]),
-            parts = list(category = pair[-1], reference = pair[1]))
+  labels <- vapply(keep, function(p) {
+    .col_name("mix", op$name, pairs$ego[p], pairs$alter[p])
+  }, "")
+  # The positions of the columns among all pairs are ergm's `levels2 =`.
+  structure(stats::setNames(out, labels),
+            parts = list(category = chosen$columns,
+                         reference = paste(chosen$reference, collapse = ", ")),
+            positions = keep)
 }
 
 # ---- builders: layers ----------------------------------------------------------

@@ -43,6 +43,30 @@ test_that("ergm terms become their infernet equivalents", {
   expect_equal(ch$status[ch$term == "edges"], "adapted")
 })
 
+test_that("ergm's levels = and levels2 = are read as infernet's levels =", {
+  f <- specify_mrqap(
+    y ~ nodefactor("dept", levels = -1) + nodeofactor("level", levels = c("a", "b")) +
+      nodematch("dept", diff = TRUE, levels = 2:3) + nodemix("dept", levels2 = c(2, 4)))
+  expect_equal(.deparsed(f[[3]]),
+               paste("ego(dept, levels = -1) + alter(dept, levels = -1) +",
+                     "ego(level, levels = c(\"a\", \"b\")) +",
+                     "same(dept, diff = TRUE, levels = 2:3) + mix(dept, levels = c(2, 4))"))
+})
+
+test_that("ergm's levels that infernet cannot read leave the term to ergm", {
+  expect_warning(
+    f <- specify_mrqap(y ~ nodematch("dept", levels = LARGEST) +
+                         nodemix("dept", levels = 1:2) + ego(age)),
+    "Dropped 2 terms")
+  expect_equal(.deparsed(f[[3]]), "ego(age)")
+  ch <- record_of(f)
+  expect_match(ch$reason[ch$term == "nodematch(\"dept\", levels = LARGEST)"], "LARGEST")
+  expect_match(ch$reason[ch$term == "nodemix(\"dept\", levels = 1:2)"], "levels2")
+  # ergm can still fit them.
+  f <- specify_ergm(y ~ edges + nodematch("dept", levels = LARGEST))
+  expect_equal(unique(record_of(f)$status), "fits")
+})
+
 test_that("an ergm interaction is read operand by operand", {
   f <- specify_mrqap(y ~ nodematch("dept"):absdiff("age") + nodeocov("age"))
   expect_equal(deparse(f[[3]]), "ego(age) + same(dept):diff(age)")
@@ -104,7 +128,7 @@ test_that("goldfish terms that mean something different here are named", {
   expect_equal(deparse(f[[3]]), "sim(x) + tertius(b, x)")
   old <- options(snet_verbosity = "verbose")
   on.exit(options(old), add = TRUE)
-  expect_message(suppressWarnings(specify_mrqap(a ~ inertia + sim(x))), "1 - \\|d\\|")
+  expect_any_message(suppressWarnings(specify_mrqap(a ~ inertia + sim(x))), "1 - \\|d\\|")
 })
 
 test_that("a bare name that is a layer of the network stays a layer", {
@@ -166,6 +190,13 @@ test_that("an ergm formula is written for goldfish", {
   expect_equal(.deparsed(f[[3]]), "recip + trans + cycle + four + same(grp)")
 })
 
+test_that("goldfish drops a term with levels =", {
+  expect_warning(f <- specify_dynam(a ~ ego(grp, levels = "q") + same(grp, levels = 1) +
+                                      alter(x)),
+                 "stocnet/goldfish#26", fixed = TRUE)
+  expect_equal(.deparsed(f[[3]]), "alter(x)")
+})
+
 test_that("a formula with nothing goldfish can fit aborts", {
   expect_error(specify_dynam(a ~ same(grp, diff = TRUE) + mix(grp)),
                "No term of the formula can be fitted by goldfish")
@@ -183,6 +214,19 @@ test_that("without the network, each term ergm names is written by name", {
                  "nodematch(\"x\", diff = TRUE)", "nodemix(\"grp\")",
                  "absdiff(\"x\")", "diff(\"x\")", "edgecov(\"b\")", "mutual",
                  "ttriple", "receiver"))
+})
+
+test_that("without the network, levels = is written as it is given", {
+  expect_warning(f <- suppressMessages(specify_ergm(
+    a ~ ego(grp, levels = "q") + alter(grp, levels = -1) + same(grp, levels = 2) +
+      same(x, diff = TRUE, levels = c("a", "b")) + mix(grp, levels = c(2, 4)) +
+      mix(x, levels = "p -> q"))),
+    "Dropped 1 term")
+  expect_equal(attr(stats::terms(f), "term.labels"),
+               c("edges", "nodeofactor(\"grp\", levels = \"q\")",
+                 "nodeifactor(\"grp\", levels = -1)", "nodematch(\"grp\", levels = 2)",
+                 "nodematch(\"x\", diff = TRUE, levels = c(\"a\", \"b\"))",
+                 "nodemix(\"grp\", levels2 = c(2, 4))"))
 })
 
 test_that("without the network, a term that needs its matrix is dropped", {

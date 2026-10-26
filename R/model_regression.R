@@ -152,19 +152,23 @@
 #'   the network's focal layer or the whole network.
 #'   The right-hand side accepts these terms, whose arguments can be given by
 #'   position or by name:
-#'   - `ego(attr)`, `alter(attr)` — the sender's or the receiver's value of a
-#'     node attribute; a categorical attribute is dummy-coded,
-#'   - `same(attr, diff = FALSE)` — 1 where sender and receiver share an
-#'     attribute value; with `diff = TRUE`, as in ergm's `nodematch()`, one
-#'     0/1 column for each category, 1 where sender and receiver both hold it.
+#'   - `ego(attr, levels = NULL)`, `alter(attr, levels = NULL)` — the sender's
+#'     or the receiver's value of a node attribute; a categorical attribute is
+#'     dummy-coded, with the first category as the reference,
+#'   - `same(attr, diff = FALSE, levels = NULL)` — 1 where sender and receiver
+#'     share an attribute value; with `diff = TRUE`, as in ergm's
+#'     `nodematch()`, one 0/1 column for each category, 1 where sender and
+#'     receiver both hold it.
 #'     `match(attr)` is a deprecated alias of `same(attr, diff = TRUE)`,
 #'   - `diff(attr, transformer_fn = abs)` — the transformed difference between
 #'     the sender's and the receiver's values: absolute by default, and signed
 #'     with `transformer_fn = identity`. `dist(attr)` is a deprecated alias,
 #'   - `sim(attr)` — proportional similarity in a numeric attribute,
 #'     1 - |d| / range,
-#'   - `mix(attr)` — one 0/1 column for each pair of a sender's and a
-#'     receiver's category, less the first pair as the reference,
+#'   - `mix(attr, levels = NULL)` — one 0/1 column for each pair of a
+#'     sender's and a receiver's category, less the first pair as the
+#'     reference. The pairs are in ergm's order for `nodemix()`, the sender's
+#'     category changing fastest,
 #'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
 #'     0/1 unless `weighted = TRUE`; a layer or tie attribute named on its own
 #'     enters with its values as stored,
@@ -186,6 +190,20 @@
 #'     in a list of networks; on one network it is the intercept.
 #'
 #'   `:` and `*` give interactions of any order, as the product of the terms.
+#'
+#'   `levels =` chooses the categories that get a column in `ego()`,
+#'   `alter()`, and `same()`, or the pairs in `mix()`, as in ergm. Give the
+#'   names, such as `levels = c("sales", "hr")` or, for `mix()`,
+#'   `levels = "sales -> hr"`, written as in `fit$terms` (`--` for an
+#'   undirected network). Or give positions in the order of the columns,
+#'   where a negative position leaves that one out: `levels = -1` is the
+#'   default of `ego()`, `alter()`, and `mix()`. In `ego()`, `alter()`, and
+#'   `mix()`, the categories left out are the reference together; where every
+#'   one is chosen, the first chosen is the reference. In `same()`, a dyad
+#'   that shares a category left out is not counted. An unknown name aborts
+#'   and lists the categories. A term with more than ten categories and no
+#'   `levels =` warns, since under `permute = "predictor"` each column is
+#'   permuted on its own.
 #'
 #'   A formula written for `{goldfish}` or `{ergm}` can be used as it is.
 #'   It is first read by [specify_mrqap()], which rewrites each term that has

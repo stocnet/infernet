@@ -66,6 +66,10 @@
 #'
 #' @section ergm and infernet:
 #'   ergm names an attribute with a string, and infernet with a bare name.
+#'   Both read `levels =` as names or positions. infernet does not read ergm's
+#'   functions for `levels =`, such as `LARGEST`, or `nodemix()`'s `levels =`,
+#'   which changes the positions of `levels2 =`: such a term is left to ergm,
+#'   and an MRQAP drops it.
 #'
 #'   | infernet | ergm |
 #'   |---|---|
@@ -74,6 +78,8 @@
 #'   | `same(x)` | `nodematch("x")` |
 #'   | `same(x, diff = TRUE)` | `nodematch("x", diff = TRUE)` |
 #'   | `mix(x)` | `nodemix("x")` |
+#'   | `ego(x, levels = )`, `same(x, levels = )` | `nodeofactor("x", levels = )`, `nodematch("x", levels = )` |
+#'   | `mix(x, levels = )` | `nodemix("x", levels2 = )` |
 #'   | `diff(x)` | `absdiff("x")` |
 #'   | `diff(x, transformer_fn = identity)` | `diff("x")` |
 #'   | a layer, or `tie(layer)` | `edgecov()` |
@@ -804,6 +810,14 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     same     = if (.same_by_category(.specify_operand(expr),
                                      if (is.null(ctx$env)) globalenv() else ctx$env)) {
       list(reason = "has no goldfish term with {.code diff = TRUE}")
+    } else if (!is.null(.specify_operand(expr)$args$levels)) {
+      list(reason = "has no goldfish term with {.code levels =} yet (stocnet/goldfish#26)")
+    } else {
+      list(expr = expr)
+    },
+    ego      = ,
+    alter    = if (!is.null(.specify_operand(expr)$args$levels)) {
+      list(reason = "has no goldfish term with {.code levels =} yet (stocnet/goldfish#26)")
     } else {
       list(expr = expr)
     },
@@ -841,14 +855,22 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 .ergm_term_nodata <- function(term) {
   one <- function(op) {
     if (is.na(op$fn)) return(.ergm_call("edgecov", op$name))
+    # `levels =` is written as it is given, and ergm reads names and positions
+    # as infernet does. Only `mix()` needs the data to read a pair's name.
+    lv <- if (!is.null(op$args$levels)) paste("=", .deparsed(op$args$levels))
+    named <- !is.null(lv) && is.character(tryCatch(eval(op$args$levels, globalenv()),
+                                                   error = function(e) NULL))
     switch(op$fn,
-      ego   = .ergm_call("nodeocov", op$name),
-      alter = .ergm_call("nodeicov", op$name),
-      same  = if (.same_by_category(op, globalenv()))
-                .ergm_call("nodematch", op$name, "diff = TRUE")
-              else .ergm_call("nodematch", op$name),
+      ego   = if (is.null(lv)) .ergm_call("nodeocov", op$name)
+              else .ergm_call("nodeofactor", op$name, paste0("levels ", lv)),
+      alter = if (is.null(lv)) .ergm_call("nodeicov", op$name)
+              else .ergm_call("nodeifactor", op$name, paste0("levels ", lv)),
+      same  = .ergm_call("nodematch", op$name,
+                         if (.same_by_category(op, globalenv())) "diff = TRUE",
+                         if (!is.null(lv)) paste0("levels ", lv)),
       match = .ergm_call("nodematch", op$name, "diff = TRUE"),
-      mix   = .ergm_call("nodemix", op$name),
+      mix   = if (is.null(lv)) .ergm_call("nodemix", op$name)
+              else if (!named) .ergm_call("nodemix", op$name, paste0("levels2 ", lv)),
       dist  = .ergm_call("absdiff", op$name),
       diff  = switch(.arg_name(op$args$transformer_fn),
                      abs = .ergm_call("absdiff", op$name),
@@ -889,6 +911,27 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     as.name(.arg_name(if (is.call(expr) && length(expr) > 1) expr[[2]]))
   }
   as_term <- function(fn) function(expr) list(call(fn, attr_of(expr)))
+  # ergm's `levels =` chooses the categories that get a statistic, as infernet's
+  # does. infernet reads names and positions, and not ergm's functions, such as
+  # `LARGEST`, so a term that uses one is ergm's alone.
+  levels_reason <- function(expr, from) {
+    lv <- if (is.call(expr)) expr[[from]]
+    if (is.null(lv)) return(NULL)
+    value <- tryCatch(eval(lv, baseenv()), error = function(e) NULL)
+    if ((is.character(value) || is.numeric(value)) && length(value) > 0) return(NULL)
+    paste0("chooses its levels with {.code ", .escape_braces(.deparsed(lv)),
+           "}, and infernet reads only names and positions")
+  }
+  with_levels <- function(new, expr, from = "levels") {
+    lv <- if (is.call(expr)) expr[[from]]
+    if (!is.null(lv)) new$levels <- lv
+    new
+  }
+  factor_term <- function(fns) function(expr) {
+    reason <- levels_reason(expr, "levels")
+    if (!is.null(reason)) return(reason)
+    lapply(fns, function(fn) with_levels(call(fn, attr_of(expr)), expr))
+  }
   both_sides <- function(expr) list(call("ego", attr_of(expr)), call("alter", attr_of(expr)))
   intercept <- function(expr) list()
   structural <- c(
@@ -906,21 +949,34 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     density     = intercept,
     mutual      = function(expr) list(quote(recip)),
     nodeocov    = as_term("ego"),
-    nodeofactor = as_term("ego"),
+    nodeofactor = factor_term("ego"),
     b1cov       = as_term("ego"),
-    b1factor    = as_term("ego"),
+    b1factor    = factor_term("ego"),
     nodeicov    = as_term("alter"),
-    nodeifactor = as_term("alter"),
+    nodeifactor = factor_term("alter"),
     b2cov       = as_term("alter"),
-    b2factor    = as_term("alter"),
+    b2factor    = factor_term("alter"),
     nodecov     = both_sides,
-    nodefactor  = both_sides,
+    nodefactor  = factor_term(c("ego", "alter")),
     nodematch   = function(expr) {
+      reason <- levels_reason(expr, "levels")
+      if (!is.null(reason)) return(reason)
       diff <- is.call(expr) && !is.null(expr$diff) && isTRUE(eval(expr$diff))
-      if (diff) list(call("same", attr_of(expr), diff = TRUE))
-      else list(call("same", attr_of(expr)))
+      new <- if (diff) call("same", attr_of(expr), diff = TRUE)
+        else call("same", attr_of(expr))
+      list(with_levels(new, expr))
     },
-    nodemix     = as_term("mix"),
+    # `levels2 =` chooses pairs by their position, as infernet's `levels =`
+    # does for `mix()`. ergm's `levels =` first chooses the categories, which
+    # changes those positions, so infernet leaves that to ergm.
+    nodemix     = function(expr) {
+      if (is.call(expr) && !is.null(expr[["levels"]])) {
+        return("chooses its categories with {.code levels =}; choose pairs with {.code levels2 =} instead")
+      }
+      reason <- levels_reason(expr, "levels2")
+      if (!is.null(reason)) return(reason)
+      list(with_levels(call("mix", attr_of(expr)), expr, "levels2"))
+    },
     absdiff     = as_term("diff"),
     diff        = function(expr) {
       list(call("diff", attr_of(expr), transformer_fn = quote(identity)))
@@ -941,7 +997,9 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   ergm <- .ergm_terms()
   for (expr in .flatten_interaction(str2lang(label))) {
     fn <- if (is.call(expr)) as.character(expr[[1]]) else as.character(expr)
-    if (is.character(ergm[[fn]])) return(ergm[[fn]])
+    reader <- ergm[[fn]]
+    if (is.function(reader)) reader <- reader(expr)
+    if (is.character(reader)) return(reader)
   }
   "has no MRQAP equivalent"
 }
@@ -966,11 +1024,15 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
       reader <- ergm[[fn]]
       if (is.null(reader) || (is.name(expr) && fn %in% ctx$tie_names)) {
         parts <- c(parts, list(list(expr)))
-      } else if (is.character(reader)) {
-        is_native <- TRUE
-        break
       } else {
-        parts <- c(parts, list(reader(expr)))
+        # A reader gives the reason, rather than terms, where this call of an
+        # ergm term has no equivalent, as with `nodematch(levels = LARGEST)`.
+        read <- if (is.character(reader)) reader else reader(expr)
+        if (is.character(read)) {
+          is_native <- TRUE
+          break
+        }
+        parts <- c(parts, list(read))
       }
     }
     if (is_native) {

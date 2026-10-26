@@ -30,6 +30,19 @@ test_that("attribute terms become their named ergm terms", {
   expect_equal(rhs_of(f), c("edges", "nodematch(\"grp\", diff = TRUE)"))
 })
 
+test_that("levels = is written as the names ergm reads, and mix() as levels2", {
+  f <- suppressMessages(specify_ergm(
+    a ~ ego(grp, levels = "q") + alter(grp, levels = c("q", "p")) +
+      same(grp, levels = 2) + same(x, diff = TRUE, levels = -1) +
+      mix(grp, levels = c("q -> q", "p -> q")), formula_net()))
+  expect_equal(rhs_of(f),
+               c("edges", "nodeofactor(\"grp\", levels = \"q\")",
+                 "nodeifactor(\"grp\", levels = \"p\")",
+                 "nodematch(\"grp\", levels = \"q\")",
+                 "nodematch(\"x\", diff = TRUE, levels = c(\"3\", \"4\", \"5\", \"9\"))",
+                 "nodemix(\"grp\", levels2 = c(4, 3))"))
+})
+
 test_that("diff() is absdiff, signed with identity, and otherwise its matrix", {
   f <- specify_ergm(a ~ diff(x) + diff(x, transformer_fn = identity),
                         formula_net())
@@ -92,11 +105,11 @@ test_that("the outcome is a network object under its own name", {
 test_that("the conversion reports each change", {
   old <- options(snet_verbosity = "verbose")
   on.exit(options(old), add = TRUE)
-  expect_message(specify_ergm(a ~ ego(x), formula_net()), "edges")
-  expect_message(specify_ergm(a ~ ego(x), formula_net()), "nodeocov")
-  expect_message(specify_ergm(. ~ ego(Age) + alter(Age), qap_net_undirected()),
+  expect_any_message(specify_ergm(a ~ ego(x), formula_net()), "edges")
+  expect_any_message(specify_ergm(a ~ ego(x), formula_net()), "nodeocov")
+  expect_any_message(specify_ergm(. ~ ego(Age) + alter(Age), qap_net_undirected()),
                  "one copy")
-  expect_message(specify_ergm(. ~ ego(Age), qap_net_gaussian()), "response")
+  expect_any_message(specify_ergm(. ~ ego(Age), qap_net_gaussian()), "response")
 })
 
 # ---- two-mode and undirected ---------------------------------------------------
@@ -154,7 +167,9 @@ test_that("a typing error is caught as it is for an MRQAP", {
 # ---- round trip ----------------------------------------------------------------
 
 test_that("ergm fits the converted formula with the expected terms", {
-  skip_if_not_installed("ergm")
+  # Loading ergm writes a note on the S3 methods it overwrites, which is not a
+  # message that `suppressMessages()` can catch.
+  utils::capture.output(skip_if_not_installed("ergm"), type = "message")
   f <- suppressMessages(
     specify_ergm(. ~ ego(Age) + alter(Age) + same(Grp) + sim(Age) + recip,
                      qap_net_binary()))
@@ -163,4 +178,16 @@ test_that("ergm fits the converted formula with the expected terms", {
                c("edges", "nodeocov.Age", "nodeicov.Age", "nodematch.Grp",
                  "edgecov.sim_Age", "mutual"))
   expect_true(all(is.finite(stats::coef(fit))))
+})
+
+test_that("ergm counts what infernet builds with levels =", {
+  skip_if_not_installed("ergm")
+  net <- qap_net_binary()
+  f <- . ~ ego(Grp, levels = "c") + alter(Grp, levels = -2) +
+    same(Grp, diff = TRUE, levels = c("a", "c")) + mix(Grp, levels = c(2, 6, 9))
+  built <- suppressMessages(convertToMatrixList(f, net, advise = FALSE)$mydata)
+  y <- built[[1]]
+  ours <- vapply(built[-1], function(m) sum(m * y), numeric(1))
+  stats <- summary(suppressMessages(specify_ergm(f, net)))
+  expect_equal(unname(stats[-1]), unname(ours))
 })

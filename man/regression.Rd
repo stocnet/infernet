@@ -17,19 +17,23 @@ the network's focal layer or the whole network.
 The right-hand side accepts these terms, whose arguments can be given by
 position or by name:
 \itemize{
-\item \code{ego(attr)}, \code{alter(attr)} — the sender's or the receiver's value of a
-node attribute; a categorical attribute is dummy-coded,
-\item \code{same(attr, diff = FALSE)} — 1 where sender and receiver share an
-attribute value; with \code{diff = TRUE}, as in ergm's \code{nodematch()}, one
-0/1 column for each category, 1 where sender and receiver both hold it.
+\item \code{ego(attr, levels = NULL)}, \code{alter(attr, levels = NULL)} — the sender's
+or the receiver's value of a node attribute; a categorical attribute is
+dummy-coded, with the first category as the reference,
+\item \code{same(attr, diff = FALSE, levels = NULL)} — 1 where sender and receiver
+share an attribute value; with \code{diff = TRUE}, as in ergm's
+\code{nodematch()}, one 0/1 column for each category, 1 where sender and
+receiver both hold it.
 \code{match(attr)} is a deprecated alias of \code{same(attr, diff = TRUE)},
 \item \code{diff(attr, transformer_fn = abs)} — the transformed difference between
 the sender's and the receiver's values: absolute by default, and signed
 with \code{transformer_fn = identity}. \code{dist(attr)} is a deprecated alias,
 \item \code{sim(attr)} — proportional similarity in a numeric attribute,
 1 - |d| / range,
-\item \code{mix(attr)} — one 0/1 column for each pair of a sender's and a
-receiver's category, less the first pair as the reference,
+\item \code{mix(attr, levels = NULL)} — one 0/1 column for each pair of a
+sender's and a receiver's category, less the first pair as the
+reference. The pairs are in ergm's order for \code{nodemix()}, the sender's
+category changing fastest,
 \item \code{tie(layer, weighted = FALSE)} — another layer as a dyadic covariate,
 0/1 unless \code{weighted = TRUE}; a layer or tie attribute named on its own
 enters with its values as stored,
@@ -52,6 +56,20 @@ in a list of networks; on one network it is the intercept.
 }
 
 \code{:} and \code{*} give interactions of any order, as the product of the terms.
+
+\verb{levels =} chooses the categories that get a column in \code{ego()},
+\code{alter()}, and \code{same()}, or the pairs in \code{mix()}, as in ergm. Give the
+names, such as \code{levels = c("sales", "hr")} or, for \code{mix()},
+\code{levels = "sales -> hr"}, written as in \code{fit$terms} (\verb{--} for an
+undirected network). Or give positions in the order of the columns,
+where a negative position leaves that one out: \code{levels = -1} is the
+default of \code{ego()}, \code{alter()}, and \code{mix()}. In \code{ego()}, \code{alter()}, and
+\code{mix()}, the categories left out are the reference together; where every
+one is chosen, the first chosen is the reference. In \code{same()}, a dyad
+that shares a category left out is not counted. An unknown name aborts
+and lists the categories. A term with more than ten categories and no
+\verb{levels =} warns, since under \code{permute = "predictor"} each column is
+permuted on its own.
 
 A formula written for \code{{goldfish}} or \code{{ergm}} can be used as it is.
 It is first read by \code{\link[=specify_mrqap]{specify_mrqap()}}, which rewrites each term that has

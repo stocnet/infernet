@@ -111,13 +111,19 @@ The result of each function carries its model as its class, so that
 
 \section{ergm and infernet}{
 
-ergm names an attribute with a string, and infernet with a bare name.\tabular{ll}{
+ergm names an attribute with a string, and infernet with a bare name.
+Both read \verb{levels =} as names or positions. infernet does not read ergm's
+functions for \verb{levels =}, such as \code{LARGEST}, or \code{nodemix()}'s \verb{levels =},
+which changes the positions of \verb{levels2 =}: such a term is left to ergm,
+and an MRQAP drops it.\tabular{ll}{
    infernet \tab ergm \cr
    \code{ego(x)} \tab \code{nodeocov("x")}, \code{nodeofactor("x")}; \code{b1cov("x")} in a two-mode network; \code{nodecov("x")} in an undirected one \cr
    \code{alter(x)} \tab \code{nodeicov("x")}, \code{nodeifactor("x")}; \code{b2cov("x")} in a two-mode network \cr
    \code{same(x)} \tab \code{nodematch("x")} \cr
    \code{same(x, diff = TRUE)} \tab \code{nodematch("x", diff = TRUE)} \cr
    \code{mix(x)} \tab \code{nodemix("x")} \cr
+   \code{ego(x, levels = )}, \code{same(x, levels = )} \tab \code{nodeofactor("x", levels = )}, \code{nodematch("x", levels = )} \cr
+   \code{mix(x, levels = )} \tab \code{nodemix("x", levels2 = )} \cr
    \code{diff(x)} \tab \code{absdiff("x")} \cr
    \code{diff(x, transformer_fn = identity)} \tab \code{diff("x")} \cr
    a layer, or \code{tie(layer)} \tab \code{edgecov()} \cr
