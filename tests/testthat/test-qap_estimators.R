@@ -20,7 +20,7 @@ test_that("gaussian baseline matches lm() on the same dyads", {
   ref <- qap_reference_data(FORM, g)
   lm_fit <- stats::lm(ref$formula, data = ref$pred)
 
-  fit <- net_regression(FORM, g, times = 10, control = list(seed = 1))
+  fit <- estimate_mrqap(FORM, g, times = 10, control = list(seed = 1))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(lm_fit)))
   expect_equal(unname(fit$obs), unname(summary(lm_fit)$coefficients[, 3]))
@@ -31,8 +31,8 @@ test_that("gaussian baseline matches lm() on the same dyads", {
 
 test_that("gaussian with HC3 keeps the coefficients and changes the t values", {
   g <- qap_net_gaussian()
-  plain  <- net_regression(FORM, g, times = 10, control = list(seed = 1))
-  robust <- net_regression(FORM, g, times = 10,
+  plain  <- estimate_mrqap(FORM, g, times = 10, control = list(seed = 1))
+  robust <- estimate_mrqap(FORM, g, times = 10,
                            control = list(seed = 1, use_robust_errors = TRUE))
   expect_qap_shape(robust, COEFS3)
   expect_equal(robust$coefficients, plain$coefficients)
@@ -49,7 +49,7 @@ test_that("binomial baseline matches glm() on the same dyads", {
   glm_fit <- stats::glm(ref$formula, data = ref$pred,
                         family = stats::binomial())
 
-  fit <- net_regression(FORM_B, g, times = 10,
+  fit <- estimate_mrqap(FORM_B, g, times = 10,
                         control = list(seed = 1, family = "binomial"))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(glm_fit)))
@@ -57,9 +57,9 @@ test_that("binomial baseline matches glm() on the same dyads", {
 })
 
 test_that("family = 'auto' picks binomial for a binary outcome", {
-  auto  <- net_regression(FORM_B, qap_net_binary(), times = 10,
+  auto  <- estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
                           control = list(seed = 1))
-  named <- net_regression(FORM_B, qap_net_binary(), times = 10,
+  named <- estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
                           control = list(seed = 1, family = "binomial"))
   expect_equal(auto$family, "binomial")
   expect_equal(auto$coefficients, named$coefficients)
@@ -70,7 +70,7 @@ test_that("poisson baseline matches glm() on the same dyads", {
   ref <- qap_reference_data(FORM, g)
   glm_fit <- stats::glm(ref$formula, data = ref$pred, family = stats::poisson())
 
-  fit <- net_regression(FORM, g, times = 10,
+  fit <- estimate_mrqap(FORM, g, times = 10,
                         control = list(seed = 1, family = "poisson"))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(glm_fit)))
@@ -86,7 +86,7 @@ test_that("negbin baseline matches MASS::glm.nb() on the same dyads", {
   nb <- suppressWarnings(MASS::glm.nb(ref$formula, data = ref$pred))
 
   fit <- suppressWarnings(
-    net_regression(FORM, g, times = 10,
+    estimate_mrqap(FORM, g, times = 10,
                    control = list(seed = 1, family = "negbin")))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients), unname(stats::coef(nb)))
@@ -99,7 +99,7 @@ test_that("zip baseline matches pscl::zeroinfl() and names its coefficients", {
   ref <- qap_reference_data(FORM, g)
   zi <- pscl::zeroinfl(ref$formula, data = ref$pred, dist = "poisson")
 
-  fit <- net_regression(FORM, g, times = 10,
+  fit <- estimate_mrqap(FORM, g, times = 10,
                         control = list(seed = 1, family = "zip"))
   # A backticked name here used to break double semi-partialling, which looks a
   # column up by the unquoted predictor name.
@@ -121,7 +121,7 @@ test_that("gaussian random intercepts match lme4::lmer() on the same dyads", {
                data = ref$pred)))
 
   fit <- suppressMessages(suppressWarnings(
-    net_regression(FORM, g, times = 10,
+    estimate_mrqap(FORM, g, times = 10,
                    control = list(seed = 1, random_intercept_sender = TRUE))))
   expect_qap_shape(fit, COEFS3)
   expect_equal(unname(fit$coefficients),
@@ -135,7 +135,7 @@ test_that("crossed sender and receiver intercepts do not abort the run", {
   # `lmer()` then stops with "Downdated VtV is not positive definite". That is
   # a step towards the null distribution, so it falls back rather than aborting.
   fit <- suppressMessages(suppressWarnings(
-    net_regression(FORM, qap_net_gaussian(), times = 10,
+    estimate_mrqap(FORM, qap_net_gaussian(), times = 10,
                    control = list(seed = 1,
                                   random_intercept_sender = TRUE,
                                   random_intercept_receiver = TRUE))))
@@ -145,12 +145,12 @@ test_that("crossed sender and receiver intercepts do not abort the run", {
 test_that("binomial and poisson random intercepts run", {
   skip_if_not_installed("lme4")
   bin <- suppressMessages(suppressWarnings(
-    net_regression(FORM_B, qap_net_binary(), times = 10,
+    estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
                    control = list(seed = 1, family = "binomial",
                                   random_intercept_sender = TRUE))))
   expect_qap_shape(bin, COEFS3)
   pois <- suppressMessages(suppressWarnings(
-    net_regression(FORM, qap_net_count(), times = 10,
+    estimate_mrqap(FORM, qap_net_count(), times = 10,
                    control = list(seed = 1, family = "poisson",
                                   random_intercept_sender = TRUE))))
   expect_qap_shape(pois, COEFS3)

@@ -84,14 +84,37 @@ qap_net_twomode <- function(seed = 106) {
 # coefficient can be compared against the equivalent standard fit on identical
 # data. Anything this returns comes from the engine's own internals, so a
 # comparison against it tests the estimator dispatch, not the vectorisation.
-qap_reference_data <- function(formula, .data, directed = NULL, diag = FALSE) {
+# A longitudinal network: the same nodes over several waves, each wave's ties
+# depending on the previous wave's ties (inertia), their reverse (reciprocity),
+# and on age.
+qap_net_panel <- function(n = 15, waves = 3, seed = 108) {
+  set.seed(seed)
+  age <- stats::runif(n, 20, 60)
+  m <- matrix(stats::rbinom(n^2, 1, 0.2), n, n)
+  diag(m) <- 0
+  el <- vector("list", waves)
+  for (t in seq_len(waves)) {
+    if (t > 1) {
+      p <- stats::plogis(-2 + 3 * m + 2 * t(m) + 0.03 * outer(age, age, "-"))
+      m <- matrix(stats::rbinom(n^2, 1, p), n, n)
+      diag(m) <- 0
+    }
+    w <- which(m == 1, arr.ind = TRUE)
+    el[[t]] <- data.frame(from = w[, 1], to = w[, 2], time = t)
+  }
+  manynet::as_tidygraph(list(
+    nodes = data.frame(name = paste0("n", seq_len(n)), age = age),
+    ties = do.call(rbind, el)))
+}
+
+qap_reference_data <- function(formula, .data, directed = NULL, loops = FALSE) {
   ml <- convertToMatrixList(formula, .data, advise = FALSE)
   parsed <- parse_qap_formula(ml$formula)
   g <- manynet::as_tidygraph(.data)
   if (is.null(directed)) directed <- manynet::is_directed(g)
   pred <- make_qap_data(y = ml$mydata[[parsed$dependent]],
                         x = ml$mydata[parsed$main],
-                        diag = diag, directed = directed)
+                        loops = loops, directed = directed)
   names(pred)[names(pred) == "yv"] <- parsed$dependent
   list(pred = pred, formula = ml$formula, parsed = parsed)
 }
@@ -115,6 +138,18 @@ expect_qap_shape <- function(fit, coefs) {
                           info = paste(el, "outside [0, 1]"))
   }
   invisible(fit)
+}
+
+# ---- messages ----------------------------------------------------------------
+
+# `expect_message()` in testthat 3 catches the first message that matches and
+# lets every other one through to the console. This checks that one message of
+# `object` matches `regexp`, and keeps them all off the console.
+expect_any_message <- function(object, regexp, ...) {
+  msgs <- testthat::capture_messages(object)
+  testthat::expect_true(any(grepl(regexp, msgs, ...)),
+                        info = paste(c("Messages:", msgs), collapse = "\n"))
+  invisible(msgs)
 }
 
 # ---- warnings ----------------------------------------------------------------

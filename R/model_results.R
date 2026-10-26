@@ -3,7 +3,7 @@
 #' Reporting network regression and test results
 #'
 #' @description
-#'   `print()` shows the result of `net_regression()` or of a test as a
+#'   `print()` shows the result of `estimate_mrqap()` or of a test as a
 #'   report: how the null distribution was made, the estimates,
 #'   and the permutation p-values.
 #'
@@ -12,7 +12,7 @@
 #'   `glance()` gives one row for the whole model. They cover:
 #'
 #'   - `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`,
-#'     from `net_regression()`
+#'     from `estimate_mrqap()`
 #'   - `network_test`, from `test_random()`, `test_configuration()`, and
 #'     `test_permutation()`
 #'   - `netlm` and `netlogit`, from `net_regression()` in `{migraph}`
@@ -32,7 +32,7 @@
 #'   permuted test statistics. These describe the null distribution,
 #'   not an interval around the estimate.
 #' @param x A model or test result, e.g. a `netreg` object, as returned by
-#'   `net_regression()`, or a `network_test` object, as returned by
+#'   `estimate_mrqap()`, or a `network_test` object, as returned by
 #'   `test_random()`, `test_configuration()`, or `test_permutation()`.
 #' @param print_b Logical; also print coefficient-based (not t-based)
 #'   permutation p-values.
@@ -53,7 +53,12 @@
 #' @return `print()` returns `x`, invisibly.
 #'   `tidy()` and `glance()` return a tibble.
 #'   `tidy()` gives the columns `term`, `estimate`, `statistic`, and
-#'   `p.value` for a regression,
+#'   `p.value` for a regression.
+#'   For a `netreg`, it also adds the columns of the fit's term table,
+#'   `fit$terms`: the `effect` (the formula term) each coefficient comes from,
+#'   its `layer`, `attribute`, `category`, and `reference` category,
+#'   and for an interaction its `operands`.
+#'   These group the coefficients without parsing their names.
 #'   and `glance()` gives the fit statistics that the model keeps.
 #'   For a `network_test`, both give one row with the observed statistic,
 #'   the mean and standard deviation of the null distribution,
@@ -61,7 +66,7 @@
 #'   and at or above (`p.upper`) the observed statistic.
 #' @family models
 #' @examples
-#' css_model <- net_regression(advice ~ same(dept) + reports,
+#' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)
 #' print(css_model, print_b = TRUE)
 #' tidy(css_model)
@@ -93,10 +98,14 @@ tidy.netreg <- function(x, exponentiate = FALSE,
       manynet::snet_warn("The estimates are exponentiated, but the model is gaussian.")
     estimate <- exp(estimate)
   }
-  tibble::tibble(term = names(x$coefficients),
-                estimate = estimate,
-                statistic = as.numeric(x$obs),
-                p.value = as.numeric(p[2, ]))
+  out <- tibble::tibble(term = names(x$coefficients),
+                        estimate = estimate,
+                        statistic = as.numeric(x$obs),
+                        p.value = as.numeric(p[2, ]))
+  # A fit made before the term table was kept has none to join.
+  if (is.null(x$terms)) return(out)
+  parts <- x$terms[match(out$term, x$terms$term), setdiff(names(x$terms), "term")]
+  tibble::as_tibble(c(out, parts))
 }
 
 #' @rdname results

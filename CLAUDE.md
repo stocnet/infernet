@@ -12,12 +12,12 @@ so its functions accept matrices, edgelists, `{igraph}`, `{network}`, `{tidygrap
 and one-mode or two-mode networks alike.
 Plotting results belongs in `{autograph}`.
 
-Full package documentation — common dev commands, file organization, the `net_regression()` pipeline, 
+Full package documentation — common dev commands, file organization, the `estimate_mrqap()` pipeline, 
 function body and parallelism conventions, console messaging, dependency practice, test conventions, `NEWS.md` conventions, and branching/CI — lives in [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 Read it before adding or restructuring functions, 
 or when you need the exact `devtools`/testing commands for this repo.
 
-Note that `{migraph}` still carries older copies of `net_regression()` and the `test_*()` family, 
+Note that `{migraph}` still carries older copies of `estimate_mrqap()`, as `net_regression()`, and the `test_*()` family, 
 which `{infernet}` supersedes. 
 A fix made in `{migraph}` needs porting here; a fix made here does not need porting back.
 

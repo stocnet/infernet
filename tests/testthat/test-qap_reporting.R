@@ -18,22 +18,22 @@ FORM <- weight ~ ego(Age) + alter(Age) + sim(Age)
 test_that("every reporting message renders", {
   g <- qap_net_gaussian(n = 15)
   # A message that cli cannot parse aborts, so reaching the end is the test.
-  expect_no_error(verbosely(
-    net_regression(FORM, g, times = 5, control = list(seed = 1))))
-  expect_no_error(verbosely(
-    net_regression(weight ~ ego(Age), g, times = 5, control = list(seed = 1))))
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(FORM, g, times = 5, control = list(seed = 1)))))
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(weight ~ ego(Age), g, times = 5, control = list(seed = 1)))))
 })
 
 test_that("a family resolved from the outcome is reported", {
-  expect_message(
-    verbosely(net_regression(. ~ ego(Age) + alter(Age), qap_net_binary(n = 15),
+  expect_any_message(
+    verbosely(estimate_mrqap(. ~ ego(Age) + alter(Age), qap_net_binary(n = 15),
                              times = 5, control = list(seed = 1))),
     "binomial")
 })
 
 test_that("directedness read from the network is reported", {
-  expect_message(
-    verbosely(net_regression(weight ~ ego(Age) + alter(Age),
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ ego(Age) + alter(Age),
                              qap_net_undirected(n = 14),
                              times = 5, control = list(seed = 1))),
     "undirected")
@@ -42,14 +42,14 @@ test_that("directedness read from the network is reported", {
 test_that("a stated family and directedness are not reported", {
   g <- qap_net_gaussian(n = 15)
   expect_no_message(
-    verbosely(net_regression(FORM, g, times = 5,
+    verbosely(estimate_mrqap(FORM, g, times = 5,
                              control = list(seed = 1, family = "gaussian",
                                             directed = TRUE))))
 })
 
 test_that("the fallback to permuting the outcome is reported", {
-  expect_message(
-    verbosely(net_regression(weight ~ ego(Age), qap_net_gaussian(n = 15),
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ ego(Age), qap_net_gaussian(n = 15),
                              times = 5,
                              control = list(seed = 1, permute = "predictor"))),
     "residualise")
@@ -57,8 +57,23 @@ test_that("the fallback to permuting the outcome is reported", {
 
 
 test_that("the model advice on homophily terms is reported", {
-  expect_message(
-    verbosely(net_regression(weight ~ same(Grp), qap_net_gaussian(n = 15),
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ same(Grp), qap_net_gaussian(n = 15),
                              times = 5, control = list(seed = 1))),
     "ego\\(Grp\\)")
+})
+
+test_that("dropped dyads and fixed nodes are reported", {
+  g <- qap_net_gaussian(n = 15)
+  m <- manynet::as_matrix(g)
+  m[2, 3] <- NA
+  holed <- manynet::mutate(manynet::as_tidygraph(m),
+                           Age = manynet::node_attribute(g, "Age"))
+  msgs <- testthat::capture_messages(
+    verbosely(estimate_mrqap(weight ~ ego(Age), holed, times = 5,
+                             control = list(seed = 1))))
+  msgs <- paste(msgs, collapse = "")
+  expect_match(msgs, "Using 209 of 210 dyads")
+  expect_match(msgs, "1 on weight")
+  expect_match(msgs, "2 nodes with scattered unobserved or fixed cells stay in place")
 })

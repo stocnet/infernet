@@ -1,11 +1,15 @@
 # Runs the code that each tutorial's chunks would run, in order, so that a
 # change to a function the tutorial teaches breaks this test rather than the
 # tutorial. The exercises and hints are not purled, only the solutions.
+# The test asks only whether the code runs, so it caps the number of
+# permutations or simulations each call makes.
+
+TUTORIAL_TIMES <- 20
 
 run_tutorial_code <- function(path) {
   tmp <- tempfile(fileext = ".R")
   knitr::purl(input = path, output = tmp, quiet = TRUE)
-  exprs <- parse(tmp)
+  exprs <- lapply(parse(tmp), .cap_times, cap = TUTORIAL_TIMES)
   env <- new.env(parent = globalenv())
   waiting <- character()
   for (i in seq_along(exprs)) {
@@ -21,6 +25,20 @@ run_tutorial_code <- function(path) {
                                    paste(deparse(exprs[[i]]), collapse = " ")))
   }
   waiting
+}
+
+# Each `times = n` in a call, at any depth, becomes at most `cap`.
+.cap_times <- function(expr, cap) {
+  if (!is.call(expr)) return(expr)
+  for (i in seq_along(expr)[-1]) {
+    if (is.null(expr[[i]])) next
+    if (identical(names(expr)[i], "times") && is.numeric(expr[[i]])) {
+      expr[[i]] <- min(expr[[i]], cap)
+    } else {
+      expr[[i]] <- .cap_times(expr[[i]], cap)
+    }
+  }
+  expr
 }
 
 # {autograph} cannot plot a netreg result yet (stocnet/autograph#68), so such a

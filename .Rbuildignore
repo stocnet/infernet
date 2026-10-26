@@ -24,3 +24,4 @@ vignettes/precompile\.R
 ^\.Rhistory$
 ^\.RData$
 ^vignettes/articles$
+^\.git$

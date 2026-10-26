@@ -1,6 +1,6 @@
 # QAP engine ------------------------------------------------------------------
 #
-# Internal. The matrix-level engine behind net_regression(): it performs the
+# Internal. The matrix-level engine behind estimate_mrqap(): it performs the
 # baseline fit and the permutation inference on a pre-built list of matrices,
 # for both a dyadic network and a cognitive social structure.
 #
@@ -16,7 +16,7 @@ QAPengine <- function(formula,
                       css       = FALSE,
                       family    = "gaussian",
                       directed  = TRUE,
-                      diag      = FALSE,
+                      loops     = FALSE,
                       permute   = "predictor",
                       times     = 1000,
                       seed      = NULL,
@@ -28,6 +28,9 @@ QAPengine <- function(formula,
                       random_intercept_receiver  = FALSE,
                       random_intercept_reporter  = FALSE,
                       use_robust_errors = FALSE,
+                      missing   = "available",
+                      panel     = FALSE,
+                      fixed_effects = character(0),
                       less_mem  = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
@@ -40,6 +43,8 @@ QAPengine <- function(formula,
 
   validate_qap_input(matlist, parsed, css = css)
   large <- is.list(matlist[[dep]])
+  if (panel && !large)
+    manynet::snet_abort("A panel needs a list of waves for each variable.")
 
   # ---- random intercepts ----------------------------------------------------
 
@@ -56,7 +61,11 @@ QAPengine <- function(formula,
     manynet::snet_abort(
       "A {label} has no {.val {unavailable}} random intercept{?s}.")
   }
-  if (!directed && (requested[["sender"]] || requested[["receiver"]])) {
+  # A two-mode network keeps them: its rows and its columns are different
+  # nodes, whether or not it is read as directed.
+  y1 <- if (large) matlist[[dep]][[1]] else matlist[[dep]]
+  twomode <- dim(y1)[1] != dim(y1)[2]
+  if (!directed && !twomode && (requested[["sender"]] || requested[["receiver"]])) {
     manynet::snet_warn(
       c("An undirected network has no senders or receivers.",
         i = "Setting the sender and receiver random intercepts to {.val FALSE}."))
@@ -77,9 +86,27 @@ QAPengine <- function(formula,
     paste(deparse(formula, width.cutoff = 500), collapse = " "), rand_part))
   has_random <- length(active) > 0 || parsed$has_random
 
-  if (diag && css)
+  # ---- fixed effects --------------------------------------------------------
+
+  fixed_effects <- .check_fixed(fixed_effects, shape, directed, large,
+                                has_random, family, use_robust_errors,
+                                twomode = twomode)
+  fe_cols <- .fixed_columns(fixed_effects, large, panel)
+  # A gaussian model absorbs them once, below; any other family absorbs them
+  # in every fit, with {fixest}.
+  absorb_once <- length(fixed_effects) > 0 && family == "gaussian"
+  fit_fixed <- if (length(fixed_effects) > 0 && !absorb_once) fe_cols else NULL
+  if (!is.null(fit_fixed))
+    thisRequires("fixest", "for fixed effects in a model that is not gaussian")
+  if (absorb_once) {
+    # The intercept is one of the absorbed effects.
+    mod <- stats::as.formula(paste(
+      paste(deparse(formula, width.cutoff = 500), collapse = " "), "- 1"))
+  }
+
+  if (loops && css)
     manynet::snet_warn(
-      "Results may not be valid where the diagonal is included.")
+      "Results may not be valid where loops are included.")
 
   # ---- vectorise ------------------------------------------------------------
 
@@ -97,10 +124,71 @@ QAPengine <- function(formula,
     groups <- as.factor(groups)
   }
 
+  # ---- missing cells ---------------------------------------------------------
+
+  # Counted before the model drops anything, so that "fail" can stop before it
+  # does and "available" can say what it dropped.
+  # A fixed tie keeps its value, which a predictor built from the network has
+  # already read. It is no observation of the process, though, since the
+  # design set it, so `exclude` keeps it out of the outcome's rows, and the
+  # blocks keep it in place under permutation. It is not missing data, so it is
+  # counted apart from the unobserved cells, and "fail" does not stop on it.
+  exclude <- if (large) lapply(matlist[[dep]], attr, "fixed")
+             else attr(matlist[[dep]], "fixed")
+  if (large && all(vapply(exclude, is.null, logical(1)))) exclude <- NULL
+
+  unobserved <- .missing_summary(matlist, dep, data_vars, loops, directed, large,
+                                 exclude)
+  n_fixed_ties <- unobserved$excluded
+  unit <- if (css) "reported dyads" else "dyads"
+  missing_vars <- unobserved$by_variable[unobserved$by_variable > 0]
+  missing_parts <- paste(missing_vars, "on", names(missing_vars))
+  if (identical(missing, "fail") && length(missing_vars) > 0) {
+    manynet::snet_abort(
+      c("The model has unobserved {unit}: {missing_parts}.",
+        i = "Drop them with {.code control = list(missing = \"available\")}.",
+        i = "Or remove them first, for example with {.fn manynet::to_no_missing}."))
+  }
+
   vec <- .vectorise_matlist(shape, matlist, dep, data_vars, groups,
-                            diag, directed, large)
+                            loops, directed, large, exclude)
   pred <- vec$pred
   names(pred)[names(pred) == "yv"] <- dep
+
+  # Reported only where something was dropped: a complete network uses every
+  # cell it could, and a stated model on one should print nothing.
+  used <- nrow(pred)
+  if (length(missing_vars) > 0) {
+    possible <- unobserved$possible
+    manynet::snet_info(
+      "Using {used} of {possible} {unit}, after dropping the unobserved ones:",
+      "{missing_parts}.")
+  }
+  if (n_fixed_ties > 0) {
+    manynet::snet_info(
+      "Leaving out {n_fixed_ties} fixed tie{?s}, which the network marks as set by design,",
+      "and keeping {?it/them} in place under permutation.")
+  }
+
+  # The result keeps the observed values, whichever values are fitted. A
+  # gaussian model is fitted to values demeaned once: every permutation fits
+  # these dyads, and maps each group onto a group, so the demeaned values keep
+  # zero group means in every draw.
+  pred_observed <- pred
+  fixed_df <- NULL
+  if (absorb_once) {
+    absorbed <- .absorb_fixed(shape, matlist, pred, vec, dep, main,
+                              fixed_effects, fe_cols, large, directed)
+    pred     <- absorbed$pred
+    matlist  <- absorbed$matlist
+    fixed_df <- absorbed$df
+  }
+  fixed_ids <- NULL
+  if (!is.null(fit_fixed)) {
+    fixed_ids <- .fixed_ids(pred, fe_cols)
+    .check_absorbed(.demean(as.matrix(pred[main]), fixed_ids), pred[main],
+                    fixed_effects)
+  }
 
   # ---- baseline -------------------------------------------------------------
 
@@ -110,7 +198,16 @@ QAPengine <- function(formula,
                             family       = family,
                             use_robust_errors = use_robust_errors,
                             main_vars    = main,
-                            has_random   = has_random)
+                            has_random   = has_random,
+                            fixed_effects = fit_fixed,
+                            fixed_df     = fixed_df)
+  if (!is.null(fit_fixed)) {
+    removed <- nrow(pred) - stats::nobs(fit$base$base_model)
+    if (removed > 0)
+      manynet::snet_info(
+        c("Leaving out {removed} dyad{?s} whose fixed-effect group has only one outcome value.",
+          i = "{.pkg fixest} cannot estimate an effect for such a group."))
+  }
 
   # Double semi-partialling residualises a predictor against the others, so
   # with one predictor there are none and the scheme reduces to permuting the
@@ -130,16 +227,30 @@ QAPengine <- function(formula,
     options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
   }, add = TRUE)
 
-  perm_args <- list(shape. = shape, directed. = directed, diag. = diag,
+  perm_args <- list(shape. = shape, directed. = directed, loops. = loops,
                     mod. = mod, groups. = groups, fit. = fit$base,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
-                    data_vars. = data_vars, parsed. = parsed)
+                    data_vars. = data_vars, parsed. = parsed,
+                    n_obs. = used, panel. = panel, exclude. = exclude,
+                    fixed_effects. = fit_fixed, fixed_df. = fixed_df)
+  # Each permutation set exchanges only the nodes whose missing cells match, so
+  # that every draw is fitted on the dyads of the observed model.
+  fixed <- integer(0)
+  .blocks_for <- function(target, label) {
+    blocks <- .permutation_blocks(target, groups, loops, times, label, panel,
+                                  exclude)
+    if (is.null(blocks)) return(groups)
+    fixed[[label]] <<- attr(blocks, "fixed")
+    blocks
+  }
 
   if (permute == "outcome") {
     res <- do.call(run_permutations,
                    c(list(times, QAPPermEst, matlist. = matlist,
-                          perm_var. = NULL), perm_args))
+                          perm_var. = NULL,
+                          perm_groups. = .blocks_for(matlist[[dep]], dep)),
+                     perm_args))
     agg <- aggregate_perm_results(res, times)
     fit$lower    <- agg$lower
     fit$larger   <- agg$larger
@@ -169,14 +280,18 @@ QAPengine <- function(formula,
 
       xR <- residualise_predictor(xi, pred, main,
                                   has_random   = has_random,
-                                  rand_formula = rand_part)
+                                  rand_formula = rand_part,
+                                  fixed_ids    = fixed_ids)
       matlist_resid <- matlist
       matlist_resid[[xi]] <- shape$unresidualise(xR, matlist[[xi]], pred, large,
-                                                 vec$valid, vec$valid_list)
+                                                 vec$valid, vec$valid_list,
+                                                 directed)
 
       res <- do.call(run_permutations,
                      c(list(times, QAPPermEst, matlist. = matlist_resid,
-                            perm_var. = xi), perm_args))
+                            perm_var. = xi,
+                            perm_groups. = .blocks_for(matlist_resid[[xi]], xi)),
+                       perm_args))
       agg <- aggregate_perm_results(res, times)
       fit$lower[, xi]  <- agg$lower
       fit$larger[, xi] <- agg$larger
@@ -184,6 +299,16 @@ QAPengine <- function(formula,
       draws <- as.vector(agg$testdist)
       fit$testdist[seq_along(draws), xi] <- draws
     }
+  }
+
+  if (length(fixed) > 0) {
+    n_fixed_nodes <- max(fixed)
+    manynet::snet_info(
+      "Permuting nodes only among nodes with the same unobserved cells,",
+      "so that every permutation uses the same {used} {unit}.")
+    if (n_fixed_nodes > 0)
+      manynet::snet_info(
+        "{n_fixed_nodes} node{?s} with scattered unobserved or fixed cells stay{?s/} in place.")
   }
 
   # ---- assemble -------------------------------------------------------------
@@ -201,23 +326,35 @@ QAPengine <- function(formula,
   if (!less_mem) fit$simple_fit <- fit$base$base_model
 
   if (family == "binomial") {
+    # From the model rather than from `pred`, since {fixest} leaves out the
+    # dyads of a group with one outcome value.
+    bm <- fit$base$base_model
+    fitted_prob <- stats::fitted(bm)
     fit$confusion_matrix <- probabilistic_confusion_matrix(
-      actual = pred[[dep]],
-      predicted_prob = stats::fitted(fit$base$base_model),
+      actual = fitted_prob + stats::residuals(bm, type = "response"),
+      predicted_prob = fitted_prob,
       n_draws = 1000, seed = seed
     )
   }
 
   fit$permute   <- permute
-  fit$diag      <- diag
+  fit$panel     <- panel
+  fit$loops     <- loops
   fit$family    <- family
   fit$directed  <- directed
   fit$times     <- times
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
   fit$random    <- requested[names(slots)]
-  fit$pred      <- pred
+  fit$fixed_effects <- fixed_effects
+  fit$pred      <- pred_observed
   fit$dep       <- dep
+  fit$missing   <- list(treatment   = missing,
+                        possible    = unobserved$possible,
+                        used        = used,
+                        unobserved  = unobserved$by_variable,
+                        fixed_ties  = n_fixed_ties,
+                        fixed_nodes = fixed)
 
 
   # Most specific first, so that a method can be written at any level and S3
@@ -241,7 +378,7 @@ QAPPermEst <- function(i,
                        perm_var.,
                        shape.,
                        directed.,
-                       diag.,
+                       loops.,
                        mod.,
                        groups.,
                        fit.,
@@ -250,7 +387,13 @@ QAPPermEst <- function(i,
                        has_random.,
                        main_vars.,
                        data_vars.,
-                       parsed.) {
+                       parsed.,
+                       perm_groups. = groups.,
+                       n_obs. = NULL,
+                       panel. = FALSE,
+                       exclude. = NULL,
+                       fixed_effects. = NULL,
+                       fixed_df. = NULL) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
@@ -260,16 +403,33 @@ QAPPermEst <- function(i,
   repeat {
     trial <- trial + 1L
     d <- matlist.
-    d[[target]] <- if (large) {
-      lapply(d[[target]], shape.$permute, groups = groups.)
+    # A pooled list has one set of blocks for each network, where its missing
+    # cells differ; the user's groups are one factor for all of them.
+    # The waves of a panel are the same nodes, observed again, so one draw
+    # relabels them the same way in every wave. Permuting each wave on its own
+    # would break each node's trajectory under the null.
+    d[[target]] <- if (panel.) {
+      .permute_panel(d[[target]], perm_groups.)
+    } else if (large) {
+      per_net <- is.list(perm_groups.) && is.null(names(perm_groups.))
+      lapply(seq_along(d[[target]]), function(k) {
+        shape.$permute(d[[target]][[k]],
+                       if (per_net) perm_groups.[[k]] else perm_groups.)
+      })
     } else {
-      shape.$permute(d[[target]], groups.)
+      shape.$permute(d[[target]], perm_groups.)
     }
 
     vec <- .vectorise_matlist(shape., d, dep, data_vars., groups.,
-                              diag., directed., large)
+                              loops., directed., large, exclude.)
     pred <- vec$pred
     names(pred)[names(pred) == "yv"] <- dep
+    # The blocks keep the missing cells in place, so a draw on any other number
+    # of dyads is a fault in the engine, not in the data.
+    if (!is.null(n_obs.) && nrow(pred) != n_obs.)
+      manynet::snet_abort(
+        c("A permutation used {nrow(pred)} dyads, where the observed model used {n_obs.}.",
+          i = "This is a bug in {.pkg infernet}. Please report it."))
 
     if (.sufficient_data(pred, dep, data_vars.)) break
     if (trial >= shape.$max_trials) {
@@ -291,7 +451,9 @@ QAPPermEst <- function(i,
                                    family       = family.,
                                    use_robust_errors = use_robust_errors.,
                                    main_vars    = main_vars.,
-                                   has_random   = has_random.)),
+                                   has_random   = has_random.,
+                                   fixed_effects = fixed_effects.,
+                                   fixed_df     = fixed_df.)),
     error = function(e) NULL
   )
   if (is.null(perm_fit)) return(NULL)

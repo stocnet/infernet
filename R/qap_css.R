@@ -16,7 +16,7 @@
 # with `out[valid] <- xR`, so the two orders agree by construction.
 #' @keywords internal
 #' @noRd
-make_css_data <- function(y, x, nets, diag, directed) {
+make_css_data <- function(y, x, nets, loops, directed) {
   d <- dim(y)
   nr <- d[1]; nc <- d[2]; np <- d[3]
   square <- nr == nc
@@ -33,7 +33,7 @@ make_css_data <- function(y, x, nets, diag, directed) {
   # A tie from a node to itself is a loop, so it is dropped unless loops are
   # kept. A two-mode CSS has no diagonal: its rows and columns are different
   # nodes.
-  if (!diag && square) diag(slice) <- FALSE
+  if (!loops && square) diag(slice) <- FALSE
   # Each reporter's view of an undirected network holds every dyad twice, so
   # keep the lower triangle only, as `make_qap_data()` does for one network.
   if (!directed && square) slice[upper.tri(slice)] <- FALSE
@@ -108,6 +108,7 @@ print.netreg_css <- function(x, ...) {
   }
   if (isTRUE(x$random[["reporter"]]))
     cat("Each reporter has a random intercept.\n")
+  cat(.fixed_label(x))
 
   if (!is.null(x$theta))
     cat("Negative binomial dispersion (theta):", format(round(x$theta, 4)), "\n")
@@ -132,7 +133,7 @@ print.netreg_css <- function(x, ...) {
   if (x$robust_se)
     cat("T-values are based on robust standard errors.\n")
 
-  if (x$diag) {
+  if (x$loops) {
     cat("Diagonal values (loops) were used in the estimation.\n",
         "  Results may be biased because of that.\n")
   } else {

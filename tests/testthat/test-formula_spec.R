@@ -22,8 +22,21 @@ test_that("a bare name is a dyadic covariate", {
 
 test_that("an unknown term or argument names what is available", {
   expect_error(.specify(y ~ egoo(age)), "not a formula term")
+  expect_error(.specify(y ~ egoo(age)), "Did you mean `ego\\(\\)`")
   expect_error(.specify(y ~ indeg(friends, kind = "ego")), "takes")
+  # A name that no model knows still aborts, as a bare name or as a term.
+  expect_error(convertToMatrixList(a ~ inertai + ego(x), formula_net(),
+                                   advise = FALSE), "not found")
+  expect_error(convertToMatrixList(a ~ trnas(b) + ego(x), formula_net(),
+                                   advise = FALSE), "Did you mean `trans\\(\\)`")
 })
+
+test_that("a term of another model is read with any of its arguments", {
+  op <- .specify(y ~ trans(friends, window = 10, transformer_fn = sqrt))$terms[[1]]$operands[[1]]
+  expect_equal(op$fn, "trans")
+  expect_equal(op$name, "friends")
+})
+
 
 test_that("a bar is a random intercept for an index the engine builds", {
   spec <- .specify(y ~ ego(age) + (1 | sender) + (1 | receiver))
@@ -37,9 +50,9 @@ test_that("a bar is a random intercept for an index the engine builds", {
 test_that("a random intercept in the formula fits as its control does", {
   skip_if_not_installed("lme4")
   g <- qap_net_gaussian(n = 12)
-  a <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age) + (1 | sender),
+  a <- suppressMessages(estimate_mrqap(weight ~ ego(Age) + alter(Age) + (1 | sender),
                                        g, times = 5, control = list(seed = 1)))
-  b <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age), g, times = 5,
+  b <- suppressMessages(estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 5,
                                        control = list(seed = 1, random_intercept_sender = TRUE)))
   expect_equal(a$coefficients, b$coefficients)
   expect_true(any(a$random))
@@ -55,22 +68,22 @@ test_that("an interaction of any order is the product of its operands", {
   m <- ml$mydata
   expect_equal(m[["ego_Age:alter_Age:ego_Cit"]],
                m[["ego_Age"]] * m[["alter_Age"]] * m[["ego_Cit"]])
-  fit <- net_regression(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
+  fit <- estimate_mrqap(weight ~ ego(Age) * alter(Age) * ego(Cit), g,
                         times = 5, control = list(seed = 1))
   expect_length(fit$coefficients, 8)
 })
 
 test_that("an interaction with a term of several columns gives one product each", {
   g <- formula_net()
-  ml <- convertToMatrixList(a ~ match(grp):ego(x), g, advise = FALSE)
-  expect_named(ml$mydata, c("a", "match_grp_p:ego_x", "match_grp_q:ego_x"))
+  ml <- convertToMatrixList(a ~ same(grp, diff = TRUE):ego(x), g, advise = FALSE)
+  expect_named(ml$mydata, c("a", "same_grp_p:ego_x", "same_grp_q:ego_x"))
 })
 
 test_that("`. ~` takes the outcome from the network's focal layer", {
   ht <- manynet::ison_hightech
   ht$info$focal <- "advice"
   fit <- suppressMessages(
-    net_regression(. ~ ego(age) + friends, ht, times = 5,
+    estimate_mrqap(. ~ ego(age) + friends, ht, times = 5,
                    control = list(seed = 1)))
   expect_equal(fit$dep, "advice")
   expect_s3_class(fit, "netreg_css")

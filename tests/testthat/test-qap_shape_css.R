@@ -1,7 +1,7 @@
 # The engine fits two shapes, a dyadic network and a cognitive social structure,
 # through one skeleton. These assert that the CSS half of that skeleton works at
 # the level of the engine, on hand-built arrays. Models fitted through
-# `net_regression()` from a `{manynet}` network are in test-net_regression_css.R.
+# `estimate_mrqap()` from a `{manynet}` network are in test-estimate_mrqap_css.R.
 
 css_fixture <- function(n = 8, seed = 7) {
   set.seed(seed)
@@ -74,9 +74,9 @@ test_that("a CSS rejects an outcome that is not three-dimensional", {
 test_that("a CSS fit prints as a model", {
   fit <- QAPengine(ties ~ cov, css_fixture(), css = TRUE,
                    family = "binomial", times = 10, seed = 1)
-  expect_output(print(fit), "cognitive social structure")
+  expect_output(shown <- withVisible(print(fit)), "cognitive social structure")
+  expect_false(shown$visible)
   expect_output(print(fit), "Coefficients")
-  expect_invisible(print(fit))
 })
 
 test_that("both shapes reproduce under the same seed", {

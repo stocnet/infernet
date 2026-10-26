@@ -13,6 +13,7 @@ navbar:
     - home
     - intro
     - reference
+    - tutorials
     - news
     right:
     - search
@@ -26,6 +27,11 @@ navbar:
     reference:
       text: Function Overview
       href: reference/index.html
+    tutorials:
+      text: Tutorials
+      menu:
+      - text: Diversity and Regression
+        href: articles/diversity-and-regression.html
     news:
       text: News
       href: news/index.html
@@ -37,15 +43,28 @@ navbar:
       icon: "fab fa-r-project"
       href: https://cloud.r-project.org/package=infernet
       aria-label: View on CRAN
+articles:
+  - title: Tutorials
+    desc: |
+      Static, read-only versions of the interactive `learnr` tutorials
+      bundled with the package. Install the package and run `run_tute()`
+      for the full interactive experience.
+    contents:
+      - "`articles/diversity-and-regression`"
 reference:
   - title: "Tests"
     desc: "Functions for testing network statistics against a null distribution:"
     contents:
       - starts_with("test")
+  - title: "Formulas"
+    desc: "Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:"
+    contents:
+      - specify
   - title: "Regression"
     desc: "Functions for regressing networks on nodal and dyadic covariates:"
     contents:
       - regression
+      - control_mrqap
   - title: "Results"
     desc: "Functions for reporting the results of tests and regressions:"
     contents:

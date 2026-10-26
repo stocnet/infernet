@@ -1,4 +1,4 @@
-# Cognitive social structures through `net_regression()`.
+# Cognitive social structures through `estimate_mrqap()`.
 #
 # A CSS is detected, not declared: `{manynet}` records who reported each tie in
 # a `by` column, and `as_matrix()` then returns an array of sender, receiver,
@@ -55,7 +55,7 @@ FORM_HT <- advice ~ ego(age) + alter(age) + same(dept) + reports
 
 test_that("a CSS layer is detected and fitted as one", {
   fit <- suppressMessages(
-    net_regression(FORM_HT, HT, times = 10, control = list(seed = 1)))
+    estimate_mrqap(FORM_HT, HT, times = 10, control = list(seed = 1)))
   expect_s3_class(fit, "netreg")
   expect_s3_class(fit, "netreg_css")
   expect_named(fit$coefficients,
@@ -68,15 +68,15 @@ test_that("a CSS layer is detected and fitted as one", {
 test_that("detecting a CSS is reported", {
   old <- options(snet_verbosity = "verbose")
   on.exit(options(old), add = TRUE)
-  expect_message(
-    net_regression(advice ~ ego(age) + friends, HT, times = 5,
+  expect_any_message(
+    estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1)),
     "cognitive social structure, with 21 reporters")
 })
 
 test_that("a CSS baseline matches glm() on the same reported dyads", {
   fit <- suppressMessages(
-    net_regression(FORM_HT, HT, times = 5, control = list(seed = 1)))
+    estimate_mrqap(FORM_HT, HT, times = 5, control = list(seed = 1)))
   ref <- stats::glm(stats::reformulate(
     c("ego_age", "alter_age", "same_dept", "reports"), "advice"),
     data = fit$pred, family = stats::binomial())
@@ -85,7 +85,7 @@ test_that("a CSS baseline matches glm() on the same reported dyads", {
 
 test_that("a layer that is not a CSS is the outcome of a dyadic model", {
   fit <- suppressMessages(
-    net_regression(reports ~ ego(age) + alter(age), HT, times = 5,
+    estimate_mrqap(reports ~ ego(age) + alter(age), HT, times = 5,
                    control = list(seed = 1)))
   expect_false(inherits(fit, "netreg_css"))
   expect_equal(nrow(fit$pred), 21 * 20)
@@ -93,7 +93,7 @@ test_that("a layer that is not a CSS is the outcome of a dyadic model", {
 
 test_that("a multiplex network asks for a layer to be named as the outcome", {
   expect_error(
-    net_regression(weight ~ ego(age), HT, times = 5),
+    estimate_mrqap(weight ~ ego(age), HT, times = 5),
     "name one as the outcome")
 })
 
@@ -101,7 +101,7 @@ test_that("a multiplex network asks for a layer to be named as the outcome", {
 
 test_that("a CSS layer as a predictor varies by reporter", {
   fit <- suppressMessages(
-    net_regression(advice ~ friends + reports, HT, times = 5,
+    estimate_mrqap(advice ~ friends + reports, HT, times = 5,
                    control = list(seed = 1)))
   by_dyad <- split(fit$pred, interaction(fit$pred$sv, fit$pred$rv, drop = TRUE))
   varies <- function(col) any(vapply(by_dyad, function(d) length(unique(d[[col]])) > 1,
@@ -114,7 +114,7 @@ test_that("a CSS layer as a predictor varies by reporter", {
 
 test_that("a nodal predictor is the same for every reporter", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + friends, HT, times = 5,
+    estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1)))
   per_dyad <- tapply(fit$pred[["ego_age"]],
                      interaction(fit$pred$sv, fit$pred$rv, drop = TRUE),
@@ -124,7 +124,7 @@ test_that("a nodal predictor is the same for every reporter", {
 
 test_that("tertius() is computed within each report", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + tertius(friends, age), HT, times = 5,
+    estimate_mrqap(advice ~ ego(age) + tertius(friends, age), HT, times = 5,
                    control = list(seed = 1)))
   per_dyad <- tapply(fit$pred[["tertius_friends_age"]],
                      interaction(fit$pred$sv, fit$pred$rv, drop = TRUE),
@@ -134,7 +134,7 @@ test_that("tertius() is computed within each report", {
 
 test_that("an interaction between a CSS layer and a nodal term fits", {
   fit <- suppressMessages(
-    net_regression(advice ~ friends + ego(age):friends, HT, times = 5,
+    estimate_mrqap(advice ~ friends + ego(age):friends, HT, times = 5,
                    control = list(seed = 1)))
   expect_named(fit$coefficients, c("(Intercept)", "friends", "friends:ego_age"))
 })
@@ -142,7 +142,7 @@ test_that("an interaction between a CSS layer and a nodal term fits", {
 test_that("a layer named on its own is found as a predictor", {
   # A bare term used to be named "reports NA" and could never be found.
   fit <- suppressMessages(
-    net_regression(advice ~ reports, HT, times = 5, control = list(seed = 1)))
+    estimate_mrqap(advice ~ reports, HT, times = 5, control = list(seed = 1)))
   expect_named(fit$coefficients, c("(Intercept)", "reports"))
 })
 
@@ -151,7 +151,7 @@ test_that("a layer named on its own is found as a predictor", {
 test_that("each reporter can take a random intercept", {
   skip_if_not_installed("lme4")
   fit <- suppressMessages(suppressWarnings(
-    net_regression(advice ~ ego(age) + friends, HT, times = 5,
+    estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1, random_intercept_reporter = TRUE))))
   expect_named(fit$random.intercepts, "bv")
   expect_length(fit$random.intercepts$bv, 21)
@@ -161,15 +161,15 @@ test_that("each reporter can take a random intercept", {
 
 test_that("a reporter intercept on a network that is not a CSS is refused", {
   expect_error(
-    net_regression(weight ~ ego(Age), qap_net_gaussian(n = 12), times = 5,
+    estimate_mrqap(weight ~ ego(Age), qap_net_gaussian(n = 12), times = 5,
                    control = list(random_intercept_reporter = TRUE)),
     "reporter")
 })
 
 test_that("a CSS model reproduces under the same seed", {
-  a <- suppressMessages(net_regression(advice ~ ego(age) + friends, HT,
+  a <- suppressMessages(estimate_mrqap(advice ~ ego(age) + friends, HT,
                                        times = 20, control = list(seed = 9)))
-  b <- suppressMessages(net_regression(advice ~ ego(age) + friends, HT,
+  b <- suppressMessages(estimate_mrqap(advice ~ ego(age) + friends, HT,
                                        times = 20, control = list(seed = 9)))
   expect_equal(a$lower, b$lower)
 })
@@ -204,7 +204,7 @@ test_that(".perm_css() refuses reporters that are not the nodes", {
 test_that("an unmarked non-reporter is warned about by name", {
   g <- css_net(n = 10, reporting = 8)
   expect_snet_warning(
-    net_regression(. ~ ego(age) + alter(age), g, times = 5,
+    estimate_mrqap(. ~ ego(age) + alter(age), g, times = 5,
                    control = list(seed = 1)),
     "2 reporters named no ties")
 })
@@ -212,7 +212,7 @@ test_that("an unmarked non-reporter is warned about by name", {
 test_that("a non-reporter marked as missing is dropped, not read as zeros", {
   g <- css_net(n = 10, reporting = 8, mark_missing = TRUE)
   fit <- expect_no_warning(suppressMessages(
-    net_regression(. ~ ego(age) + alter(age), g, times = 5,
+    estimate_mrqap(. ~ ego(age) + alter(age), g, times = 5,
                    control = list(seed = 1))))
   # Eight reports of 10 x 9 ordered dyads; the two unasked are not in the model.
   expect_equal(nrow(fit$pred), 8 * 10 * 9)
@@ -225,7 +225,7 @@ test_that("a non-reporter marked as missing is dropped, not read as zeros", {
 test_that("an undirected CSS counts each dyad once per report", {
   g <- css_net(n = 10, reporting = 10, directed = FALSE)
   fit <- suppressMessages(suppressWarnings(
-    net_regression(. ~ ego(age) + alter(age), g, times = 5,
+    estimate_mrqap(. ~ ego(age) + alter(age), g, times = 5,
                    control = list(seed = 1))))
   expect_false(fit$directed)
   expect_equal(nrow(fit$pred), 10 * (10 * 9 / 2))
@@ -234,7 +234,7 @@ test_that("an undirected CSS counts each dyad once per report", {
 test_that("a two-mode CSS fits every cell of every report", {
   g <- css_net_twomode(people = 4, events = 3)
   fit <- suppressMessages(suppressWarnings(
-    net_regression(. ~ ego(age), g, times = 5, control = list(seed = 1))))
+    estimate_mrqap(. ~ ego(age), g, times = 5, control = list(seed = 1))))
   # Rows of people, columns of events, and a report from all seven nodes.
   expect_equal(nrow(fit$pred), 4 * 3 * 7)
 })
@@ -243,13 +243,13 @@ test_that("same() on a two-mode CSS is refused with an alternative", {
   g <- css_net_twomode()
   g <- manynet::mutate_nodes(g, grp = rep(c("x", "y"), length.out = 7))
   expect_error(
-    net_regression(. ~ same(grp), g, times = 5),
+    estimate_mrqap(. ~ same(grp), g, times = 5),
     "ego")
 })
 
 test_that("a list of CSS networks is pooled", {
   fit <- suppressMessages(
-    net_regression(advice ~ ego(age) + friends, list(HT, HT), times = 5,
+    estimate_mrqap(advice ~ ego(age) + friends, list(HT, HT), times = 5,
                    control = list(seed = 1)))
   expect_s3_class(fit, "netreg_css")
   expect_equal(nrow(fit$pred), 2 * 21 * 21 * 20)
@@ -259,6 +259,6 @@ test_that("a CSS cannot be pooled with a network that is not one", {
   dyadic <- manynet::to_uniplex(HT, "reports")
   css    <- manynet::to_uniplex(HT, "advice")
   expect_error(
-    net_regression(. ~ ego(age), list(css, dyadic), times = 5),
+    estimate_mrqap(. ~ ego(age), list(css, dyadic), times = 5),
     "Cannot pool")
 })

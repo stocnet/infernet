@@ -78,7 +78,7 @@
 }
 \arguments{
 \item{x}{A model or test result, e.g. a \code{netreg} object, as returned by
-\code{net_regression()}, or a \code{network_test} object, as returned by
+\code{estimate_mrqap()}, or a \code{network_test} object, as returned by
 \code{test_random()}, \code{test_configuration()}, or \code{test_permutation()}.}
 
 \item{...}{Further arguments, passed to \code{summary()} for an \code{ergm}
@@ -110,7 +110,12 @@ or the MCMC settings.}
 \code{print()} returns \code{x}, invisibly.
 \code{tidy()} and \code{glance()} return a tibble.
 \code{tidy()} gives the columns \code{term}, \code{estimate}, \code{statistic}, and
-\code{p.value} for a regression,
+\code{p.value} for a regression.
+For a \code{netreg}, it also adds the columns of the fit's term table,
+\code{fit$terms}: the \code{effect} (the formula term) each coefficient comes from,
+its \code{layer}, \code{attribute}, \code{category}, and \code{reference} category,
+and for an interaction its \code{operands}.
+These group the coefficients without parsing their names.
 and \code{glance()} gives the fit statistics that the model keeps.
 For a \code{network_test}, both give one row with the observed statistic,
 the mean and standard deviation of the null distribution,
@@ -118,7 +123,7 @@ and the share of the null distribution at or below (\code{p.lower})
 and at or above (\code{p.upper}) the observed statistic.
 }
 \description{
-\code{print()} shows the result of \code{net_regression()} or of a test as a
+\code{print()} shows the result of \code{estimate_mrqap()} or of a test as a
 report: how the null distribution was made, the estimates,
 and the permutation p-values.
 
@@ -127,7 +132,7 @@ and the permutation p-values.
 \code{glance()} gives one row for the whole model. They cover:
 \itemize{
 \item \code{netreg}, \code{netreg_lm}, \code{netreg_glm}, and \code{netreg_css},
-from \code{net_regression()}
+from \code{estimate_mrqap()}
 \item \code{network_test}, from \code{test_random()}, \code{test_configuration()}, and
 \code{test_permutation()}
 \item \code{netlm} and \code{netlogit}, from \code{net_regression()} in \code{{migraph}}
@@ -150,7 +155,7 @@ permuted test statistics. These describe the null distribution,
 not an interval around the estimate.
 }
 \examples{
-css_model <- net_regression(advice ~ same(dept) + reports,
+css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
 print(css_model, print_b = TRUE)
 tidy(css_model)
@@ -158,7 +163,9 @@ glance(css_model)
 }
 \seealso{
 Other models:
+\code{\link[=control_mrqap]{control_mrqap()}},
 \code{\link{regression}},
+\code{\link{specify}},
 \code{\link{tests}}
 }
 \concept{models}
