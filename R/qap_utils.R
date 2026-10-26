@@ -188,14 +188,18 @@ run_permutations <- function(times, FUN, ...) {
 # permutes exactly as before.
 #' @keywords internal
 #' @noRd
-.missing_blocks <- function(m, groups = NULL, diag = FALSE) {
+.missing_blocks <- function(m, groups = NULL, diag = FALSE, exclude = NULL) {
   d  <- dim(m)
   nr <- d[1]; nc <- d[2]
   css <- length(d) == 3
   use <- matrix(TRUE, nr, nc)
   if (!diag && nr == nc) diag(use) <- FALSE
   if (css) use <- array(use, dim = d)
-  na <- is.na(m) & use
+  # A cell excluded by design must stay in place as an unobserved one does, so
+  # it counts here as one, though it keeps its value.
+  na <- is.na(m)
+  if (!is.null(exclude)) na <- na | exclude
+  na <- na & use
   if (!any(na)) return(NULL)
 
   whole <- function(margin) {
@@ -259,15 +263,15 @@ run_permutations <- function(times, FUN, ...) {
 #' @keywords internal
 #' @noRd
 .permutation_blocks <- function(target, groups, diag, times, label,
-                                panel = FALSE) {
+                                panel = FALSE, exclude = NULL) {
   if (panel) {
-    blocks <- .panel_blocks(target, groups, diag)
+    blocks <- .panel_blocks(target, groups, diag, exclude)
     if (is.null(blocks)) return(NULL)
     parts <- list(blocks)
   } else if (is.list(target)) {
     blocks <- lapply(seq_along(target), function(net) {
       g <- if (is.list(groups)) groups[[net]] else groups
-      .missing_blocks(target[[net]], g, diag)
+      .missing_blocks(target[[net]], g, diag, exclude[[net]])
     })
     if (all(vapply(blocks, is.null, logical(1)))) return(NULL)
     # A network with no missing cells keeps the user's groups. `[<-` with a
@@ -278,7 +282,7 @@ run_permutations <- function(times, FUN, ...) {
     }
     parts <- Filter(is.list, blocks)
   } else {
-    blocks <- .missing_blocks(target, groups, diag)
+    blocks <- .missing_blocks(target, groups, diag, exclude)
     if (is.null(blocks)) return(NULL)
     parts <- list(blocks)
   }
@@ -334,8 +338,10 @@ run_permutations <- function(times, FUN, ...) {
 # is fixed in all of them.
 #' @keywords internal
 #' @noRd
-.panel_blocks <- function(mats, groups = NULL, diag = FALSE) {
-  per_wave <- lapply(mats, .missing_blocks, groups = NULL, diag = diag)
+.panel_blocks <- function(mats, groups = NULL, diag = FALSE, exclude = NULL) {
+  per_wave <- lapply(seq_along(mats), function(w) {
+    .missing_blocks(mats[[w]], NULL, diag, exclude[[w]])
+  })
   if (all(vapply(per_wave, is.null, logical(1)))) return(NULL)
   d <- dim(mats[[1]])
   mode_labels <- function(which, n) {
@@ -354,22 +360,31 @@ run_permutations <- function(times, FUN, ...) {
 # The cells a model could use, and how many of them are unobserved on each
 # variable. A loop that the model leaves out, or the upper half of an undirected
 # network, is not a cell the model could use, so it is not counted as missing.
+# Nor is a cell that `exclude` marks, such as a fixed tie: it is counted apart,
+# as `excluded`.
 #' @keywords internal
 #' @noRd
-.missing_summary <- function(matlist, dep, data_vars, diag, directed, large) {
+.missing_summary <- function(matlist, dep, data_vars, diag, directed, large,
+                             exclude = NULL) {
   vars <- unique(c(dep, data_vars))
   n_nets <- if (large) length(matlist[[dep]]) else 1L
   by_variable <- stats::setNames(integer(length(vars)), vars)
   possible <- 0L
+  excluded <- 0L
   for (net in seq_len(n_nets)) {
     get <- function(v) if (large) matlist[[v]][[net]] else matlist[[v]]
     use <- .structural_mask(dim(get(dep)), diag, directed)
+    ex <- if (large) exclude[[net]] else exclude
+    if (!is.null(ex)) {
+      excluded <- excluded + sum(ex & use)
+      use <- use & !ex
+    }
     possible <- possible + sum(use)
     for (v in vars) {
       by_variable[[v]] <- by_variable[[v]] + sum(is.na(get(v)) & use)
     }
   }
-  list(possible = possible, by_variable = by_variable)
+  list(possible = possible, by_variable = by_variable, excluded = excluded)
 }
 
 # The cells of a network, or of each report of a CSS, that a model could use:
@@ -463,7 +478,7 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
 #' @keywords internal
 #' @noRd
 make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
-                          net = 1, perm = FALSE, xi = NULL) {
+                          net = 1, perm = FALSE, xi = NULL, exclude = NULL) {
   nx <- length(x)
 
   if (perm && is.null(xi)) {
@@ -487,6 +502,9 @@ make_qap_data <- function(y, x, g = NULL, diag = FALSE, directed = TRUE,
   # standard error, so take the lower triangle only. A two-mode incidence
   # matrix has no such symmetry, and keeps every cell.
   if (!directed && square) valid[upper.tri(valid)] <- FALSE
+  # A cell excluded by design, such as a fixed tie, keeps its value but is no
+  # observation of the outcome.
+  if (!is.null(exclude)) valid[exclude] <- FALSE
 
   for (var in seq_len(nx)) {
     valid[is.na(x[[var]])] <- FALSE

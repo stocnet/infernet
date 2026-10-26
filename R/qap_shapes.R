@@ -27,9 +27,9 @@
     # The dyadic path takes the first draw. A degenerate permutation is dropped
     # by the loop's own `tryCatch()`, and `aggregate_perm_results()` counts it.
     max_trials = 1L,
-    vectorise = function(y, x, groups, diag, directed, net) {
+    vectorise = function(y, x, groups, diag, directed, net, exclude = NULL) {
       pred <- make_qap_data(y = y, x = x, g = groups, diag = diag,
-                            directed = directed, net = net)
+                            directed = directed, net = net, exclude = exclude)
       list(pred = pred, valid = NULL)
     },
     permute = function(m, groups) RMPerm(m, groups),
@@ -54,7 +54,8 @@
     # value and nothing to fit. Redraw rather than discard: discarding biases
     # the null towards the draws that happened to be dense.
     max_trials = 10000L,
-    vectorise = function(y, x, groups, diag, directed, net) {
+    # A CSS does not yet read fixed ties, so `exclude` is always NULL here.
+    vectorise = function(y, x, groups, diag, directed, net, exclude = NULL) {
       make_css_data(y = y, x = x, nets = net, diag = diag, directed = directed)
     },
     permute = function(m, groups) RMPerm(m, groups, CSS = TRUE),
@@ -71,12 +72,13 @@
 #' @keywords internal
 #' @noRd
 .vectorise_matlist <- function(shape, matlist, dep, data_vars, groups,
-                               diag, directed, large) {
+                               diag, directed, large, exclude = NULL) {
   if (!large) {
     x <- lapply(data_vars, function(v) matlist[[v]])
     names(x) <- data_vars
     out <- shape$vectorise(y = matlist[[dep]], x = x, groups = groups,
-                           diag = diag, directed = directed, net = 1)
+                           diag = diag, directed = directed, net = 1,
+                           exclude = exclude)
     return(list(pred = out$pred, valid = out$valid, valid_list = NULL))
   }
 
@@ -88,7 +90,8 @@
     names(x) <- data_vars
     g <- if (!is.null(groups) && is.list(groups)) groups[[net]] else groups
     out <- shape$vectorise(y = matlist[[dep]][[net]], x = x, groups = g,
-                           diag = diag, directed = directed, net = net)
+                           diag = diag, directed = directed, net = net,
+                           exclude = exclude[[net]])
     preds[[net]]  <- out$pred
     valids[[net]] <- out$valid
   }

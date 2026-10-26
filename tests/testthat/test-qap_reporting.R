@@ -75,5 +75,5 @@ test_that("dropped dyads and fixed nodes are reported", {
   msgs <- paste(msgs, collapse = "")
   expect_match(msgs, "Using 209 of 210 dyads")
   expect_match(msgs, "1 on weight")
-  expect_match(msgs, "2 nodes with scattered unobserved cells stay in place")
+  expect_match(msgs, "2 nodes with scattered unobserved or fixed cells stay in place")
 })

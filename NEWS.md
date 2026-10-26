@@ -32,6 +32,7 @@
   - Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks
   - Fixed a blocking group of one node, which `sample()` read as a range
 - Added `control = list(missing = )` with `"available"` (the default) and `"fail"`
+  - Leaves out the ties that `{manynet}` marks as `fixed`, and keeps them in place under permutation
   - Reports the dyads dropped on each variable, and stores them as `fit$missing`
   - Documented a structural zero as a limitation
 - Added panel MRQAP for a longitudinal network

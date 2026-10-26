@@ -259,3 +259,60 @@ test_that("missing takes only the treatments that exist", {
                               control = list(missing = "listwise")),
                "must be one of")
 })
+
+# A tie that `{manynet}` marks as fixed was set by the design, not chosen, so it
+# is no observation of the process: it leaves the model, is counted apart from
+# the unobserved dyads, and stays in place under permutation.
+fixed_net <- function(n = 15, seed = 31) {
+  g <- qap_net_binary(n = n, seed = seed)
+  ties <- manynet::as_edgelist(g)
+  set.seed(seed)
+  fixed <- seq_len(nrow(ties)) %in% sample(nrow(ties), 6)
+  manynet::mutate_ties(g, fixed = fixed)
+}
+
+test_that("a fixed tie is left out of the model and counted apart", {
+  g <- fixed_net()
+  expect_equal(sum(.fixed_ties(g)), 6)
+  fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), g, times = 10,
+                        control = list(seed = 1))
+  expect_equal(nrow(fit$pred), 15 * 14 - 6)
+  expect_equal(fit$missing$fixed_ties, 6)
+  expect_equal(fit$missing$possible, 15 * 14 - 6)
+  expect_equal(fit$missing$unobserved[[fit$dep]], 0L)
+  expect_output(print(fit), "6 fixed ties were left out")
+})
+
+test_that("missing = \"fail\" does not stop on a fixed tie", {
+  expect_no_error(estimate_mrqap(. ~ ego(Age), fixed_net(), times = 5,
+                                 control = list(seed = 1, missing = "fail")))
+})
+
+test_that("a network with no fixed tie has no fixed mask", {
+  expect_null(.fixed_ties(qap_net_binary(n = 10)))
+  g <- manynet::mutate_ties(qap_net_binary(n = 10), fixed = FALSE)
+  expect_null(.fixed_ties(g))
+})
+
+test_that("a fixed tie keeps its value, and stays among the fixed cells", {
+  m <- matrix(seq_len(64) + 0.5, 8, 8)
+  diag(m) <- 0
+  fixed <- matrix(FALSE, 8, 8)
+  fixed[2, 5] <- fixed[6, 1] <- TRUE
+  b <- .missing_blocks(m, exclude = fixed)
+  expect_setequal(which(startsWith(b$rows, "fixed")), c(1, 2, 5, 6))
+  set.seed(11)
+  for (i in seq_len(20)) {
+    p <- RMPerm(m, b)
+    # The fixed cells map onto themselves, so no fixed value enters a free cell.
+    expect_setequal(p[fixed], m[fixed])
+    expect_false(anyNA(p))
+  }
+  pred <- make_qap_data(m, list(), exclude = fixed)
+  expect_equal(nrow(pred), 8 * 7 - 2)
+  s <- .missing_summary(list(y = m), "y", character(0), FALSE, TRUE, FALSE,
+                        exclude = fixed)
+  expect_equal(s$excluded, 2)
+  expect_equal(s$possible, 8 * 7 - 2)
+  expect_equal(s$by_variable[["y"]], 0L)
+})

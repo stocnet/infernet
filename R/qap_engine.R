@@ -105,7 +105,18 @@ QAPengine <- function(formula,
 
   # Counted before the model drops anything, so that "fail" can stop before it
   # does and "available" can say what it dropped.
-  unobserved <- .missing_summary(matlist, dep, data_vars, diag, directed, large)
+  # A fixed tie keeps its value, which a predictor built from the network has
+  # already read. It is no observation of the process, though, since the
+  # design set it, so `exclude` keeps it out of the outcome's rows, and the
+  # blocks keep it in place under permutation. It is not missing data, so it is
+  # counted apart from the unobserved cells, and "fail" does not stop on it.
+  exclude <- if (large) lapply(matlist[[dep]], attr, "fixed")
+             else attr(matlist[[dep]], "fixed")
+  if (large && all(vapply(exclude, is.null, logical(1)))) exclude <- NULL
+
+  unobserved <- .missing_summary(matlist, dep, data_vars, diag, directed, large,
+                                 exclude)
+  n_fixed_ties <- unobserved$excluded
   unit <- if (css) "reported dyads" else "dyads"
   missing_vars <- unobserved$by_variable[unobserved$by_variable > 0]
   missing_parts <- paste(missing_vars, "on", names(missing_vars))
@@ -117,7 +128,7 @@ QAPengine <- function(formula,
   }
 
   vec <- .vectorise_matlist(shape, matlist, dep, data_vars, groups,
-                            diag, directed, large)
+                            diag, directed, large, exclude)
   pred <- vec$pred
   names(pred)[names(pred) == "yv"] <- dep
 
@@ -129,6 +140,11 @@ QAPengine <- function(formula,
     manynet::snet_info(
       "Using {used} of {possible} {unit}, after dropping the unobserved ones:",
       "{missing_parts}.")
+  }
+  if (n_fixed_ties > 0) {
+    manynet::snet_info(
+      "Leaving out {n_fixed_ties} fixed tie{?s}, which the network marks as set by design,",
+      "and keeping {?it/them} in place under permutation.")
   }
 
   # ---- baseline -------------------------------------------------------------
@@ -164,12 +180,13 @@ QAPengine <- function(formula,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
                     data_vars. = data_vars, parsed. = parsed,
-                    n_obs. = used, panel. = panel)
+                    n_obs. = used, panel. = panel, exclude. = exclude)
   # Each permutation set exchanges only the nodes whose missing cells match, so
   # that every draw is fitted on the dyads of the observed model.
   fixed <- integer(0)
   .blocks_for <- function(target, label) {
-    blocks <- .permutation_blocks(target, groups, diag, times, label, panel)
+    blocks <- .permutation_blocks(target, groups, diag, times, label, panel,
+                                  exclude)
     if (is.null(blocks)) return(groups)
     fixed[[label]] <<- attr(blocks, "fixed")
     blocks
@@ -231,13 +248,13 @@ QAPengine <- function(formula,
   }
 
   if (length(fixed) > 0) {
-    n_fixed <- max(fixed)
+    n_fixed_nodes <- max(fixed)
     manynet::snet_info(
       "Permuting nodes only among nodes with the same unobserved cells,",
       "so that every permutation uses the same {used} {unit}.")
-    if (n_fixed > 0)
+    if (n_fixed_nodes > 0)
       manynet::snet_info(
-        "{n_fixed} node{?s} with scattered unobserved cells stay{?s/} in place.")
+        "{n_fixed_nodes} node{?s} with scattered unobserved or fixed cells stay{?s/} in place.")
   }
 
   # ---- assemble -------------------------------------------------------------
@@ -277,6 +294,7 @@ QAPengine <- function(formula,
                         possible    = unobserved$possible,
                         used        = used,
                         unobserved  = unobserved$by_variable,
+                        fixed_ties  = n_fixed_ties,
                         fixed_nodes = fixed)
 
 
@@ -313,7 +331,8 @@ QAPPermEst <- function(i,
                        parsed.,
                        perm_groups. = groups.,
                        n_obs. = NULL,
-                       panel. = FALSE) {
+                       panel. = FALSE,
+                       exclude. = NULL) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
@@ -341,7 +360,7 @@ QAPPermEst <- function(i,
     }
 
     vec <- .vectorise_matlist(shape., d, dep, data_vars., groups.,
-                              diag., directed., large)
+                              diag., directed., large, exclude.)
     pred <- vec$pred
     names(pred)[names(pred) == "yv"] <- dep
     # The blocks keep the missing cells in place, so a draw on any other number

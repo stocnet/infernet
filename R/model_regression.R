@@ -68,10 +68,17 @@
 #'   dyad dropped without their decision.
 #'   Multiple imputation is not yet available.
 #'
+#'   A tie that `{manynet}` marks as fixed, in its `fixed` tie column, was set
+#'   by the design rather than chosen, so it is no observation of the process.
+#'   It is left out of the model, counted apart from the unobserved dyads, and
+#'   kept in place under permutation, as an unobserved dyad is. `"fail"` does
+#'   not stop on it.
+#'
 #'   A cell that cannot hold a tie, such as a tie between two levels of a
 #'   multilevel network that the design rules out, is a structural zero rather
-#'   than missing data. `{manynet}` does not mark such cells, so they enter the
-#'   model as observed zeros. Remove them, or set them to `NA`, before fitting.
+#'   than missing data. `{manynet}` does not yet mark such cells, so they enter
+#'   the model as observed zeros. Remove them, or set them to `NA`, before
+#'   fitting.
 #'
 #' @section Longitudinal networks:
 #'   A longitudinal network, one that `manynet::is_longitudinal()` says has
@@ -218,7 +225,8 @@
 #'   - `panel`, whether the network was fitted as a panel of its waves.
 #'   - `missing`, a list of the treatment of unobserved dyads, the number of
 #'     dyads the model could use (`possible`) and did use (`used`), the number
-#'     unobserved on each variable (`unobserved`), and the number of nodes that
+#'     unobserved on each variable (`unobserved`), the number of fixed ties left
+#'     out (`fixed_ties`), and the number of nodes that
 #'     stayed in place in each permutation set (`fixed_nodes`).
 #'   - `terms`, a tibble of one row for each coefficient, with the parts that
 #'     its name joins: `term`, the coefficient's name; `effect`, the formula
@@ -646,6 +654,10 @@ print.netreg <- function(x, ...) {
   if (!is.null(m) && m$used < m$possible) {
     out <- c(out, paste("Fitted on", format(m$used), "of", format(m$possible),
                         "dyads; the others were unobserved and dropped."))
+  }
+  if (isTRUE(m$fixed_ties > 0)) {
+    out <- c(out, paste(format(m$fixed_ties),
+                        "fixed ties were left out, and kept in place under permutation."))
   }
   if (isTRUE(x$panel)) {
     waves <- length(unique(x$pred$nv))

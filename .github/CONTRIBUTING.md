@@ -324,6 +324,19 @@ For `permute = "predictor"` this needs the residualised predictor to be `NA`
 outside the model, and mirrored across the diagonal of an undirected network,
 which `residuals_to_matrix()` and `residuals_to_array()` do.
 
+A tie in `{manynet}`'s reserved `fixed` tie column was set by the design, not
+chosen, so it is no observation of the process either.
+It keeps its value, which every predictor built from the network reads.
+`.evaluate_spec()` carries it to the engine as the `fixed` attribute of the
+outcome's matrix, from `.fixed_ties()`, and `QAPengine()` passes it on as an
+exclusion mask, `exclude`, separate from the `NA` cells:
+`make_qap_data()` leaves it out of the outcome's rows,
+`.missing_blocks()` keeps it in place under permutation as it does an `NA` cell,
+and `.missing_summary()` counts it apart, as `fit$missing$fixed_ties`,
+so that `"fail"` does not stop on it.
+Do not set an excluded cell to `NA`: that would read a value set by design as
+an unknown one, which an imputation would then fill.
+
 A structural zero, a cell that cannot hold a tie, is not missing data.
 `{manynet}` does not mark one, so it arrives as an observed zero.
 The loops that the model leaves out and the upper half of an undirected network

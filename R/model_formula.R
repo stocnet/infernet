@@ -398,9 +398,24 @@
 
   rhs <- Reduce(function(a, b) call("+", a, b), lapply(names(IVs), as.name))
   out_formula <- eval(call("~", as.name(out$label), rhs))
+  # A fixed tie travels with the outcome to the engine, which leaves it out.
+  if (!css) attr(DV, "fixed") <- .fixed_ties(out$net)
   mydata <- c(list(DV), IVs)
   names(mydata)[1] <- out$label
   list(mydata = mydata, formula = out_formula, css = css, terms = terms)
+}
+
+# The outcome's ties that `{manynet}` marks as fixed by design, in its `fixed`
+# tie column: ties that the process did not choose, such as an assignment, so
+# they are not observations of it. NULL where none is fixed.
+#' @keywords internal
+#' @noRd
+.fixed_ties <- function(net) {
+  if (!("fixed" %in% manynet::net_tie_attributes(net))) return(NULL)
+  fixed <- manynet::as_matrix(manynet::filter_ties(net, fixed %in% TRUE))
+  fixed <- !is.na(fixed) & fixed != 0
+  if (!any(fixed)) return(NULL)
+  fixed
 }
 
 # ---- the term table ----------------------------------------------------------
