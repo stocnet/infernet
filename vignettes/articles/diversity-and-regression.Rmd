@@ -1,10 +1,7 @@
 ---
 title: "Diversity and Regression"
 author: "by James Hollway"
-output: 
-  learnr::tutorial:
-    theme: journal
-runtime: shiny_prerendered
+output: rmarkdown::html_document
 description: >
   This tutorial aims to teach you how to measure and test network diversity,
   moving from univariate to multivariate tests, including 

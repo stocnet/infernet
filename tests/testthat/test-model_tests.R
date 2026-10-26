@@ -63,3 +63,27 @@ test_that("print.network_test prints and returns its input invisibly", {
   expect_false(shown$visible)
   expect_identical(shown$value, cugtest)
 })
+
+test_that("a stocnet is drawn from as a tbl_graph where the statistic agrees", {
+  het <- function(g) netrics::net_by_heterophily(g, "Gender")
+  expect_s3_class(.draw_from(marvel_friends, het), "tbl_graph")
+  # A statistic that reads the class itself keeps the stocnet.
+  is_stocnet <- function(g) as.numeric(inherits(g, "stocnet"))
+  expect_s3_class(.draw_from(marvel_friends, is_stocnet), "stocnet")
+  # Another class is drawn from as it is.
+  ig <- manynet::as_igraph(marvel_friends)
+  expect_identical(.draw_from(ig, het), ig)
+})
+
+test_that("the draws from a stocnet keep its attributes and its statistic", {
+  set.seed(1)
+  qap <- test_permutation(marvel_friends, netrics::net_by_heterophily,
+                          attribute = "Gender", times = 20)
+  expect_false(anyNA(qap$testdist))
+  # Each draw is a different network, not one network drawn again.
+  expect_gt(length(unique(qap$testdist)), 1)
+  set.seed(1)
+  cug <- test_random(marvel_friends, netrics::net_by_heterophily,
+                     attribute = "Gender", times = 20)
+  expect_false(anyNA(cug$testdist))
+})

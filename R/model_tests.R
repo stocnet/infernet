@@ -129,13 +129,30 @@ test_permutation <- function(.data, FUN, ...,
 .simulate_statistic <- function(.data, FUN, args, times, strategy, draw, bind) {
   oplan <- future::plan(strategy)
   on.exit(future::plan(oplan), add = TRUE)
+  measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
+  .data <- .draw_from(.data, measure)
   rands <- future.apply::future_lapply(seq_len(times), function(i) draw(.data),
                                        future.seed = TRUE)
   if (bind && length(args) > 0) {
     rands <- lapply(rands, manynet::bind_node_attributes, object2 = .data)
   }
-  measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
   future.apply::future_vapply(rands, measure, numeric(1), future.seed = TRUE)
+}
+
+# `{manynet}` converts a stocnet on every draw from it, which took four fifths
+# of each draw of `to_permuted()` (stocnet/manynet#199). A tbl_graph made once
+# is drawn from instead, where the statistic gives the same value on it;
+# otherwise, such as for a statistic that reads what only a stocnet holds, the
+# stocnet is kept.
+#' @keywords internal
+#' @noRd
+.draw_from <- function(.data, measure) {
+  if (!inherits(.data, "stocnet")) return(.data)
+  tg <- tryCatch(manynet::as_tidygraph(.data), error = function(e) NULL)
+  if (is.null(tg)) return(.data)
+  same <- tryCatch(isTRUE(all.equal(measure(tg), measure(.data))),
+                   error = function(e) FALSE)
+  if (same) tg else .data
 }
 
 #' @rdname results

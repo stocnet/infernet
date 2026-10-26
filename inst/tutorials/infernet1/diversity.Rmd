@@ -1,9 +1,9 @@
 ---
 title: "Diversity and Regression"
 author: "by James Hollway"
-output: 
+output:
   learnr::tutorial:
-    theme: journal
+    theme: flatly
 runtime: shiny_prerendered
 description: >
   This tutorial aims to teach you how to measure and test network diversity,
