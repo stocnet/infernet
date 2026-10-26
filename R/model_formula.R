@@ -59,8 +59,10 @@
       ergm = "nodeicov, or nodeifactor for a categorical attribute",
       to_ergm = .ergm_alter),
     same = list(
-      formals = alist(x = ), kind = "attribute", build = .build_same,
-      mrqap = "fits", dynam = "same", saom = "sameX", ergm = "nodematch",
+      formals = alist(x = , diff = FALSE), kind = "attribute",
+      build = .build_same, mrqap = "fits",
+      dynam = "same, without diff = TRUE", saom = "sameX, without diff = TRUE",
+      ergm = "nodematch, with the same diff",
       to_ergm = .ergm_same),
     diff = list(
       formals = alist(x = , transformer_fn = abs), kind = "attribute",
@@ -81,7 +83,8 @@
     match = list(
       formals = alist(x = ), kind = "attribute", build = .build_match,
       twomode = FALSE, hint = "Use {.fn mix} for a two-mode network.",
-      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
+      mrqap = "warns", reason = "is a deprecated alias of same(x, diff = TRUE)",
+      dynam = NA_character_, saom = NA_character_,
       ergm = "nodematch with diff = TRUE",
       to_ergm = .ergm_match),
     mix = list(
@@ -245,6 +248,7 @@
     operands <- .flatten_interaction(str2lang(lab))
     list(label = lab, operands = lapply(operands, .specify_operand))
   })
+  .check_same_once(terms)
   env <- environment(formula)
   if (is.null(env)) env <- globalenv()
   structure(list(outcome = paste(deparse(formula[[2]]), collapse = ""),
@@ -253,6 +257,27 @@
                  fixed   = split$fixed,
                  env     = env),
             class = "infernet_spec")
+}
+
+# The columns of `same(x, diff = TRUE)` add up to `same(x)`, so a model with
+# both cannot be fitted: `lm()` gives one coefficient as NA, and double
+# semi-partialling has nothing left to residualise. `match()` is the old name
+# of the first.
+#' @keywords internal
+#' @noRd
+.check_same_once <- function(terms) {
+  ops <- unlist(lapply(Filter(function(t) length(t$operands) == 1, terms),
+                       `[[`, "operands"), recursive = FALSE)
+  same <- Filter(function(op) op$fn %in% c("same", "match"), ops)
+  vars <- vapply(same, `[[`, character(1), "name")
+  twice <- unique(vars[duplicated(vars)])
+  if (length(twice) > 0) {
+    manynet::snet_abort(
+      c("{.fn same} names {.val {twice}} more than once.",
+        i = "The columns of {.code same(x, diff = TRUE)} add up to {.code same(x)}, so the two cannot be fitted together.",
+        i = "Keep one of them."))
+  }
+  invisible(TRUE)
 }
 
 # A bar outside parentheses means what it means in {fixest}: what follows it
@@ -687,7 +712,7 @@
 }
 
 # The product of two operands, each a named list of matrices. An operand that
-# gives several columns, such as `match()`, gives one product for each.
+# gives several columns, such as `same(x, diff = TRUE)`, gives one product for each.
 #' @keywords internal
 #' @noRd
 .interact <- function(a, b) {
@@ -780,6 +805,14 @@
 }
 
 .build_same <- function(op, ctx) {
+  if (.same_by_category(op, ctx$env)) {
+    if (ctx$twomode) {
+      manynet::snet_abort(
+        c("{.code same({op$name}, diff = TRUE)} is not defined for a two-mode network.",
+          i = "Use {.fn mix} for a two-mode network."))
+    }
+    return(.same_each(op, ctx, "same"))
+  }
   .data <- ctx$data
   DV <- ctx$DV
   attrib <- manynet::node_attribute(ctx$net, op$name)
@@ -848,15 +881,36 @@
   .named(abs(1 - d / denom), .col_name("sim", op$name))
 }
 
+# `diff = TRUE`, as in ergm's `nodematch()`: one column per category rather
+# than one for any shared category.
+#' @keywords internal
+#' @noRd
+.same_by_category <- function(op, env) {
+  if (identical(op$fn, "match")) return(TRUE)
+  !is.null(op$args$diff) && .arg_flag(op$args$diff, env, "diff")
+}
+
 # Differential homophily: one column per category, 1 where the sender and the
 # receiver both hold it. Numeric columns rather than a factor, so that double
-# semi-partialling can residualise each one.
-.build_match <- function(op, ctx) {
+# semi-partialling can residualise each one. No category is left out: a dyad
+# of two different categories is in none of the columns, and is the reference.
+.same_each <- function(op, ctx, term) {
   sides <- .side_matrices(ctx, op$name)
   cats <- sort(unique(stats::na.omit(.node_values(ctx, op$name, "ego"))))
   out <- lapply(cats, function(k) (sides$rows == k & sides$cols == k) * 1)
-  out <- stats::setNames(out, vapply(cats, function(k) .col_name("match", op$name, k), ""))
+  out <- stats::setNames(out, vapply(cats, function(k) .col_name(term, op$name, k), ""))
   structure(out, parts = list(category = cats))
+}
+
+# The old name, kept so that existing scripts run, with its old column names.
+.build_match <- function(op, ctx) {
+  if (!isTRUE(.infernet_state$match_warned)) {
+    .infernet_state$match_warned <- TRUE
+    manynet::snet_warn(
+      c("{.fn match} is deprecated, and is now {.code same(x, diff = TRUE)}.",
+        i = "{.code same({op$name}, diff = TRUE)} gives the same columns."))
+  }
+  .same_each(op, ctx, "match")
 }
 
 # Mixing: one column per pair of a sender's and a receiver's category, less the

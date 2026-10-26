@@ -36,7 +36,7 @@ test_that("ergm terms become their infernet equivalents", {
       absdiff("age") + diff("tenure") + edgecov("friends"))
   expect_equal(deparse(f[[3]], width.cutoff = 500L),
                paste("recip + ego(age) + alter(age) + ego(tenure) + alter(tenure) +",
-                     "same(dept) + match(level) + mix(dept) + diff(age) +",
+                     "same(dept) + same(level, diff = TRUE) + mix(dept) + diff(age) +",
                      "diff(tenure, transformer_fn = identity) + friends"))
   ch <- record_of(f)
   expect_equal(ch$as[ch$term == "edges"], "")
@@ -139,14 +139,14 @@ test_that("a name that no model knows is left for estimate_mrqap() to refuse", {
 test_that("an MRQAP formula is written for goldfish", {
   expect_warning(
     f <- specify_dynam(a ~ ego(x) + same(grp) + b + exchange(b) + dist(x) +
-                         match(grp) + (1 | sender), formula_net()),
+                         same(grp, diff = TRUE) + (1 | sender), formula_net()),
     "Dropped 2 terms that goldfish cannot fit")
   expect_s3_class(f, c("dynam_formula", "formula"), exact = TRUE)
   expect_equal(.deparsed(f[[3]]),
                paste("ego(x) + same(grp) + tie(b, weighted = TRUE) + recip(b) +",
                      "diff(x)"))
   ch <- record_of(f)
-  expect_setequal(ch$term[ch$status == "drops"], c("match(grp)", "(1 | sender)"))
+  expect_setequal(ch$term[ch$status == "drops"], c("same(grp, diff = TRUE)", "(1 | sender)"))
 })
 
 test_that("goldfish's own terms pass through, and those that differ are named", {
@@ -167,7 +167,7 @@ test_that("an ergm formula is written for goldfish", {
 })
 
 test_that("a formula with nothing goldfish can fit aborts", {
-  expect_error(specify_dynam(a ~ match(grp) + mix(grp)),
+  expect_error(specify_dynam(a ~ same(grp, diff = TRUE) + mix(grp)),
                "No term of the formula can be fitted by goldfish")
 })
 
@@ -175,12 +175,12 @@ test_that("a formula with nothing goldfish can fit aborts", {
 
 test_that("without the network, each term ergm names is written by name", {
   f <- suppressMessages(specify_ergm(
-    a ~ ego(x) + alter(x) + same(grp) + match(grp) + mix(grp) + diff(x) +
+    a ~ ego(x) + alter(x) + same(grp) + same(x, diff = TRUE) + mix(grp) + diff(x) +
       diff(x, transformer_fn = identity) + b + recip + trans + (1 | receiver)))
   expect_s3_class(f, c("ergm_formula", "formula"), exact = TRUE)
   expect_equal(attr(stats::terms(f), "term.labels"),
                c("edges", "nodeocov(\"x\")", "nodeicov(\"x\")", "nodematch(\"grp\")",
-                 "nodematch(\"grp\", diff = TRUE)", "nodemix(\"grp\")",
+                 "nodematch(\"x\", diff = TRUE)", "nodemix(\"grp\")",
                  "absdiff(\"x\")", "diff(\"x\")", "edgecov(\"b\")", "mutual",
                  "ttriple", "receiver"))
 })

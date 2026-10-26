@@ -116,7 +116,7 @@ ergm names an attribute with a string, and infernet with a bare name.\tabular{ll
    \code{ego(x)} \tab \code{nodeocov("x")}, \code{nodeofactor("x")}; \code{b1cov("x")} in a two-mode network; \code{nodecov("x")} in an undirected one \cr
    \code{alter(x)} \tab \code{nodeicov("x")}, \code{nodeifactor("x")}; \code{b2cov("x")} in a two-mode network \cr
    \code{same(x)} \tab \code{nodematch("x")} \cr
-   \code{match(x)} \tab \code{nodematch("x", diff = TRUE)} \cr
+   \code{same(x, diff = TRUE)} \tab \code{nodematch("x", diff = TRUE)} \cr
    \code{mix(x)} \tab \code{nodemix("x")} \cr
    \code{diff(x)} \tab \code{absdiff("x")} \cr
    \code{diff(x, transformer_fn = identity)} \tab \code{diff("x")} \cr
@@ -168,7 +168,7 @@ cross-sectional network, \code{inertia} and \code{trans} are dropped too.
 
 For goldfish, a layer named on its own becomes \code{tie(layer, weighted = TRUE)},
 \code{exchange(layer)} becomes \code{recip(layer)}, and \code{dist(x)} becomes \code{diff(x)}.
-\code{match()}, \code{mix()}, random intercepts, and fixed effects have no goldfish
+\code{same(x, diff = TRUE)}, \code{match()}, \code{mix()}, random intercepts, and fixed effects have no goldfish
 term, and are dropped.
 }
 

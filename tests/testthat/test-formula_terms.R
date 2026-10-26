@@ -52,17 +52,35 @@ test_that("a categorical ego() gets a p-value under double semi-partialling", {
   expect_false(anyNA(fit$abs[, -1]))
 })
 
-test_that("match() gives one dummy per category where both hold it", {
-  m <- terms_of(a ~ match(grp))
-  expect_named(m, c("a", "match_grp_p", "match_grp_q"))
-  expect_equal(unname(m[["match_grp_p"]]), outer(GRP == "p", GRP == "p") * 1)
-  expect_equal(unname(m[["match_grp_q"]]), outer(GRP == "q", GRP == "q") * 1)
+test_that("same(diff = TRUE) gives one dummy per category where both hold it", {
+  m <- terms_of(a ~ same(grp, diff = TRUE))
+  expect_named(m, c("a", "same_grp_p", "same_grp_q"))
+  expect_equal(unname(m[["same_grp_p"]]), outer(GRP == "p", GRP == "p") * 1)
+  expect_equal(unname(m[["same_grp_q"]]), outer(GRP == "q", GRP == "q") * 1)
 })
 
-test_that("match() is refused on a two-mode network, pointing to mix()", {
+test_that("same(diff = TRUE) is refused on a two-mode network, pointing to mix()", {
   sw <- manynet::mutate(manynet::ison_southern_women,
                         grp = rep(c("u", "v"), length.out = 32))
-  expect_error(terms_of(. ~ match(grp), sw), "mix")
+  expect_error(terms_of(. ~ same(grp, diff = TRUE), sw), "mix")
+})
+
+test_that("match() is a deprecated alias that keeps its column names", {
+  .infernet_state$match_warned <- NULL
+  expect_warning(m <- terms_of(a ~ match(grp)), "deprecated")
+  expect_named(m, c("a", "match_grp_p", "match_grp_q"))
+  expect_equal(unname(m[["match_grp_p"]]), outer(GRP == "p", GRP == "p") * 1)
+  # The warning is given once per session.
+  expect_no_warning(terms_of(a ~ match(grp)))
+})
+
+test_that("same() aborts where it names one attribute more than once", {
+  expect_error(terms_of(a ~ same(grp) + same(grp, diff = TRUE)), "more than once")
+  expect_error(terms_of(a ~ same(grp) + match(grp)), "more than once")
+  expect_error(terms_of(a ~ same(grp) + same("grp")), "more than once")
+  # An interaction is another column, and does not add up to the main effect.
+  expect_no_error(terms_of(a ~ same(grp) + same(grp, diff = TRUE):ego(x)))
+  expect_error(terms_of(a ~ same(grp, diff = "yes")), "TRUE")
 })
 
 test_that("mix() gives one dummy per ordered pair, less the first", {
@@ -259,7 +277,7 @@ test_that("the layer terms fit a CSS under both permutation schemes", {
 test_that("the new terms fit a dyadic network under both permutation schemes", {
   for (permute in c("predictor", "outcome")) {
     fit <- suppressMessages(
-      estimate_mrqap(a ~ recip(b) + indeg(b) + match(grp) + tertius(b, x),
+      estimate_mrqap(a ~ recip(b) + indeg(b) + same(grp, diff = TRUE) + tertius(b, x),
                      formula_net(), times = 5,
                      control = list(seed = 1, permute = permute)))
     expect_s3_class(fit, "netreg")
@@ -326,18 +344,18 @@ table_of <- function(formula, .data = formula_net(), ...) {
 }
 
 test_that("the term table has one row for each column, in their order", {
-  tt <- table_of(a ~ ego(x) + ego(grp) + match(grp) + b + tie(b))
-  m <- suppressMessages(terms_of(a ~ ego(x) + ego(grp) + match(grp) + b + tie(b)))
+  tt <- table_of(a ~ ego(x) + ego(grp) + same(grp, diff = TRUE) + b + tie(b))
+  m <- suppressMessages(terms_of(a ~ ego(x) + ego(grp) + same(grp, diff = TRUE) + b + tie(b)))
   expect_equal(tt$term, names(m)[-1])
   expect_named(tt, c("term", "effect", "layer", "attribute", "category",
                      "reference", "operands"))
-  expect_equal(tt$effect, c("ego", "ego", "match", "match", "tie", "tie"))
+  expect_equal(tt$effect, c("ego", "ego", "same", "same", "tie", "tie"))
   expect_equal(tt$attribute, c("x", "grp", "grp", "grp", NA, NA))
   expect_equal(tt$layer, c(NA, NA, NA, NA, "b", "b"))
 })
 
 test_that("the term table names a categorical term's category and reference", {
-  tt <- table_of(a ~ ego(grp) + match(grp))
+  tt <- table_of(a ~ ego(grp) + same(grp, diff = TRUE))
   expect_equal(tt$category, c("q", "p", "q"))
   expect_equal(tt$reference, c("p", NA, NA))
 })
@@ -367,10 +385,10 @@ test_that("the term table gives the layer and attribute of tertius()", {
 })
 
 test_that("the term table names the operands of each interaction column", {
-  tt <- table_of(a ~ ego(x):match(grp))
-  expect_equal(tt$term, c("ego_x:match_grp_p", "ego_x:match_grp_q"))
+  tt <- table_of(a ~ ego(x):same(grp, diff = TRUE))
+  expect_equal(tt$term, c("ego_x:same_grp_p", "ego_x:same_grp_q"))
   expect_equal(tt$effect, c("interaction", "interaction"))
-  expect_equal(tt$operands, list(c("ego_x", "match_grp_p"), c("ego_x", "match_grp_q")))
+  expect_equal(tt$operands, list(c("ego_x", "same_grp_p"), c("ego_x", "same_grp_q")))
   expect_true(all(is.na(tt$attribute)))
 })
 
@@ -386,7 +404,7 @@ test_that("a fit keeps the term table, one row for each coefficient", {
 
 test_that("a list of networks keeps the term table of the first", {
   fit <- suppressMessages(suppressWarnings(
-    estimate_mrqap(a ~ ego(x) + match(grp), list(formula_net(), formula_net()),
+    estimate_mrqap(a ~ ego(x) + same(grp, diff = TRUE), list(formula_net(), formula_net()),
                    times = 5, control = list(seed = 1))))
   expect_equal(fit$terms$term, names(fit$coefficients))
   expect_equal(fit$terms$category, c(NA, NA, "p", "q"))

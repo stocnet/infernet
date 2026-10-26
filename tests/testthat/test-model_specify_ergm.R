@@ -21,12 +21,13 @@ X <- c(3, 1, 4, 1, 5, 9)
 
 test_that("attribute terms become their named ergm terms", {
   f <- specify_ergm(a ~ ego(x) + alter(x) + ego(grp) + alter(grp) +
-                          same(grp) + match(grp) + mix(grp), formula_net())
+                          same(grp) + mix(grp), formula_net())
   expect_equal(rhs_of(f),
                c("edges", "nodeocov(\"x\")", "nodeicov(\"x\")",
                  "nodeofactor(\"grp\")", "nodeifactor(\"grp\")",
-                 "nodematch(\"grp\")", "nodematch(\"grp\", diff = TRUE)",
-                 "nodemix(\"grp\")"))
+                 "nodematch(\"grp\")", "nodemix(\"grp\")"))
+  f <- specify_ergm(a ~ same(grp, diff = TRUE), formula_net())
+  expect_equal(rhs_of(f), c("edges", "nodematch(\"grp\", diff = TRUE)"))
 })
 
 test_that("diff() is absdiff, signed with identity, and otherwise its matrix", {
@@ -68,10 +69,10 @@ test_that("terms with no ergm statistic are edgecov() of infernet's matrix", {
 })
 
 test_that("an interaction is edgecov() of the product", {
-  f <- specify_ergm(a ~ ego(x):alter(x) + match(grp):tie(b), formula_net())
+  f <- specify_ergm(a ~ ego(x):alter(x) + same(grp, diff = TRUE):tie(b), formula_net())
   expect_equal(rhs_of(f),
                c("edges", "edgecov(ego_x_alter_x)",
-                 "edgecov(match_grp_p_tie_b)", "edgecov(match_grp_q_tie_b)"))
+                 "edgecov(same_grp_p_tie_b)", "edgecov(same_grp_q_tie_b)"))
   expect_equal(unname(get("ego_x_alter_x", environment(f))), outer(X, X))
 })
 
@@ -111,8 +112,8 @@ test_that("a two-mode network uses ergm's b1 and b2 terms", {
                  "b2cov(\"B\")", "b2factor(\"K\")", "edgecov(same_GONGO)"))
   expect_true(manynet::is_twomode(get("ties", environment(f))))
   expect_equal(dim(get("same_GONGO", environment(f))), c(12L, 40L))
-  expect_warning(specify_ergm(. ~ ego(Att) + match(GONGO) + recip, g),
-                 "2 terms.*match\\(GONGO\\).*two-mode.*recip")
+  expect_warning(specify_ergm(. ~ ego(Att) + same(GONGO, diff = TRUE) + recip, g),
+                 "2 terms.*same\\(GONGO, diff = TRUE\\).*two-mode.*recip")
 })
 
 test_that("an undirected network reads both sides with nodecov()", {

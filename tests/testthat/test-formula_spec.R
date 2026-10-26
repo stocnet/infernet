@@ -75,8 +75,8 @@ test_that("an interaction of any order is the product of its operands", {
 
 test_that("an interaction with a term of several columns gives one product each", {
   g <- formula_net()
-  ml <- convertToMatrixList(a ~ match(grp):ego(x), g, advise = FALSE)
-  expect_named(ml$mydata, c("a", "match_grp_p:ego_x", "match_grp_q:ego_x"))
+  ml <- convertToMatrixList(a ~ same(grp, diff = TRUE):ego(x), g, advise = FALSE)
+  expect_named(ml$mydata, c("a", "same_grp_p:ego_x", "same_grp_q:ego_x"))
 })
 
 test_that("`. ~` takes the outcome from the network's focal layer", {

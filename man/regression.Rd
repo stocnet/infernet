@@ -19,14 +19,15 @@ position or by name:
 \itemize{
 \item \code{ego(attr)}, \code{alter(attr)} — the sender's or the receiver's value of a
 node attribute; a categorical attribute is dummy-coded,
-\item \code{same(attr)} — 1 where sender and receiver share an attribute value,
+\item \code{same(attr, diff = FALSE)} — 1 where sender and receiver share an
+attribute value; with \code{diff = TRUE}, as in ergm's \code{nodematch()}, one
+0/1 column for each category, 1 where sender and receiver both hold it.
+\code{match(attr)} is a deprecated alias of \code{same(attr, diff = TRUE)},
 \item \code{diff(attr, transformer_fn = abs)} — the transformed difference between
 the sender's and the receiver's values: absolute by default, and signed
 with \code{transformer_fn = identity}. \code{dist(attr)} is a deprecated alias,
 \item \code{sim(attr)} — proportional similarity in a numeric attribute,
 1 - |d| / range,
-\item \code{match(attr)} — one 0/1 column for each category, 1 where sender and
-receiver both hold it,
 \item \code{mix(attr)} — one 0/1 column for each pair of a sender's and a
 receiver's category, less the first pair as the reference,
 \item \code{tie(layer, weighted = FALSE)} — another layer as a dyadic covariate,
@@ -138,7 +139,7 @@ stayed in place in each permutation set (\code{fixed_nodes}).
 gaussian model was fitted to demeaned ones;
 \item \code{terms}, a tibble of one row for each coefficient, with the parts that
 its name joins: \code{term}, the coefficient's name; \code{effect}, the formula
-term it comes from, such as \code{"ego"} or \code{"match"}, or \code{"intercept"} or
+term it comes from, such as \code{"ego"} or \code{"same"}, or \code{"intercept"} or
 \code{"interaction"}; its \code{layer} and \code{attribute}; its \code{category} and the
 \code{reference} category it is compared with, where the term is
 categorical; and for an interaction, its \code{operands}, the names of the

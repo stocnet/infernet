@@ -72,7 +72,7 @@
 #'   | `ego(x)` | `nodeocov("x")`, `nodeofactor("x")`; `b1cov("x")` in a two-mode network; `nodecov("x")` in an undirected one |
 #'   | `alter(x)` | `nodeicov("x")`, `nodeifactor("x")`; `b2cov("x")` in a two-mode network |
 #'   | `same(x)` | `nodematch("x")` |
-#'   | `match(x)` | `nodematch("x", diff = TRUE)` |
+#'   | `same(x, diff = TRUE)` | `nodematch("x", diff = TRUE)` |
 #'   | `mix(x)` | `nodemix("x")` |
 #'   | `diff(x)` | `absdiff("x")` |
 #'   | `diff(x, transformer_fn = identity)` | `diff("x")` |
@@ -120,7 +120,7 @@
 #'
 #'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
 #'   `exchange(layer)` becomes `recip(layer)`, and `dist(x)` becomes `diff(x)`.
-#'   `match()`, `mix()`, random intercepts, and fixed effects have no goldfish
+#'   `same(x, diff = TRUE)`, `match()`, `mix()`, random intercepts, and fixed effects have no goldfish
 #'   term, and are dropped.
 #'
 #' @param formula A formula written for an MRQAP, goldfish, or ergm.
@@ -801,6 +801,12 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   switch(fn,
     exchange = list(expr = as.call(c(as.name("recip"), as.list(expr)[-1]))),
     dist     = list(expr = as.call(c(as.name("diff"), as.list(expr)[-1]))),
+    same     = if (.same_by_category(.specify_operand(expr),
+                                     if (is.null(ctx$env)) globalenv() else ctx$env)) {
+      list(reason = "has no goldfish term with {.code diff = TRUE}")
+    } else {
+      list(expr = expr)
+    },
     if (is.na(entry$dynam)) {
       list(reason = "has no goldfish term")
     } else {
@@ -838,7 +844,9 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     switch(op$fn,
       ego   = .ergm_call("nodeocov", op$name),
       alter = .ergm_call("nodeicov", op$name),
-      same  = .ergm_call("nodematch", op$name),
+      same  = if (.same_by_category(op, globalenv()))
+                .ergm_call("nodematch", op$name, "diff = TRUE")
+              else .ergm_call("nodematch", op$name),
       match = .ergm_call("nodematch", op$name, "diff = TRUE"),
       mix   = .ergm_call("nodemix", op$name),
       dist  = .ergm_call("absdiff", op$name),
@@ -909,7 +917,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     nodefactor  = both_sides,
     nodematch   = function(expr) {
       diff <- is.call(expr) && !is.null(expr$diff) && isTRUE(eval(expr$diff))
-      list(call(if (diff) "match" else "same", attr_of(expr)))
+      if (diff) list(call("same", attr_of(expr), diff = TRUE))
+      else list(call("same", attr_of(expr)))
     },
     nodemix     = as_term("mix"),
     absdiff     = as_term("diff"),

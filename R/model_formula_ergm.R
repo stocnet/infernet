@@ -96,6 +96,10 @@
 # A two-mode `same()` is the share of a node's ties to nodes like the other,
 # which no ergm term counts, so it is the matrix infernet builds.
 .ergm_same <- function(op, ctx) {
+  if (.same_by_category(op, ctx$env)) {
+    if (ctx$twomode) return(list(reason = "is not defined for a two-mode network"))
+    return(list(terms = .ergm_call("nodematch", op$name, "diff = TRUE")))
+  }
   if (ctx$twomode) return(.ergm_edgecov(.ergm_quietly(.build_same(op, ctx))))
   list(terms = .ergm_call("nodematch", op$name))
 }

@@ -154,14 +154,15 @@
 #'   position or by name:
 #'   - `ego(attr)`, `alter(attr)` — the sender's or the receiver's value of a
 #'     node attribute; a categorical attribute is dummy-coded,
-#'   - `same(attr)` — 1 where sender and receiver share an attribute value,
+#'   - `same(attr, diff = FALSE)` — 1 where sender and receiver share an
+#'     attribute value; with `diff = TRUE`, as in ergm's `nodematch()`, one
+#'     0/1 column for each category, 1 where sender and receiver both hold it.
+#'     `match(attr)` is a deprecated alias of `same(attr, diff = TRUE)`,
 #'   - `diff(attr, transformer_fn = abs)` — the transformed difference between
 #'     the sender's and the receiver's values: absolute by default, and signed
 #'     with `transformer_fn = identity`. `dist(attr)` is a deprecated alias,
 #'   - `sim(attr)` — proportional similarity in a numeric attribute,
 #'     1 - |d| / range,
-#'   - `match(attr)` — one 0/1 column for each category, 1 where sender and
-#'     receiver both hold it,
 #'   - `mix(attr)` — one 0/1 column for each pair of a sender's and a
 #'     receiver's category, less the first pair as the reference,
 #'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
@@ -264,7 +265,7 @@
 #'     gaussian model was fitted to demeaned ones;
 #'   - `terms`, a tibble of one row for each coefficient, with the parts that
 #'     its name joins: `term`, the coefficient's name; `effect`, the formula
-#'     term it comes from, such as `"ego"` or `"match"`, or `"intercept"` or
+#'     term it comes from, such as `"ego"` or `"same"`, or `"intercept"` or
 #'     `"interaction"`; its `layer` and `attribute`; its `category` and the
 #'     `reference` category it is compared with, where the term is
 #'     categorical; and for an interaction, its `operands`, the names of the

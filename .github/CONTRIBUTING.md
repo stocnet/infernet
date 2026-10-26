@@ -636,7 +636,7 @@ correspond to those in other packages.
   `ego()`, a layer for `indeg()`.
 4. **`:` and `*` make interactions of any order.**
   These are the product of the operands. 
-  An operand with several columns, e.g. `match()`, gives one product for each.
+  An operand with several columns, e.g. `same(x, diff = TRUE)`, gives one product for each.
 5. **A two-mode attribute is read on the mode of each side.**
 6. **A term a model cannot fit is dropped, and the model says why.**
   A formula written for another model should still run here, without the terms
@@ -657,10 +657,12 @@ correspond to those in other packages.
   A formula aborts only where a name is known to no model,
   which is probably a typing error and gets the nearest name as a suggestion,
   where no term is left, or where a term is refused:
-  `tie()` and `indeg()` of the outcome layer would predict the outcome from itself.
+  `tie()` and `indeg()` of the outcome layer would predict the outcome from itself,
+  and `same()` twice on one attribute, since the columns of
+  `same(x, diff = TRUE)` add up to `same(x)`.
 7. **A column name joins its parts with underscores.**
   The term comes first, then its layer, attribute, and category:
-  `ego_age`, `indeg_friends`, `tertius_friends_age`, `match_dept_sales`,
+  `ego_age`, `indeg_friends`, `tertius_friends_age`, `same_dept_sales`,
   and `mix_dept_sales_hr` (the sender's category, then the receiver's).
   `indeg(friends, type = "ego")` gives `ego_indeg_friends`.
   A character that a name cannot hold, such as a space in a category,
@@ -669,7 +671,7 @@ correspond to those in other packages.
   do not parse it back into its parts.
   The parts are kept instead in the fit's term table, `fit$terms`,
   one row for each coefficient, and `tidy()` adds them to the estimates:
-  `effect` (the term, such as `"match"`, or `"intercept"` or `"interaction"`),
+  `effect` (the term, such as `"same"`, or `"intercept"` or `"interaction"`),
   `layer`, `attribute`, `category` as the data hold it, `reference`,
   and, for an interaction, `operands`, the columns it multiplies.
   A `mix()` pair is written as a tie is in DOT,
@@ -678,6 +680,15 @@ correspond to those in other packages.
   in a message and in the term table, not in each column.
   `term` is the column's name, as in `{broom}`;
   goldfish's `coef_layout()` calls the same field `name`.
+8. **A categorical term leaves out a reference only where its columns cover every dyad.**
+  Columns that cover every dyad add up to the intercept, so one of them must
+  be left out. `ego()`, `alter()`, and `mix()` cover every dyad, and leave out
+  their first category or pair. `same(x, diff = TRUE)` does not: a dyad of two
+  different categories is in none of its columns, and is the reference, so it
+  keeps a column for every category.
+  An option of an existing term is preferred to a new term where the columns
+  mean the same thing, as ergm's `nodematch(diff = TRUE)` is;
+  `mix()` stays its own term, since most of its pairs are not the same.
 
 #### The dictionary
 
@@ -716,7 +727,8 @@ A cognitive social structure and a list of networks abort.
 | `diff(x, transformer_fn = identity)` | fits | the signed difference | `diff` | `diffX` | — |
 | `dist(x)` | warns | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
 | `sim(x)` | fits | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
-| `match(x)` | fits | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
+| `same(x, diff = TRUE)` | fits | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
+| `match(x)` | warns | deprecated alias of `same(x, diff = TRUE)` | `nodematch(diff = TRUE)` | — | — |
 | `mix(x)` | fits | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
 | `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
 | `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |

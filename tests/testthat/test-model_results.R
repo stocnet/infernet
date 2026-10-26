@@ -97,12 +97,12 @@ test_that("tidy() of a netlm uses conf.level for its null interval", {
 
 test_that("tidy() joins a fit's term table to its estimates", {
   fit <- suppressMessages(
-    estimate_mrqap(a ~ ego(x) + match(grp), formula_net(),
+    estimate_mrqap(a ~ ego(x) + same(grp, diff = TRUE), formula_net(),
                    times = 5, control = list(seed = 1)))
   out <- tidy(fit)
   expect_named(out, c("term", "estimate", "statistic", "p.value", "effect",
                       "layer", "attribute", "category", "reference", "operands"))
-  expect_equal(out$effect, c("intercept", "ego", "match", "match"))
+  expect_equal(out$effect, c("intercept", "ego", "same", "same"))
   expect_equal(out$category, c(NA, NA, "p", "q"))
   # A fit made before the table was kept is tidied without it.
   fit$terms <- NULL

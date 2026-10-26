@@ -34,7 +34,7 @@ expected_status <- utils::read.table(header = TRUE, stringsAsFactors = FALSE, te
   diff                  fits   fits     fits        adapted
   dist                  warns  warns    adapted     adapted
   sim                   fits   fits     interpreted adapted
-  match                 fits   fits     drops       adapted
+  match                 warns  warns    drops       adapted
   mix                   fits   fits     drops       adapted
   tie                   fits   fits     fits        adapted
   recip                 fits   fits     fits        adapted
@@ -153,7 +153,7 @@ test_that("tidy() returns the record as a tibble, with the same columns for each
   expect_true(is.na(t$reason[2]))
   # Without the network, nothing is built.
   expect_equal(lengths(t$columns), c(0, 0, 0))
-  d <- suppressWarnings(specify_dynam(a ~ ego(x) + match(grp)))
+  d <- suppressWarnings(specify_dynam(a ~ ego(x) + same(grp, diff = TRUE)))
   expect_named(tidy(d), c("term", "status", "as", "reason"))
   e <- suppressMessages(specify_ergm(a ~ ego(x) + same(grp)))
   expect_named(tidy(e), c("term", "status", "as", "reason"))
@@ -163,12 +163,12 @@ test_that("tidy() returns the record as a tibble, with the same columns for each
 test_that("tidy() with the network names the columns estimate_mrqap() builds", {
   g <- formula_net()
   f <- suppressWarnings(specify_mrqap(
-    a ~ ego(x) + match(grp) + indeg(b, type = "ego") + ego(x):same(grp) + b + inertia, g))
+    a ~ ego(x) + same(grp, diff = TRUE) + indeg(b, type = "ego") + ego(x):same(grp) + b + inertia, g))
   t <- suppressWarnings(tidy(f, g))
   # `stats::terms()` puts an interaction after the terms of lower order.
   expect_equal(t$term[6], "ego(x):same(grp)")
   expect_equal(t$columns,
-               list("ego_x", c("match_grp_p", "match_grp_q"), "ego_indeg_b",
+               list("ego_x", c("same_grp_p", "same_grp_q"), "ego_indeg_b",
                     "b", character(0), "ego_x:same_grp"))
   fit <- suppressWarnings(suppressMessages(
     estimate_mrqap(f, g, times = 5, control = list(seed = 1))))

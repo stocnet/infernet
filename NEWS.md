@@ -3,6 +3,7 @@
 ## Package
 
 - Updated CONTRIBUTING's formula dictionary with an MRQAP column and goldfish's effects
+- Added a rule to CONTRIBUTING on when a categorical term leaves out a reference
 - Added `{fixest}` to `Suggests`, for fixed effects in models that are not gaussian
 
 ## Specification
@@ -23,6 +24,11 @@
   - Added `tidy()` for the result, one row for each term, which fits nothing
   - `tidy()` of an MRQAP formula with `.data` names the columns `estimate_mrqap()` builds
 - Named the other models in the term registry for the model: `dynam`, `saom`, and `ergm`
+- Renamed `match(x)` to `same(x, diff = TRUE)`, as in ergm's `nodematch(x, diff = TRUE)`
+  - `match()` still works, with its old column names, and warns that it is deprecated
+  - `same(x, diff = TRUE)` names its columns for `same`, e.g. `same_dept_sales` rather than `match_dept_sales`
+  - Aborts where `same()` names one attribute more than once, since `same(x, diff = TRUE)` adds up to `same(x)`
+  - `mix()` stays its own term
 - Added fixed effects after a bare bar to the `specify_*()` functions
   - `specify_ergm()` writes `| sender + receiver` as ergm's `sender` and `receiver`
   - `specify_dynam()` drops them
