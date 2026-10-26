@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,12 @@
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
+<li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -56,7 +62,6 @@
 
 
 
-<!-- HEAD_CONTENT -->
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
@@ -81,7 +86,7 @@ console to work through the tutorial interactively — running the code,
 seeing the results, and getting hints, solutions, and quizzes.</p>
 </div>
 <div class="section level2">
-<h2 id="section-this-tutorial">This tutorial<a class="anchor" aria-label="anchor" href="#section-this-tutorial"></a>
+<h2 id="this-tutorial">This tutorial<a class="anchor" aria-label="anchor" href="#this-tutorial"></a>
 </h2>
 <p><img src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExeDFidmtrcTJhenU1NGRtdXA5N292Ynp3Y3BxcHRhYjR2MnowOGJ0ZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/djRJNZqj508sE/giphy.gif" alt="gif of deadpool greeting" width="900"></p>
 <p>Within a network, nodes and ties vary. But how much do they vary and
@@ -104,7 +109,7 @@ ties and/or nodal or dyadic attributes</label></li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="section-initial-visualisation">Initial visualisation<a class="anchor" aria-label="anchor" href="#section-initial-visualisation"></a>
+<h2 id="initial-visualisation">Initial visualisation<a class="anchor" aria-label="anchor" href="#initial-visualisation"></a>
 </h2>
 <p>For this session, we’ll explore a couple of different datasets.
 First, let’s examine
@@ -141,7 +146,7 @@ some categories. We therefore need to establish how diverse this network
 really is.</p>
 </div>
 <div class="section level2">
-<h2 id="section-measuring-richness">Measuring richness<a class="anchor" aria-label="anchor" href="#section-measuring-richness"></a>
+<h2 id="measuring-richness">Measuring richness<a class="anchor" aria-label="anchor" href="#measuring-richness"></a>
 </h2>
 <p>Some categorical variables have more categories than others, and this
 can be thought of as indicating greater diversity than e.g. a binary
@@ -151,7 +156,7 @@ study of biodiversity.
 Richness </dfn></abbr> calculates the number of different categories
 that appear in the data for a given variable. Let’s calculate the
 richness of all of the variables in our Marvel data.</p>
-<div class="sourceCode" id="section-cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/member_names.html" class="external-link">net_node_attributes</a></span><span class="op">(</span><span class="va">marvel_friends</span><span class="op">)</span></span></code></pre></div>
 <div class="callout">
 <p><span class="callout-label"><strong>Try it yourself</strong>:</span>
@@ -166,7 +171,7 @@ a summary of how evenly distributed the appearance of categories are.
 For that we would need to move on to something like the Blau index.</p>
 </div>
 <div class="section level2">
-<h2 id="section-measuring-diversity">Measuring diversity<a class="anchor" aria-label="anchor" href="#section-measuring-diversity"></a>
+<h2 id="measuring-diversity">Measuring diversity<a class="anchor" aria-label="anchor" href="#measuring-diversity"></a>
 </h2>
 <p>Another measure that reflects the diversity or
 <abbr><dfn title="A measure of how varied the nodes in a network are.">
@@ -210,7 +215,7 @@ homophily
 heterophily. </dfn></abbr></p>
 </div>
 <div class="section level2">
-<h2 id="section-measuring-heterophily">Measuring heterophily<a class="anchor" aria-label="anchor" href="#section-measuring-heterophily"></a>
+<h2 id="measuring-heterophily">Measuring heterophily<a class="anchor" aria-label="anchor" href="#measuring-heterophily"></a>
 </h2>
 <p>The EI (or E-I) index offers a way to measure the degree to which
 ties appear between rather than within groups of nodes of the same
@@ -241,7 +246,7 @@ chance for a network of this size and density and distribution of that
 attribute.</p>
 </div>
 <div class="section level2">
-<h2 id="section-cug-tests">CUG tests<a class="anchor" aria-label="anchor" href="#section-cug-tests"></a>
+<h2 id="cug-tests">CUG tests<a class="anchor" aria-label="anchor" href="#cug-tests"></a>
 </h2>
 <p>To see whether we should be surprised by scores this high/low, we
 compare these scores with those from a series of
@@ -282,7 +287,7 @@ This section includes an interactive quiz in the live tutorial — run
 </div>
 </div>
 <div class="section level2">
-<h2 id="section-qap-tests">QAP tests<a class="anchor" aria-label="anchor" href="#section-qap-tests"></a>
+<h2 id="qap-tests">QAP tests<a class="anchor" aria-label="anchor" href="#qap-tests"></a>
 </h2>
 <p>Ah, but perhaps random graphs are not the best reference group for
 establishing whether there is a significant homophily effect here. After
@@ -342,7 +347,7 @@ examine multiple variables at once or control for other factors. For
 that we need to move on to network regression.</p>
 </div>
 <div class="section level2">
-<h2 id="section-network-regression">Network regression<a class="anchor" aria-label="anchor" href="#section-network-regression"></a>
+<h2 id="network-regression">Network regression<a class="anchor" aria-label="anchor" href="#network-regression"></a>
 </h2>
 <p>Next let us examine homophily in another network. The data were
 collected as part of an early experiment on communication between social
@@ -356,7 +361,7 @@ to
 over the period of the study. Nodal attributes collected include the
 primary discipline and number of citations in the social science
 citation index at the start of the study.</p>
-<div class="sourceCode" id="section-cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ison_networkers</span></span>
 <span><span class="fu">graphr</span><span class="op">(</span><span class="va">ison_networkers</span>, node_color <span class="op">=</span> <span class="st">"Discipline"</span><span class="op">)</span></span></code></pre></div>
 <p>Let’s use both the continuous <code>Citations</code> and the
@@ -401,7 +406,7 @@ This section includes an interactive quiz in the live tutorial — run
 </div>
 </div>
 <div class="section level2">
-<h2 id="section-free-play">Free play<a class="anchor" aria-label="anchor" href="#section-free-play"></a>
+<h2 id="free-play">Free play<a class="anchor" aria-label="anchor" href="#free-play"></a>
 </h2>
 <p>While these are the conclusions from this ‘play’ data, you may have
 more and more interesting data at hand. How would you go about
@@ -409,7 +414,7 @@ specifying such a model? Why is such an approach more appropriate for
 network data than linear or logistic regression?</p>
 </div>
 <div class="section level2">
-<h2 id="section-glossary">Glossary<a class="anchor" aria-label="anchor" href="#section-glossary"></a>
+<h2 id="glossary">Glossary<a class="anchor" aria-label="anchor" href="#glossary"></a>
 </h2>
 <p>Here are some of the terms that we have covered in this module:</p>
 <dl>
@@ -512,46 +517,6 @@ An undirected or line network is one in which tie direction is
 undefined.
 </dd>
 </dl>
-<script type="application/shiny-prerendered" data-context="server-start">
-library(manynet)
-library(autograph)
-library(infernet)
-knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
-manynet::clear_glossary()
-learnr::random_phrases_add(language = "fr",
-                           praise = c("C'est génial!",
-                                      "Beau travail",
-                                      "Excellent travail!",
-                                      "Bravo!",
-                                      "Super!",
-                                      "Bien fait",
-                                      "Bien joué",
-                                      "Tu l'as fait!",
-                                      "Je savais que tu pouvais le faire.",
-                                      "Ça a l'air facile!",
-                                      "C'était un travail de première classe.",
-                                      "C'est ce que j'appelle un bon travail!"),
-                          encouragement = c("Bon effort",
-                                            "Vous l'avez presque maîtrisé!",
-                                            "Ça avance bien.",
-                                            "Continuez comme ça.",
-                                            "Continuez à travailler dur!",
-                                            "Vous apprenez vite!",
-                                            "Vous faites un excellent travail aujourd'hui."))
-learnr::random_phrases_add(language = "en", 
-                           praise = c("C'est génial!",
-                                      "Beau travail!",
-                                      "Bravo!",
-                                      "Super!"),
-                           encouragement = "Bon effort")
-marvel_friends <- to_unsigned(to_uniplex(fict_marvel, "relationship"), keep = "positive")
-marvel_friends <- to_giant(marvel_friends)
-marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
-</script><!--html_preserve--><script type="application/shiny-prerendered" data-context="dependencies">
-{"type":"list","attributes":{},"value":[]}
-</script><!--/html_preserve--><!--html_preserve--><script type="application/shiny-prerendered" data-context="execution_dependencies">
-{"type":"list","attributes":{},"value":[{"type":"NULL"}]}
-</script><!--/html_preserve-->
 </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

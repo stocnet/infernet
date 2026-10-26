@@ -22,7 +22,7 @@ and one-mode or two-mode networks alike. Plotting results belongs in
 [autograph](https://stocnet.github.io/autograph/).
 
 Full package documentation — common dev commands, file organization, the
-[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 pipeline, function body and parallelism conventions, console messaging,
 dependency practice, test conventions, `NEWS.md` conventions, and
 branching/CI — lives in
@@ -32,7 +32,9 @@ exact `devtools`/testing commands for this repo.
 
 Note that [migraph](https://stocnet.github.io/migraph/) still carries
 older copies of
-[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+as
+[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md),
 and the `test_*()` family, which
 [infernet](https://stocnet.github.io/infernet/) supersedes. A fix made
 in [migraph](https://stocnet.github.io/migraph/) needs porting here; a

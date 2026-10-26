@@ -1,7 +1,5 @@
 # infernet
 
-![infernet logo](reference/figures/logo.png)
-
 ## About the package
 
 [infernet](https://stocnet.github.io/infernet/) is the inferential layer
@@ -18,7 +16,7 @@ things:
   graph-level statistic and compares it against a simulated null
   distribution.
 - **Network regression.**
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   fits a multiple regression quadratic assignment procedure (MRQAP)
   model, using either Dekker et al’s double semi-partialling or a
   permutation of the dependent network alone.
@@ -36,15 +34,16 @@ Robert Krause’s `MrQAP`.
 - **Declarative simplicity**: functions do one clearly named thing with
   few arguments. For example,
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md)
-  and
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
-  are named for what they do, rather than for an acronym.
+  is named for the null distribution it draws, and
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  follows the `estimate_*()` verb of
+  [goldfish](https://stocnet.github.io/goldfish/).
 - **Pleasant predictability**: users can guess a function’s behaviour
   from its family. For example, the `test_*()` functions all take a
   network, a statistic, and a number of `times`.
 - **Graceful inclusivity**: functions accept whatever network users
   bring and return something they can use. For example,
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   works on any network that
   [manynet](https://stocnet.github.io/manynet/) can convert, one-mode or
   two-mode, and keeps missing data missing.
@@ -53,7 +52,7 @@ See the [contributing
 guide](https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style)
 for how these principles translate into rules for the package.
 
-## A formula you can reuse
+## Reuseable formulas
 
 Models are specified with a formula, so the same specification can be
 moved between networks and between model types:
@@ -65,7 +64,7 @@ library(infernet)
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 
-net_regression(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
                networkers, times = 200)
 ```
 

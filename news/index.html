@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,6 +17,10 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -33,6 +37,176 @@
       <small>Source: <a href="https://github.com/stocnet/infernet/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.5.0" id="infernet-050">infernet 0.5.0<a class="anchor" aria-label="anchor" href="#infernet-050"></a></h2>
+<div class="section level3">
+<h3 id="package-0-5-0">Package<a class="anchor" aria-label="anchor" href="#package-0-5-0"></a></h3>
+<ul><li>Updated CONTRIBUTING
+<ul><li>Added a formula dictionary with an MRQAP column and goldfish’s effects</li>
+<li>Added a rule on when a categorical term leaves out a reference</li>
+<li>Added a rule on <code>levels =</code>
+</li>
+<li>Added a rule on <code>ncores</code> before <code>strategy</code>, and on <code>loops</code> rather than <code>diag</code>
+</li>
+<li>Added a rule that a simulation-heavy function takes its controls through <code>control =</code>
+</li>
+</ul></li>
+<li>Added <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> to <code>Suggests</code>, for fixed effects in models that are not gaussian</li>
+<li>Improved the tutorial test to cap each <code>times =</code> at 20, since it checks only that the code runs</li>
+<li>Added the diversity tutorial to the website, as a static article under “Tutorials”</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tests-0-5-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-5-0"></a></h3>
+<ul><li>Changed <code><a href="../reference/tests.html">test_random()</a></code>, <code><a href="../reference/tests.html">test_configuration()</a></code>, and <code><a href="../reference/tests.html">test_permutation()</a></code> to take <code>control =</code>
+<ul><li>Reads <code>ncores</code>, <code>strategy</code>, and <code>seed</code> from a list or from <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>, and leaves the other controls alone</li>
+<li>Takes the controls of a model whole, e.g. <code>ctrl &lt;- control_mrqap(ncores = 4, seed = 1)</code> for both a model and a test</li>
+<li>
+<code>ncores</code> sets the plan whatever <code>strategy</code> says, as in <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>
+</li>
+<li>
+<code>strategy =</code> and <code>ncores =</code> given by name still work, and warn that they are now controls</li>
+<li>Restores the <a href="https://future.futureverse.org" class="external-link">future</a> plan and <code>future.globals.maxSize</code> after the test</li>
+</ul></li>
+<li>Renamed the <code>diag</code> element of a test’s result to <code>loops</code>
+</li>
+<li>Improved the speed of <code><a href="../reference/tests.html">test_permutation()</a></code> ~5x and <code><a href="../reference/tests.html">test_random()</a></code> ~3x on a stocnet
+<ul><li>Draws from a <code>tbl_graph</code> made once, where the statistic gives the same value on it</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="specification-0-5-0">Specification<a class="anchor" aria-label="anchor" href="#specification-0-5-0"></a></h3>
+<ul><li>Improved the term registry behind the formula
+<ul><li>Added goldfish’s effects, e.g. <code>inertia</code>, <code>trans</code>, <code>four</code>
+</li>
+<li>Added each term’s MRQAP status, and its goldfish, RSiena, and ergm names</li>
+<li>Added the nearest term to the error for an unknown term</li>
+</ul></li>
+<li>Added <code><a href="../reference/specify.html">specify_mrqap()</a></code>, <code><a href="../reference/specify.html">specify_dynam()</a></code>, and <code><a href="../reference/specify.html">specify_ergm()</a></code> to move a formula between models
+<ul><li>Reads the model a formula is for from <code>input =</code>, the formula’s class, or its names</li>
+<li>Rewrites each term with an equivalent, e.g. <code>nodematch("dept")</code> as <code>same(dept)</code>
+</li>
+<li>Names each term that means something different, e.g. goldfish’s <code>sim()</code>
+</li>
+<li>Drops each term the model cannot fit, with one warning naming each</li>
+<li>Aborts only where no term is left to fit</li>
+<li>
+<code><a href="../reference/regression.html">estimate_mrqap()</a></code> reads every formula with <code><a href="../reference/specify.html">specify_mrqap()</a></code>
+</li>
+<li>
+<code><a href="../reference/specify.html">specify_ergm()</a></code> with <code>.data</code> writes other terms as <code>edgecov()</code> of infernet’s matrix</li>
+<li>Records what the model makes of every term: it fits, adapts, interprets, warns about, drops, or refuses it</li>
+<li>Added <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> for the result, one row for each term, which fits nothing</li>
+<li>
+<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of an MRQAP formula with <code>.data</code> names the columns <code><a href="../reference/regression.html">estimate_mrqap()</a></code> builds</li>
+</ul></li>
+<li>Named the other models in the term registry for the model: <code>dynam</code>, <code>saom</code>, and <code>ergm</code>
+</li>
+<li>Renamed <code>match(x)</code> to <code>same(x, diff = TRUE)</code>, as in ergm’s <code>nodematch(x, diff = TRUE)</code>
+<ul><li>
+<code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code> still works, with its old column names, and warns that it is deprecated</li>
+<li>
+<code>same(x, diff = TRUE)</code> names its columns for <code>same</code>, e.g. <code>same_dept_sales</code> rather than <code>match_dept_sales</code>
+</li>
+<li>Aborts where <code>same()</code> names one attribute more than once, since <code>same(x, diff = TRUE)</code> adds up to <code>same(x)</code>
+</li>
+<li>
+<code>mix()</code> stays its own term</li>
+</ul></li>
+<li>Added <code>levels =</code> to <code>ego()</code>, <code>alter()</code>, <code>same()</code>, and <code>mix()</code> to choose the categories that get a column
+<ul><li>Takes names, e.g. <code>ego(dept, levels = c("sales", "hr"))</code>, or <code>mix(dept, levels = "sales -&gt; hr")</code>
+</li>
+<li>Takes positions, and negative positions to leave categories out, e.g. <code>levels = -1</code>
+</li>
+<li>The categories left out are the reference together, and where every one is chosen, the first chosen is</li>
+<li>An unknown name aborts and lists the categories</li>
+<li>Warns where a term has more than ten categories and no <code>levels =</code>
+</li>
+<li>
+<code><a href="../reference/specify.html">specify_mrqap()</a></code> reads ergm’s <code>levels =</code>, and <code>levels2 =</code> of <code>nodemix()</code>; <code><a href="../reference/specify.html">specify_ergm()</a></code> writes them</li>
+<li>
+<code><a href="../reference/specify.html">specify_dynam()</a></code> drops a term with <code>levels =</code>, which goldfish does not have yet</li>
+</ul></li>
+<li>Changed the order of the columns of <code>mix()</code> to ergm’s, the sender’s category changing fastest, so that a position in <code>levels =</code> is one in ergm’s <code>levels2 =</code>
+</li>
+<li>Added fixed effects after a bare bar to the <code>specify_*()</code> functions
+<ul><li>
+<code><a href="../reference/specify.html">specify_ergm()</a></code> writes <code>| sender + receiver</code> as ergm’s <code>sender</code> and <code>receiver</code>
+</li>
+<li>
+<code><a href="../reference/specify.html">specify_dynam()</a></code> drops them</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="regression-0-5-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-5-0"></a></h3>
+<ul><li>Added <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>, with a help page for every control of <code><a href="../reference/regression.html">estimate_mrqap()</a></code>
+<ul><li>
+<code><a href="../reference/regression.html">estimate_mrqap()</a></code> reads a <code>control</code> list through it, so each value is checked before a fit</li>
+<li>Converts old names, e.g. <code>nullhyp = "qapy"</code> to <code>permute = "outcome"</code>, with a warning</li>
+<li>Drops goldfish’s estimation options, e.g. <code>max_iterations</code>, with one warning that names each</li>
+<li>Reads the result of goldfish’s <code>set_estimation_opt()</code> whole</li>
+<li>Fixed reading goldfish 2.0’s options: <code>control = set_algorithm_newton()</code> and <code>control = set_preprocessing()</code> now drop each option</li>
+<li>Aborts on any other name, with the nearest control</li>
+</ul></li>
+<li>Renamed the <code>diag</code> control to <code>loops</code>, which says what it includes and does not mask <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">base::diag()</a></code>
+<ul><li>
+<code>control = list(diag = TRUE)</code> still works, and warns that it is now <code>loops</code>
+</li>
+<li>The fit stores it as <code>fit$loops</code>, not <code>fit$diag</code>
+</li>
+</ul></li>
+<li>Changed <code>ncores</code> to set the plan whatever <code>strategy</code> says
+<ul><li>
+<code>ncores = 1</code> now runs sequentially, where before it left the plan to <code>strategy</code>
+</li>
+<li>
+<code>ncores</code> comes before <code>strategy</code> in <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>, as the simpler of the two</li>
+</ul></li>
+<li>Added fixed effects to <code><a href="../reference/regression.html">estimate_mrqap()</a></code>, as in <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>: <code>y ~ x | sender + receiver</code> (thanks <a href="https://github.com/RWKrause" class="external-link">@RWKrause</a>, closes <a href="https://github.com/stocnet/infernet/issues/8" class="external-link">#8</a>)
+<ul><li>Takes <code>sender</code>, <code>receiver</code>, <code>reporter</code> for a CSS, and <code>network</code> for a list</li>
+<li>Absorbs them once in a gaussian model, so each permutation fits a plain <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>
+</li>
+<li>Fits <code><a href="https://lrberge.github.io/fixest/reference/feglm.html" class="external-link">fixest::feglm()</a></code> or <code><a href="https://lrberge.github.io/fixest/reference/femlm.html" class="external-link">fixest::fenegbin()</a></code> in each permutation otherwise</li>
+<li>Nests each node’s group in its network in a pooled list, not in a panel</li>
+<li>Names a predictor that the fixed effects absorb, e.g. <code>ego()</code> with <code>| sender</code>
+</li>
+</ul></li>
+<li>Fixed the sender and receiver random intercepts that a two-mode network dropped</li>
+<li>Improved the speed of a small fit about tenfold, by not searching the permutation function for globals</li>
+<li>Fixed the permutations of a network with missing data to use the dyads of the observed model
+<ul><li>Permutes nodes only among nodes with the same unobserved cells</li>
+<li>Keeps each node with scattered unobserved cells in place</li>
+<li>Warns where few distinct permutations remain</li>
+<li>Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks</li>
+<li>Fixed a blocking group of one node, which <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> read as a range</li>
+</ul></li>
+<li>Added <code>control = list(missing = )</code> with <code>"available"</code> (the default) and <code>"fail"</code>
+<ul><li>Leaves out the ties that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> marks as <code>fixed</code>, and keeps them in place under permutation</li>
+<li>Reports the dyads dropped on each variable, and stores them as <code>fit$missing</code>
+</li>
+<li>Documented a structural zero as a limitation</li>
+</ul></li>
+<li>Added panel MRQAP for a longitudinal network
+<ul><li>Detects a panel with <code><a href="https://stocnet.github.io/manynet/reference/mark_format_change.html" class="external-link">manynet::is_longitudinal()</a></code>, and fits each wave against the previous one</li>
+<li>Permutes the nodes the same way in every wave</li>
+<li>Fits <code>inertia</code>, <code>recip</code>, and <code>trans</code> on the previous wave</li>
+</ul></li>
+<li>Renamed <code><a href="../reference/regression.html">net_regression()</a></code> to <code><a href="../reference/regression.html">estimate_mrqap()</a></code> to match other stocnet packages
+<ul><li>
+<code><a href="../reference/regression.html">net_regression()</a></code> still works, and warns once that it is deprecated</li>
+<li>Result classes stay <code>netreg</code>, <code>netreg_lm</code>, <code>netreg_glm</code>, and <code>netreg_css</code>
+</li>
+</ul></li>
+<li>Added a term table to the fit, <code>fit$terms</code>, with the parts of each coefficient’s name
+<ul><li>Gives the <code>effect</code>, <code>layer</code>, <code>attribute</code>, <code>category</code>, and <code>reference</code> of each coefficient</li>
+<li>Gives the <code>operands</code> of each interaction</li>
+<li>Keeps a category as the data hold it, e.g. <code>"Social Science"</code> for <code>alter_dept_Social_Science</code>
+</li>
+<li>Writes a <code>mix()</code> pair as <code>"sales -&gt; hr"</code>, or <code>"sales -- hr"</code> where the pair is unordered</li>
+<li>
+<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> adds these columns to the estimates</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="infernet-040">infernet 0.4.0<a class="anchor" aria-label="anchor" href="#infernet-040"></a></h2>
 <div class="section level3">

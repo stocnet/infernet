@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,12 @@
       <ul class="navbar-nav me-auto">
 <li class="active nav-item"><a class="nav-link" href="index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
+<li><a class="dropdown-item" href="articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">News</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -56,10 +62,9 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="infernet">infernet<a class="anchor" aria-label="anchor" href="#infernet"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="infernet-">infernet <a class="anchor" aria-label="anchor" href="#infernet-"></a>
 </h1>
 </div>
-<p><img src="reference/figures/logo.png" align="right" alt="infernet logo" width="150"></p>
 <!-- badges: start -->
 
 <div class="section level2">
@@ -70,7 +75,7 @@
 <li>
 <strong>Tests of network statistics.</strong> <code><a href="reference/tests.html">test_random()</a></code> runs a conditional uniform graph (CUG) test, <code><a href="reference/tests.html">test_configuration()</a></code> conditions on the degree sequence, and <code><a href="reference/tests.html">test_permutation()</a></code> runs a quadratic assignment procedure (QAP) test. Each takes any graph-level statistic and compares it against a simulated null distribution.</li>
 <li>
-<strong>Network regression.</strong> <code><a href="reference/regression.html">net_regression()</a></code> fits a multiple regression quadratic assignment procedure (MRQAP) model, using either Dekker et al’s double semi-partialling or a permutation of the dependent network alone.</li>
+<strong>Network regression.</strong> <code><a href="reference/regression.html">estimate_mrqap()</a></code> fits a multiple regression quadratic assignment procedure (MRQAP) model, using either Dekker et al’s double semi-partialling or a permutation of the dependent network alone.</li>
 </ul>
 <p>The package combines the formula interface of <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> with the estimators, missing-data handling, and cognitive social structure treatment of Robert Krause’s <code>MrQAP</code>.</p>
 </div>
@@ -80,16 +85,16 @@
 <p><a href="https://stocnet.github.io/infernet/">infernet</a> and the other <a href="https://github.com/stocnet" class="external-link">stocnet</a> packages aim for three things:</p>
 <ul>
 <li>
-<strong>Declarative simplicity</strong>: functions do one clearly named thing with few arguments. For example, <code><a href="reference/tests.html">test_permutation()</a></code> and <code><a href="reference/regression.html">net_regression()</a></code> are named for what they do, rather than for an acronym.</li>
+<strong>Declarative simplicity</strong>: functions do one clearly named thing with few arguments. For example, <code><a href="reference/tests.html">test_permutation()</a></code> is named for the null distribution it draws, and <code><a href="reference/regression.html">estimate_mrqap()</a></code> follows the <code>estimate_*()</code> verb of <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>.</li>
 <li>
 <strong>Pleasant predictability</strong>: users can guess a function’s behaviour from its family. For example, the <code>test_*()</code> functions all take a network, a statistic, and a number of <code>times</code>.</li>
 <li>
-<strong>Graceful inclusivity</strong>: functions accept whatever network users bring and return something they can use. For example, <code><a href="reference/regression.html">net_regression()</a></code> works on any network that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> can convert, one-mode or two-mode, and keeps missing data missing.</li>
+<strong>Graceful inclusivity</strong>: functions accept whatever network users bring and return something they can use. For example, <code><a href="reference/regression.html">estimate_mrqap()</a></code> works on any network that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> can convert, one-mode or two-mode, and keeps missing data missing.</li>
 </ul>
 <p>See the <a href="https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style" class="external-link">contributing guide</a> for how these principles translate into rules for the package.</p>
 </div>
 <div class="section level2">
-<h2 id="a-formula-you-can-reuse">A formula you can reuse<a class="anchor" aria-label="anchor" href="#a-formula-you-can-reuse"></a>
+<h2 id="reuseable-formulas">Reuseable formulas<a class="anchor" aria-label="anchor" href="#reuseable-formulas"></a>
 </h2>
 <p>Models are specified with a formula, so the same specification can be moved between networks and between model types:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -98,7 +103,7 @@
 <span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_networkers.html" class="external-link">ison_networkers</a></span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">manynet</span><span class="fu">::</span><span class="fu">to_subgraph</span><span class="op">(</span><span class="va">Discipline</span> <span class="op">==</span> <span class="st">"Sociology"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/regression.html">net_regression</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span>
+<span><span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span>
 <span>               <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span></code></pre></div>
 <p>Alongside plain references to other networks, which enter as dyadic covariates, the right-hand side accepts:</p>
 <table class="table">

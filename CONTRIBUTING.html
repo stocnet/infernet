@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,6 +17,10 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -89,7 +93,7 @@
 <li>
 <a href="https://stocnet.github.io/infernet/">infernet</a> (this package): testing and modelling, e.g. CUG/QAP/MRQAP.</li>
 <li>
-<a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>: the software companion to <em>Multimodal Political Networks</em>, holding the <code>mpn_*</code> datasets and the diffusion models. <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> still carries older copies of <code><a href="reference/regression.html">net_regression()</a></code> and the <code>test_*()</code> family; those are what <a href="https://stocnet.github.io/infernet/">infernet</a> supersedes, so a fix made there needs porting here, and a fix made here does not need porting back.</li>
+<a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>: the software companion to <em>Multimodal Political Networks</em>, holding the <code>mpn_*</code> datasets and the diffusion models. <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> still carries older copies, as <code><a href="reference/regression.html">net_regression()</a></code>, and the <code>test_*()</code> family; those are what <a href="https://stocnet.github.io/infernet/">infernet</a> supersedes, so a fix made there needs porting here, and a fix made here does not need porting back.</li>
 <li>
 <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>: another stocnet package for estimating network event models such as relational event models and dynamic network actor models. Note that these two packages, <a href="https://stocnet.github.io/infernet/">infernet</a> and <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>, should reuse similar vocabulary and syntax where possible to improve the “pleasant predictability” of each package.</li>
 </ul><p>All <code>stocnet</code> packages aim for the same three things: declarative simplicity, pleasant predictability, and graceful inclusivity. The principles are shared across the packages; the rules and examples below are those of <a href="https://stocnet.github.io/infernet/">infernet</a>.</p>
@@ -98,11 +102,11 @@
 <h3 id="declarative-simplicity">Declarative simplicity<a class="anchor" aria-label="anchor" href="#declarative-simplicity"></a></h3>
 <p>Functions should do one clearly named thing with few arguments.</p>
 <ul><li>
-<strong>Names describe actions, not acronyms or progenitors.</strong> A function is named after what it does, and the name of the procedure and its authors are given in the documentation. Example: <code><a href="reference/tests.html">test_permutation()</a></code>, <code><a href="reference/tests.html">test_random()</a></code>, and <code><a href="reference/tests.html">test_configuration()</a></code> rather than names built on QAP or CUG, and <code><a href="reference/regression.html">net_regression()</a></code> rather than a name built on MRQAP.</li>
+<strong>Names describe actions, not progenitors.</strong> A function is named after what it does, and the authors of a procedure are given in the documentation. A test is named for the null distribution it draws: <code><a href="reference/tests.html">test_permutation()</a></code>, <code><a href="reference/tests.html">test_random()</a></code>, and <code><a href="reference/tests.html">test_configuration()</a></code> rather than names built on QAP or CUG. An estimator is named <code>estimate_&lt;model&gt;()</code>, as across stocnet, so that a user who moves between packages finds the same verb: <code><a href="reference/regression.html">estimate_mrqap()</a></code> here, and <code>estimate_dynam()</code> and <code>estimate_rem()</code> in <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>.</li>
 <li>
-<strong>Few arguments per function.</strong> Every argument is something the user must read about before they can trust the result, so use sensible defaults instead. Example: <code><a href="reference/regression.html">net_regression()</a></code> takes a formula, a network, and <code>times</code>, and everything less common goes through its <code>control</code> list.</li>
+<strong>Few arguments per function.</strong> Every argument is something the user must read about before they can trust the result, so use sensible defaults instead. Example: <code><a href="reference/regression.html">estimate_mrqap()</a></code> takes a formula, a network, and <code>times</code>, and everything less common goes through its <code>control</code> list.</li>
 <li>
-<strong>Features are detected, not declared.</strong> A function finds out whether a network is directed or two-mode, and adjusts, so the user does not supply an argument for it. Example: <code><a href="reference/regression.html">net_regression()</a></code> reads directedness from the outcome network with <code>manynet::is_directed()</code>, unless <code>control</code> overrides it.</li>
+<strong>Features are detected, not declared.</strong> A function finds out whether a network is directed or two-mode, and adjusts, so the user does not supply an argument for it. Example: <code><a href="reference/regression.html">estimate_mrqap()</a></code> reads directedness from the outcome network with <code>manynet::is_directed()</code>, unless <code>control</code> overrides it.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="pleasant-predictability">Pleasant predictability<a class="anchor" aria-label="anchor" href="#pleasant-predictability"></a></h3>
@@ -126,9 +130,9 @@
 <li>
 <strong>Only truly unsupported cases fail.</strong> Where a function really cannot proceed, the error says why and suggests what would work. Example: <code><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist()</a></code> on a categorical attribute points users to <code>same()</code>.</li>
 <li>
-<strong>Key steps are reported.</strong> Functions say what they did at the verbosity the user has chosen (see <a href="#console-messaging">Console messaging</a>). Example: <code><a href="reference/regression.html">net_regression()</a></code> reports the family and the directedness it read from the outcome.</li>
+<strong>Key steps are reported.</strong> Functions say what they did at the verbosity the user has chosen (see <a href="#console-messaging">Console messaging</a>). Example: <code><a href="reference/regression.html">estimate_mrqap()</a></code> reports the family and the directedness it read from the outcome.</li>
 <li>
-<strong>Results describe themselves.</strong> A printed result is short, and carries what the user needs to interpret it. Example: a printed <code><a href="reference/regression.html">net_regression()</a></code> says what was permuted and how many times, how loops were treated, and whether the outcome was read as directed.</li>
+<strong>Results describe themselves.</strong> A printed result is short, and carries what the user needs to interpret it. Example: a printed <code><a href="reference/regression.html">estimate_mrqap()</a></code> says what was permuted and how many times, how loops were treated, and whether the outcome was read as directed.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="vocabulary">Vocabulary<a class="anchor" aria-label="anchor" href="#vocabulary"></a></h3>
@@ -185,7 +189,7 @@
 </li>
 <li>Run full test suite: <code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>
 </li>
-<li>Run a single test file: <code>devtools::test(filter = "net_regression")</code> (matches <code>test-net_regression.R</code>), or <code>testthat::test_file("tests/testthat/test-net_regression.R")</code>
+<li>Run a single test file: <code>devtools::test(filter = "estimate_mrqap")</code> (matches <code>test-estimate_mrqap.R</code>), or <code>testthat::test_file("tests/testthat/test-estimate_mrqap.R")</code>
 </li>
 <li>Full package check (mirrors CI): <code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> or <code><a href="http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.html" class="external-link">rcmdcheck::rcmdcheck()</a></code>
 </li>
@@ -213,9 +217,17 @@
 </td>
 </tr><tr><td><code>model_regression.R</code></td>
 <td>
-<code><a href="reference/regression.html">net_regression()</a></code>, the list path, and the <code>print.*</code> methods for its results, documented on the <code>results</code> page</td>
+<code><a href="reference/regression.html">estimate_mrqap()</a></code>, the list path, and the <code>print.*</code> methods for its results, documented on the <code>results</code> page</td>
+</tr><tr><td><code>model_control.R</code></td>
+<td>
+<code><a href="reference/control_mrqap.html">control_mrqap()</a></code>, which names, defaults, and checks every control of <code><a href="reference/regression.html">estimate_mrqap()</a></code>; the old names it converts (<code>.control_renames()</code>) and the options of other models it drops (<code>.control_foreign()</code>)</td>
 </tr><tr><td><code>model_results.R</code></td>
 <td>the <code>results</code> help page, and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> for <code>netreg</code> and <code>network_test</code> results and for the <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>, <a href="https://statnet.org" class="external-link">ergm</a>, and <a href="https://www.stats.ox.ac.uk/~snijders/siena/" class="external-link">RSiena</a> results</td>
+</tr><tr><td><code>model_specify.R</code></td>
+<td>
+<code><a href="reference/specify.html">specify_mrqap()</a></code>, <code><a href="reference/specify.html">specify_dynam()</a></code>, and <code><a href="reference/specify.html">specify_ergm()</a></code>: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of it</td>
+</tr><tr><td><code>model_formula_ergm.R</code></td>
+<td>the <code>to_ergm</code> writer of each term, which <code><a href="reference/specify.html">specify_ergm()</a></code> calls</td>
 </tr><tr><td><code>model_formula.R</code></td>
 <td>the formula front end: <code>.specify()</code>, <code>.evaluate_spec()</code>, the term registry <code>.formula_terms()</code> and its builders, and <code>specificationAdvice()</code>
 </td>
@@ -246,12 +258,33 @@
 <div class="section level3">
 <h3 id="input-shapes">Input shapes<a class="anchor" aria-label="anchor" href="#input-shapes"></a></h3>
 <p>Most defects reported against this package are not wrong arithmetic. They are a network shape the function did not expect. Before finishing a function, run it on a signed, a weighted, a directed, a two-mode, a multiplex, a multilevel and a longitudinal network, and decide each case deliberately. Document each decision in the roxygen block with an <code>@section</code> named for the shape, e.g. <code>@section Two-mode networks:</code>.</p>
-<p>Missing data deserves particular care here, since handling it well is a reason this package exists. An unobserved dyad is <code>NA</code>, never a zero tie and never a source’s numeric code. <code>make_qap_data()</code> drops NA and diagonal cells before fitting, so a predictor that introduces <code>NA</code> silently shrinks the sample: report what was dropped rather than letting the count change without comment.</p>
+<p>Missing data deserves particular care here, since handling it well is a reason this package exists. An unobserved dyad is <code>NA</code>, never a zero tie and never a source’s numeric code. <code>make_qap_data()</code> drops NA and diagonal cells before fitting, so a predictor that introduces <code>NA</code> shrinks the sample. <code>QAPengine()</code> counts the unobserved dyads on each variable with <code>.missing_summary()</code> before anything is dropped, reports them, and stores them in <code>fit$missing</code>. The <code>missing</code> control chooses the treatment: <code>"available"</code> (the default) drops them, and <code>"fail"</code> stops on them. Multiple imputation is planned, but it waits for its own design.</p>
+<p>Every permutation must use the dyads of the observed model. <code>make_qap_data()</code> recomputes the dyads after each draw, and a free permutation moves the <code>NA</code> cells of the permuted matrix but not those of the others, so the draws used to be fitted on more dyads than the observed model. <code>.missing_blocks()</code> now groups the nodes by which of their lines are wholly unobserved (row, column, and CSS slice), and fixes each node at the end of a scattered missing cell, so that the <code>NA</code> cells map onto themselves. The blocks combine with the user’s <code>groups</code>. <code>QAPPermEst()</code> aborts if a draw uses any other number of dyads, since that is a fault in the engine and not in the data. For <code>permute = "predictor"</code> this needs the residualised predictor to be <code>NA</code> outside the model, and mirrored across the diagonal of an undirected network, which <code>residuals_to_matrix()</code> and <code>residuals_to_array()</code> do.</p>
+<p>A tie in <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a>’s reserved <code>fixed</code> tie column was set by the design, not chosen, so it is no observation of the process either. It keeps its value, which every predictor built from the network reads. <code>.evaluate_spec()</code> carries it to the engine as the <code>fixed</code> attribute of the outcome’s matrix, from <code>.fixed_ties()</code>, and <code>QAPengine()</code> passes it on as an exclusion mask, <code>exclude</code>, separate from the <code>NA</code> cells: <code>make_qap_data()</code> leaves it out of the outcome’s rows, <code>.missing_blocks()</code> keeps it in place under permutation as it does an <code>NA</code> cell, and <code>.missing_summary()</code> counts it apart, as <code>fit$missing$fixed_ties</code>, so that <code>"fail"</code> does not stop on it. Do not set an excluded cell to <code>NA</code>: that would read a value set by design as an unknown one, which an imputation would then fill.</p>
+<p>A structural zero, a cell that cannot hold a tie, is not missing data. <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> does not mark one, so it arrives as an observed zero. The loops that the model leaves out and the upper half of an undirected network are the only cells the engine knows to be structural, and <code>.structural_mask()</code> keeps them out of the counts.</p>
+<div class="section level4">
+<h4 id="longitudinal-networks">Longitudinal networks<a class="anchor" aria-label="anchor" href="#longitudinal-networks"></a></h4>
+<p>A network that <code><a href="https://stocnet.github.io/manynet/reference/mark_format_change.html" class="external-link">manynet::is_longitudinal()</a></code> says has more than one wave is a panel, detected rather than declared. <code>.prepare_panel()</code> splits it with <code><a href="https://stocnet.github.io/manynet/reference/modif_split.html" class="external-link">manynet::to_waves()</a></code>, and builds each wave but the first against the wave before it, which <code>.spec_context()</code> holds as <code>ctx$previous</code>. A term whose registry entry has <code>panel = TRUE</code> (<code>inertia</code>, <code>recip</code>, <code>trans</code>) reads that previous wave, and fits without a warning; on a cross-sectional network it keeps its old status. <code>QAPengine(panel = TRUE)</code> draws one order of the nodes for every wave with <code>.permute_panel()</code>, and <code>.panel_blocks()</code> exchanges only nodes whose missing cells match in every wave. A list of networks is never a panel, since nothing says its nodes are the same. Whether a layer term reads the same wave or the previous one is open: see <a href="https://github.com/stocnet/infernet/issues/18" class="external-link">stocnet/infernet#18</a>.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed-effects">Fixed effects<a class="anchor" aria-label="anchor" href="#fixed-effects"></a></h4>
+<p>A bar outside parentheses, <code>y ~ x | sender + receiver</code>, absorbs fixed effects, as in <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>; a bar inside them, <code>(1 | sender)</code>, is an <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a> random intercept. <code>.split_fixed()</code> reads the bare bar before <code><a href="https://rdrr.io/r/stats/terms.html" class="external-link">stats::terms()</a></code> sees the formula, so the two never meet. The engine code is in <a href="../R/qap_fixed.R">R/qap_fixed.R</a>.</p>
+<ul><li>
+<strong>A gaussian model is demeaned once.</strong> A node permutation maps senders onto senders, and <code>.missing_blocks()</code> keeps the dyads of the observed model in every draw, so a matrix with zero group means keeps them under any draw. By Frisch-Waugh-Lovell, each permutation then fits a plain <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> of the demeaned variables, which is why <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> is only in <code>Suggests</code>. The t-values are rescaled for the absorbed degrees of freedom. A change to the permutations that breaks either property breaks this.</li>
+<li>
+<strong>Any other family calls <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> in every fit.</strong> Logit and Poisson models have no demeaning shortcut. Double semi-partialling still demeans, since it residualises linearly.</li>
+<li>
+<strong>The intercept is kept as <code>NA</code>.</strong> Every result names its first coefficient <code>"(Intercept)"</code>, and printing and double semi-partialling rely on that.</li>
+<li>
+<strong>A group is within its network in a pooled list,</strong> <code>nv^sv</code> as <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> writes it, and the same node across the waves of a panel.</li>
+<li>
+<strong>One word, one meaning.</strong> The engine already says <code>fixed</code> for a node that keeps its place and for a tie that the design set, so the argument and the result element are <code>fixed_effects</code>.</li>
+</ul></div>
 <div class="section level4">
 <h4 id="cognitive-social-structures">Cognitive social structures<a class="anchor" aria-label="anchor" href="#cognitive-social-structures"></a></h4>
 <p>A CSS is <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a>’s to define, and this package follows it. A network is one where its ties carry a <code>by</code> column naming the reporter, <code><a href="https://stocnet.github.io/manynet/reference/mark_format_cognitive.html" class="external-link">manynet::is_cognitive()</a></code> says so, and <code><a href="https://stocnet.github.io/manynet/reference/coerce_matrix.html" class="external-link">manynet::as_matrix()</a></code> returns the array the engine fits. Do not build CSS arrays here: <code>df_to_mat()</code> did, and it is gone.</p>
 <ul><li>
-<strong>Detected, not declared.</strong> <code>convertToMatrixList()</code> reads the outcome’s matrix and passes <code>css = TRUE</code> where it has three axes. <code><a href="reference/regression.html">net_regression()</a></code> reports the detection and the number of reporters.</li>
+<strong>Detected, not declared.</strong> <code>convertToMatrixList()</code> reads the outcome’s matrix and passes <code>css = TRUE</code> where it has three axes. <code><a href="reference/regression.html">estimate_mrqap()</a></code> reports the detection and the number of reporters.</li>
 <li>
 <strong>Read all three axes.</strong> A one-mode CSS from <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> has a slice for every node; a two-mode CSS has rows of one mode, columns of the other, and a slice for every node of both. <code>make_css_data()</code> and <code>.perm_css()</code> read each axis from <code><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim()</a></code>. The two-mode defect of phase one was a shape read off one axis, and the CSS version of it was the same mistake one axis further in.</li>
 <li>
@@ -260,7 +293,7 @@
 <strong>Lift predictors to the outcome.</strong> A nodal term or a layer that is not a CSS is repeated along the reporter axis by <code>.lift_to_css()</code>. A CSS layer keeps its own reports. <code>tertius()</code> is computed within each report.</li>
 <li>
 <strong>Missing stays missing.</strong> <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> gives a node whose <code>na</code> attribute is <code>TRUE</code> a slice of <code>NA</code>, and those reports are dropped. A slice of zeros that is not so marked could be a report of no ties or a person who was not asked, so <code>.report_css()</code> keeps it and names it in a warning.</li>
-</ul><p>Test a CSS change on <code><a href="https://stocnet.github.io/manynet/reference/ison_hightech.html" class="external-link">manynet::ison_hightech</a></code>, a real CSS whose <code>reports</code> layer is not one, and on the constructed networks in <a href="../tests/testthat/test-net_regression_css.R">tests/testthat/test-net_regression_css.R</a> for the shapes and the missing reports it does not have.</p>
+</ul><p>Test a CSS change on <code><a href="https://stocnet.github.io/manynet/reference/ison_hightech.html" class="external-link">manynet::ison_hightech</a></code>, a real CSS whose <code>reports</code> layer is not one, and on the constructed networks in <a href="../tests/testthat/test-estimate_mrqap_css.R">tests/testthat/test-estimate_mrqap_css.R</a> for the shapes and the missing reports it does not have.</p>
 <p>Before this merge the two were <code>QAPglm()</code> and <code>QAPcss()</code>, 55% the same code, and every fix had to be made twice. One of them was made in only one place.</p>
 </div>
 </div>
@@ -276,12 +309,14 @@
 </ol></div>
 <div class="section level4">
 <h4 id="multivariate">Multivariate<a class="anchor" aria-label="anchor" href="#multivariate"></a></h4>
-<p><code><a href="reference/regression.html">net_regression()</a></code> (<a href="../R/model_regression.R">R/model_regression.R</a>) is the single regression entry point. Its control flow is:</p>
-<ol style="list-style-type: decimal"><li>Merge the user’s <code>control</code> list over <code>.default_control()</code>, so an unnamed entry falls back to the default rather than to <code>NULL</code>.</li>
+<p><code><a href="reference/regression.html">estimate_mrqap()</a></code> (<a href="../R/model_regression.R">R/model_regression.R</a>) is the single regression entry point. Its control flow is:</p>
+<ol style="list-style-type: decimal"><li>Read the user’s <code>control</code> through <code><a href="reference/control_mrqap.html">control_mrqap()</a></code>, so a control that is not named keeps its default, each value is checked, and an old name or another model’s option is converted or dropped before anything is fitted.</li>
+<li>Read the formula with <code><a href="reference/specify.html">specify_mrqap()</a></code>, which rewrites the terms of other models, drops the terms an MRQAP cannot fit, and names each one.</li>
 <li>Dispatch on the input shape. A single network goes to <code>convertToMatrixList()</code>, which parses the formula with <code>.specify()</code> and builds its matrices with <code>.evaluate_spec()</code>; a list of networks goes to <code>.prepare_list_of_graphs()</code>, which converts each network, drops the ones that are missing a predictor with a warning, and pools the rest.</li>
-<li>Resolve <code>family = "auto"</code> against the dependent variable (binomial for a 0/1 outcome, gaussian otherwise), and resolve <code>directed</code> and <code>diag</code> from the network with <code>manynet::is_directed()</code> and <code><a href="https://stocnet.github.io/manynet/reference/mark_format_tie.html" class="external-link">manynet::is_complex()</a></code>. Report each resolution with <code>snet_info()</code> so that the user can describe these (default) choices in a paper.</li>
+<li>Resolve <code>family = "auto"</code> against the dependent variable (binomial for a 0/1 outcome, gaussian otherwise), and resolve <code>directed</code> and <code>loops</code> from the network with <code>manynet::is_directed()</code> and <code><a href="https://stocnet.github.io/manynet/reference/mark_format_tie.html" class="external-link">manynet::is_complex()</a></code>. Report each resolution with <code>snet_info()</code> so that the user can describe these (default) choices in a paper.</li>
 <li>Call <code>QAPengine()</code>, which parses the formula, fits the baseline model once via <code>fit_qap_model()</code>, then runs <code>times</code> permutations and aggregates them.</li>
 <li>Attach a probabilistic confusion matrix where the outcome is binary.</li>
+<li>Attach the term table, <code>fit$terms</code>, from the parts that <code>.evaluate_spec()</code> records for each column, in the order of the coefficients.</li>
 </ol><p>The result is a <code>netreg</code>, with more specific classes in front of it:</p>
 <table class="table"><thead><tr><th>Result</th>
 <th>Class</th>
@@ -322,12 +357,15 @@
 </div>
 <div class="section level4">
 <h4 id="parallelism">Parallelism<a class="anchor" aria-label="anchor" href="#parallelism"></a></h4>
-<p>Every simulation-heavy function takes:</p>
+<p>Every simulation-heavy function takes <code>times</code>, the number of simulations (default <code>1000</code>; 1,000–10,000 for publication), and <code>control</code>, which holds the rest. Keep the signature to what the function needs: data, a formula or statistic, <code>times</code>, and <code>control</code>. A user sets the controls once, with <code><a href="reference/control_mrqap.html">control_mrqap()</a></code>, and gives the same object to every model and test; each function reads the controls it uses and leaves the others alone, without a message. The controls of parallelism are:</p>
 <ul><li>
-<code>times</code> — the number of simulations (default <code>1000</code>; 1,000–10,000 for publication).</li>
+<code>ncores</code> — a number of cores (default <code>NULL</code>). More than one runs on that many <code>"multisession"</code> workers, and one runs sequentially, whatever <code>strategy</code> says. This is the one to show users first.</li>
 <li>
-<code>strategy</code> — a <a href="https://future.futureverse.org" class="external-link">future</a> plan name (default <code>"sequential"</code>; <code>"multisession"</code>/<code>"multicore"</code> for multiple cores), set with <code>future::plan(strategy)</code> and restored via <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code>. In <code><a href="reference/regression.html">net_regression()</a></code> this is passed through the <code>control</code> list.</li>
-</ul><p>The <code>test_*()</code> family maps simulations with <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> and <code>future_vapply()</code>, using <code>future.seed = TRUE</code> for reproducible parallel RNG. The regression engine wraps the same machinery in <code>setup_future_plan()</code> and <code>run_permutations()</code> (<a href="../R/qap_utils.R">R/qap_utils.R</a>); use those rather than calling <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code> from a new engine function.</p>
+<code>strategy</code> — a <a href="https://future.futureverse.org" class="external-link">future</a> plan name (default <code>"sequential"</code>; <code>"multisession"</code>/<code>"multicore"</code> for multiple cores), used where <code>ncores</code> is <code>NULL</code>.</li>
+<li>
+<code>seed</code> — a number to set the random seed with before the simulations.</li>
+</ul><p>Read <code>control</code> with <code>.resolve_control()</code>, so that a list and <code><a href="reference/control_mrqap.html">control_mrqap()</a></code> are checked the same way. Set the plan with <code>setup_future_plan(strategy, ncores)</code> and restore it via <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code>. Name an argument that says whether ties from a node to itself count <code>loops</code>, never <code>diag</code>, since <code>diag</code> masks <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">base::diag()</a></code> in the same functions.</p>
+<p>The <code>test_*()</code> family maps simulations with <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> and <code>future_vapply()</code>, using <code>future.seed = TRUE</code> for reproducible parallel RNG. The regression engine uses the same <code>setup_future_plan()</code>, and <code>run_permutations()</code> (<a href="../R/qap_utils.R">R/qap_utils.R</a>); use those rather than calling <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code> from a new engine function.</p>
 <p>Progress reporting is not a separate argument. It is read from <code>options(snet_verbosity)</code>, so that one option governs how talkative every stocnet package is.</p>
 </div>
 <div class="section level4">
@@ -356,7 +394,7 @@
 <li>Use <a href="https://cli.r-lib.org" class="external-link">cli</a> inline classes to mark up what you refer to — <code>{.fn}</code> for functions, <code>{.arg}</code>/<code>{.var}</code> for arguments and variables, <code>{.val}</code> for values, <code>{.pkg}</code> for packages, <code>{.url}</code> for links.</li>
 <li>Use <a href="https://cli.r-lib.org" class="external-link">cli</a>’s pluralisation rather than hand-written branches: <code>snet_warn("Dropped {length(dropped)} network{?s}.")</code>.</li>
 </ul><p>Prefer “<code>{.arg times}</code> must be a positive whole number” over “invalid input”.</p>
-<p>Report every default the model resolves for itself, with <code>snet_info()</code>: the family read from the outcome’s values, the directedness read from the network, and any fallback such as <code>permute = "predictor"</code> reducing to <code>"outcome"</code>. A model the user did not state is one they cannot describe in a paper. Because this output is silent by default, a broken message is invisible in every other test, so cover it in <a href="../tests/testthat/test-qap_reporting.R">tests/testthat/test-qap_reporting.R</a>, which runs with <code>snet_verbosity = "verbose"</code>. Where a function needs a package from <code>Suggests</code>, name it and say how to get it: <code>snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))</code>.</p>
+<p>Report every default the model resolves for itself, with <code>snet_info()</code>: the family read from the outcome’s values, the directedness read from the network, and any fallback such as <code>permute = "predictor"</code> reducing to <code>"outcome"</code>. A model the user did not state is one they cannot describe in a paper. Because this output is silent by default, a broken message is invisible in every other test, so cover it in <a href="../tests/testthat/test-qap_reporting.R">tests/testthat/test-qap_reporting.R</a>, which runs with <code>snet_verbosity = "verbose"</code>. Check a message there with <code>expect_any_message()</code> from <code>helper-infernet.R</code> rather than <code>expect_message()</code>, which lets every other message of the call through to the console. Where a function needs a package from <code>Suggests</code>, name it and say how to get it: <code>snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))</code>.</p>
 <p>The model specification advice printed by <code>specificationAdvice()</code> is informational, not load-bearing, so it belongs at <code>snet_info()</code>.</p>
 </div>
 </div>
@@ -370,7 +408,7 @@
 <th>RSiena</th>
 <th>MoNAn</th>
 </tr></thead><tbody><tr><td>Model</td>
-<td><code>net_regression(advice ~ ego(age) + friends, net)</code></td>
+<td><code>estimate_mrqap(advice ~ ego(age) + friends, net)</code></td>
 <td>
 <code>estimate_dynam(calls ~ inertia + recip + trans(friends))</code>, or <code>make_specification(rate = ~ ..., choice = ~ ..., data = net)</code>
 </td>
@@ -393,7 +431,7 @@
 </td>
 <td>a string</td>
 </tr><tr><td>A bare term</td>
-<td>a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (<code>recip</code>)</td>
+<td>a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (<code>recip</code>), or a goldfish effect that is then dropped (<code>inertia</code>)</td>
 <td>an effect with its defaults, reading the dependent events: <code>~ inertia + recip</code>
 </td>
 <td>—</td>
@@ -406,8 +444,8 @@
 <td>—</td>
 <td>—</td>
 </tr><tr><td>Options</td>
-<td>named arguments, as goldfish</td>
-<td>named arguments: <code>transformer_fn</code>, <code>summarizer_fn</code>, <code>weighted</code>, <code>window</code>, <code>type</code>, <code>history</code>, <code>sub_type</code> (DyNAM-i), <code>is_two_mode</code>; stocnet/goldfish#122 proposes <code>perspective</code> for <code>type</code>, and <code>path_fn</code>
+<td>named arguments, as goldfish; <code>levels</code> as ergm</td>
+<td>named arguments: <code>transformer_fn</code>, <code>summarizer_fn</code>, <code>weighted</code>, <code>window</code>, <code>type</code>, <code>history</code>, <code>sub_type</code> (DyNAM-i), <code>is_two_mode</code>; stocnet/goldfish#122 proposes <code>perspective</code> for <code>type</code>, <code>path_fn</code>, and <code>levels</code>
 </td>
 <td>named arguments: <code>pow</code>, <code>diff</code>, <code>levels</code>, <code>dir</code>, <code>sign.action</code>
 </td>
@@ -431,7 +469,7 @@
 <td><code>fix = TRUE</code></td>
 <td>—</td>
 </tr><tr><td>Group effects</td>
-<td>random intercepts, as <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a>: <code>(1 \| sender)</code>, <code>(1 \| receiver)</code>, <code>(1 \| reporter)</code>, <code>(1 \| network)</code>, or the same in <code>control</code>
+<td>random intercepts, as <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a>: <code>(1 \| sender)</code>, <code>(1 \| receiver)</code>, <code>(1 \| reporter)</code>, <code>(1 \| network)</code>, or the same in <code>control</code>; fixed effects after a bare bar, as <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>: <code>\| sender + receiver</code>
 </td>
 <td>none; <code>\|</code> and <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> are refused in the effects formula, and inside <code>support_constraint</code> a bar is a boolean OR</td>
 <td>—</td>
@@ -456,40 +494,51 @@
 <li>
 <strong>A bare name is a layer, tie attribute, or dyadic covariate.</strong> Both <code>layer</code> and <code>tie(layer)</code> work, and <code>tie()</code> gives 0/1 unless <code>weighted = TRUE</code>. Where no layer or tie attribute has the name, a term that can stand alone is that term with its defaults, so <code>~ recip</code> reads the outcome’s reverse tie, as goldfish’s endogenous <code>recip</code> does. A name that is both a layer and such a term aborts. The argument of a term is read by the term’s kind: a node attribute for <code>ego()</code>, a layer for <code>indeg()</code>.</li>
 <li>
-<strong><code>:</code> and <code>*</code> make interactions of any order.</strong> These are the product of the operands. An operand with several columns, e.g. <code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code>, gives one product for each.</li>
+<strong><code>:</code> and <code>*</code> make interactions of any order.</strong> These are the product of the operands. An operand with several columns, e.g. <code>same(x, diff = TRUE)</code>, gives one product for each.</li>
 <li><strong>A two-mode attribute is read on the mode of each side.</strong></li>
 <li>
-<strong>A term a model cannot fit aborts and says why.</strong> For example, since MRQAPs rely on permutation, permuting an outcome-based predictor cannot work and will be refused.</li>
+<strong>A term a model cannot fit is dropped, and the model says why.</strong> A formula written for another model should still run here, without the terms this model cannot fit, so that it does not stop the investigation. <code><a href="reference/specify.html">specify_mrqap()</a></code>, which <code><a href="reference/regression.html">estimate_mrqap()</a></code> calls on every formula, drops them with one warning that names each term and the reason, and the rest is fitted. It rewrites a term that has an MRQAP equivalent, such as ergm’s <code>nodematch("dept")</code> as <code>same(dept)</code>, and names a term that means something different here, such as goldfish’s <code>sim()</code>, with <code>snet_info()</code>. An interaction with such a term is dropped whole. <code><a href="reference/specify.html">specify_dynam()</a></code> and <code><a href="reference/specify.html">specify_ergm()</a></code> do the same for goldfish and ergm. Each reads the formula into infernet’s terms, and then writes them for its model, so a new model needs one reader and one writer, not a translation from each of the others. For example, since MRQAPs rely on permutation, goldfish’s <code>inertia</code> or <code>trans</code>, which read the outcome’s own ties, are dropped. A formula aborts only where a name is known to no model, which is probably a typing error and gets the nearest name as a suggestion, where no term is left, or where a term is refused: <code>tie()</code> and <code>indeg()</code> of the outcome layer would predict the outcome from itself, and <code>same()</code> twice on one attribute, since the columns of <code>same(x, diff = TRUE)</code> add up to <code>same(x)</code>.</li>
 <li>
-<strong>A column name joins its parts with underscores.</strong> The term comes first, then its layer, attribute, and category: <code>ego_age</code>, <code>indeg_friends</code>, <code>tertius_friends_age</code>, <code>match_dept_sales</code>, and <code>mix_dept_sales_hr</code> (the sender’s category, then the receiver’s). <code>indeg(friends, type = "ego")</code> gives <code>ego_indeg_friends</code>. A character that a name cannot hold, such as a space in a category, becomes one underscore, and an interaction joins its columns with <code>:</code>. The name is a label: since attributes and categories can hold underscores, do not parse it back into its parts. A categorical <code>ego()</code> or <code>alter()</code> names its reference category in a message, not in each column.</li>
+<strong>A column name joins its parts with underscores.</strong> The term comes first, then its layer, attribute, and category: <code>ego_age</code>, <code>indeg_friends</code>, <code>tertius_friends_age</code>, <code>same_dept_sales</code>, and <code>mix_dept_sales_hr</code> (the sender’s category, then the receiver’s). <code>indeg(friends, type = "ego")</code> gives <code>ego_indeg_friends</code>. A character that a name cannot hold, such as a space in a category, becomes one underscore, and an interaction joins its columns with <code>:</code>. The name is a label: since attributes and categories can hold underscores, do not parse it back into its parts. The parts are kept instead in the fit’s term table, <code>fit$terms</code>, one row for each coefficient, and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> adds them to the estimates: <code>effect</code> (the term, such as <code>"same"</code>, or <code>"intercept"</code> or <code>"interaction"</code>), <code>layer</code>, <code>attribute</code>, <code>category</code> as the data hold it, <code>reference</code>, and, for an interaction, <code>operands</code>, the columns it multiplies. A <code>mix()</code> pair is written as a tie is in DOT, <code>"sales -&gt; hr"</code>, or <code>"sales -- hr"</code> where the pair is unordered. A categorical <code>ego()</code>, <code>alter()</code>, or <code>mix()</code> names its reference category in a message and in the term table, not in each column. <code>term</code> is the column’s name, as in <a href="https://broom.tidymodels.org/" class="external-link">broom</a>; goldfish’s <code>coef_layout()</code> calls the same field <code>name</code>.</li>
+<li>
+<strong>A categorical term leaves out a reference only where its columns cover every dyad.</strong> Columns that cover every dyad add up to the intercept, so one of them must be left out. <code>ego()</code>, <code>alter()</code>, and <code>mix()</code> cover every dyad, and leave out their first category or pair. <code>same(x, diff = TRUE)</code> does not: a dyad of two different categories is in none of its columns, and is the reference, so it keeps a column for every category. An option of an existing term is preferred to a new term where the columns mean the same thing, as ergm’s <code>nodematch(diff = TRUE)</code> is; <code>mix()</code> stays its own term, since most of its pairs are not the same.</li>
+<li>
+<strong><code>levels =</code> chooses the categories that get a column, as in ergm.</strong> <code>ego()</code>, <code>alter()</code>, <code>same()</code>, and <code>mix()</code> take it. Its values are names, or positions in the order of the columns, where negative positions leave those out, as ergm’s <code>levels = -1</code>. A name is a category as the data hold it, or for <code>mix()</code>, a pair as the term table writes it, <code>"sales -&gt; hr"</code>; <code>mix()</code> reads pairs with <code>levels =</code>, where ergm uses <code>levels2 =</code>, and orders them as ergm does, the sender’s category changing fastest, so that the positions agree. The categories left out are the reference together, by rule 8; where every one is chosen, the first chosen is. An unknown name aborts and lists the categories. A term with more than ten categories and no <code>levels =</code> warns, as goldfish plans to (stocnet/goldfish#122).</li>
 </ol></div>
 <div class="section level4">
 <h4 id="the-dictionary">The dictionary<a class="anchor" aria-label="anchor" href="#the-dictionary"></a></h4>
-<table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr><th>infernet / goldfish</th>
+<p>The MRQAP column is what <code><a href="reference/regression.html">estimate_mrqap()</a></code> does with the term: it <strong>fits</strong> it, it fits it and <strong>warns</strong>, it <strong>drops</strong> it and fits the rest, or it <strong>refuses</strong> the formula. The registry <code>.formula_terms()</code> holds the same for each term (<code>mrqap</code>), with the term’s name in the other models, and a test checks that every registered term has a row here. The registry names each model, not its package: <code>dynam</code> for a DyNAM or REM in goldfish, <code>saom</code> for RSiena, and <code>ergm</code>.</p>
+<p>Each <code>specify_*()</code> function records what its model makes of each term of a formula, and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> returns that record. The statuses are one vocabulary, <code>.statuses()</code>, for every model: <strong>fits</strong>, <strong>adapted</strong> (rewritten as the model’s equivalent), <strong>interpreted</strong> (kept, but the model defines it differently), <strong>warns</strong>, <strong>drops</strong>, and <strong>refuses</strong>. <code>test-model_specify_record.R</code> holds the expected status of every registered term in every model.</p>
+<p>The ergm column is also what <code><a href="reference/specify.html">specify_ergm()</a></code> writes each term as, through the term’s <code>to_ergm</code> function in the registry: the first ergm term named, or else <code>edgecov</code> of the matrix that infernet builds. An undirected network reads <code>ego()</code> and <code>alter()</code> as <code>nodecov</code> or <code>nodefactor</code>. A term with no ergm name, or with an ergm name but no <code>to_ergm</code>, such as <code>common_sender</code>, is dropped. A cognitive social structure and a list of networks abort.</p>
+<table style="width:100%;" class="table"><colgroup><col width="16%"><col width="16%"><col width="16%"><col width="16%"><col width="16%"><col width="16%"></colgroup><thead><tr><th>infernet / goldfish</th>
+<th>MRQAP</th>
 <th>Meaning</th>
-<th>ergm</th>
-<th>RSiena</th>
+<th>ERGM (ergm)</th>
+<th>SAOM (RSiena)</th>
 <th>MoNAn</th>
 </tr></thead><tbody><tr><td><code>ego(x)</code></td>
-<td>the sender’s value</td>
+<td>fits</td>
+<td>the sender’s value; <code>levels =</code> chooses the categories</td>
 <td>
-<code>nodeocov</code>, <code>nodeofactor</code>
-</td>
+<code>nodeocov</code>, <code>nodeofactor</code>; <code>b1cov</code>, <code>b1factor</code> in a two-mode network</td>
 <td><code>egoX</code></td>
 <td>—</td>
 </tr><tr><td><code>alter(x)</code></td>
-<td>the receiver’s value</td>
+<td>fits</td>
+<td>the receiver’s value; <code>levels =</code> chooses the categories</td>
 <td>
-<code>nodeicov</code>, <code>nodeifactor</code>
-</td>
+<code>nodeicov</code>, <code>nodeifactor</code>; <code>b2cov</code>, <code>b2factor</code> in a two-mode network</td>
 <td><code>altX</code></td>
 <td><code>alter_covariate</code></td>
 </tr><tr><td><code>same(x)</code></td>
-<td>1 where both share a value</td>
-<td><code>nodematch</code></td>
+<td>fits</td>
+<td>1 where both share a value; with <code>levels =</code>, a value of those categories</td>
+<td>
+<code>nodematch</code>; <code>edgecov</code> in a two-mode network</td>
 <td><code>sameX</code></td>
 <td><code>same_covariate</code></td>
 </tr><tr><td><code>diff(x)</code></td>
+<td>fits</td>
 <td>
 <code>transformer_fn(x_i − x_j)</code>, absolute by default</td>
 <td>
@@ -498,35 +547,52 @@
 <td><code>absDiffX</code></td>
 <td>—</td>
 </tr><tr><td><code>diff(x, transformer_fn = identity)</code></td>
+<td>fits</td>
 <td>the signed difference</td>
 <td><code>diff</code></td>
 <td><code>diffX</code></td>
 <td>—</td>
 </tr><tr><td><code>dist(x)</code></td>
+<td>warns</td>
 <td>deprecated alias of <code>diff(x)</code>
 </td>
 <td><code>absdiff</code></td>
 <td><code>absDiffX</code></td>
 <td>—</td>
 </tr><tr><td><code>sim(x)</code></td>
+<td>fits</td>
 <td>1 − |d| / range</td>
 <td><code>edgecov</code></td>
 <td>
 <code>simX</code>, centred</td>
 <td>
 <code>sim_covariate</code>, the same 1 − |d| / range</td>
+</tr><tr><td><code>same(x, diff = TRUE)</code></td>
+<td>fits</td>
+<td>one 0/1 column per category both hold, or per category in <code>levels =</code>
+</td>
+<td><code>nodematch(diff = TRUE)</code></td>
+<td>—</td>
+<td>—</td>
 </tr><tr><td><code>match(x)</code></td>
-<td>one 0/1 column per category both hold</td>
+<td>warns</td>
+<td>deprecated alias of <code>same(x, diff = TRUE)</code>
+</td>
 <td><code>nodematch(diff = TRUE)</code></td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td><code>mix(x)</code></td>
-<td>one 0/1 column per pair of categories, less the first</td>
-<td><code>nodemix</code></td>
+<td>fits</td>
+<td>one 0/1 column per pair of categories, less the first, or per pair in <code>levels =</code>
+</td>
+<td>
+<code>nodemix</code>, with <code>levels2 =</code>
+</td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td>
 <code>tie(layer)</code>, or the bare name</td>
+<td>fits; refuses the outcome layer</td>
 <td>another layer as a dyadic covariate</td>
 <td><code>edgecov</code></td>
 <td><code>X</code></td>
@@ -534,6 +600,7 @@
 </tr><tr><td>
 <code>exchange(layer)</code>, <code>recip(layer)</code>
 </td>
+<td>fits</td>
 <td>the reverse tie in another layer</td>
 <td>
 <code>edgecov</code> of the transpose</td>
@@ -542,57 +609,173 @@
 </tr><tr><td>
 <code>recip</code>, <code>recip()</code>
 </td>
-<td>the reverse tie in the outcome; warns, since it is not permuted with the outcome</td>
+<td>warns; fits on a panel</td>
+<td>the reverse tie in the previous wave on a panel; otherwise the reverse tie in the outcome, which is not permuted with the outcome</td>
 <td><code>mutual</code></td>
 <td><code>recip</code></td>
 <td><code>reciprocity_basic</code></td>
 </tr><tr><td>
 <code>indeg(layer)</code>, <code>outdeg(layer)</code>
 </td>
+<td>fits; refuses the outcome layer</td>
 <td>a node’s degree in another layer, on the <code>type</code> side</td>
 <td>
 <code>edgecov</code>, or <code>nodeicov</code>/<code>nodeocov</code> of the degree</td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td><code>tertius(layer, x)</code></td>
+<td>fits</td>
 <td>the mean of x over j’s other in-neighbours</td>
 <td><code>edgecov</code></td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td><code>tertius_diff(layer, x)</code></td>
+<td>fits</td>
 <td>|x_i − <code>tertius(layer, x)</code>|</td>
 <td><code>edgecov</code></td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td><code>global(x)</code></td>
-<td>a network-level variable, in a list of networks; in goldfish a main effect in rate models, and in choice models only in interactions</td>
+<td>fits, in a list of networks</td>
+<td>a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions</td>
 <td>—</td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td><code>(1 \| sender)</code></td>
+<td>fits</td>
 <td>a random intercept for each sender, receiver, reporter, or network</td>
 <td>—</td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td><code>\| sender</code></td>
+<td>fits</td>
+<td>a fixed effect for each sender, receiver, reporter, or network; goldfish drops it</td>
+<td>
+<code>sender</code>, <code>receiver</code>
+</td>
 <td>—</td>
 <td>—</td>
 </tr><tr><td>
 <code>a:b</code>, <code>a*b</code>
 </td>
+<td>fits</td>
 <td>the product, of any order</td>
 <td>
-<code>:</code> and <code>*</code>
-</td>
+<code>:</code> and <code>*</code>, converted as <code>edgecov</code> of the product</td>
 <td><code>set_interaction()</code></td>
 <td>—</td>
-</tr></tbody></table><p>Two terms still differ from goldfish:</p>
+</tr><tr><td>
+<code>inertia</code>, <code>inertia()</code>
+</td>
+<td>drops; fits on a panel</td>
+<td>the tie from i to j in the previous wave; goldfish: the past events from i to j</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td>
+<code>trans</code>, <code>trans()</code>
+</td>
+<td>drops; fits on a panel</td>
+<td>the two-paths i → k → j in the previous wave; goldfish: the two-paths i → k → j</td>
+<td>
+<code>ttriple</code>, <code>dgwesp(type = "OTP")</code>; <code>triangle</code> in an undirected network</td>
+<td><code>transTrip</code></td>
+<td>—</td>
+</tr><tr><td>
+<code>cycle</code>, <code><a href="https://rdrr.io/r/stats/time.html" class="external-link">cycle()</a></code>
+</td>
+<td>drops</td>
+<td>goldfish: the two-paths j → k → i</td>
+<td>
+<code>ctriple</code>, <code>dgwesp(type = "ITP")</code>
+</td>
+<td><code>cycle3</code></td>
+<td>—</td>
+</tr><tr><td>
+<code>common_sender</code>, <code>common_sender()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the nodes k with k → i and k → j</td>
+<td><code>dgwesp(type = "ISP")</code></td>
+<td>
+<code>gwespBF</code>, nearest</td>
+<td>—</td>
+</tr><tr><td>
+<code>common_receiver</code>, <code>common_receiver()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the nodes k with i → k and j → k</td>
+<td><code>dgwesp(type = "OSP")</code></td>
+<td>
+<code>gwespFB</code>, nearest</td>
+<td>—</td>
+</tr><tr><td>
+<code>four</code>, <code>four()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the four-cycles that a tie from i to j would close</td>
+<td><code>cycle(4)</code></td>
+<td><code>cycle4</code></td>
+<td>—</td>
+</tr><tr><td>
+<code>triangle</code>, <code>triangle()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the undirected triangles of the sender, in a rate model</td>
+<td><code>triangle</code></td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td>
+<code>node_trans</code>, <code>node_trans()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the transitive triangles of a node</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td>
+<code>degree</code>, <code>degree()</code>
+</td>
+<td>drops</td>
+<td>goldfish: the undirected degree of the sender, in a rate model</td>
+<td><code>degree</code></td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td>
+<code>mixed_trans()</code>, <code>mixed_cycle()</code>, <code>mixed_common_sender()</code>, <code>mixed_common_receiver()</code>
+</td>
+<td>drops</td>
+<td>goldfish: a closure through two layers, <code>list(net1, net2)</code>
+</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td><code>ego_alter_interaction()</code></td>
+<td>drops</td>
+<td>goldfish: the product of the sender’s and the receiver’s values; write <code>ego(x):alter(y)</code>
+</td>
+<td><code>nodeocov(x):nodeicov(y)</code></td>
+<td><code>egoXaltX</code></td>
+<td>—</td>
+</tr><tr><td>
+<code>size()</code>, <code>dyad()</code>, <code>alterdeg()</code>, <code>alterpop()</code>, <code>egodeg()</code>, <code>egopop()</code>, <code>intercept()</code>, <code>dyadXdiff()</code>, <code>dyadXego()</code>, <code>sizeXdiff()</code>, <code>sizeXego()</code>
+</td>
+<td>drops</td>
+<td>goldfish: DyNAM-i statistics of interaction groups</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr></tbody></table><p>goldfish’s endogenous effects read the dependent events where no network is named. In an MRQAP, such a term reads the outcome’s own ties, which permuting the outcome does not permute with it, so it is dropped. <code>trans(friends)</code> names another layer, and goldfish would read that layer instead. It is also dropped for now, since its matrix is not yet built here, and the warning says so.</p>
+<p>Two terms still differ from goldfish:</p>
 <ul><li>goldfish defines <code>sim(x)</code> as <code>-transformer_fn(x_i - x_j)</code>, with <code>abs</code> by default, where infernet uses 1 − |d| / range.</li>
 <li>goldfish includes ego in <code>tertius()</code> and <code>tertius_diff()</code>, where infernet reads only j’s other in-neighbours.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="adding-a-term">Adding a term<a class="anchor" aria-label="anchor" href="#adding-a-term"></a></h4>
-<ol style="list-style-type: decimal"><li>Add an entry to <code>.formula_terms()</code> in <a href="../R/model_formula.R">R/model_formula.R</a>: its <code>formals</code>, its <code>kind</code>, its builder, whether it accepts a two-mode network, what it does with the outcome layer, and its nearest ergm term.</li>
-<li>Write the builder. It takes the parsed operand and the context, and returns a named list of matrices: one for most terms, several for a term like <code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code>. <code>.evaluate_spec()</code> lifts each to a CSS array where needed.</li>
-<li>Add a row to the dictionary above, and a test to <code>test-formula_terms.R</code> that checks the matrix against a value computed by hand or by a loop.</li>
-<li>Add the term to the <code>formula</code> parameter of <code><a href="reference/regression.html">net_regression()</a></code>.</li>
+<ol style="list-style-type: decimal"><li>Add an entry to <code>.formula_terms()</code> in <a href="../R/model_formula.R">R/model_formula.R</a>: its <code>formals</code>, its <code>kind</code>, its builder, whether it accepts a two-mode network, what it does with the outcome layer, its MRQAP status (<code>mrqap</code>, with a <code>reason</code> where it warns or drops), its nearest DyNAM, SAOM, and ERGM terms (<code>dynam</code>, <code>saom</code>, <code>ergm</code>), and its writer for ergm (<code>to_ergm</code>, in <a href="../R/model_formula_ergm.R">R/model_formula_ergm.R</a>). A term whose meaning or name differs in goldfish also needs a line in <code>.dynam_operand()</code> or <code>.interpreted_dynam()</code> in <a href="../R/model_specify.R">R/model_specify.R</a>. A term of another model that MRQAP cannot fit goes in <code>.dynam_terms()</code> with <code>mrqap = "drops"</code> and a <code>reason</code>, and needs no builder.</li>
+<li>Write the builder. It takes the parsed operand and the context, and returns a named list of matrices: one for most terms, several for a term like <code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code>. <code>.evaluate_spec()</code> lifts each to a CSS array where needed. <code>.build_operand()</code> records each column’s term, layer, and attribute from the term’s <code>kind</code>. A builder that knows more, such as each column’s category, gives it in a <code>parts</code> attribute of the list it returns.</li>
+<li>Add a row to the dictionary above, with its MRQAP status, a row to <code>expected_status</code> in <code>test-model_specify_record.R</code>, with its status in each model, and a test to <code>test-formula_terms.R</code> that checks the matrix against a value computed by hand or by a loop.</li>
+<li>Add the term to the <code>formula</code> parameter of <code><a href="reference/regression.html">estimate_mrqap()</a></code>.</li>
 </ol></div>
 </div>
 </div>
@@ -601,7 +784,7 @@
 <div class="section level3">
 <h3 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a></h3>
 <p>This package uses the <code>testthat</code> package for testing functions. Please see the <a href="https://testthat.r-lib.org" class="external-link">testthat website</a> for more details. <code>testthat</code> edition 3 with parallel execution is configured in <code>DESCRIPTION</code> (<code>Config/testthat/parallel: true</code>). <code>Config/testthat/start-first</code> should prioritise the test files that take longest to run.</p>
-<p>Tests in <code>tests/testthat/</code> mirror the <code>R/</code> files for the exported functions (<code>test-net_regression.R</code>, <code>test-model_tests.R</code>), and are grouped by contract for the engine:</p>
+<p>Tests in <code>tests/testthat/</code> mirror the <code>R/</code> files for the exported functions (<code>test-estimate_mrqap.R</code>, <code>test-model_tests.R</code>), and are grouped by contract for the engine:</p>
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>File</th>
 <th>Asserts</th>
 </tr></thead><tbody><tr><td><code>test-qap_estimators.R</code></td>
@@ -616,12 +799,23 @@
 <td>the messages that report what the model resolved, with verbosity on</td>
 </tr><tr><td><code>test-qap_shape_css.R</code></td>
 <td>the CSS shape of the engine, on hand-built arrays</td>
-</tr><tr><td><code>test-net_regression_css.R</code></td>
-<td>CSS models through <code><a href="reference/regression.html">net_regression()</a></code>, from <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> networks</td>
+</tr><tr><td><code>test-qap_panel.R</code></td>
+<td>a longitudinal network as a panel: the waves, the lagged terms, one permutation for every wave, and its missing cells</td>
+</tr><tr><td><code>test-qap_missing.R</code></td>
+<td>that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the <code>missing</code> control</td>
+</tr><tr><td><code>test-estimate_mrqap_css.R</code></td>
+<td>CSS models through <code><a href="reference/regression.html">estimate_mrqap()</a></code>, from <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> networks</td>
 </tr><tr><td><code>test-qap_testdist.R</code></td>
 <td>that the p-values can be read back from the stored null distribution</td>
 </tr><tr><td><code>test-formula_spec.R</code></td>
 <td>the grammar: named arguments, interactions of any order, the outcome, and refused formulas</td>
+</tr><tr><td><code>test-model_specify.R</code></td>
+<td>what the terms of each model become in each <code>specify_*()</code> function, which are dropped, and how the model a formula was written for is read</td>
+</tr><tr><td><code>test-model_specify_record.R</code></td>
+<td>the status each model gives each registered term, the record of each term, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and the columns it names, and formulas from goldfish’s documentation</td>
+</tr><tr><td><code>test-model_specify_ergm.R</code></td>
+<td>
+<code><a href="reference/specify.html">specify_ergm()</a></code> with a network: each term’s ergm term or <code>edgecov()</code> matrix, two-mode and undirected networks, and an ergm fit of the result</td>
 </tr><tr><td><code>test-formula_terms.R</code></td>
 <td>each term’s matrix against a value computed by hand, and the dictionary</td>
 </tr><tr><td><code>test-model_results.R</code></td>
@@ -635,7 +829,7 @@
 <li>
 <code>formula_net()</code> — a six-node multiplex network with two layers, small enough that a term’s matrix can be checked by hand.</li>
 <li>
-<code>qap_reference_data()</code> — rebuilds the dyad-level data frame the engine fits, so a baseline coefficient can be compared against <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>, <code><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm()</a></code>, <code><a href="https://rdrr.io/pkg/MASS/man/glm.nb.html" class="external-link">MASS::glm.nb()</a></code>, <code><a href="https://rdrr.io/pkg/pscl/man/zeroinfl.html" class="external-link">pscl::zeroinfl()</a></code>, <code><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lme4::lmer()</a></code> or <code>fixest::feglm()</code> on identical data.</li>
+<code>qap_reference_data()</code> — rebuilds the dyad-level data frame the engine fits, so a baseline coefficient can be compared against <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>, <code><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm()</a></code>, <code><a href="https://rdrr.io/pkg/MASS/man/glm.nb.html" class="external-link">MASS::glm.nb()</a></code>, <code><a href="https://rdrr.io/pkg/pscl/man/zeroinfl.html" class="external-link">pscl::zeroinfl()</a></code>, <code><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lme4::lmer()</a></code> or <code><a href="https://lrberge.github.io/fixest/reference/feglm.html" class="external-link">fixest::feglm()</a></code> on identical data.</li>
 <li>
 <code>expect_qap_shape()</code> — the shape contract every estimator meets, whatever it fits underneath: named coefficients, and <code>lower</code>/<code>larger</code>/<code>abs</code> as two-row matrices of proportions with matching dimnames.</li>
 </ul><p>Four things are worth asserting for every estimator that is added:</p>
@@ -655,7 +849,7 @@
 <h3 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h3>
 <p>Roxygen is configured with <code>markdown = TRUE</code>; <code>NAMESPACE</code> and all <code>man/*.Rd</code> files are generated — never hand-edit them. Run <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> after changing any roxygen comment.</p>
 <ul><li>Related functions share one roxygen block via <code>@name</code>/<code>@rdname</code>, matching the file organisation above.</li>
-<li>Document each argument once. <code><a href="reference/regression.html">net_regression()</a></code> takes its options through a <code>control</code> list, so document each entry of that list as a bullet under <code>@param control</code> rather than as its own <code>@param</code>. A stray <code>@param</code> for something that is no longer a formal argument is an R CMD check warning, and the duplicated blocks that the engine merge introduced were exactly that.</li>
+<li>Document each argument once. <code><a href="reference/regression.html">estimate_mrqap()</a></code> takes its options through a <code>control</code> list, and each control is a formal argument of <code><a href="reference/control_mrqap.html">control_mrqap()</a></code>, documented there with its own <code>@param</code>. To rename a control, rename the argument and add the old name to <code>.control_renames()</code>, so that a script with the old name still runs and is warned. A stray <code>@param</code> for something that is no longer a formal argument is an R CMD check warning, and the duplicated blocks that the engine merge introduced were exactly that.</li>
 <li>Every exported function needs a runnable <code>@examples</code> block: examples are run by R CMD check, and they are also the fastest documentation for users. Prefer the bundled <code>ison_*</code>/<code>fict_*</code> networks from <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> over ad hoc constructions, and keep <code>times</code> small so the example is fast.</li>
 <li>Use the native pipe <code>|&gt;</code> in examples, never <code>%&gt;%</code>. <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> shipped examples that called <code>%&gt;%</code> after the re-export was removed, and every one of them failed R CMD check.</li>
 <li>Cite the source of a method with <code>@references</code> in the ecosystem’s format (authors, year, title, journal, and <code>\doi{}</code> where available), so that users can trace an implementation back to its definition.</li>
@@ -673,7 +867,7 @@
 <div class="section level3">
 <h3 id="newsmd-conventions">
 <code>NEWS.md</code> conventions<a class="anchor" aria-label="anchor" href="#newsmd-conventions"></a></h3>
-<p><code>NEWS.md</code> groups each version’s changes under <code>##</code> headings that mirror the website function overview (<code>pkgdown/_pkgdown.yml</code> <code>reference:</code> titles). Lead with <code>## Package</code> (package-wide/website/infrastructure changes), then <code>## Tests</code> (the <code>test_*()</code> family) and <code>## Regression</code> (<code><a href="reference/regression.html">net_regression()</a></code> and the engine behind it). Each heading appears at most once per version.</p>
+<p><code>NEWS.md</code> groups each version’s changes under <code>##</code> headings that mirror the website function overview (<code>pkgdown/_pkgdown.yml</code> <code>reference:</code> titles). Lead with <code>## Package</code> (package-wide/website/infrastructure changes), then <code>## Tests</code> (the <code>test_*()</code> family) and <code>## Regression</code> (<code><a href="reference/regression.html">estimate_mrqap()</a></code> and the engine behind it). Each heading appears at most once per version.</p>
 <p>Start each bullet with a verb matching the change type:</p>
 <ul><li>
 <code>Added ...</code> — new functionality</li>

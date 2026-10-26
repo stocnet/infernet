@@ -1,7 +1,7 @@
 # Reporting network regression and test results
 
 [`print()`](https://rdrr.io/r/base/print.html) shows the result of
-[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 or of a test as a report: how the null distribution was made, the
 estimates, and the permutation p-values.
 
@@ -14,7 +14,7 @@ for each term of a model, and
 row for the whole model. They cover:
 
 - `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`, from
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 
 - `network_test`, from
   [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
@@ -112,7 +112,7 @@ print(x, ...)
 - x:
 
   A model or test result, e.g. a `netreg` object, as returned by
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md),
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
   or a `network_test` object, as returned by
   [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
   [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md),
@@ -169,7 +169,11 @@ print(x, ...)
 [`glance()`](https://generics.r-lib.org/reference/glance.html) return a
 tibble. [`tidy()`](https://generics.r-lib.org/reference/tidy.html) gives
 the columns `term`, `estimate`, `statistic`, and `p.value` for a
-regression, and
+regression. For a `netreg`, it also adds the columns of the fit's term
+table, `fit$terms`: the `effect` (the formula term) each coefficient
+comes from, its `layer`, `attribute`, `category`, and `reference`
+category, and for an interaction its `operands`. These group the
+coefficients without parsing their names. and
 [`glance()`](https://generics.r-lib.org/reference/glance.html) gives the
 fit statistics that the model keeps. For a `network_test`, both give one
 row with the observed statistic, the mean and standard deviation of the
@@ -192,13 +196,15 @@ interval around the estimate.
 ## See also
 
 Other models:
+[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
 [`regression`](https://stocnet.github.io/infernet/reference/regression.md),
+[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
 [`tests`](https://stocnet.github.io/infernet/reference/tests.md)
 
 ## Examples
 
 ``` r
-css_model <- net_regression(advice ~ same(dept) + reports,
+css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
 print(css_model, print_b = TRUE)
 #> 
@@ -254,12 +260,13 @@ print(css_model, print_b = TRUE)
 #> 
 #> 
 tidy(css_model)
-#> # A tibble: 3 × 4
-#>   term        estimate statistic p.value
-#>   <chr>          <dbl>     <dbl>   <dbl>
-#> 1 (Intercept)   -1.07     -38.5       NA
-#> 2 same_dept      0.552      9.53       0
-#> 3 reports        3.82      15.3        0
+#> # A tibble: 3 × 10
+#>   term      estimate statistic p.value effect layer attribute category reference
+#>   <chr>        <dbl>     <dbl>   <dbl> <chr>  <chr> <chr>     <chr>    <chr>    
+#> 1 (Interce…   -1.07     -38.5       NA inter… NA    NA        NA       NA       
+#> 2 same_dept    0.552      9.53       0 same   NA    dept      NA       NA       
+#> 3 reports      3.82      15.3        0 tie    repo… NA        NA       NA       
+#> # ℹ 1 more variable: operands <list>
 glance(css_model)
 #> # A tibble: 1 × 11
 #>   family   logLik   AIC    BIC deviance null.deviance df.residual  nobs permute 

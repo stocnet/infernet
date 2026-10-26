@@ -11,7 +11,7 @@ gaussian, binomial, poisson, negative binomial, and zero-inflated
 Poisson families;
 two permutation schemes: &quot;predictor&quot; (Dekker's double semi-partialling)
 and &quot;outcome&quot;;
-random intercepts (lme4);
+random intercepts (lme4), and fixed effects, absorbed as in {fixest};
 robust (HC3) standard errors;
 lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled;
@@ -29,7 +29,7 @@ gaussian, binomial, poisson, negative binomial, and zero-inflated
 Poisson families;
 two permutation schemes: &quot;predictor&quot; (Dekker's double semi-partialling)
 and &quot;outcome&quot;;
-random intercepts (lme4);
+random intercepts (lme4), and fixed effects, absorbed as in {fixest};
 robust (HC3) standard errors;
 lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled;
@@ -43,7 +43,7 @@ cognitive social structures, detected rather than declared (see below).
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,10 @@ cognitive social structures, detected rather than declared (see below).
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -82,7 +86,7 @@ matrices and handed to a QAP engine (ported from MrQAP) that supports:</p><ul><l
 Poisson families;</p></li>
 <li><p>two permutation schemes: <code>"predictor"</code> (Dekker's double semi-partialling)
 and <code>"outcome"</code>;</p></li>
-<li><p>random intercepts (lme4);</p></li>
+<li><p>random intercepts (lme4), and fixed effects, absorbed as in <code>{fixest}</code>;</p></li>
 <li><p>robust (HC3) standard errors;</p></li>
 <li><p>lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled;</p></li>
@@ -91,7 +95,9 @@ dropped with a warning and the remaining networks are pooled;</p></li>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">net_regression</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">estimate_mrqap</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">net_regression</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -103,18 +109,23 @@ dropped with a warning and the remaining networks are pooled;</p></li>
 dependent network: a layer, a tie attribute such as <code>weight</code>, or <code>.</code> for
 the network's focal layer or the whole network.
 The right-hand side accepts these terms, whose arguments can be given by
-position or by name:</p><ul><li><p><code>ego(attr)</code>, <code>alter(attr)</code> — the sender's or the receiver's value of a
-node attribute; a categorical attribute is dummy-coded,</p></li>
-<li><p><code>same(attr)</code> — 1 where sender and receiver share an attribute value,</p></li>
+position or by name:</p><ul><li><p><code>ego(attr, levels = NULL)</code>, <code>alter(attr, levels = NULL)</code> — the sender's
+or the receiver's value of a node attribute; a categorical attribute is
+dummy-coded, with the first category as the reference,</p></li>
+<li><p><code>same(attr, diff = FALSE, levels = NULL)</code> — 1 where sender and receiver
+share an attribute value; with <code>diff = TRUE</code>, as in ergm's
+<code>nodematch()</code>, one 0/1 column for each category, 1 where sender and
+receiver both hold it.
+<code>match(attr)</code> is a deprecated alias of <code>same(attr, diff = TRUE)</code>,</p></li>
 <li><p><code>diff(attr, transformer_fn = abs)</code> — the transformed difference between
 the sender's and the receiver's values: absolute by default, and signed
 with <code>transformer_fn = identity</code>. <code>dist(attr)</code> is a deprecated alias,</p></li>
 <li><p><code>sim(attr)</code> — proportional similarity in a numeric attribute,
 1 - |d| / range,</p></li>
-<li><p><code>match(attr)</code> — one 0/1 column for each category, 1 where sender and
-receiver both hold it,</p></li>
-<li><p><code>mix(attr)</code> — one 0/1 column for each pair of a sender's and a
-receiver's category, less the first pair as the reference,</p></li>
+<li><p><code>mix(attr, levels = NULL)</code> — one 0/1 column for each pair of a
+sender's and a receiver's category, less the first pair as the
+reference. The pairs are in ergm's order for <code>nodemix()</code>, the sender's
+category changing fastest,</p></li>
 <li><p><code>tie(layer, weighted = FALSE)</code> — another layer as a dyadic covariate,
 0/1 unless <code>weighted = TRUE</code>; a layer or tie attribute named on its own
 enters with its values as stored,</p></li>
@@ -135,10 +146,34 @@ sender's value lies from that mean, as an absolute difference,</p></li>
 <li><p><code>global(var)</code> — a network-level variable from the network's <code>globals</code>,
 in a list of networks; on one network it is the intercept.</p></li>
 </ul><p><code>:</code> and <code>*</code> give interactions of any order, as the product of the terms.</p>
+<p><code>levels =</code> chooses the categories that get a column in <code>ego()</code>,
+<code>alter()</code>, and <code>same()</code>, or the pairs in <code>mix()</code>, as in ergm. Give the
+names, such as <code>levels = c("sales", "hr")</code> or, for <code>mix()</code>,
+<code>levels = "sales -&gt; hr"</code>, written as in <code>fit$terms</code> (<code>--</code> for an
+undirected network). Or give positions in the order of the columns,
+where a negative position leaves that one out: <code>levels = -1</code> is the
+default of <code>ego()</code>, <code>alter()</code>, and <code>mix()</code>. In <code>ego()</code>, <code>alter()</code>, and
+<code>mix()</code>, the categories left out are the reference together; where every
+one is chosen, the first chosen is the reference. In <code>same()</code>, a dyad
+that shares a category left out is not counted. An unknown name aborts
+and lists the categories. A term with more than ten categories and no
+<code>levels =</code> warns, since under <code>permute = "predictor"</code> each column is
+permuted on its own.</p>
+<p>A formula written for <code>{goldfish}</code> or <code>{ergm}</code> can be used as it is.
+It is first read by <code><a href="specify.html">specify_mrqap()</a></code>, which rewrites each term that has
+an MRQAP equivalent, such as ergm's <code>nodematch("dept")</code> as <code>same(dept)</code>,
+and drops each term that an MRQAP cannot fit, such as goldfish's
+<code>inertia</code> or ergm's <code>gwesp()</code>, which read the outcome's own ties.
+One warning names each dropped term and the reason, and the rest of the
+model is fitted.
+A name that no model knows aborts and suggests the nearest term,
+as does a formula with no term left to fit.</p>
 <p>A bar adds a random intercept, as in <code>{lme4}</code>: <code>(1 | sender)</code>,
 <code>(1 | receiver)</code>, <code>(1 | reporter)</code> for a cognitive social structure, or
 <code>(1 | network)</code> for a list of networks. Each sets the same switch as its
-<code>random_intercept_*</code> control. Random slopes are not supported.</p></dd>
+<code>random_intercept_*</code> control. Random slopes are not supported.</p>
+<p>A bar outside parentheses absorbs fixed effects, as in <code>{fixest}</code>:
+<code>y ~ x | sender + receiver</code> (see the section on fixed effects).</p></dd>
 
 
 <dt id="arg--data">.data<a class="anchor" aria-label="anchor" href="#arg--data"></a></dt>
@@ -154,27 +189,11 @@ dropped with a warning.</p></dd>
 
 
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
-<dd><p>Named list of additional controls; unspecified entries fall
-back to the defaults below.</p><ul><li><p><code>permute</code>: what the null distribution permutes. <code>"predictor"</code> (the
-default) residualises each main predictor against the others and
-permutes that residual, following Dekker et al. (2007). <code>"outcome"</code>
-permutes the dependent matrix and leaves the predictors alone. With one
-predictor there is nothing to residualise against, so <code>"predictor"</code>
-reduces to <code>"outcome"</code> and says so.</p></li>
-<li><p><code>strategy</code>: future plan, e.g. <code>"sequential"</code> (default), <code>"multisession"</code>.</p></li>
-<li><p><code>family</code>: <code>"auto"</code> (default; gaussian for weighted networks, binomial
-for binary), <code>"gaussian"</code>, <code>"binomial"</code>, <code>"poisson"</code>, <code>"negbin"</code>,
-or <code>"zip"</code>.</p></li>
-<li><p><code>directed</code>: logical, whether a tie from i to j differs from one from j
-to i. Read from <code>.data</code> unless given, and reported when read.</p></li>
-<li><p><code>diag</code>: logical, include loops (default auto-detected).</p></li>
-<li><p><code>seed</code>, <code>groups</code>, <code>ncores</code>: passed through to the engine.</p></li>
-<li><p><code>use_robust_errors</code>: HC3 standard errors.</p></li>
-<li><p><code>random_intercept_nets</code> / <code>_sender</code> / <code>_receiver</code>: lme4-style REs.</p></li>
-<li><p><code>random_intercept_reporter</code>: an lme4-style random intercept for each
-reporter of a cognitive social structure.</p></li>
-<li><p><code>less_mem</code>: drop the baseline model object from the return.</p></li>
-</ul></dd>
+<dd><p>The controls of the model, as the result of
+<code><a href="control_mrqap.html">control_mrqap()</a></code> or a named list of its arguments, such as
+<code>list(family = "poisson", seed = 1)</code>. A control that is not named keeps
+its default. See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each control, its default, and the
+names it converts from other models and earlier versions.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -195,11 +214,33 @@ row per permutation and one column per coefficient. The shares in
 <code>permute = "predictor"</code> each column comes from its own set of
 permutations, so rows pair columns only by position, and the intercept
 column is <code>NA</code>. A permutation that failed leaves its row <code>NA</code>.</p></li>
+<li><p><code>panel</code>, whether the network was fitted as a panel of its waves.</p></li>
+<li><p><code>missing</code>, a list of the treatment of unobserved dyads, the number of
+dyads the model could use (<code>possible</code>) and did use (<code>used</code>), the number
+unobserved on each variable (<code>unobserved</code>), the number of fixed ties left
+out (<code>fixed_ties</code>), and the number of nodes that
+stayed in place in each permutation set (<code>fixed_nodes</code>).</p></li>
+<li><p><code>fixed_effects</code>, the groups whose fixed effects were absorbed;</p></li>
+<li><p><code>pred</code>, the dyad-level data, with the observed values even where a
+gaussian model was fitted to demeaned ones;</p></li>
+<li><p><code>terms</code>, a tibble of one row for each coefficient, with the parts that
+its name joins: <code>term</code>, the coefficient's name; <code>effect</code>, the formula
+term it comes from, such as <code>"ego"</code> or <code>"same"</code>, or <code>"intercept"</code> or
+<code>"interaction"</code>; its <code>layer</code> and <code>attribute</code>; its <code>category</code> and the
+<code>reference</code> category it is compared with, where the term is
+categorical; and for an interaction, its <code>operands</code>, the names of the
+columns it multiplies. <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> adds these columns to the estimates.</p></li>
 </ul><p>When the outcome is binary – either <code>family = "binomial"</code> or
 <code>"gaussian"</code> with a 0/1 dependent – a probabilistic confusion matrix is
 attached as <code>$confusion_matrix</code>; for the gaussian-binary case the linear
 probability fitted values are clamped to 0/1 before sampling.</p>
     </div>
+    <div class="section level2">
+    <h2 id="functions">Functions<a class="anchor" aria-label="anchor" href="#functions"></a></h2>
+
+<ul><li><p><code>net_regression()</code>: The name this function had in <code>{migraph}</code>, and in
+infernet before 0.4.0. It still works, and warns once that it is deprecated.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="cognitive-social-structures">Cognitive social structures<a class="anchor" aria-label="anchor" href="#cognitive-social-structures"></a></h2>
 
@@ -224,6 +265,90 @@ them as missing, for example with
 <code>manynet::mutate_nodes(net, na = label %in% c(...))</code>.
 Their reports are then dropped. A report of zeros that is not so marked is
 kept, and named in a warning, since it may be either.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="missing-data">Missing data<a class="anchor" aria-label="anchor" href="#missing-data"></a></h2>
+
+
+<p>An unobserved dyad is an <code>NA</code> in the outcome or in a predictor, never a
+zero tie. <code>{manynet}</code> records unobserved ties, and a CSS reporter who was
+not asked, and <code><a href="https://stocnet.github.io/manynet/reference/coerce_matrix.html" class="external-link">manynet::as_matrix()</a></code> turns both into <code>NA</code>.
+By default (<code>control = list(missing = "available")</code>), the model drops each
+unobserved dyad and says how many it dropped on each variable.</p>
+<p>A permutation must then be fitted on the same dyads as the observed model,
+or the null distribution rests on more data than the estimate it is
+compared with. So nodes are permuted only among nodes with the same
+unobserved cells: a node that did not report, a node that nobody reported
+on, a reporter who was not asked, and a fully observed node are each
+exchanged only with nodes of their own kind. A node with scattered
+unobserved cells stays in place. This restricts the null hypothesis to
+exchangeability within those blocks, and with many fixed nodes it leaves
+few distinct permutations, which is reported with a warning.</p>
+<p><code>control = list(missing = "fail")</code> stops instead, for a user who wants no
+dyad dropped without their decision.
+Multiple imputation is not yet available.</p>
+<p>A tie that <code>{manynet}</code> marks as fixed, in its <code>fixed</code> tie column, was set
+by the design rather than chosen, so it is no observation of the process.
+It is left out of the model, counted apart from the unobserved dyads, and
+kept in place under permutation, as an unobserved dyad is. <code>"fail"</code> does
+not stop on it.</p>
+<p>A cell that cannot hold a tie, such as a tie between two levels of a
+multilevel network that the design rules out, is a structural zero rather
+than missing data. <code>{manynet}</code> does not yet mark such cells, so they enter
+the model as observed zeros. Remove them, or set them to <code>NA</code>, before
+fitting.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="longitudinal-networks">Longitudinal networks<a class="anchor" aria-label="anchor" href="#longitudinal-networks"></a></h2>
+
+
+<p>A longitudinal network, one that <code><a href="https://stocnet.github.io/manynet/reference/mark_format_change.html" class="external-link">manynet::is_longitudinal()</a></code> says has
+more than one wave, is fitted as a panel. Each wave but the first is an
+outcome, and the waves are pooled, so the network index is the wave.
+One permutation relabels the nodes the same way in every wave, so that
+each node keeps its own trajectory under the null hypothesis.</p>
+<p>Three of goldfish's effects then read the outcome's previous wave, as
+goldfish and RSiena read the state of the network before each change:</p><ul><li><p><code>inertia</code>, the tie from i to j in the previous wave;</p></li>
+<li><p><code>recip</code>, the tie from j to i in the previous wave;</p></li>
+<li><p><code>trans</code>, the number of two-paths i -&gt; k -&gt; j in the previous wave,
+counting only observed ties.</p></li>
+</ul><p>On a cross-sectional network, <code>inertia</code> and <code>trans</code> are dropped with a
+warning, since they could only read the outcome's own ties, and <code>recip</code>
+reads the outcome's reverse tie, with a warning.
+Every other term, including a layer such as <code>tie(friends)</code> and a node
+attribute, reads the same wave as the outcome; see stocnet/infernet#18.
+Every wave must hold the same nodes: mark a node that is absent from a wave
+as missing there. A list of networks is read as independent networks, not
+as a panel, even where it holds the waves of one network.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="fixed-effects">Fixed effects<a class="anchor" aria-label="anchor" href="#fixed-effects"></a></h2>
+
+
+<p>A bar outside parentheses absorbs a fixed effect for each group named after
+it, as in <code>{fixest}</code>: <code>weight ~ sim(age) | sender + receiver</code>.
+The groups are <code>sender</code>, <code>receiver</code>, <code>reporter</code> for a cognitive social
+structure, and <code>network</code> for a list of networks. In a pooled list each
+node's group is within its own network; in a panel a node keeps one group
+across the waves, and <code>network</code> is one effect for each wave.
+The intercept is one of the absorbed effects, so its estimate is <code>NA</code>.</p>
+<p>A gaussian model is demeaned once by the fixed effects, and each
+permutation fits a plain model of the demeaned variables. A node
+permutation maps senders onto senders and receivers onto receivers, and
+every permutation fits the dyads of the observed model, so this gives the
+same estimates as a dummy for every group (the Frisch-Waugh-Lovell
+theorem), at the cost of a model without them. Its R-squared is the within
+R-squared. Any other family is fitted with <code><a href="https://lrberge.github.io/fixest/reference/feglm.html" class="external-link">fixest::feglm()</a></code>, or
+<code><a href="https://lrberge.github.io/fixest/reference/femlm.html" class="external-link">fixest::fenegbin()</a></code> for <code>"negbin"</code>, in every permutation, which needs
+<code>{fixest}</code>. That leaves out the dyads of a group whose outcome has one
+value, and says how many.</p>
+<p>A predictor that does not vary within the groups, such as <code>ego(age)</code> with
+a sender effect, is absorbed by them, and aborts with its name.
+An undirected network has no senders or receivers, so it drops those
+effects with a warning, as it does those random intercepts. A two-mode
+network keeps both, since its rows and columns are different nodes.
+Fixed effects cannot yet be combined with random intercepts, robust
+standard errors, or the <code>"zip"</code> family.</p>
     </div>
     <div class="section level2">
     <h2 id="multiplex-networks">Multiplex networks<a class="anchor" aria-label="anchor" href="#multiplex-networks"></a></h2>
@@ -271,7 +396,9 @@ conditions."
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other models:
+<code><a href="control_mrqap.html">control_mrqap()</a></code>,
 <code><a href="results.html">print.netreg_lm()</a></code>,
+<code><a href="specify.html">specify</a></code>,
 <code><a href="tests.html">tests</a></code></p></div>
     </div>
 
@@ -280,14 +407,14 @@ conditions."
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_networkers.html" class="external-link">ison_networkers</a></span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">manynet</span><span class="fu">::</span><span class="fu">to_subgraph</span><span class="op">(</span><span class="va">Discipline</span> <span class="op">==</span> <span class="st">"Sociology"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">model1</span> <span class="op">&lt;-</span> <span class="fu">net_regression</span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">model1</span> <span class="op">&lt;-</span> <span class="fu">estimate_mrqap</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">model1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span><span class="co"># A cognitive social structure: each of 21 managers' report of who goes to</span></span></span>
 <span class="r-in"><span><span class="co"># whom for advice, against the formal reporting structure that all share.</span></span></span>
-<span class="r-in"><span><span class="va">css_model</span> <span class="op">&lt;-</span> <span class="fu">net_regression</span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="va">reports</span>,</span></span>
+<span class="r-in"><span><span class="va">css_model</span> <span class="op">&lt;-</span> <span class="fu">estimate_mrqap</span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="va">reports</span>,</span></span>
 <span class="r-in"><span>                            <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_hightech.html" class="external-link">ison_hightech</a></span>, times <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>

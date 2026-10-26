@@ -1,5 +1,220 @@
 # Changelog
 
+## infernet 0.5.0
+
+### Package
+
+- Updated CONTRIBUTING
+  - Added a formula dictionary with an MRQAP column and goldfish’s
+    effects
+  - Added a rule on when a categorical term leaves out a reference
+  - Added a rule on `levels =`
+  - Added a rule on `ncores` before `strategy`, and on `loops` rather
+    than `diag`
+  - Added a rule that a simulation-heavy function takes its controls
+    through `control =`
+- Added [fixest](https://lrberge.github.io/fixest/) to `Suggests`, for
+  fixed effects in models that are not gaussian
+- Improved the tutorial test to cap each `times =` at 20, since it
+  checks only that the code runs
+- Added the diversity tutorial to the website, as a static article under
+  “Tutorials”
+
+### Tests
+
+- Changed
+  [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
+  [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md),
+  and
+  [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md)
+  to take `control =`
+  - Reads `ncores`, `strategy`, and `seed` from a list or from
+    [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+    and leaves the other controls alone
+  - Takes the controls of a model whole,
+    e.g. `ctrl <- control_mrqap(ncores = 4, seed = 1)` for both a model
+    and a test
+  - `ncores` sets the plan whatever `strategy` says, as in
+    [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  - `strategy =` and `ncores =` given by name still work, and warn that
+    they are now controls
+  - Restores the [future](https://future.futureverse.org) plan and
+    `future.globals.maxSize` after the test
+- Renamed the `diag` element of a test’s result to `loops`
+- Improved the speed of
+  [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md)
+  ~5x and
+  [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md)
+  ~3x on a stocnet
+  - Draws from a `tbl_graph` made once, where the statistic gives the
+    same value on it
+
+### Specification
+
+- Improved the term registry behind the formula
+  - Added goldfish’s effects, e.g. `inertia`, `trans`, `four`
+  - Added each term’s MRQAP status, and its goldfish, RSiena, and ergm
+    names
+  - Added the nearest term to the error for an unknown term
+- Added
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+  [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md),
+  and
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  to move a formula between models
+  - Reads the model a formula is for from `input =`, the formula’s
+    class, or its names
+  - Rewrites each term with an equivalent, e.g. `nodematch("dept")` as
+    `same(dept)`
+  - Names each term that means something different, e.g. goldfish’s
+    `sim()`
+  - Drops each term the model cannot fit, with one warning naming each
+  - Aborts only where no term is left to fit
+  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    reads every formula with
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    with `.data` writes other terms as `edgecov()` of infernet’s matrix
+  - Records what the model makes of every term: it fits, adapts,
+    interprets, warns about, drops, or refuses it
+  - Added [`tidy()`](https://generics.r-lib.org/reference/tidy.html) for
+    the result, one row for each term, which fits nothing
+  - [`tidy()`](https://generics.r-lib.org/reference/tidy.html) of an
+    MRQAP formula with `.data` names the columns
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    builds
+- Named the other models in the term registry for the model: `dynam`,
+  `saom`, and `ergm`
+- Renamed `match(x)` to `same(x, diff = TRUE)`, as in ergm’s
+  `nodematch(x, diff = TRUE)`
+  - [`match()`](https://rdrr.io/r/base/match.html) still works, with its
+    old column names, and warns that it is deprecated
+  - `same(x, diff = TRUE)` names its columns for `same`,
+    e.g. `same_dept_sales` rather than `match_dept_sales`
+  - Aborts where `same()` names one attribute more than once, since
+    `same(x, diff = TRUE)` adds up to `same(x)`
+  - `mix()` stays its own term
+- Added `levels =` to `ego()`, `alter()`, `same()`, and `mix()` to
+  choose the categories that get a column
+  - Takes names, e.g. `ego(dept, levels = c("sales", "hr"))`, or
+    `mix(dept, levels = "sales -> hr")`
+  - Takes positions, and negative positions to leave categories out,
+    e.g. `levels = -1`
+  - The categories left out are the reference together, and where every
+    one is chosen, the first chosen is
+  - An unknown name aborts and lists the categories
+  - Warns where a term has more than ten categories and no `levels =`
+  - [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+    reads ergm’s `levels =`, and `levels2 =` of `nodemix()`;
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    writes them
+  - [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md)
+    drops a term with `levels =`, which goldfish does not have yet
+- Changed the order of the columns of `mix()` to ergm’s, the sender’s
+  category changing fastest, so that a position in `levels =` is one in
+  ergm’s `levels2 =`
+- Added fixed effects after a bare bar to the `specify_*()` functions
+  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    writes `| sender + receiver` as ergm’s `sender` and `receiver`
+  - [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md)
+    drops them
+
+### Regression
+
+- Added
+  [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+  with a help page for every control of
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    reads a `control` list through it, so each value is checked before a
+    fit
+  - Converts old names, e.g. `nullhyp = "qapy"` to
+    `permute = "outcome"`, with a warning
+  - Drops goldfish’s estimation options, e.g. `max_iterations`, with one
+    warning that names each
+  - Reads the result of goldfish’s `set_estimation_opt()` whole
+  - Fixed reading goldfish 2.0’s options:
+    `control = set_algorithm_newton()` and
+    `control = set_preprocessing()` now drop each option
+  - Aborts on any other name, with the nearest control
+- Renamed the `diag` control to `loops`, which says what it includes and
+  does not mask [`base::diag()`](https://rdrr.io/r/base/diag.html)
+  - `control = list(diag = TRUE)` still works, and warns that it is now
+    `loops`
+  - The fit stores it as `fit$loops`, not `fit$diag`
+- Changed `ncores` to set the plan whatever `strategy` says
+  - `ncores = 1` now runs sequentially, where before it left the plan to
+    `strategy`
+  - `ncores` comes before `strategy` in
+    [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+    as the simpler of the two
+- Added fixed effects to
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+  as in [fixest](https://lrberge.github.io/fixest/):
+  `y ~ x | sender + receiver` (thanks
+  [@RWKrause](https://github.com/RWKrause), closes
+  [\#8](https://github.com/stocnet/infernet/issues/8))
+  - Takes `sender`, `receiver`, `reporter` for a CSS, and `network` for
+    a list
+  - Absorbs them once in a gaussian model, so each permutation fits a
+    plain [`lm()`](https://rdrr.io/r/stats/lm.html)
+  - Fits
+    [`fixest::feglm()`](https://lrberge.github.io/fixest/reference/feglm.html)
+    or
+    [`fixest::fenegbin()`](https://lrberge.github.io/fixest/reference/femlm.html)
+    in each permutation otherwise
+  - Nests each node’s group in its network in a pooled list, not in a
+    panel
+  - Names a predictor that the fixed effects absorb, e.g. `ego()` with
+    `| sender`
+- Fixed the sender and receiver random intercepts that a two-mode
+  network dropped
+- Improved the speed of a small fit about tenfold, by not searching the
+  permutation function for globals
+- Fixed the permutations of a network with missing data to use the dyads
+  of the observed model
+  - Permutes nodes only among nodes with the same unobserved cells
+  - Keeps each node with scattered unobserved cells in place
+  - Warns where few distinct permutations remain
+  - Fixed residualised predictors to hold no raw values outside the
+    model, and to be symmetric for undirected networks
+  - Fixed a blocking group of one node, which
+    [`sample()`](https://rdrr.io/r/base/sample.html) read as a range
+- Added `control = list(missing = )` with `"available"` (the default)
+  and `"fail"`
+  - Leaves out the ties that
+    [manynet](https://stocnet.github.io/manynet/) marks as `fixed`, and
+    keeps them in place under permutation
+  - Reports the dyads dropped on each variable, and stores them as
+    `fit$missing`
+  - Documented a structural zero as a limitation
+- Added panel MRQAP for a longitudinal network
+  - Detects a panel with
+    [`manynet::is_longitudinal()`](https://stocnet.github.io/manynet/reference/mark_format_change.html),
+    and fits each wave against the previous one
+  - Permutes the nodes the same way in every wave
+  - Fits `inertia`, `recip`, and `trans` on the previous wave
+- Renamed
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  to
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  to match other stocnet packages
+  - [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+    still works, and warns once that it is deprecated
+  - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and
+    `netreg_css`
+- Added a term table to the fit, `fit$terms`, with the parts of each
+  coefficient’s name
+  - Gives the `effect`, `layer`, `attribute`, `category`, and
+    `reference` of each coefficient
+  - Gives the `operands` of each interaction
+  - Keeps a category as the data hold it, e.g. `"Social Science"` for
+    `alter_dept_Social_Science`
+  - Writes a `mix()` pair as `"sales -> hr"`, or `"sales -- hr"` where
+    the pair is unordered
+  - [`tidy()`](https://generics.r-lib.org/reference/tidy.html) adds
+    these columns to the estimates
+
 ## infernet 0.4.0
 
 ### Package

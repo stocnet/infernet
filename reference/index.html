@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,6 +17,10 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../index.html" aria-label="Go to home"><span class="fa fa-home fa-lg"></span></a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Function Overview</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -49,6 +53,22 @@
         </dt>
         <dd>Tests of network measures</dd>
       </dl></div><div class="section level2">
+      <h2 id="formulas">Formulas<a class="anchor" aria-label="anchor" href="#formulas"></a></h2>
+
+      <div class="section-desc"><p>Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="specify.html">specify_mrqap()</a></code> <code><a href="specify.html">specify_dynam()</a></code> <code><a href="specify.html">specify_ergm()</a></code> <code><a href="specify.html">tidy(<i>&lt;mrqap_formula&gt;</i>)</a></code> <code><a href="specify.html">tidy(<i>&lt;dynam_formula&gt;</i>)</a></code> <code><a href="specify.html">tidy(<i>&lt;ergm_formula&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Specify a model from a formula written for many models</dd>
+      </dl></div><div class="section level2">
       <h2 id="regression">Regression<a class="anchor" aria-label="anchor" href="#regression"></a></h2>
 
       <div class="section-desc"><p>Functions for regressing networks on nodal and dyadic covariates:</p></div>
@@ -60,10 +80,17 @@
 
       <dl><dt>
 
-          <code><a href="regression.html">net_regression()</a></code>
+          <code><a href="regression.html">estimate_mrqap()</a></code> <code><a href="regression.html">net_regression()</a></code>
 
         </dt>
         <dd>Regression for network data</dd>
+
+        <dt>
+
+          <code><a href="control_mrqap.html">control_mrqap()</a></code> <code><a href="control_mrqap.html">print(<i>&lt;mrqap_control&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Controls for an MRQAP</dd>
       </dl></div><div class="section level2">
       <h2 id="results">Results<a class="anchor" aria-label="anchor" href="#results"></a></h2>
 

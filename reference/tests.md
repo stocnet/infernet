@@ -17,11 +17,11 @@ These functions conduct tests of any network-level statistic:
 ## Usage
 
 ``` r
-test_random(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_random(.data, FUN, ..., times = 1000, control = list())
 
-test_configuration(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_configuration(.data, FUN, ..., times = 1000, control = list())
 
-test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
+test_permutation(.data, FUN, ..., times = 1000, control = list())
 ```
 
 ## Arguments
@@ -47,19 +47,25 @@ test_permutation(.data, FUN, ..., times = 1000, strategy = "sequential")
   Integer. Number of permutations for the null distribution. 1000 is the
   default; publication-ready work usually needs 1000-10000.
 
-- strategy:
+- control:
 
-  A `{future}` plan, so that multiple cores can be used to accelerate
-  the function. By default `"sequential"`, but if multiple cores
-  available, then `"multisession"` or `"multicore"` may be useful.
-  Generally this is useful only when `times` \> 1000. See
-  [`{future.apply}`](https://future.apply.futureverse.org) for more.
+  The controls of the simulations, as the result of
+  [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  or a named list of its arguments, such as
+  `list(ncores = 4, seed = 1)`. A test reads `ncores`, `strategy`, and
+  `seed`, and leaves the other controls alone, so that the controls of a
+  model can be given to a test whole. `ncores` is generally useful only
+  when `times` \> 1000. See
+  [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  for each control and its default.
 
 ## See also
 
 Other models:
+[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
 [`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md)
+[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
+[`specify`](https://stocnet.github.io/infernet/reference/specify.md)
 
 ## Examples
 

@@ -143,8 +143,8 @@ Division of labour to keep in mind when adding functions:
 - [migraph](https://stocnet.github.io/migraph/): the software companion
   to *Multimodal Political Networks*, holding the `mpn_*` datasets and
   the diffusion models. [migraph](https://stocnet.github.io/migraph/)
-  still carries older copies of
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  still carries older copies, as
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md),
   and the `test_*()` family; those are what
   [infernet](https://stocnet.github.io/infernet/) supersedes, so a fix
   made there needs porting here, and a fix made here does not need
@@ -166,26 +166,29 @@ are those of [infernet](https://stocnet.github.io/infernet/).
 
 Functions should do one clearly named thing with few arguments.
 
-- **Names describe actions, not acronyms or progenitors.** A function is
-  named after what it does, and the name of the procedure and its
-  authors are given in the documentation. Example:
+- **Names describe actions, not progenitors.** A function is named after
+  what it does, and the authors of a procedure are given in the
+  documentation. A test is named for the null distribution it draws:
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md),
   [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md),
   and
   [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md)
-  rather than names built on QAP or CUG, and
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
-  rather than a name built on MRQAP.
+  rather than names built on QAP or CUG. An estimator is named
+  `estimate_<model>()`, as across stocnet, so that a user who moves
+  between packages finds the same verb:
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  here, and `estimate_dynam()` and `estimate_rem()` in
+  [goldfish](https://stocnet.github.io/goldfish/).
 - **Few arguments per function.** Every argument is something the user
   must read about before they can trust the result, so use sensible
   defaults instead. Example:
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   takes a formula, a network, and `times`, and everything less common
   goes through its `control` list.
 - **Features are detected, not declared.** A function finds out whether
   a network is directed or two-mode, and adjusts, so the user does not
   supply an argument for it. Example:
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   reads directedness from the outcome network with
   `manynet::is_directed()`, unless `control` overrides it.
 
@@ -230,11 +233,11 @@ something they can use.
 - **Key steps are reported.** Functions say what they did at the
   verbosity the user has chosen (see [Console
   messaging](#console-messaging)). Example:
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   reports the family and the directedness it read from the outcome.
 - **Results describe themselves.** A printed result is short, and
   carries what the user needs to interpret it. Example: a printed
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   says what was permuted and how many times, how loops were treated, and
   whether the outcome was read as directed.
 
@@ -289,9 +292,9 @@ root (or via `Rscript -e`).
   [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
 - Run full test suite:
   [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
-- Run a single test file: `devtools::test(filter = "net_regression")`
-  (matches `test-net_regression.R`), or
-  `testthat::test_file("tests/testthat/test-net_regression.R")`
+- Run a single test file: `devtools::test(filter = "estimate_mrqap")`
+  (matches `test-estimate_mrqap.R`), or
+  `testthat::test_file("tests/testthat/test-estimate_mrqap.R")`
 - Full package check (mirrors CI):
   [`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
   or
@@ -323,8 +326,11 @@ user-facing files are named `model_*.R`; the internal engine ported from
 | File | Contains |
 |----|----|
 | `model_tests.R` | the test family: [`test_random()`](https://stocnet.github.io/infernet/reference/tests.md) (CUG), [`test_configuration()`](https://stocnet.github.io/infernet/reference/tests.md), [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md) (QAP), and [`print.network_test()`](https://stocnet.github.io/infernet/reference/results.md) |
-| `model_regression.R` | [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md), the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_regression.R` | [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md), the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_control.R` | [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md), which names, defaults, and checks every control of [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md); the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and [`glance()`](https://generics.r-lib.org/reference/glance.html) for `netreg` and `network_test` results and for the [migraph](https://stocnet.github.io/migraph/), [ergm](https://statnet.org), and [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) results |
+| `model_specify.R` | [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md), [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md), and [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md): one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) of it |
+| `model_formula_ergm.R` | the `to_ergm` writer of each term, which [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md) calls |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
@@ -355,8 +361,95 @@ Missing data deserves particular care here, since handling it well is a
 reason this package exists. An unobserved dyad is `NA`, never a zero tie
 and never a source’s numeric code. `make_qap_data()` drops NA and
 diagonal cells before fitting, so a predictor that introduces `NA`
-silently shrinks the sample: report what was dropped rather than letting
-the count change without comment.
+shrinks the sample. `QAPengine()` counts the unobserved dyads on each
+variable with `.missing_summary()` before anything is dropped, reports
+them, and stores them in `fit$missing`. The `missing` control chooses
+the treatment: `"available"` (the default) drops them, and `"fail"`
+stops on them. Multiple imputation is planned, but it waits for its own
+design.
+
+Every permutation must use the dyads of the observed model.
+`make_qap_data()` recomputes the dyads after each draw, and a free
+permutation moves the `NA` cells of the permuted matrix but not those of
+the others, so the draws used to be fitted on more dyads than the
+observed model. `.missing_blocks()` now groups the nodes by which of
+their lines are wholly unobserved (row, column, and CSS slice), and
+fixes each node at the end of a scattered missing cell, so that the `NA`
+cells map onto themselves. The blocks combine with the user’s `groups`.
+`QAPPermEst()` aborts if a draw uses any other number of dyads, since
+that is a fault in the engine and not in the data. For
+`permute = "predictor"` this needs the residualised predictor to be `NA`
+outside the model, and mirrored across the diagonal of an undirected
+network, which `residuals_to_matrix()` and `residuals_to_array()` do.
+
+A tie in [manynet](https://stocnet.github.io/manynet/)’s reserved
+`fixed` tie column was set by the design, not chosen, so it is no
+observation of the process either. It keeps its value, which every
+predictor built from the network reads. `.evaluate_spec()` carries it to
+the engine as the `fixed` attribute of the outcome’s matrix, from
+`.fixed_ties()`, and `QAPengine()` passes it on as an exclusion mask,
+`exclude`, separate from the `NA` cells: `make_qap_data()` leaves it out
+of the outcome’s rows, `.missing_blocks()` keeps it in place under
+permutation as it does an `NA` cell, and `.missing_summary()` counts it
+apart, as `fit$missing$fixed_ties`, so that `"fail"` does not stop on
+it. Do not set an excluded cell to `NA`: that would read a value set by
+design as an unknown one, which an imputation would then fill.
+
+A structural zero, a cell that cannot hold a tie, is not missing data.
+[manynet](https://stocnet.github.io/manynet/) does not mark one, so it
+arrives as an observed zero. The loops that the model leaves out and the
+upper half of an undirected network are the only cells the engine knows
+to be structural, and `.structural_mask()` keeps them out of the counts.
+
+#### Longitudinal networks
+
+A network that
+[`manynet::is_longitudinal()`](https://stocnet.github.io/manynet/reference/mark_format_change.html)
+says has more than one wave is a panel, detected rather than declared.
+`.prepare_panel()` splits it with
+[`manynet::to_waves()`](https://stocnet.github.io/manynet/reference/modif_split.html),
+and builds each wave but the first against the wave before it, which
+`.spec_context()` holds as `ctx$previous`. A term whose registry entry
+has `panel = TRUE` (`inertia`, `recip`, `trans`) reads that previous
+wave, and fits without a warning; on a cross-sectional network it keeps
+its old status. `QAPengine(panel = TRUE)` draws one order of the nodes
+for every wave with `.permute_panel()`, and `.panel_blocks()` exchanges
+only nodes whose missing cells match in every wave. A list of networks
+is never a panel, since nothing says its nodes are the same. Whether a
+layer term reads the same wave or the previous one is open: see
+[stocnet/infernet#18](https://github.com/stocnet/infernet/issues/18).
+
+#### Fixed effects
+
+A bar outside parentheses, `y ~ x | sender + receiver`, absorbs fixed
+effects, as in [fixest](https://lrberge.github.io/fixest/); a bar inside
+them, `(1 | sender)`, is an [lme4](https://github.com/lme4/lme4/) random
+intercept. `.split_fixed()` reads the bare bar before
+[`stats::terms()`](https://rdrr.io/r/stats/terms.html) sees the formula,
+so the two never meet. The engine code is in
+[R/qap_fixed.R](https://stocnet.github.io/R/qap_fixed.R).
+
+- **A gaussian model is demeaned once.** A node permutation maps senders
+  onto senders, and `.missing_blocks()` keeps the dyads of the observed
+  model in every draw, so a matrix with zero group means keeps them
+  under any draw. By Frisch-Waugh-Lovell, each permutation then fits a
+  plain [`lm()`](https://rdrr.io/r/stats/lm.html) of the demeaned
+  variables, which is why [fixest](https://lrberge.github.io/fixest/) is
+  only in `Suggests`. The t-values are rescaled for the absorbed degrees
+  of freedom. A change to the permutations that breaks either property
+  breaks this.
+- **Any other family calls [fixest](https://lrberge.github.io/fixest/)
+  in every fit.** Logit and Poisson models have no demeaning shortcut.
+  Double semi-partialling still demeans, since it residualises linearly.
+- **The intercept is kept as `NA`.** Every result names its first
+  coefficient `"(Intercept)"`, and printing and double semi-partialling
+  rely on that.
+- **A group is within its network in a pooled list,** `nv^sv` as
+  [fixest](https://lrberge.github.io/fixest/) writes it, and the same
+  node across the waves of a panel.
+- **One word, one meaning.** The engine already says `fixed` for a node
+  that keeps its place and for a tie that the design set, so the
+  argument and the result element are `fixed_effects`.
 
 #### Cognitive social structures
 
@@ -371,7 +464,7 @@ returns the array the engine fits. Do not build CSS arrays here:
 
 - **Detected, not declared.** `convertToMatrixList()` reads the
   outcome’s matrix and passes `css = TRUE` where it has three axes.
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
   reports the detection and the number of reporters.
 - **Read all three axes.** A one-mode CSS from
   [manynet](https://stocnet.github.io/manynet/) has a slice for every
@@ -398,7 +491,7 @@ Test a CSS change on
 [`manynet::ison_hightech`](https://stocnet.github.io/manynet/reference/ison_hightech.html),
 a real CSS whose `reports` layer is not one, and on the constructed
 networks in
-[tests/testthat/test-net_regression_css.R](https://stocnet.github.io/tests/testthat/test-net_regression_css.R)
+[tests/testthat/test-estimate_mrqap_css.R](https://stocnet.github.io/tests/testthat/test-estimate_mrqap_css.R)
 for the shapes and the missing reports it does not have.
 
 Before this merge the two were `QAPglm()` and `QAPcss()`, 55% the same
@@ -427,28 +520,38 @@ Test functions consistently:
 
 #### Multivariate
 
-[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 ([R/model_regression.R](https://stocnet.github.io/R/model_regression.R))
 is the single regression entry point. Its control flow is:
 
-1.  Merge the user’s `control` list over `.default_control()`, so an
-    unnamed entry falls back to the default rather than to `NULL`.
-2.  Dispatch on the input shape. A single network goes to
+1.  Read the user’s `control` through
+    [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+    so a control that is not named keeps its default, each value is
+    checked, and an old name or another model’s option is converted or
+    dropped before anything is fitted.
+2.  Read the formula with
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+    which rewrites the terms of other models, drops the terms an MRQAP
+    cannot fit, and names each one.
+3.  Dispatch on the input shape. A single network goes to
     `convertToMatrixList()`, which parses the formula with `.specify()`
     and builds its matrices with `.evaluate_spec()`; a list of networks
     goes to `.prepare_list_of_graphs()`, which converts each network,
     drops the ones that are missing a predictor with a warning, and
     pools the rest.
-3.  Resolve `family = "auto"` against the dependent variable (binomial
+4.  Resolve `family = "auto"` against the dependent variable (binomial
     for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
-    `diag` from the network with `manynet::is_directed()` and
+    `loops` from the network with `manynet::is_directed()` and
     [`manynet::is_complex()`](https://stocnet.github.io/manynet/reference/mark_format_tie.html).
     Report each resolution with `snet_info()` so that the user can
     describe these (default) choices in a paper.
-4.  Call `QAPengine()`, which parses the formula, fits the baseline
+5.  Call `QAPengine()`, which parses the formula, fits the baseline
     model once via `fit_qap_model()`, then runs `times` permutations and
     aggregates them.
-5.  Attach a probabilistic confusion matrix where the outcome is binary.
+6.  Attach a probabilistic confusion matrix where the outcome is binary.
+7.  Attach the term table, `fit$terms`, from the parts that
+    `.evaluate_spec()` records for each column, in the order of the
+    coefficients.
 
 The result is a `netreg`, with more specific classes in front of it:
 
@@ -523,22 +626,39 @@ no compiler and no heavy dependency tree.
 
 #### Parallelism
 
-Every simulation-heavy function takes:
+Every simulation-heavy function takes `times`, the number of simulations
+(default `1000`; 1,000–10,000 for publication), and `control`, which
+holds the rest. Keep the signature to what the function needs: data, a
+formula or statistic, `times`, and `control`. A user sets the controls
+once, with
+[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+and gives the same object to every model and test; each function reads
+the controls it uses and leaves the others alone, without a message. The
+controls of parallelism are:
 
-- `times` — the number of simulations (default `1000`; 1,000–10,000 for
-  publication).
+- `ncores` — a number of cores (default `NULL`). More than one runs on
+  that many `"multisession"` workers, and one runs sequentially,
+  whatever `strategy` says. This is the one to show users first.
 - `strategy` — a [future](https://future.futureverse.org) plan name
   (default `"sequential"`; `"multisession"`/`"multicore"` for multiple
-  cores), set with `future::plan(strategy)` and restored via
-  [`on.exit()`](https://rdrr.io/r/base/on.exit.html). In
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
-  this is passed through the `control` list.
+  cores), used where `ncores` is `NULL`.
+- `seed` — a number to set the random seed with before the simulations.
+
+Read `control` with `.resolve_control()`, so that a list and
+[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+are checked the same way. Set the plan with
+`setup_future_plan(strategy, ncores)` and restore it via
+[`on.exit()`](https://rdrr.io/r/base/on.exit.html). Name an argument
+that says whether ties from a node to itself count `loops`, never
+`diag`, since `diag` masks
+[`base::diag()`](https://rdrr.io/r/base/diag.html) in the same
+functions.
 
 The `test_*()` family maps simulations with
 [`future.apply::future_lapply()`](https://future.apply.futureverse.org/reference/future_lapply.html)
 and `future_vapply()`, using `future.seed = TRUE` for reproducible
-parallel RNG. The regression engine wraps the same machinery in
-`setup_future_plan()` and `run_permutations()`
+parallel RNG. The regression engine uses the same `setup_future_plan()`,
+and `run_permutations()`
 ([R/qap_utils.R](https://stocnet.github.io/R/qap_utils.R)); use those
 rather than calling
 [`future::plan()`](https://future.futureverse.org/reference/plan.html)
@@ -601,8 +721,11 @@ to `"outcome"`. A model the user did not state is one they cannot
 describe in a paper. Because this output is silent by default, a broken
 message is invisible in every other test, so cover it in
 [tests/testthat/test-qap_reporting.R](https://stocnet.github.io/tests/testthat/test-qap_reporting.R),
-which runs with `snet_verbosity = "verbose"`. Where a function needs a
-package from `Suggests`, name it and say how to get it:
+which runs with `snet_verbosity = "verbose"`. Check a message there with
+`expect_any_message()` from `helper-infernet.R` rather than
+`expect_message()`, which lets every other message of the call through
+to the console. Where a function needs a package from `Suggests`, name
+it and say how to get it:
 `snet_abort(c("The {.pkg lme4} package is required for random effects.", i = "Install it with {.run install.packages(\"lme4\")}."))`.
 
 The model specification advice printed by `specificationAdvice()` is
@@ -619,15 +742,15 @@ might correspond to those in other packages.
 
 |  | infernet | goldfish | ergm | RSiena | MoNAn |
 |----|----|----|----|----|----|
-| Model | `net_regression(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
+| Model | `estimate_mrqap(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
 | Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
-| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
+| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
 | The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
-| Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, … | `attribute.index`, … |
+| Options | named arguments, as goldfish; `levels` as ergm | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, `path_fn`, and `levels` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, … | `attribute.index`, … |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | [`offset()`](https://rdrr.io/r/stats/offset.html) | [`offset()`](https://rdrr.io/r/stats/offset.html) | `fix = TRUE` | — |
-| Group effects | random intercepts, as [lme4](https://github.com/lme4/lme4/): `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control` | none; `\|` and [`I()`](https://rdrr.io/r/base/AsIs.html) are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
+| Group effects | random intercepts, as [lme4](https://github.com/lme4/lme4/): `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control`; fixed effects after a bare bar, as [fixest](https://lrberge.github.io/fixest/): `\| sender + receiver` | none; `\|` and [`I()`](https://rdrr.io/r/base/AsIs.html) are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
 | Specification | internal: `.specify()` | the formula, or `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
 
 #### Rules
@@ -649,46 +772,152 @@ might correspond to those in other packages.
     for `ego()`, a layer for `indeg()`.
 4.  **`:` and `*` make interactions of any order.** These are the
     product of the operands. An operand with several columns,
-    e.g. [`match()`](https://rdrr.io/r/base/match.html), gives one
-    product for each.
+    e.g. `same(x, diff = TRUE)`, gives one product for each.
 5.  **A two-mode attribute is read on the mode of each side.**
-6.  **A term a model cannot fit aborts and says why.** For example,
-    since MRQAPs rely on permutation, permuting an outcome-based
-    predictor cannot work and will be refused.
+6.  **A term a model cannot fit is dropped, and the model says why.** A
+    formula written for another model should still run here, without the
+    terms this model cannot fit, so that it does not stop the
+    investigation.
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+    which
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    calls on every formula, drops them with one warning that names each
+    term and the reason, and the rest is fitted. It rewrites a term that
+    has an MRQAP equivalent, such as ergm’s `nodematch("dept")` as
+    `same(dept)`, and names a term that means something different here,
+    such as goldfish’s `sim()`, with `snet_info()`. An interaction with
+    such a term is dropped whole.
+    [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md)
+    and
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    do the same for goldfish and ergm. Each reads the formula into
+    infernet’s terms, and then writes them for its model, so a new model
+    needs one reader and one writer, not a translation from each of the
+    others. For example, since MRQAPs rely on permutation, goldfish’s
+    `inertia` or `trans`, which read the outcome’s own ties, are
+    dropped. A formula aborts only where a name is known to no model,
+    which is probably a typing error and gets the nearest name as a
+    suggestion, where no term is left, or where a term is refused:
+    `tie()` and `indeg()` of the outcome layer would predict the outcome
+    from itself, and `same()` twice on one attribute, since the columns
+    of `same(x, diff = TRUE)` add up to `same(x)`.
 7.  **A column name joins its parts with underscores.** The term comes
     first, then its layer, attribute, and category: `ego_age`,
-    `indeg_friends`, `tertius_friends_age`, `match_dept_sales`, and
+    `indeg_friends`, `tertius_friends_age`, `same_dept_sales`, and
     `mix_dept_sales_hr` (the sender’s category, then the receiver’s).
     `indeg(friends, type = "ego")` gives `ego_indeg_friends`. A
     character that a name cannot hold, such as a space in a category,
     becomes one underscore, and an interaction joins its columns with
     `:`. The name is a label: since attributes and categories can hold
-    underscores, do not parse it back into its parts. A categorical
-    `ego()` or `alter()` names its reference category in a message, not
-    in each column.
+    underscores, do not parse it back into its parts. The parts are kept
+    instead in the fit’s term table, `fit$terms`, one row for each
+    coefficient, and
+    [`tidy()`](https://generics.r-lib.org/reference/tidy.html) adds them
+    to the estimates: `effect` (the term, such as `"same"`, or
+    `"intercept"` or `"interaction"`), `layer`, `attribute`, `category`
+    as the data hold it, `reference`, and, for an interaction,
+    `operands`, the columns it multiplies. A `mix()` pair is written as
+    a tie is in DOT, `"sales -> hr"`, or `"sales -- hr"` where the pair
+    is unordered. A categorical `ego()`, `alter()`, or `mix()` names its
+    reference category in a message and in the term table, not in each
+    column. `term` is the column’s name, as in
+    [broom](https://broom.tidymodels.org/); goldfish’s `coef_layout()`
+    calls the same field `name`.
+8.  **A categorical term leaves out a reference only where its columns
+    cover every dyad.** Columns that cover every dyad add up to the
+    intercept, so one of them must be left out. `ego()`, `alter()`, and
+    `mix()` cover every dyad, and leave out their first category or
+    pair. `same(x, diff = TRUE)` does not: a dyad of two different
+    categories is in none of its columns, and is the reference, so it
+    keeps a column for every category. An option of an existing term is
+    preferred to a new term where the columns mean the same thing, as
+    ergm’s `nodematch(diff = TRUE)` is; `mix()` stays its own term,
+    since most of its pairs are not the same.
+9.  **`levels =` chooses the categories that get a column, as in ergm.**
+    `ego()`, `alter()`, `same()`, and `mix()` take it. Its values are
+    names, or positions in the order of the columns, where negative
+    positions leave those out, as ergm’s `levels = -1`. A name is a
+    category as the data hold it, or for `mix()`, a pair as the term
+    table writes it, `"sales -> hr"`; `mix()` reads pairs with
+    `levels =`, where ergm uses `levels2 =`, and orders them as ergm
+    does, the sender’s category changing fastest, so that the positions
+    agree. The categories left out are the reference together, by rule
+    8; where every one is chosen, the first chosen is. An unknown name
+    aborts and lists the categories. A term with more than ten
+    categories and no `levels =` warns, as goldfish plans to
+    (stocnet/goldfish#122).
 
 #### The dictionary
 
-| infernet / goldfish | Meaning | ergm | RSiena | MoNAn |
-|----|----|----|----|----|
-| `ego(x)` | the sender’s value | `nodeocov`, `nodeofactor` | `egoX` | — |
-| `alter(x)` | the receiver’s value | `nodeicov`, `nodeifactor` | `altX` | `alter_covariate` |
-| `same(x)` | 1 where both share a value | `nodematch` | `sameX` | `same_covariate` |
-| `diff(x)` | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
-| `diff(x, transformer_fn = identity)` | the signed difference | `diff` | `diffX` | — |
-| `dist(x)` | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
-| `sim(x)` | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
-| `match(x)` | one 0/1 column per category both hold | `nodematch(diff = TRUE)` | — | — |
-| `mix(x)` | one 0/1 column per pair of categories, less the first | `nodemix` | — | — |
-| `tie(layer)`, or the bare name | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
-| `exchange(layer)`, `recip(layer)` | the reverse tie in another layer | `edgecov` of the transpose | — | — |
-| `recip`, `recip()` | the reverse tie in the outcome; warns, since it is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
-| `indeg(layer)`, `outdeg(layer)` | a node’s degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
-| `tertius(layer, x)` | the mean of x over j’s other in-neighbours | `edgecov` | — | — |
-| `tertius_diff(layer, x)` | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
-| `global(x)` | a network-level variable, in a list of networks; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
-| `(1 \| sender)` | a random intercept for each sender, receiver, reporter, or network | — | — | — |
-| `a:b`, `a*b` | the product, of any order | `:` and `*` | `set_interaction()` | — |
+The MRQAP column is what
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+does with the term: it **fits** it, it fits it and **warns**, it
+**drops** it and fits the rest, or it **refuses** the formula. The
+registry `.formula_terms()` holds the same for each term (`mrqap`), with
+the term’s name in the other models, and a test checks that every
+registered term has a row here. The registry names each model, not its
+package: `dynam` for a DyNAM or REM in goldfish, `saom` for RSiena, and
+`ergm`.
+
+Each `specify_*()` function records what its model makes of each term of
+a formula, and
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) returns that
+record. The statuses are one vocabulary, `.statuses()`, for every model:
+**fits**, **adapted** (rewritten as the model’s equivalent),
+**interpreted** (kept, but the model defines it differently), **warns**,
+**drops**, and **refuses**. `test-model_specify_record.R` holds the
+expected status of every registered term in every model.
+
+The ergm column is also what
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+writes each term as, through the term’s `to_ergm` function in the
+registry: the first ergm term named, or else `edgecov` of the matrix
+that infernet builds. An undirected network reads `ego()` and `alter()`
+as `nodecov` or `nodefactor`. A term with no ergm name, or with an ergm
+name but no `to_ergm`, such as `common_sender`, is dropped. A cognitive
+social structure and a list of networks abort.
+
+| infernet / goldfish | MRQAP | Meaning | ERGM (ergm) | SAOM (RSiena) | MoNAn |
+|----|----|----|----|----|----|
+| `ego(x)` | fits | the sender’s value; `levels =` chooses the categories | `nodeocov`, `nodeofactor`; `b1cov`, `b1factor` in a two-mode network | `egoX` | — |
+| `alter(x)` | fits | the receiver’s value; `levels =` chooses the categories | `nodeicov`, `nodeifactor`; `b2cov`, `b2factor` in a two-mode network | `altX` | `alter_covariate` |
+| `same(x)` | fits | 1 where both share a value; with `levels =`, a value of those categories | `nodematch`; `edgecov` in a two-mode network | `sameX` | `same_covariate` |
+| `diff(x)` | fits | `transformer_fn(x_i − x_j)`, absolute by default | `absdiff`, or `diff(sign.action = "abs")` | `absDiffX` | — |
+| `diff(x, transformer_fn = identity)` | fits | the signed difference | `diff` | `diffX` | — |
+| `dist(x)` | warns | deprecated alias of `diff(x)` | `absdiff` | `absDiffX` | — |
+| `sim(x)` | fits | 1 − \|d\| / range | `edgecov` | `simX`, centred | `sim_covariate`, the same 1 − \|d\| / range |
+| `same(x, diff = TRUE)` | fits | one 0/1 column per category both hold, or per category in `levels =` | `nodematch(diff = TRUE)` | — | — |
+| `match(x)` | warns | deprecated alias of `same(x, diff = TRUE)` | `nodematch(diff = TRUE)` | — | — |
+| `mix(x)` | fits | one 0/1 column per pair of categories, less the first, or per pair in `levels =` | `nodemix`, with `levels2 =` | — | — |
+| `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
+| `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `recip`, `recip()` | warns; fits on a panel | the reverse tie in the previous wave on a panel; otherwise the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
+| `indeg(layer)`, `outdeg(layer)` | fits; refuses the outcome layer | a node’s degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
+| `tertius(layer, x)` | fits | the mean of x over j’s other in-neighbours | `edgecov` | — | — |
+| `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
+| `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
+| `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
+| `\| sender` | fits | a fixed effect for each sender, receiver, reporter, or network; goldfish drops it | `sender`, `receiver` | — | — |
+| `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |
+| `inertia`, `inertia()` | drops; fits on a panel | the tie from i to j in the previous wave; goldfish: the past events from i to j | — | — | — |
+| `trans`, `trans()` | drops; fits on a panel | the two-paths i → k → j in the previous wave; goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |
+| `cycle`, [`cycle()`](https://rdrr.io/r/stats/time.html) | drops | goldfish: the two-paths j → k → i | `ctriple`, `dgwesp(type = "ITP")` | `cycle3` | — |
+| `common_sender`, `common_sender()` | drops | goldfish: the nodes k with k → i and k → j | `dgwesp(type = "ISP")` | `gwespBF`, nearest | — |
+| `common_receiver`, `common_receiver()` | drops | goldfish: the nodes k with i → k and j → k | `dgwesp(type = "OSP")` | `gwespFB`, nearest | — |
+| `four`, `four()` | drops | goldfish: the four-cycles that a tie from i to j would close | `cycle(4)` | `cycle4` | — |
+| `triangle`, `triangle()` | drops | goldfish: the undirected triangles of the sender, in a rate model | `triangle` | — | — |
+| `node_trans`, `node_trans()` | drops | goldfish: the transitive triangles of a node | — | — | — |
+| `degree`, `degree()` | drops | goldfish: the undirected degree of the sender, in a rate model | `degree` | — | — |
+| `mixed_trans()`, `mixed_cycle()`, `mixed_common_sender()`, `mixed_common_receiver()` | drops | goldfish: a closure through two layers, `list(net1, net2)` | — | — | — |
+| `ego_alter_interaction()` | drops | goldfish: the product of the sender’s and the receiver’s values; write `ego(x):alter(y)` | `nodeocov(x):nodeicov(y)` | `egoXaltX` | — |
+| `size()`, `dyad()`, `alterdeg()`, `alterpop()`, `egodeg()`, `egopop()`, `intercept()`, `dyadXdiff()`, `dyadXego()`, `sizeXdiff()`, `sizeXego()` | drops | goldfish: DyNAM-i statistics of interaction groups | — | — | — |
+
+goldfish’s endogenous effects read the dependent events where no network
+is named. In an MRQAP, such a term reads the outcome’s own ties, which
+permuting the outcome does not permute with it, so it is dropped.
+`trans(friends)` names another layer, and goldfish would read that layer
+instead. It is also dropped for now, since its matrix is not yet built
+here, and the warning says so.
 
 Two terms still differ from goldfish:
 
@@ -702,17 +931,30 @@ Two terms still differ from goldfish:
 1.  Add an entry to `.formula_terms()` in
     [R/model_formula.R](https://stocnet.github.io/R/model_formula.R):
     its `formals`, its `kind`, its builder, whether it accepts a
-    two-mode network, what it does with the outcome layer, and its
-    nearest ergm term.
+    two-mode network, what it does with the outcome layer, its MRQAP
+    status (`mrqap`, with a `reason` where it warns or drops), its
+    nearest DyNAM, SAOM, and ERGM terms (`dynam`, `saom`, `ergm`), and
+    its writer for ergm (`to_ergm`, in
+    [R/model_formula_ergm.R](https://stocnet.github.io/R/model_formula_ergm.R)).
+    A term whose meaning or name differs in goldfish also needs a line
+    in `.dynam_operand()` or `.interpreted_dynam()` in
+    [R/model_specify.R](https://stocnet.github.io/R/model_specify.R). A
+    term of another model that MRQAP cannot fit goes in `.dynam_terms()`
+    with `mrqap = "drops"` and a `reason`, and needs no builder.
 2.  Write the builder. It takes the parsed operand and the context, and
     returns a named list of matrices: one for most terms, several for a
     term like [`match()`](https://rdrr.io/r/base/match.html).
     `.evaluate_spec()` lifts each to a CSS array where needed.
-3.  Add a row to the dictionary above, and a test to
-    `test-formula_terms.R` that checks the matrix against a value
-    computed by hand or by a loop.
+    `.build_operand()` records each column’s term, layer, and attribute
+    from the term’s `kind`. A builder that knows more, such as each
+    column’s category, gives it in a `parts` attribute of the list it
+    returns.
+3.  Add a row to the dictionary above, with its MRQAP status, a row to
+    `expected_status` in `test-model_specify_record.R`, with its status
+    in each model, and a test to `test-formula_terms.R` that checks the
+    matrix against a value computed by hand or by a loop.
 4.  Add the term to the `formula` parameter of
-    [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md).
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
 
 ## Preparing Contributions
 
@@ -726,7 +968,7 @@ see the [testthat website](https://testthat.r-lib.org) for more details.
 longest to run.
 
 Tests in `tests/testthat/` mirror the `R/` files for the exported
-functions (`test-net_regression.R`, `test-model_tests.R`), and are
+functions (`test-estimate_mrqap.R`, `test-model_tests.R`), and are
 grouped by contract for the engine:
 
 | File | Asserts |
@@ -737,9 +979,14 @@ grouped by contract for the engine:
 | `test-qap_control.R` | the `control` list and the choice of null hypothesis |
 | `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
-| `test-net_regression_css.R` | CSS models through [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md), from [manynet](https://stocnet.github.io/manynet/) networks |
+| `test-qap_panel.R` | a longitudinal network as a panel: the waves, the lagged terms, one permutation for every wave, and its missing cells |
+| `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the `missing` control |
+| `test-estimate_mrqap_css.R` | CSS models through [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md), from [manynet](https://stocnet.github.io/manynet/) networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
+| `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, which are dropped, and how the model a formula was written for is read |
+| `test-model_specify_record.R` | the status each model gives each registered term, the record of each term, [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and the columns it names, and formulas from goldfish’s documentation |
+| `test-model_specify_ergm.R` | [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md) with a network: each term’s ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
 | `test-formula_terms.R` | each term’s matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and [`glance()`](https://generics.r-lib.org/reference/glance.html), on hand-built results and on fits |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
@@ -760,7 +1007,8 @@ holds the shared fixtures and expectations:
   [`MASS::glm.nb()`](https://rdrr.io/pkg/MASS/man/glm.nb.html),
   [`pscl::zeroinfl()`](https://rdrr.io/pkg/pscl/man/zeroinfl.html),
   [`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html) or
-  `fixest::feglm()` on identical data.
+  [`fixest::feglm()`](https://lrberge.github.io/fixest/reference/feglm.html)
+  on identical data.
 - `expect_qap_shape()` — the shape contract every estimator meets,
   whatever it fits underneath: named coefficients, and
   `lower`/`larger`/`abs` as two-row matrices of proportions with
@@ -835,12 +1083,16 @@ after changing any roxygen comment.
 - Related functions share one roxygen block via `@name`/`@rdname`,
   matching the file organisation above.
 - Document each argument once.
-  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
-  takes its options through a `control` list, so document each entry of
-  that list as a bullet under `@param control` rather than as its own
-  `@param`. A stray `@param` for something that is no longer a formal
-  argument is an R CMD check warning, and the duplicated blocks that the
-  engine merge introduced were exactly that.
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  takes its options through a `control` list, and each control is a
+  formal argument of
+  [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+  documented there with its own `@param`. To rename a control, rename
+  the argument and add the old name to `.control_renames()`, so that a
+  script with the old name still runs and is warned. A stray `@param`
+  for something that is no longer a formal argument is an R CMD check
+  warning, and the duplicated blocks that the engine merge introduced
+  were exactly that.
 - Every exported function needs a runnable `@examples` block: examples
   are run by R CMD check, and they are also the fastest documentation
   for users. Prefer the bundled `ison_*`/`fict_*` networks from
@@ -890,7 +1142,7 @@ headings used in `NEWS.md` (see below), so keep the two in step.
 the website function overview (`pkgdown/_pkgdown.yml` `reference:`
 titles). Lead with `## Package` (package-wide/website/infrastructure
 changes), then `## Tests` (the `test_*()` family) and `## Regression`
-([`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+([`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 and the engine behind it). Each heading appears at most once per
 version.
 

@@ -9,12 +9,29 @@ Functions for testing network statistics against a null distribution:
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md)
   : Tests of network measures
 
+## Formulas
+
+Functions for reading one formula for an MRQAP, goldfish, or ergm, and
+for seeing what each model makes of each term:
+
+- [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_dynam()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`tidy(`*`<mrqap_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`tidy(`*`<dynam_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`tidy(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify.md)
+  : Specify a model from a formula written for many models
+
 ## Regression
 
 Functions for regressing networks on nodal and dyadic covariates:
 
-- [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
+- [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md)
   : Regression for network data
+- [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  [`print(`*`<mrqap_control>`*`)`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  : Controls for an MRQAP
 
 ## Results
 
