@@ -65,7 +65,10 @@ as does a formula with no term left to fit.
 A bar adds a random intercept, as in \code{{lme4}}: \code{(1 | sender)},
 \code{(1 | receiver)}, \code{(1 | reporter)} for a cognitive social structure, or
 \code{(1 | network)} for a list of networks. Each sets the same switch as its
-\verb{random_intercept_*} control. Random slopes are not supported.}
+\verb{random_intercept_*} control. Random slopes are not supported.
+
+A bar outside parentheses absorbs fixed effects, as in \code{{fixest}}:
+\code{y ~ x | sender + receiver} (see the section on fixed effects).}
 
 \item{.data}{A manynet-consistent network (see
 \code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
@@ -130,6 +133,9 @@ dyads the model could use (\code{possible}) and did use (\code{used}), the numbe
 unobserved on each variable (\code{unobserved}), the number of fixed ties left
 out (\code{fixed_ties}), and the number of nodes that
 stayed in place in each permutation set (\code{fixed_nodes}).
+\item \code{fixed_effects}, the groups whose fixed effects were absorbed;
+\item \code{pred}, the dyad-level data, with the observed values even where a
+gaussian model was fitted to demeaned ones;
 \item \code{terms}, a tibble of one row for each coefficient, with the parts that
 its name joins: \code{term}, the coefficient's name; \code{effect}, the formula
 term it comes from, such as \code{"ego"} or \code{"match"}, or \code{"intercept"} or
@@ -159,7 +165,7 @@ matrices and handed to a QAP engine (ported from MrQAP) that supports:
 Poisson families;
 \item two permutation schemes: \code{"predictor"} (Dekker's double semi-partialling)
 and \code{"outcome"};
-\item random intercepts (lme4);
+\item random intercepts (lme4), and fixed effects, absorbed as in \code{{fixest}};
 \item robust (HC3) standard errors;
 \item lists of networks, in which graphs that are missing any predictor are
 dropped with a warning and the remaining networks are pooled;
@@ -261,6 +267,36 @@ attribute, reads the same wave as the outcome; see stocnet/infernet#18.
 Every wave must hold the same nodes: mark a node that is absent from a wave
 as missing there. A list of networks is read as independent networks, not
 as a panel, even where it holds the waves of one network.
+}
+
+\section{Fixed effects}{
+
+A bar outside parentheses absorbs a fixed effect for each group named after
+it, as in \code{{fixest}}: \code{weight ~ sim(age) | sender + receiver}.
+The groups are \code{sender}, \code{receiver}, \code{reporter} for a cognitive social
+structure, and \code{network} for a list of networks. In a pooled list each
+node's group is within its own network; in a panel a node keeps one group
+across the waves, and \code{network} is one effect for each wave.
+The intercept is one of the absorbed effects, so its estimate is \code{NA}.
+
+A gaussian model is demeaned once by the fixed effects, and each
+permutation fits a plain model of the demeaned variables. A node
+permutation maps senders onto senders and receivers onto receivers, and
+every permutation fits the dyads of the observed model, so this gives the
+same estimates as a dummy for every group (the Frisch-Waugh-Lovell
+theorem), at the cost of a model without them. Its R-squared is the within
+R-squared. Any other family is fitted with \code{fixest::feglm()}, or
+\code{fixest::fenegbin()} for \code{"negbin"}, in every permutation, which needs
+\code{{fixest}}. That leaves out the dyads of a group whose outcome has one
+value, and says how many.
+
+A predictor that does not vary within the groups, such as \code{ego(age)} with
+a sender effect, is absorbed by them, and aborts with its name.
+An undirected network has no senders or receivers, so it drops those
+effects with a warning, as it does those random intercepts. A two-mode
+network keeps both, since its rows and columns are different nodes.
+Fixed effects cannot yet be combined with random intercepts, robust
+standard errors, or the \code{"zip"} family.
 }
 
 \section{Multiplex networks}{

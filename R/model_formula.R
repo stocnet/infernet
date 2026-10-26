@@ -219,6 +219,8 @@
       c("The formula needs an outcome on its left-hand side.",
         i = "For example: {.code weight ~ ego(age)}."))
   }
+  split <- .split_fixed(formula)
+  formula <- split$formula
   tt <- stats::terms(formula)
   labels <- attr(tt, "term.labels")
   # A bar means what it means in {lme4}: `(1 | sender)` is a random intercept
@@ -226,6 +228,12 @@
   # builds, and sets the same switch as its control.
   bars <- grepl("|", labels, fixed = TRUE)
   random <- vapply(labels[bars], .specify_random, character(1), USE.NAMES = FALSE)
+  both <- intersect(random, split$fixed)
+  if (length(both) > 0) {
+    manynet::snet_abort(
+      c("{.val {both}} has both a fixed effect and a random intercept.",
+        i = "Keep {.code | {both}} for a fixed effect, or {.code (1 | {both})} for a random intercept."))
+  }
   labels <- labels[!bars]
   if (!is.null(attr(tt, "offset"))) {
     manynet::snet_abort("{.fn offset} is not yet supported in the formula.")
@@ -242,8 +250,54 @@
   structure(list(outcome = paste(deparse(formula[[2]]), collapse = ""),
                  terms   = terms,
                  random  = unique(random),
+                 fixed   = split$fixed,
                  env     = env),
             class = "infernet_spec")
+}
+
+# A bar outside parentheses means what it means in {fixest}: what follows it
+# is absorbed as a fixed effect, so `y ~ x | sender + receiver` has a fixed
+# effect for each sender and each receiver (stocnet/infernet#8). A bar inside
+# parentheses is an {lme4} random intercept, and `(1 | sender)` is never read
+# here, since R parses the parentheses as one term. Returns the formula without
+# the bar, and the groups after it.
+#' @keywords internal
+#' @noRd
+.split_fixed <- function(formula) {
+  rhs <- formula[[3]]
+  if (!(is.call(rhs) && identical(rhs[[1]], as.name("|")))) {
+    return(list(formula = formula, fixed = character(0)))
+  }
+  main <- rhs[[2]]
+  if (is.call(main) && identical(main[[1]], as.name("|"))) {
+    manynet::snet_abort(
+      c("The formula has more than one bar outside parentheses.",
+        i = "Write the fixed effects after one bar: {.code y ~ x | sender + receiver}."))
+  }
+  groups <- .flatten_plus(rhs[[3]])
+  names_ok <- vapply(groups, is.name, logical(1))
+  groups <- vapply(groups, .deparsed, character(1))
+  allowed <- names(.random_groups())
+  wrong <- groups[!names_ok | !groups %in% allowed]
+  if (length(wrong) > 0) {
+    manynet::snet_abort(
+      c("{.code | {wrong}} names {.val {wrong}}, which has no fixed effect.",
+        i = "A fixed effect can be for {.val {allowed}}."))
+  }
+  out <- formula
+  out[[3]] <- main
+  list(formula = out, fixed = unique(groups))
+}
+
+# `a + b + c` arrives as `(a + b) + c`, so its parts are the leaves of a tree of
+# `+` calls.
+#' @keywords internal
+#' @noRd
+.flatten_plus <- function(expr) {
+  if (is.call(expr) && identical(expr[[1]], as.name("+")) && length(expr) == 3) {
+    return(c(.flatten_plus(expr[[2]]), .flatten_plus(expr[[3]])))
+  }
+  list(expr)
 }
 
 # A random-effect term: an intercept, `1`, for one of the indices the engine

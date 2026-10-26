@@ -136,3 +136,19 @@ test_that("a two-mode network accepts a grouping factor for either mode", {
                    control = list(seed = 1, groups = rep("a", 7))),
     "length 7")
 })
+
+# A two-mode network is read as undirected, and an undirected network drops
+# its sender and receiver random intercepts. A two-mode network's rows and
+# columns are different nodes, so it keeps them.
+test_that("a two-mode network keeps its sender and receiver random intercepts", {
+  skip_if_not_installed("lme4")
+  g <- qap_net_twomode_wide()
+  ref <- qap_reference_data(weight ~ ego(Att), g)
+  mixed <- lme4::lmer(weight ~ ego_Att + (1 | rv), data = ref$pred)
+  expect_no_warning(
+    fit <- estimate_mrqap(weight ~ ego(Att) + (1 | receiver), g, times = 5,
+                          control = list(seed = 1, family = "gaussian")))
+  expect_true(fit$random[["receiver"]])
+  expect_equal(unname(fit$coefficients), unname(lme4::fixef(mixed)),
+               tolerance = 1e-6)
+})

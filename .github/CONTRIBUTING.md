@@ -359,6 +359,32 @@ A list of networks is never a panel, since nothing says its nodes are the same.
 Whether a layer term reads the same wave or the previous one is open:
 see [stocnet/infernet#18](https://github.com/stocnet/infernet/issues/18).
 
+#### Fixed effects
+
+A bar outside parentheses, `y ~ x | sender + receiver`, absorbs fixed effects,
+as in `{fixest}`; a bar inside them, `(1 | sender)`, is an `{lme4}` random
+intercept. `.split_fixed()` reads the bare bar before `stats::terms()` sees
+the formula, so the two never meet. The engine code is in
+[R/qap_fixed.R](../R/qap_fixed.R).
+
+- **A gaussian model is demeaned once.** A node permutation maps senders onto
+  senders, and `.missing_blocks()` keeps the dyads of the observed model in
+  every draw, so a matrix with zero group means keeps them under any draw.
+  By Frisch-Waugh-Lovell, each permutation then fits a plain `lm()` of the
+  demeaned variables, which is why `{fixest}` is only in `Suggests`.
+  The t-values are rescaled for the absorbed degrees of freedom.
+  A change to the permutations that breaks either property breaks this.
+- **Any other family calls `{fixest}` in every fit.** Logit and Poisson models
+  have no demeaning shortcut. Double semi-partialling still demeans, since it
+  residualises linearly.
+- **The intercept is kept as `NA`.** Every result names its first coefficient
+  `"(Intercept)"`, and printing and double semi-partialling rely on that.
+- **A group is within its network in a pooled list,** `nv^sv` as `{fixest}`
+  writes it, and the same node across the waves of a panel.
+- **One word, one meaning.** The engine already says `fixed` for a node that
+  keeps its place and for a tie that the design set, so the argument and the
+  result element are `fixed_effects`.
+
 #### Cognitive social structures
 
 A CSS is `{manynet}`'s to define, and this package follows it.
@@ -588,7 +614,7 @@ correspond to those in other packages.
 | Options | named arguments, as goldfish | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, and `path_fn` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
-| Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
+| Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control`; fixed effects after a bare bar, as `{fixest}`: `\| sender + receiver` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
 | Specification | internal: `.specify()` | the formula, or `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
 
 #### Rules
@@ -700,6 +726,7 @@ A cognitive social structure and a list of networks abort.
 | `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
 | `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
 | `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
+| `\| sender` | fits | a fixed effect for each sender, receiver, reporter, or network; goldfish drops it | `sender`, `receiver` | — | — |
 | `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |
 | `inertia`, `inertia()` | drops; fits on a panel | the tie from i to j in the previous wave; goldfish: the past events from i to j | — | — | — |
 | `trans`, `trans()` | drops; fits on a panel | the two-paths i → k → j in the previous wave; goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |

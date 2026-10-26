@@ -144,7 +144,8 @@ and the outcome as a \code{network} object under its own name, so
 \code{ergm::ergm(specify_ergm(f, .data))} fits as it is.
 \code{edges} is always added, as ergm's intercept.
 \code{(1 | sender)} and \code{(1 | receiver)} become ergm's fixed effects \code{sender}
-and \code{receiver}, which are the nearest ergm has.
+and \code{receiver}, which are the nearest ergm has, and the fixed effects
+\verb{| sender + receiver} become the same terms.
 A cognitive social structure or a list of networks aborts, since ergm
 fits one report of one network.
 }
@@ -167,8 +168,8 @@ cross-sectional network, \code{inertia} and \code{trans} are dropped too.
 
 For goldfish, a layer named on its own becomes \code{tie(layer, weighted = TRUE)},
 \code{exchange(layer)} becomes \code{recip(layer)}, and \code{dist(x)} becomes \code{diff(x)}.
-\code{match()}, \code{mix()}, and random intercepts have no goldfish term, and are
-dropped.
+\code{match()}, \code{mix()}, random intercepts, and fixed effects have no goldfish
+term, and are dropped.
 }
 
 \examples{

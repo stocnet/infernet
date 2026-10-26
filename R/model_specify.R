@@ -98,7 +98,8 @@
 #'   `ergm::ergm(specify_ergm(f, .data))` fits as it is.
 #'   `edges` is always added, as ergm's intercept.
 #'   `(1 | sender)` and `(1 | receiver)` become ergm's fixed effects `sender`
-#'   and `receiver`, which are the nearest ergm has.
+#'   and `receiver`, which are the nearest ergm has, and the fixed effects
+#'   `| sender + receiver` become the same terms.
 #'   A cognitive social structure or a list of networks aborts, since ergm
 #'   fits one report of one network.
 #'
@@ -119,8 +120,8 @@
 #'
 #'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
 #'   `exchange(layer)` becomes `recip(layer)`, and `dist(x)` becomes `diff(x)`.
-#'   `match()`, `mix()`, and random intercepts have no goldfish term, and are
-#'   dropped.
+#'   `match()`, `mix()`, random intercepts, and fixed effects have no goldfish
+#'   term, and are dropped.
 #'
 #' @param formula A formula written for an MRQAP, goldfish, or ergm.
 #' @param .data Optionally, the network the formula is for.
@@ -172,7 +173,9 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   record <- rbind(record, .interpreted_dynam(labels, read$input, "mrqap"))
   dropped <- .drop_labels(labels, read$ctx)
   record <- rbind(record, dropped$record)
-  .finish_formula(lhs, dropped$labels, read$bars, record, read, "mrqap")
+  record <- rbind(record, .fixed_rows(read$fixed, "mrqap"))
+  .finish_formula(lhs, dropped$labels, read$bars, record, read, "mrqap",
+                  fixed = read$fixed)
 }
 
 #' @rdname specify
@@ -212,6 +215,7 @@ specify_dynam <- function(formula, .data = NULL, input = NULL) {
     record <- rbind(record, .record_row(paste0("(", bar, ")"), "", "drops",
                                       "is a random intercept, which goldfish does not fit"))
   }
+  record <- rbind(record, .fixed_rows(read$fixed, "dynam"))
   record <- rbind(record, .interpreted_dynam(out, read$input, "dynam"))
   .finish_formula(read$lhs, unique(out), character(0), record, read, "dynam")
 }
@@ -297,6 +301,9 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
                                         "is a random intercept, which ergm does not fit"))
     }
   }
+
+  record <- rbind(record, .fixed_rows(read$fixed, "ergm"))
+  terms <- c(terms, intersect(read$fixed, c("sender", "receiver")))
 
   repeated <- unique(terms[duplicated(terms)])
   if (length(repeated) > 0) {
@@ -443,6 +450,10 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   # where it holds the waves of one network.
   panel <- .is_panel(.data)
   if (.is_list_of_graphs(.data)) .data <- .data[[1]]
+  # The groups after a bare bar are read before the terms, since `sender` and
+  # `receiver` are also ergm's names for its node fixed effects.
+  split <- .split_fixed(formula)
+  formula <- split$formula
   ctx <- .specify_context(.data, .deparsed(formula[[2]]))
   ctx$panel <- panel
   input <- .read_input(formula, input, ctx)
@@ -456,7 +467,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   read <- list(labels = labels, native = character(0), record = .no_record())
   if (input == "ergm") read <- .read_ergm_terms(labels, ctx)
   env <- environment(formula)
-  c(read, list(lhs = formula[[2]], bars = bars, input = input, ctx = ctx,
+  c(read, list(lhs = formula[[2]], bars = bars, fixed = split$fixed,
+               input = input, ctx = ctx,
                data = .data, env = if (is.null(env)) globalenv() else env,
                original = attr(tt, "term.labels")))
 }
@@ -641,7 +653,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @keywords internal
 #' @noRd
 .finish_formula <- function(lhs, labels, bars, record, read, target,
-                            env = read$env) {
+                            env = read$env, fixed = character(0)) {
   model <- .model_label(target)
   record <- .complete_record(record, read, target)
   if (length(labels) == 0) {
@@ -655,10 +667,34 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   .report_record(record, read$input, model)
   rhs <- str2lang(paste(c(labels, if (length(bars)) paste0("(", bars, ")")),
                         collapse = " + "))
+  if (length(fixed) > 0) {
+    rhs <- call("|", rhs, str2lang(paste(fixed, collapse = " + ")))
+  }
   out <- eval(call("~", lhs, rhs))
   environment(out) <- env
   structure(out, class = c(paste0(target, "_formula"), "formula"),
             input = read$input, record = record)
+}
+
+# The record of the fixed effects after a bare bar, one row for each group.
+# An MRQAP fits them. goldfish has none. ergm's `sender` and `receiver` terms
+# are fixed effects for each node, so the two are the same model there; ergm
+# has no reporter or network to absorb.
+#' @keywords internal
+#' @noRd
+.fixed_rows <- function(fixed, target) {
+  if (length(fixed) == 0) return(.no_record())
+  term <- paste("|", fixed)
+  switch(target,
+    mrqap = .record_row(term, term, rep("fits", length(fixed)), rep("", length(fixed))),
+    dynam = .record_row(term, "", rep("drops", length(fixed)),
+                        rep("is a fixed effect, which goldfish does not fit", length(fixed))),
+    ergm = {
+      node <- fixed %in% c("sender", "receiver")
+      .record_row(term, ifelse(node, fixed, ""), ifelse(node, "adapted", "drops"),
+                  ifelse(node, "is ergm's fixed effect for each node",
+                         "is a fixed effect, which ergm does not fit"))
+    })
 }
 
 # Rewritten and differently read terms are information, one line each, since

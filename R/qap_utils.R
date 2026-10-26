@@ -574,14 +574,39 @@ HC3 <- function(X, e) {
 # semi-partialling then looks a column up by the unquoted name and fails with a
 # subscript error. The inner function has many early returns, one per family,
 # so the names are cleaned here, where every path passes through exactly once.
+#
+# A model with fixed effects has no intercept of its own, since the intercept
+# is one of the absorbed effects. Every result names its first coefficient
+# "(Intercept)", which double semi-partialling leaves untested and printing
+# marks, so the intercept is kept as `NA` rather than dropped.
+#
+# `fixed_df` is the number of parameters that a gaussian model absorbed before
+# it reached `lm()`. The fit of the demeaned variables does not know of them,
+# so its residual degrees of freedom are too many, and each t-statistic is
+# rescaled to what the model with the fixed effects gives. The rescaling is the
+# same in every permutation, so it changes no p-value.
 #' @keywords internal
 #' @noRd
-fit_qap_model <- function(...) {
-  fit <- .fit_qap_model(...)
+fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
+  fit <- .fit_qap_model(..., fixed_effects = fixed_effects)
   for (el in c("coefficients", "t", "zi_coefficients")) {
     if (!is.null(fit[[el]]) && !is.null(names(fit[[el]]))) {
       names(fit[[el]]) <- gsub("`", "", names(fit[[el]]), fixed = TRUE)
     }
+  }
+  if (!is.null(fixed_df)) {
+    n  <- stats::nobs(fit$base_model)
+    p  <- length(fit$coefficients)
+    df <- fit$base_model$df.residual
+    fit$t <- fit$t * sqrt((df - fixed_df) / df)
+    # The R-squared of the demeaned variables is the within R-squared, since
+    # their means are zero.
+    fit$adj.r.squared <- 1 - (1 - fit$r.squared) * (n - fixed_df) /
+      (n - fixed_df - p)
+  }
+  if (!is.null(fixed_effects) || !is.null(fixed_df)) {
+    fit$coefficients <- c("(Intercept)" = NA_real_, fit$coefficients)
+    fit$t <- c("(Intercept)" = NA_real_, fit$t)
   }
   fit
 }
@@ -591,10 +616,30 @@ fit_qap_model <- function(...) {
 .fit_qap_model <- function(mod, pred, family,
                           use_robust_errors = FALSE,
                           main_vars = NULL,
-                          has_random = FALSE) {
+                          has_random = FALSE,
+                          fixed_effects = NULL) {
   fit <- list()
   dep_var <- all.vars(mod)[1]
   nx  <- length(main_vars)
+
+  if (!is.null(fixed_effects)) {
+    # One thread: the permutations are already spread over the workers.
+    fe_mod <- stats::as.formula(paste(
+      paste(deparse(mod, width.cutoff = 500), collapse = " "), "|",
+      paste(fixed_effects, collapse = " + ")))
+    base_model <- if (family == "negbin") {
+      fixest::fenegbin(fe_mod, data = pred, notes = FALSE, nthreads = 1)
+    } else {
+      fixest::feglm(fe_mod, data = pred, notes = FALSE, nthreads = 1,
+                    family = get(family, mode = "function",
+                                 envir = asNamespace("stats"))())
+    }
+    fit$coefficients <- stats::coef(base_model)
+    fit$t <- fixest::coeftable(base_model, vcov = "iid")[names(fit$coefficients), 3]
+    if (family == "negbin") fit$theta <- base_model$theta
+    fit$base_model <- base_model
+    return(fit)
+  }
 
   if (family == "zip") {
     if (has_random) {
@@ -737,9 +782,19 @@ aggregate_perm_results <- function(results, times) {
 #' @noRd
 residualise_predictor <- function(xi, pred, main_vars,
                                   has_random = FALSE,
-                                  rand_formula = "") {
+                                  rand_formula = "",
+                                  fixed_ids = NULL) {
   bq <- function(v) paste0("`", v, "`")
   others <- setdiff(main_vars, xi)
+  # With fixed effects, the residual is that of the predictor on the others
+  # and on the effects, which by Frisch-Waugh-Lovell is that of the demeaned
+  # predictor on the demeaned others. It has zero group means, and keeps them
+  # under any permutation.
+  if (!is.null(fixed_ids)) {
+    dm <- .demean(as.matrix(pred[c(xi, others)]), fixed_ids)
+    if (length(others) == 0) return(dm[, 1])
+    return(stats::lm.fit(dm[, -1, drop = FALSE], dm[, 1])$residuals)
+  }
   modx_str <- paste(bq(xi), "~ 1")
   if (length(others) > 0) {
     modx_str <- paste(modx_str,

@@ -30,6 +30,7 @@ QAPengine <- function(formula,
                       use_robust_errors = FALSE,
                       missing   = "available",
                       panel     = FALSE,
+                      fixed_effects = character(0),
                       less_mem  = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
@@ -60,7 +61,11 @@ QAPengine <- function(formula,
     manynet::snet_abort(
       "A {label} has no {.val {unavailable}} random intercept{?s}.")
   }
-  if (!directed && (requested[["sender"]] || requested[["receiver"]])) {
+  # A two-mode network keeps them: its rows and its columns are different
+  # nodes, whether or not it is read as directed.
+  y1 <- if (large) matlist[[dep]][[1]] else matlist[[dep]]
+  twomode <- dim(y1)[1] != dim(y1)[2]
+  if (!directed && !twomode && (requested[["sender"]] || requested[["receiver"]])) {
     manynet::snet_warn(
       c("An undirected network has no senders or receivers.",
         i = "Setting the sender and receiver random intercepts to {.val FALSE}."))
@@ -80,6 +85,24 @@ QAPengine <- function(formula,
   mod <- stats::as.formula(paste(
     paste(deparse(formula, width.cutoff = 500), collapse = " "), rand_part))
   has_random <- length(active) > 0 || parsed$has_random
+
+  # ---- fixed effects --------------------------------------------------------
+
+  fixed_effects <- .check_fixed(fixed_effects, shape, directed, large,
+                                has_random, family, use_robust_errors,
+                                twomode = twomode)
+  fe_cols <- .fixed_columns(fixed_effects, large, panel)
+  # A gaussian model absorbs them once, below; any other family absorbs them
+  # in every fit, with {fixest}.
+  absorb_once <- length(fixed_effects) > 0 && family == "gaussian"
+  fit_fixed <- if (length(fixed_effects) > 0 && !absorb_once) fe_cols else NULL
+  if (!is.null(fit_fixed))
+    thisRequires("fixest", "for fixed effects in a model that is not gaussian")
+  if (absorb_once) {
+    # The intercept is one of the absorbed effects.
+    mod <- stats::as.formula(paste(
+      paste(deparse(formula, width.cutoff = 500), collapse = " "), "- 1"))
+  }
 
   if (diag && css)
     manynet::snet_warn(
@@ -147,6 +170,26 @@ QAPengine <- function(formula,
       "and keeping {?it/them} in place under permutation.")
   }
 
+  # The result keeps the observed values, whichever values are fitted. A
+  # gaussian model is fitted to values demeaned once: every permutation fits
+  # these dyads, and maps each group onto a group, so the demeaned values keep
+  # zero group means in every draw.
+  pred_observed <- pred
+  fixed_df <- NULL
+  if (absorb_once) {
+    absorbed <- .absorb_fixed(shape, matlist, pred, vec, dep, main,
+                              fixed_effects, fe_cols, large, directed)
+    pred     <- absorbed$pred
+    matlist  <- absorbed$matlist
+    fixed_df <- absorbed$df
+  }
+  fixed_ids <- NULL
+  if (!is.null(fit_fixed)) {
+    fixed_ids <- .fixed_ids(pred, fe_cols)
+    .check_absorbed(.demean(as.matrix(pred[main]), fixed_ids), pred[main],
+                    fixed_effects)
+  }
+
   # ---- baseline -------------------------------------------------------------
 
   fit <- list()
@@ -155,7 +198,16 @@ QAPengine <- function(formula,
                             family       = family,
                             use_robust_errors = use_robust_errors,
                             main_vars    = main,
-                            has_random   = has_random)
+                            has_random   = has_random,
+                            fixed_effects = fit_fixed,
+                            fixed_df     = fixed_df)
+  if (!is.null(fit_fixed)) {
+    removed <- nrow(pred) - stats::nobs(fit$base$base_model)
+    if (removed > 0)
+      manynet::snet_info(
+        c("Leaving out {removed} dyad{?s} whose fixed-effect group has only one outcome value.",
+          i = "{.pkg fixest} cannot estimate an effect for such a group."))
+  }
 
   # Double semi-partialling residualises a predictor against the others, so
   # with one predictor there are none and the scheme reduces to permuting the
@@ -180,7 +232,8 @@ QAPengine <- function(formula,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
                     data_vars. = data_vars, parsed. = parsed,
-                    n_obs. = used, panel. = panel, exclude. = exclude)
+                    n_obs. = used, panel. = panel, exclude. = exclude,
+                    fixed_effects. = fit_fixed, fixed_df. = fixed_df)
   # Each permutation set exchanges only the nodes whose missing cells match, so
   # that every draw is fitted on the dyads of the observed model.
   fixed <- integer(0)
@@ -227,7 +280,8 @@ QAPengine <- function(formula,
 
       xR <- residualise_predictor(xi, pred, main,
                                   has_random   = has_random,
-                                  rand_formula = rand_part)
+                                  rand_formula = rand_part,
+                                  fixed_ids    = fixed_ids)
       matlist_resid <- matlist
       matlist_resid[[xi]] <- shape$unresidualise(xR, matlist[[xi]], pred, large,
                                                  vec$valid, vec$valid_list,
@@ -272,9 +326,13 @@ QAPengine <- function(formula,
   if (!less_mem) fit$simple_fit <- fit$base$base_model
 
   if (family == "binomial") {
+    # From the model rather than from `pred`, since {fixest} leaves out the
+    # dyads of a group with one outcome value.
+    bm <- fit$base$base_model
+    fitted_prob <- stats::fitted(bm)
     fit$confusion_matrix <- probabilistic_confusion_matrix(
-      actual = pred[[dep]],
-      predicted_prob = stats::fitted(fit$base$base_model),
+      actual = fitted_prob + stats::residuals(bm, type = "response"),
+      predicted_prob = fitted_prob,
       n_draws = 1000, seed = seed
     )
   }
@@ -288,7 +346,8 @@ QAPengine <- function(formula,
   fit$groups    <- unique(unlist(groups))
   fit$robust_se <- use_robust_errors
   fit$random    <- requested[names(slots)]
-  fit$pred      <- pred
+  fit$fixed_effects <- fixed_effects
+  fit$pred      <- pred_observed
   fit$dep       <- dep
   fit$missing   <- list(treatment   = missing,
                         possible    = unobserved$possible,
@@ -332,7 +391,9 @@ QAPPermEst <- function(i,
                        perm_groups. = groups.,
                        n_obs. = NULL,
                        panel. = FALSE,
-                       exclude. = NULL) {
+                       exclude. = NULL,
+                       fixed_effects. = NULL,
+                       fixed_df. = NULL) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
@@ -390,7 +451,9 @@ QAPPermEst <- function(i,
                                    family       = family.,
                                    use_robust_errors = use_robust_errors.,
                                    main_vars    = main_vars.,
-                                   has_random   = has_random.)),
+                                   has_random   = has_random.,
+                                   fixed_effects = fixed_effects.,
+                                   fixed_df     = fixed_df.)),
     error = function(e) NULL
   )
   if (is.null(perm_fit)) return(NULL)

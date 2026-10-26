@@ -3,6 +3,7 @@
 ## Package
 
 - Updated CONTRIBUTING's formula dictionary with an MRQAP column and goldfish's effects
+- Added `{fixest}` to `Suggests`, for fixed effects in models that are not gaussian
 
 ## Specification
 
@@ -22,9 +23,20 @@
   - Added `tidy()` for the result, one row for each term, which fits nothing
   - `tidy()` of an MRQAP formula with `.data` names the columns `estimate_mrqap()` builds
 - Named the other models in the term registry for the model: `dynam`, `saom`, and `ergm`
+- Added fixed effects after a bare bar to the `specify_*()` functions
+  - `specify_ergm()` writes `| sender + receiver` as ergm's `sender` and `receiver`
+  - `specify_dynam()` drops them
 
 ## Regression
 
+- Added fixed effects to `estimate_mrqap()`, as in `{fixest}`: `y ~ x | sender + receiver`
+  (thanks @RWKrause, closes #8)
+  - Takes `sender`, `receiver`, `reporter` for a CSS, and `network` for a list
+  - Absorbs them once in a gaussian model, so each permutation fits a plain `lm()`
+  - Fits `fixest::feglm()` or `fixest::fenegbin()` in each permutation otherwise
+  - Nests each node's group in its network in a pooled list, not in a panel
+  - Names a predictor that the fixed effects absorb, e.g. `ego()` with `| sender`
+- Fixed the sender and receiver random intercepts that a two-mode network dropped
 - Fixed the permutations of a network with missing data to use the dyads of the observed model
   - Permutes nodes only among nodes with the same unobserved cells
   - Keeps each node with scattered unobserved cells in place

@@ -108,6 +108,7 @@ print.netreg_css <- function(x, ...) {
   }
   if (isTRUE(x$random[["reporter"]]))
     cat("Each reporter has a random intercept.\n")
+  cat(.fixed_label(x))
 
   if (!is.null(x$theta))
     cat("Negative binomial dispersion (theta):", format(round(x$theta, 4)), "\n")

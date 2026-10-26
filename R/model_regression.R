@@ -15,7 +15,7 @@
 #'   Poisson families;
 #' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
 #'   and `"outcome"`;
-#' - random intercepts (lme4);
+#' - random intercepts (lme4), and fixed effects, absorbed as in `{fixest}`;
 #' - robust (HC3) standard errors;
 #' - lists of networks, in which graphs that are missing any predictor are
 #'   dropped with a warning and the remaining networks are pooled;
@@ -104,6 +104,34 @@
 #'   as missing there. A list of networks is read as independent networks, not
 #'   as a panel, even where it holds the waves of one network.
 #'
+#' @section Fixed effects:
+#'   A bar outside parentheses absorbs a fixed effect for each group named after
+#'   it, as in `{fixest}`: `weight ~ sim(age) | sender + receiver`.
+#'   The groups are `sender`, `receiver`, `reporter` for a cognitive social
+#'   structure, and `network` for a list of networks. In a pooled list each
+#'   node's group is within its own network; in a panel a node keeps one group
+#'   across the waves, and `network` is one effect for each wave.
+#'   The intercept is one of the absorbed effects, so its estimate is `NA`.
+#'
+#'   A gaussian model is demeaned once by the fixed effects, and each
+#'   permutation fits a plain model of the demeaned variables. A node
+#'   permutation maps senders onto senders and receivers onto receivers, and
+#'   every permutation fits the dyads of the observed model, so this gives the
+#'   same estimates as a dummy for every group (the Frisch-Waugh-Lovell
+#'   theorem), at the cost of a model without them. Its R-squared is the within
+#'   R-squared. Any other family is fitted with `fixest::feglm()`, or
+#'   `fixest::fenegbin()` for `"negbin"`, in every permutation, which needs
+#'   `{fixest}`. That leaves out the dyads of a group whose outcome has one
+#'   value, and says how many.
+#'
+#'   A predictor that does not vary within the groups, such as `ego(age)` with
+#'   a sender effect, is absorbed by them, and aborts with its name.
+#'   An undirected network has no senders or receivers, so it drops those
+#'   effects with a warning, as it does those random intercepts. A two-mode
+#'   network keeps both, since its rows and columns are different nodes.
+#'   Fixed effects cannot yet be combined with random intercepts, robust
+#'   standard errors, or the `"zip"` family.
+#'
 #' @section Multiplex networks:
 #'   The left-hand side of the formula can name a layer of a multiplex network,
 #'   and the right-hand side can name other layers as dyadic covariates,
@@ -172,6 +200,9 @@
 #'   `(1 | receiver)`, `(1 | reporter)` for a cognitive social structure, or
 #'   `(1 | network)` for a list of networks. Each sets the same switch as its
 #'   `random_intercept_*` control. Random slopes are not supported.
+#'
+#'   A bar outside parentheses absorbs fixed effects, as in `{fixest}`:
+#'   `y ~ x | sender + receiver` (see the section on fixed effects).
 #' @param .data A manynet-consistent network (see
 #'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
 #'   supplied the model is fit jointly; graphs missing any predictor are
@@ -228,6 +259,9 @@
 #'     unobserved on each variable (`unobserved`), the number of fixed ties left
 #'     out (`fixed_ties`), and the number of nodes that
 #'     stayed in place in each permutation set (`fixed_nodes`).
+#'   - `fixed_effects`, the groups whose fixed effects were absorbed;
+#'   - `pred`, the dyad-level data, with the observed values even where a
+#'     gaussian model was fitted to demeaned ones;
 #'   - `terms`, a tibble of one row for each coefficient, with the parts that
 #'     its name joins: `term`, the coefficient's name; `effect`, the formula
 #'     term it comes from, such as `"ego"` or `"match"`, or `"intercept"` or
@@ -288,8 +322,10 @@ estimate_mrqap <- function(formula,
   # A formula written for another model is read as an MRQAP reads it, and the
   # terms it cannot fit are dropped and named.
   formula <- specify_mrqap(formula, .data)
-  # `(1 | sender)` in the formula sets the same switch as its control.
-  for (group in .specify(formula)$random) {
+  # `(1 | sender)` in the formula sets the same switch as its control, and
+  # `| sender` after a bare bar absorbs a fixed effect.
+  spec <- .specify(formula)
+  for (group in spec$random) {
     ctrl[[.random_groups()[[group]]]] <- TRUE
   }
 
@@ -362,6 +398,7 @@ estimate_mrqap <- function(formula,
     use_robust_errors = ctrl$use_robust_errors,
     missing  = ctrl$missing,
     panel    = panel,
+    fixed_effects = spec$fixed,
     less_mem = ctrl$less_mem
   )
 
@@ -603,7 +640,9 @@ net_regression <- function(formula,
   bm <- fit$simple_fit
   if (is.null(bm)) return(NULL)
   actual <- fit$pred[[fit$dep]]
-  predicted <- stats::fitted(bm)
+  # The observed values less the residuals, rather than `fitted()`, since a
+  # model with fixed effects was fitted to demeaned values.
+  predicted <- actual - stats::residuals(bm)
   predicted <- pmin(pmax(predicted, 0), 1)
   probabilistic_confusion_matrix(
     actual = as.integer(actual),
@@ -675,6 +714,7 @@ print.netreg <- function(x, ...) {
     cat("\nLinear Mixed Network Model fit by REML\n\n")
   }
 
+  cat(.fixed_label(x))
   if (!is.null(x$groups))
     cat("Permutations were performed within groups only.\n")
   lines <- .sample_lines(x)
@@ -697,8 +737,10 @@ print.netreg <- function(x, ...) {
       format(paste0(.directed_label(x$directed), ".")), "\n")
 
   if (!is.null(x$r.squared)) {
-    cat("\nR-squared:    ", format(round(x$r.squared, 4)))
-    cat("\nAdj R-squared:", format(round(x$adj.r.squared, 4)), "\n")
+    # With fixed effects, the R-squared is that of what they leave.
+    within <- if (length(x$fixed_effects) > 0) "Within " else ""
+    cat(paste0("\n", within, "R-squared:    "), format(round(x$r.squared, 4)))
+    cat(paste0("\n", within, "Adj R-squared:"), format(round(x$adj.r.squared, 4)), "\n")
   }
 
   cat("\nCoefficients:\n")
@@ -758,6 +800,8 @@ print.netreg <- function(x, ...) {
                       format(round(x$zi_coefficients, 4)),
                       sep = " = ", collapse = ", "))
   }
+  if (length(x$fixed_effects) > 0)
+    cat("\n", sub("\n$", "", .fixed_label(x)), sep = "")
   if (!is.null(x$groups))
     cat("\nPermutations were performed within groups only.")
   lines <- .sample_lines(x)
