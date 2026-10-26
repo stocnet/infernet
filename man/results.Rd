@@ -163,6 +163,7 @@ glance(css_model)
 }
 \seealso{
 Other models:
+\code{\link[=control_mrqap]{control_mrqap()}},
 \code{\link{regression}},
 \code{\link{specify}},
 \code{\link{tests}}

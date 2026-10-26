@@ -270,6 +270,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it |
 | `model_formula_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
@@ -440,8 +441,9 @@ Test functions consistently:
 `estimate_mrqap()` ([R/model_regression.R](../R/model_regression.R)) is the single
 regression entry point. Its control flow is:
 
-1. Merge the user's `control` list over `.default_control()`,
-   so an unnamed entry falls back to the default rather than to `NULL`.
+1. Read the user's `control` through `control_mrqap()`, so a control that is
+   not named keeps its default, each value is checked, and an old name or
+   another model's option is converted or dropped before anything is fitted.
 2. Read the formula with `specify_mrqap()`, which rewrites the terms of other
    models, drops the terms an MRQAP cannot fit, and names each one.
 3. Dispatch on the input shape.
@@ -924,9 +926,11 @@ Run `devtools::document()` after changing any roxygen comment.
 - Related functions share one roxygen block via `@name`/`@rdname`,
   matching the file organisation above.
 - Document each argument once.
-  `estimate_mrqap()` takes its options through a `control` list, so document
-  each entry of that list as a bullet under `@param control` rather than as its
-  own `@param`. A stray `@param` for something that is no longer a formal
+  `estimate_mrqap()` takes its options through a `control` list, and each
+  control is a formal argument of `control_mrqap()`, documented there with its
+  own `@param`. To rename a control, rename the argument and add the old name
+  to `.control_renames()`, so that a script with the old name still runs and
+  is warned. A stray `@param` for something that is no longer a formal
   argument is an R CMD check warning, and the duplicated blocks that the
   engine merge introduced were exactly that.
 - Every exported function needs a runnable `@examples` block:

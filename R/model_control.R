@@ -1,0 +1,341 @@
+# The controls of an MRQAP ------------------------------------------------------
+#
+# `control_mrqap()` is the one place a control is named, defaulted, and
+# checked. `estimate_mrqap()` passes its `control` list through it, so a list
+# and the result of `control_mrqap()` are read the same way. A name that is no
+# control is read against three tables: the names infernet itself used before
+# (`.control_renames()`), the options of other models that an MRQAP has no use
+# for (`.control_foreign()`), and otherwise it aborts with the nearest name.
+# Renaming a control is then a row in `.control_renames()`.
+
+#' Controls for an MRQAP
+#'
+#' @description
+#'   `control_mrqap()` sets the controls of [estimate_mrqap()], checks each
+#'   one, and returns them as an object of class `mrqap_control`.
+#'   `estimate_mrqap()` passes its `control` argument through this function,
+#'   so `control = list(family = "poisson")` and
+#'   `control = control_mrqap(family = "poisson")` fit the same model.
+#'   Calling `control_mrqap()` first shows the full set of controls, and finds
+#'   a mistake before a long run starts.
+#'
+#'   A control that is not named keeps its default.
+#'   A name that infernet used before is converted to its current name, with a
+#'   warning.
+#'   An option of another model that has no meaning in an MRQAP, such as
+#'   goldfish's `max_iterations`, is dropped, with one warning that names each.
+#'   The result of goldfish's `set_estimation_opt()` can be given whole.
+#'   Any other name aborts, and the nearest control is suggested.
+#' @param permute What the null distribution permutes.
+#'   `"predictor"` (the default) residualises each main predictor against the
+#'   others and permutes that residual, which is Dekker et al.'s (2007) double
+#'   semi-partialling.
+#'   `"outcome"` permutes the outcome and leaves the predictors alone.
+#'   With one predictor there is nothing to residualise against, so
+#'   `"predictor"` reduces to `"outcome"`, and the model says so.
+#' @param family The family of the model.
+#'   `"auto"` (the default) reads it from the outcome: `"binomial"` for a binary
+#'   outcome, otherwise `"gaussian"`, and says which.
+#'   The others are `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`
+#'   (with `{MASS}`), and `"zip"`, a zero-inflated Poisson (with `{pscl}`).
+#' @param directed Logical, whether a tie from i to j differs from one from
+#'   j to i. `NULL` (the default) reads it from the network, and says so.
+#' @param diag Logical, whether loops, the ties from a node to itself, enter
+#'   the model. `NULL` (the default) includes them only where the network has
+#'   loops.
+#' @param seed A number to set the random seed with before the permutations,
+#'   so that a fit can be reproduced. `NULL` (the default) leaves the seed as it
+#'   is. The same seed gives the same result on any `strategy`.
+#' @param groups A vector with a group for each node, so that each node is
+#'   permuted only among the nodes of its group.
+#'   On a two-mode network, its length says which mode it groups.
+#'   `NULL` (the default) permutes all nodes together.
+#' @param strategy The `{future}` plan that the permutations run on:
+#'   `"sequential"` (the default), `"multisession"`, `"multicore"`, or
+#'   `"cluster"`. The plan that was set before is restored after the fit.
+#' @param ncores A number of parallel workers. More than one runs the
+#'   permutations on that many `"multisession"` workers, whatever `strategy`
+#'   says. `NULL` (the default) uses `strategy`.
+#' @param use_robust_errors Logical, whether to use HC3 robust standard errors
+#'   for the observed model's t values. `FALSE` by default.
+#' @param random_intercept_nets,random_intercept_sender,random_intercept_receiver,random_intercept_reporter
+#'   Logical, whether to fit an `{lme4}` random intercept for each network of a
+#'   list, each sender, each receiver, or each reporter of a cognitive social
+#'   structure. `FALSE` by default. In the formula, `(1 | network)`,
+#'   `(1 | sender)`, `(1 | receiver)`, and `(1 | reporter)` set the same
+#'   controls.
+#' @param missing What to do with an unobserved dyad, that is, an `NA` in the
+#'   outcome or in a predictor.
+#'   `"available"` (the default) drops the dyad, and permutes nodes only among
+#'   nodes with the same unobserved cells, so that every permutation is fitted on
+#'   the same dyads as the observed model.
+#'   `"fail"` stops instead, and names how many dyads are unobserved on each
+#'   variable. See the section on missing data in [estimate_mrqap()].
+#' @param less_mem Logical, whether to leave the observed model object out of
+#'   the result, to save memory on a large network. `FALSE` by default.
+#' @param ... Controls by another name: a name that infernet used before, or an
+#'   option of another model. See the description.
+#' @param x An object of class `mrqap_control`.
+#' @return An object of class `mrqap_control`: a list with one element for
+#'   each control.
+#' @references
+#'   Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
+#'   "Sensitivity of MRQAP tests to collinearity and autocorrelation conditions."
+#'   _Psychometrika_ 72(4): 563-581.
+#'   \doi{10.1007/s11336-007-9016-1}
+#' @family models
+#' @examples
+#' control_mrqap(family = "poisson", seed = 1)
+#' # A name that infernet used before is converted, with a warning
+#' control_mrqap(nullhyp = "qapy")
+#' @export
+control_mrqap <- function(permute = c("predictor", "outcome"),
+                          family = c("auto", "gaussian", "binomial", "poisson",
+                                     "negbin", "zip"),
+                          directed = NULL,
+                          diag = NULL,
+                          seed = NULL,
+                          groups = NULL,
+                          strategy = "sequential",
+                          ncores = NULL,
+                          use_robust_errors = FALSE,
+                          random_intercept_nets = FALSE,
+                          random_intercept_sender = FALSE,
+                          random_intercept_receiver = FALSE,
+                          random_intercept_reporter = FALSE,
+                          missing = "available",
+                          less_mem = FALSE,
+                          ...) {
+  ctrl <- list(permute = permute, family = family, directed = directed,
+               diag = diag, seed = seed, groups = groups, strategy = strategy,
+               ncores = ncores, use_robust_errors = use_robust_errors,
+               random_intercept_nets = random_intercept_nets,
+               random_intercept_sender = random_intercept_sender,
+               random_intercept_receiver = random_intercept_receiver,
+               random_intercept_reporter = random_intercept_reporter,
+               missing = missing, less_mem = less_mem)
+  # A NULL in `list()` keeps its name, as a NULL default must.
+  others <- list(...)
+  if (length(others) > 0) {
+    if (is.null(names(others)) || any(!nzchar(names(others)))) {
+      manynet::snet_abort("Every entry of {.arg control} must be named.")
+    }
+    renamed <- .convert_controls(others, names(ctrl))
+    clash <- intersect(names(renamed), names(match.call())[-1])
+    if (length(clash) > 0) {
+      manynet::snet_abort(
+        "{.val {clash}} is given both by its current name and by an old one.")
+    }
+    ctrl[names(renamed)] <- renamed
+  }
+  ctrl$permute <- .check_choice(ctrl$permute, .permute_schemes(), "permute")
+  ctrl$family  <- .check_choice(ctrl$family, .control_families(), "family")
+  ctrl$strategy <- .check_strategy(ctrl$strategy)
+  .check_missing_control(ctrl$missing)
+  for (nm in c("directed", "diag")) .check_flag(ctrl[[nm]], nm, null = TRUE)
+  for (nm in c("use_robust_errors", "less_mem",
+               grep("^random_intercept_", names(ctrl), value = TRUE))) {
+    .check_flag(ctrl[[nm]], nm)
+  }
+  if (!is.null(ctrl$seed) &&
+      !(is.numeric(ctrl$seed) && length(ctrl$seed) == 1 && !is.na(ctrl$seed))) {
+    manynet::snet_abort("{.arg seed} must be one number, or {.code NULL}.")
+  }
+  if (!is.null(ctrl$ncores) &&
+      !(is.numeric(ctrl$ncores) && length(ctrl$ncores) == 1 &&
+        !is.na(ctrl$ncores) && ctrl$ncores >= 1 && ctrl$ncores %% 1 == 0)) {
+    manynet::snet_abort("{.arg ncores} must be a whole number of at least 1, or {.code NULL}.")
+  }
+  if (!is.null(ctrl$groups) && !is.atomic(ctrl$groups)) {
+    manynet::snet_abort("{.arg groups} must be a vector with a group for each node.")
+  }
+  structure(ctrl, class = "mrqap_control")
+}
+
+#' @rdname control_mrqap
+#' @export
+print.mrqap_control <- function(x, ...) {
+  defaults <- unclass(control_mrqap())
+  show <- vapply(names(x), function(nm) {
+    v <- x[[nm]]
+    if (is.null(v)) {
+      return(switch(nm, seed = "NULL, not set", groups = "NULL, all nodes together",
+                    ncores = "NULL, as strategy says", "NULL, read from the data"))
+    }
+    if (nm == "groups") return(paste(length(v), "nodes in", length(unique(v)), "groups"))
+    paste(format(v), collapse = ", ")
+  }, character(1))
+  changed <- !mapply(identical, unclass(x)[names(x)], defaults[names(x)])
+  cat("Controls for an MRQAP\n\n")
+  width <- max(nchar(names(x)))
+  for (i in seq_along(show)) {
+    cat(sprintf("  %-*s  %s%s\n", width, names(x)[i], show[i],
+                if (changed[i]) "  (set)" else ""))
+  }
+  invisible(x)
+}
+
+# A list given as `control` is read by `control_mrqap()`, with the same checks
+# and conversions. An unnamed entry cannot be matched to a control, so it
+# aborts rather than being matched by position.
+#' @keywords internal
+#' @noRd
+.resolve_control <- function(control = list()) {
+  if (inherits(control, "mrqap_control")) return(control)
+  if (inherits(control, "estimation_opt.goldfish")) {
+    manynet::snet_info("Reading {.arg control} as goldfish's estimation options.")
+  }
+  control <- unclass(control)
+  if (!is.list(control)) {
+    manynet::snet_abort(
+      "{.arg control} must be a list, or the result of {.fn control_mrqap}.")
+  }
+  if (length(control) > 0 &&
+      (is.null(names(control)) || any(!nzchar(names(control))))) {
+    manynet::snet_abort("Every entry of {.arg control} must be named.")
+  }
+  do.call(control_mrqap, control)
+}
+
+#' @keywords internal
+#' @noRd
+.default_control <- function() unclass(control_mrqap())
+
+#' @keywords internal
+#' @noRd
+.control_families <- function() {
+  c("auto", "gaussian", "binomial", "poisson", "negbin", "zip")
+}
+
+# ---- other names -------------------------------------------------------------
+
+# The names infernet used before, and what each is called now. `values`
+# converts an old value to the new one, where the values changed too.
+#' @keywords internal
+#' @noRd
+.control_renames <- function() {
+  permute <- c(qap = "predictor", qapspp = "predictor", qapy = "outcome")
+  list(
+    nullhyp = list(to = "permute", values = permute, since = "0.2.0"),
+    method  = list(to = "permute", values = permute, since = "0.2.0"),
+    mode    = list(to = "directed", since = "0.2.0",
+                   values = list(digraph = TRUE, directed = TRUE,
+                                 graph = FALSE, undirected = FALSE)),
+    random_intercept_perceiver = list(to = "random_intercept_reporter",
+                                      since = "0.3.0")
+  )
+}
+
+# Options of other models, and of earlier versions, that an MRQAP has no use
+# for. Each is dropped with the reason. goldfish's come from
+# `set_estimation_opt()`, which steers an iterative estimation that an MRQAP
+# does not do.
+#' @keywords internal
+#' @noRd
+.control_foreign <- function() {
+  iterative <- "steers goldfish's iterative estimation, which an MRQAP does not do"
+  c(max_iterations          = iterative,
+    convergence_criterion   = iterative,
+    initial_damping         = iterative,
+    damping_increase_factor = iterative,
+    damping_decrease_factor = iterative,
+    initial_parameters      = iterative,
+    engine                  = "chooses goldfish's estimation engine",
+    return_interval_loglik  = "is goldfish's, and an MRQAP has no log-likelihood for each event",
+    return_probabilities    = "is goldfish's, and an MRQAP has no choice probabilities",
+    fixed_parameters        = "fixes goldfish's parameters, and offsets are not yet supported here",
+    use_gpu                 = "chose a GPU path that is no longer in infernet (see stocnet/infernet#11)")
+}
+
+# Renames each old name, warns about it, and drops each option of another
+# model with one warning. Any other name aborts with the nearest control.
+#' @keywords internal
+#' @noRd
+.convert_controls <- function(others, known) {
+  renames <- .control_renames()
+  foreign <- .control_foreign()
+  unknown <- setdiff(names(others), c(names(renames), names(foreign)))
+  if (length(unknown) > 0) {
+    candidates <- c(known, names(renames))
+    near <- vapply(unknown, function(u) {
+      d <- utils::adist(u, candidates, ignore.case = TRUE)[1, ]
+      if (min(d) <= max(2, nchar(u) %/% 3)) candidates[which.min(d)] else NA_character_
+    }, character(1))
+    msg <- c("{.arg control} does not take {.val {unknown}}.")
+    if (any(!is.na(near))) {
+      msg <- c(msg, i = "Did you mean {.val {unname(near[!is.na(near)])}}?")
+    }
+    msg <- c(msg, i = "Available controls: {.val {known}}.",
+             i = "See {.fn control_mrqap} for what each does.")
+    manynet::snet_abort(msg)
+  }
+  dropped <- intersect(names(others), names(foreign))
+  if (length(dropped) > 0) {
+    reasons <- paste0("{.code ", dropped, "} ", foreign[dropped])
+    manynet::snet_warn(
+      c("Dropped {length(dropped)} control{?s} that an MRQAP does not use.",
+        stats::setNames(reasons, rep("*", length(reasons)))))
+  }
+  out <- list()
+  for (old in intersect(names(others), names(renames))) {
+    r <- renames[[old]]
+    value <- others[[old]]
+    if (!is.null(r$values) && is.character(value) && length(value) == 1 &&
+        value %in% names(r$values)) {
+      new_value <- r$values[[value]]
+      manynet::snet_warn(
+        c("{.code {old} = \"{value}\"} is now {.code {r$to} = {deparse(new_value)}}.",
+          i = "The control was renamed in infernet {r$since}."))
+      value <- new_value
+    } else {
+      manynet::snet_warn(
+        c("{.code {old}} is now called {.code {r$to}}.",
+          i = "The control was renamed in infernet {r$since}."))
+    }
+    if (r$to %in% names(out)) {
+      manynet::snet_abort("{.val {r$to}} is given by more than one old name.")
+    }
+    out[[r$to]] <- value
+  }
+  out
+}
+
+# ---- checks ------------------------------------------------------------------
+
+# One of a set of values. A vector default, as in the signature, is its first
+# value.
+#' @keywords internal
+#' @noRd
+.check_choice <- function(value, choices, what) {
+  if (identical(value, choices)) return(choices[1])
+  if (!(is.character(value) && length(value) == 1 && value %in% choices)) {
+    manynet::snet_abort("{.arg {what}} must be one of {.val {choices}}.")
+  }
+  value
+}
+
+#' @keywords internal
+#' @noRd
+.check_flag <- function(value, what, null = FALSE) {
+  if (null && is.null(value)) return(invisible(value))
+  if (!(is.logical(value) && length(value) == 1 && !is.na(value))) {
+    if (null) {
+      manynet::snet_abort("{.arg {what}} must be {.val {TRUE}}, {.val {FALSE}}, or {.code NULL}.")
+    }
+    manynet::snet_abort("{.arg {what}} must be {.val {TRUE}} or {.val {FALSE}}.")
+  }
+  invisible(value)
+}
+
+# A `{future}` plan by name. A plan function, such as `future::multisession`,
+# is also what `future::plan()` takes.
+#' @keywords internal
+#' @noRd
+.check_strategy <- function(value) {
+  plans <- c("sequential", "multisession", "multicore", "cluster")
+  if (is.function(value)) return(value)
+  if (!(is.character(value) && length(value) == 1 && value %in% plans)) {
+    manynet::snet_abort("{.arg strategy} must be one of {.val {plans}}.")
+  }
+  value
+}

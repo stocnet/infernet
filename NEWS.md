@@ -45,6 +45,12 @@
 
 ## Regression
 
+- Added `control_mrqap()`, with a help page for every control of `estimate_mrqap()`
+  - `estimate_mrqap()` reads a `control` list through it, so each value is checked before a fit
+  - Converts a name that infernet used before, e.g. `nullhyp = "qapy"` to `permute = "outcome"`, with a warning
+  - Drops goldfish's estimation options, e.g. `max_iterations`, with one warning that names each
+  - Reads the result of goldfish's `set_estimation_opt()` whole
+  - Aborts on any other name, with the nearest control
 - Added fixed effects to `estimate_mrqap()`, as in `{fixest}`: `y ~ x | sender + receiver`
   (thanks @RWKrause, closes #8)
   - Takes `sender`, `receiver`, `reporter` for a CSS, and `network` for a list

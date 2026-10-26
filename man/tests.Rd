@@ -63,6 +63,7 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 }
 \seealso{
 Other models:
+\code{\link[=control_mrqap]{control_mrqap()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
 \code{\link{specify}}

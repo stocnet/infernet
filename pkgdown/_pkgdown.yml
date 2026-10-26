@@ -50,6 +50,7 @@ reference:
     desc: "Functions for regressing networks on nodal and dyadic covariates:"
     contents:
       - regression
+      - control_mrqap
   - title: "Results"
     desc: "Functions for reporting the results of tests and regressions:"
     contents:

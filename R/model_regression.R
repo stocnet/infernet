@@ -228,33 +228,11 @@
 #'   dropped with a warning.
 #' @param times Integer.  Number of permutations for the null distribution.
 #'   1000 is the default; publication-ready work usually needs 1000-10000.
-#' @param control Named list of additional controls; unspecified entries fall
-#'   back to the defaults below.
-#'   - `permute`: what the null distribution permutes. `"predictor"` (the
-#'     default) residualises each main predictor against the others and
-#'     permutes that residual, following Dekker et al. (2007). `"outcome"`
-#'     permutes the dependent matrix and leaves the predictors alone. With one
-#'     predictor there is nothing to residualise against, so `"predictor"`
-#'     reduces to `"outcome"` and says so.
-#'   - `strategy`: future plan, e.g. `"sequential"` (default), `"multisession"`.
-#'   - `family`: `"auto"` (default; gaussian for weighted networks, binomial
-#'     for binary), `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`,
-#'     or `"zip"`.
-#'   - `directed`: logical, whether a tie from i to j differs from one from j
-#'     to i. Read from `.data` unless given, and reported when read.
-#'   - `diag`: logical, include loops (default auto-detected).
-#'   - `seed`, `groups`, `ncores`: passed through to the engine.
-#'   - `use_robust_errors`: HC3 standard errors.
-#'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
-#'   - `random_intercept_reporter`: an lme4-style random intercept for each
-#'     reporter of a cognitive social structure.
-#'   - `missing`: what to do with an unobserved dyad, that is, an `NA` in the
-#'     outcome or in a predictor. `"available"` (the default) drops it, and
-#'     permutes nodes only among nodes with the same unobserved cells, so that
-#'     every permutation is fitted on the same dyads as the observed model.
-#'     `"fail"` stops instead, and names how many dyads are unobserved on each
-#'     variable. See the section on missing data.
-#'   - `less_mem`: drop the baseline model object from the return.
+#' @param control The controls of the model, as the result of
+#'   [control_mrqap()] or a named list of its arguments, such as
+#'   `list(family = "poisson", seed = 1)`. A control that is not named keeps
+#'   its default. See [control_mrqap()] for each control, its default, and the
+#'   names it converts from other models and earlier versions.
 #' @return An object of class `netreg`, with a more specific class in front:
 #'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
 #'   A cognitive social structure also puts `netreg_css` first, so
@@ -446,40 +424,7 @@ net_regression <- function(formula,
 }
 
 
-# ---- default control -------------------------------------------------------
-
-# Merges the user's list over the defaults. A name that is not a control is
-# rejected rather than added silently: a misspelt name would otherwise leave the
-# option it was meant to set at its default, with nothing to say so.
-#' @keywords internal
-#' @noRd
-.resolve_control <- function(control = list()) {
-  ctrl <- .default_control()
-  if (length(control) == 0) {
-    ctrl$permute <- match.arg(ctrl$permute, choices = .permute_schemes())
-    return(ctrl)
-  }
-  if (is.null(names(control)) || any(!nzchar(names(control)))) {
-    manynet::snet_abort("Every entry of {.arg control} must be named.")
-  }
-  unknown <- setdiff(names(control), names(ctrl))
-  if (length(unknown) > 0) {
-    near <- vapply(unknown, function(u) {
-      d <- utils::adist(u, names(ctrl), ignore.case = TRUE)[1, ]
-      if (min(d) <= max(2, nchar(u) %/% 3)) names(ctrl)[which.min(d)] else NA_character_
-    }, character(1))
-    msg <- c("{.arg control} does not take {.val {unknown}}.")
-    if (any(!is.na(near))) {
-      msg <- c(msg, i = "Did you mean {.val {unname(near[!is.na(near)])}}?")
-    }
-    msg <- c(msg, i = "Available controls: {.val {names(ctrl)}}.")
-    manynet::snet_abort(msg)
-  }
-  ctrl[names(control)] <- control
-  ctrl$permute <- match.arg(ctrl$permute, choices = .permute_schemes())
-  .check_missing_control(ctrl$missing)
-  ctrl
-}
+# ---- permutation schemes and missing data --------------------------------------
 
 # What the permutation scheme permutes, which is the only thing that separates
 # the two. "predictor" is Dekker et al's double semi-partialling: each main
@@ -495,26 +440,6 @@ net_regression <- function(formula,
   switch(permute,
          predictor = "each predictor's residuals (Dekker's double semi-partialling)",
          outcome   = "the outcome only")
-}
-
-.default_control <- function() {
-  list(
-    permute   = .permute_schemes(),
-    strategy  = "sequential",
-    family    = "auto",
-    directed  = NULL,
-    diag      = NULL,
-    seed      = NULL,
-    groups    = NULL,
-    ncores    = NULL,
-    use_robust_errors = FALSE,
-    random_intercept_nets     = FALSE,
-    random_intercept_sender   = FALSE,
-    random_intercept_receiver = FALSE,
-    random_intercept_reporter = FALSE,
-    missing  = "available",
-    less_mem = FALSE
-  )
 }
 
 # The treatments of unobserved dyads. Multiple imputation is planned, but

@@ -97,35 +97,11 @@ dropped with a warning.}
 \item{times}{Integer.  Number of permutations for the null distribution.
 1000 is the default; publication-ready work usually needs 1000-10000.}
 
-\item{control}{Named list of additional controls; unspecified entries fall
-back to the defaults below.
-\itemize{
-\item \code{permute}: what the null distribution permutes. \code{"predictor"} (the
-default) residualises each main predictor against the others and
-permutes that residual, following Dekker et al. (2007). \code{"outcome"}
-permutes the dependent matrix and leaves the predictors alone. With one
-predictor there is nothing to residualise against, so \code{"predictor"}
-reduces to \code{"outcome"} and says so.
-\item \code{strategy}: future plan, e.g. \code{"sequential"} (default), \code{"multisession"}.
-\item \code{family}: \code{"auto"} (default; gaussian for weighted networks, binomial
-for binary), \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"},
-or \code{"zip"}.
-\item \code{directed}: logical, whether a tie from i to j differs from one from j
-to i. Read from \code{.data} unless given, and reported when read.
-\item \code{diag}: logical, include loops (default auto-detected).
-\item \code{seed}, \code{groups}, \code{ncores}: passed through to the engine.
-\item \code{use_robust_errors}: HC3 standard errors.
-\item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
-\item \code{random_intercept_reporter}: an lme4-style random intercept for each
-reporter of a cognitive social structure.
-\item \code{missing}: what to do with an unobserved dyad, that is, an \code{NA} in the
-outcome or in a predictor. \code{"available"} (the default) drops it, and
-permutes nodes only among nodes with the same unobserved cells, so that
-every permutation is fitted on the same dyads as the observed model.
-\code{"fail"} stops instead, and names how many dyads are unobserved on each
-variable. See the section on missing data.
-\item \code{less_mem}: drop the baseline model object from the return.
-}}
+\item{control}{The controls of the model, as the result of
+\code{\link[=control_mrqap]{control_mrqap()}} or a named list of its arguments, such as
+\code{list(family = "poisson", seed = 1)}. A control that is not named keeps
+its default. See \code{\link[=control_mrqap]{control_mrqap()}} for each control, its default, and the
+names it converts from other models and earlier versions.}
 }
 \value{
 An object of class \code{netreg}, with a more specific class in front:
@@ -375,6 +351,7 @@ conditions."
 }
 \seealso{
 Other models:
+\code{\link[=control_mrqap]{control_mrqap()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{specify}},
 \code{\link{tests}}
