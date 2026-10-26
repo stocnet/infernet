@@ -303,8 +303,32 @@ Missing data deserves particular care here, since handling it well is a reason
 this package exists.
 An unobserved dyad is `NA`, never a zero tie and never a source's numeric code.
 `make_qap_data()` drops NA and diagonal cells before fitting, so a predictor
-that introduces `NA` silently shrinks the sample:
-report what was dropped rather than letting the count change without comment.
+that introduces `NA` shrinks the sample.
+`QAPengine()` counts the unobserved dyads on each variable with
+`.missing_summary()` before anything is dropped, reports them, and stores them
+in `fit$missing`. The `missing` control chooses the treatment:
+`"available"` (the default) drops them, and `"fail"` stops on them.
+Multiple imputation is planned, but it waits for its own design.
+
+Every permutation must use the dyads of the observed model.
+`make_qap_data()` recomputes the dyads after each draw, and a free permutation
+moves the `NA` cells of the permuted matrix but not those of the others,
+so the draws used to be fitted on more dyads than the observed model.
+`.missing_blocks()` now groups the nodes by which of their lines are wholly
+unobserved (row, column, and CSS slice), and fixes each node at the end of a
+scattered missing cell, so that the `NA` cells map onto themselves.
+The blocks combine with the user's `groups`.
+`QAPPermEst()` aborts if a draw uses any other number of dyads, since that is
+a fault in the engine and not in the data.
+For `permute = "predictor"` this needs the residualised predictor to be `NA`
+outside the model, and mirrored across the diagonal of an undirected network,
+which `residuals_to_matrix()` and `residuals_to_array()` do.
+
+A structural zero, a cell that cannot hold a tie, is not missing data.
+`{manynet}` does not mark one, so it arrives as an observed zero.
+The loops that the model leaves out and the upper half of an undirected network
+are the only cells the engine knows to be structural, and `.structural_mask()`
+keeps them out of the counts.
 
 #### Cognitive social structures
 
@@ -723,6 +747,7 @@ and are grouped by contract for the engine:
 | `test-qap_control.R` | the `control` list and the choice of null hypothesis |
 | `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
 | `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
+| `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the `missing` control |
 | `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |

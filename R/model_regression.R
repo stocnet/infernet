@@ -47,6 +47,32 @@
 #'   Their reports are then dropped. A report of zeros that is not so marked is
 #'   kept, and named in a warning, since it may be either.
 #'
+#' @section Missing data:
+#'   An unobserved dyad is an `NA` in the outcome or in a predictor, never a
+#'   zero tie. `{manynet}` records unobserved ties, and a CSS reporter who was
+#'   not asked, and `manynet::as_matrix()` turns both into `NA`.
+#'   By default (`control = list(missing = "available")`), the model drops each
+#'   unobserved dyad and says how many it dropped on each variable.
+#'
+#'   A permutation must then be fitted on the same dyads as the observed model,
+#'   or the null distribution rests on more data than the estimate it is
+#'   compared with. So nodes are permuted only among nodes with the same
+#'   unobserved cells: a node that did not report, a node that nobody reported
+#'   on, a reporter who was not asked, and a fully observed node are each
+#'   exchanged only with nodes of their own kind. A node with scattered
+#'   unobserved cells stays in place. This restricts the null hypothesis to
+#'   exchangeability within those blocks, and with many fixed nodes it leaves
+#'   few distinct permutations, which is reported with a warning.
+#'
+#'   `control = list(missing = "fail")` stops instead, for a user who wants no
+#'   dyad dropped without their decision.
+#'   Multiple imputation is not yet available.
+#'
+#'   A cell that cannot hold a tie, such as a tie between two levels of a
+#'   multilevel network that the design rules out, is a structural zero rather
+#'   than missing data. `{manynet}` does not mark such cells, so they enter the
+#'   model as observed zeros. Remove them, or set them to `NA`, before fitting.
+#'
 #' @section Multiplex networks:
 #'   The left-hand side of the formula can name a layer of a multiplex network,
 #'   and the right-hand side can name other layers as dyadic covariates,
@@ -141,6 +167,12 @@
 #'   - `random_intercept_nets` / `_sender` / `_receiver`: lme4-style REs.
 #'   - `random_intercept_reporter`: an lme4-style random intercept for each
 #'     reporter of a cognitive social structure.
+#'   - `missing`: what to do with an unobserved dyad, that is, an `NA` in the
+#'     outcome or in a predictor. `"available"` (the default) drops it, and
+#'     permutes nodes only among nodes with the same unobserved cells, so that
+#'     every permutation is fitted on the same dyads as the observed model.
+#'     `"fail"` stops instead, and names how many dyads are unobserved on each
+#'     variable. See the section on missing data.
 #'   - `less_mem`: drop the baseline model object from the return.
 #' @return An object of class `netreg`, with a more specific class in front:
 #'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
@@ -159,6 +191,10 @@
 #'     `permute = "predictor"` each column comes from its own set of
 #'     permutations, so rows pair columns only by position, and the intercept
 #'     column is `NA`. A permutation that failed leaves its row `NA`.
+#'   - `missing`, a list of the treatment of unobserved dyads, the number of
+#'     dyads the model could use (`possible`) and did use (`used`), the number
+#'     unobserved on each variable (`unobserved`), and the number of nodes that
+#'     stayed in place in each permutation set (`fixed_nodes`).
 #'   - `terms`, a tibble of one row for each coefficient, with the parts that
 #'     its name joins: `term`, the coefficient's name; `effect`, the formula
 #'     term it comes from, such as `"ego"` or `"match"`, or `"intercept"` or
@@ -289,6 +325,7 @@ estimate_mrqap <- function(formula,
     random_intercept_receiver = ctrl$random_intercept_receiver,
     random_intercept_reporter = ctrl$random_intercept_reporter,
     use_robust_errors = ctrl$use_robust_errors,
+    missing  = ctrl$missing,
     less_mem = ctrl$less_mem
   )
 
@@ -348,6 +385,7 @@ net_regression <- function(formula,
   }
   ctrl[names(control)] <- control
   ctrl$permute <- match.arg(ctrl$permute, choices = .permute_schemes())
+  .check_missing_control(ctrl$missing)
   ctrl
 }
 
@@ -382,8 +420,32 @@ net_regression <- function(formula,
     random_intercept_sender   = FALSE,
     random_intercept_receiver = FALSE,
     random_intercept_reporter = FALSE,
+    missing  = "available",
     less_mem = FALSE
   )
+}
+
+# The treatments of unobserved dyads. Multiple imputation is planned, but
+# pooling permutation p-values over imputations needs its own design first.
+#' @keywords internal
+#' @noRd
+.missing_treatments <- function() c("available", "fail")
+
+#' @keywords internal
+#' @noRd
+.check_missing_control <- function(missing) {
+  if (identical(missing, "impute")) {
+    manynet::snet_abort(
+      c("{.code missing = \"impute\"} is not yet available.",
+        i = "Use {.val available} to drop unobserved dyads, or {.val fail} to stop on them."))
+  }
+  if (!(is.character(missing) && length(missing) == 1 &&
+        missing %in% .missing_treatments())) {
+    choices <- .missing_treatments()
+    manynet::snet_abort(
+      "{.arg missing} must be one of {.val {choices}}.")
+  }
+  invisible(missing)
 }
 
 

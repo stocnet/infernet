@@ -25,6 +25,15 @@
 
 ## Regression
 
+- Fixed the permutations of a network with missing data to use the dyads of the observed model
+  - Permutes nodes only among nodes with the same unobserved cells
+  - Keeps each node with scattered unobserved cells in place
+  - Warns where few distinct permutations remain
+  - Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks
+  - Fixed a blocking group of one node, which `sample()` read as a range
+- Added `control = list(missing = )` with `"available"` (the default) and `"fail"`
+  - Reports the dyads dropped on each variable, and stores them as `fit$missing`
+  - Documented a structural zero as a limitation
 - Renamed `net_regression()` to `estimate_mrqap()` to match other stocnet packages
   - `net_regression()` still works, and warns once that it is deprecated
   - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`

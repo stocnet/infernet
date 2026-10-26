@@ -28,6 +28,7 @@ QAPengine <- function(formula,
                       random_intercept_receiver  = FALSE,
                       random_intercept_reporter  = FALSE,
                       use_robust_errors = FALSE,
+                      missing   = "available",
                       less_mem  = FALSE) {
 
   if (!is.null(seed)) set.seed(seed)
@@ -97,10 +98,35 @@ QAPengine <- function(formula,
     groups <- as.factor(groups)
   }
 
+  # ---- missing cells ---------------------------------------------------------
+
+  # Counted before the model drops anything, so that "fail" can stop before it
+  # does and "available" can say what it dropped.
+  unobserved <- .missing_summary(matlist, dep, data_vars, diag, directed, large)
+  unit <- if (css) "reported dyads" else "dyads"
+  missing_vars <- unobserved$by_variable[unobserved$by_variable > 0]
+  missing_parts <- paste(missing_vars, "on", names(missing_vars))
+  if (identical(missing, "fail") && length(missing_vars) > 0) {
+    manynet::snet_abort(
+      c("The model has unobserved {unit}: {missing_parts}.",
+        i = "Drop them with {.code control = list(missing = \"available\")}.",
+        i = "Or remove them first, for example with {.fn manynet::to_no_missing}."))
+  }
+
   vec <- .vectorise_matlist(shape, matlist, dep, data_vars, groups,
                             diag, directed, large)
   pred <- vec$pred
   names(pred)[names(pred) == "yv"] <- dep
+
+  # Reported only where something was dropped: a complete network uses every
+  # cell it could, and a stated model on one should print nothing.
+  used <- nrow(pred)
+  if (length(missing_vars) > 0) {
+    possible <- unobserved$possible
+    manynet::snet_info(
+      "Using {used} of {possible} {unit}, after dropping the unobserved ones:",
+      "{missing_parts}.")
+  }
 
   # ---- baseline -------------------------------------------------------------
 
@@ -134,12 +160,24 @@ QAPengine <- function(formula,
                     mod. = mod, groups. = groups, fit. = fit$base,
                     family. = family, use_robust_errors. = use_robust_errors,
                     has_random. = has_random, main_vars. = main,
-                    data_vars. = data_vars, parsed. = parsed)
+                    data_vars. = data_vars, parsed. = parsed,
+                    n_obs. = used)
+  # Each permutation set exchanges only the nodes whose missing cells match, so
+  # that every draw is fitted on the dyads of the observed model.
+  fixed <- integer(0)
+  .blocks_for <- function(target, label) {
+    blocks <- .permutation_blocks(target, groups, diag, times, label)
+    if (is.null(blocks)) return(groups)
+    fixed[[label]] <<- attr(blocks, "fixed")
+    blocks
+  }
 
   if (permute == "outcome") {
     res <- do.call(run_permutations,
                    c(list(times, QAPPermEst, matlist. = matlist,
-                          perm_var. = NULL), perm_args))
+                          perm_var. = NULL,
+                          perm_groups. = .blocks_for(matlist[[dep]], dep)),
+                     perm_args))
     agg <- aggregate_perm_results(res, times)
     fit$lower    <- agg$lower
     fit$larger   <- agg$larger
@@ -172,11 +210,14 @@ QAPengine <- function(formula,
                                   rand_formula = rand_part)
       matlist_resid <- matlist
       matlist_resid[[xi]] <- shape$unresidualise(xR, matlist[[xi]], pred, large,
-                                                 vec$valid, vec$valid_list)
+                                                 vec$valid, vec$valid_list,
+                                                 directed)
 
       res <- do.call(run_permutations,
                      c(list(times, QAPPermEst, matlist. = matlist_resid,
-                            perm_var. = xi), perm_args))
+                            perm_var. = xi,
+                            perm_groups. = .blocks_for(matlist_resid[[xi]], xi)),
+                       perm_args))
       agg <- aggregate_perm_results(res, times)
       fit$lower[, xi]  <- agg$lower
       fit$larger[, xi] <- agg$larger
@@ -184,6 +225,16 @@ QAPengine <- function(formula,
       draws <- as.vector(agg$testdist)
       fit$testdist[seq_along(draws), xi] <- draws
     }
+  }
+
+  if (length(fixed) > 0) {
+    n_fixed <- max(fixed)
+    manynet::snet_info(
+      "Permuting nodes only among nodes with the same unobserved cells,",
+      "so that every permutation uses the same {used} {unit}.")
+    if (n_fixed > 0)
+      manynet::snet_info(
+        "{n_fixed} node{?s} with scattered unobserved cells stay{?s/} in place.")
   }
 
   # ---- assemble -------------------------------------------------------------
@@ -218,6 +269,11 @@ QAPengine <- function(formula,
   fit$random    <- requested[names(slots)]
   fit$pred      <- pred
   fit$dep       <- dep
+  fit$missing   <- list(treatment   = missing,
+                        possible    = unobserved$possible,
+                        used        = used,
+                        unobserved  = unobserved$by_variable,
+                        fixed_nodes = fixed)
 
 
   # Most specific first, so that a method can be written at any level and S3
@@ -250,7 +306,9 @@ QAPPermEst <- function(i,
                        has_random.,
                        main_vars.,
                        data_vars.,
-                       parsed.) {
+                       parsed.,
+                       perm_groups. = groups.,
+                       n_obs. = NULL) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
@@ -260,16 +318,28 @@ QAPPermEst <- function(i,
   repeat {
     trial <- trial + 1L
     d <- matlist.
+    # A pooled list has one set of blocks for each network, where its missing
+    # cells differ; the user's groups are one factor for all of them.
     d[[target]] <- if (large) {
-      lapply(d[[target]], shape.$permute, groups = groups.)
+      per_net <- is.list(perm_groups.) && is.null(names(perm_groups.))
+      lapply(seq_along(d[[target]]), function(k) {
+        shape.$permute(d[[target]][[k]],
+                       if (per_net) perm_groups.[[k]] else perm_groups.)
+      })
     } else {
-      shape.$permute(d[[target]], groups.)
+      shape.$permute(d[[target]], perm_groups.)
     }
 
     vec <- .vectorise_matlist(shape., d, dep, data_vars., groups.,
                               diag., directed., large)
     pred <- vec$pred
     names(pred)[names(pred) == "yv"] <- dep
+    # The blocks keep the missing cells in place, so a draw on any other number
+    # of dyads is a fault in the engine, not in the data.
+    if (!is.null(n_obs.) && nrow(pred) != n_obs.)
+      manynet::snet_abort(
+        c("A permutation used {nrow(pred)} dyads, where the observed model used {n_obs.}.",
+          i = "This is a bug in {.pkg infernet}. Please report it."))
 
     if (.sufficient_data(pred, dep, data_vars.)) break
     if (trial >= shape.$max_trials) {

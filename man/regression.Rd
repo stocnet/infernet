@@ -96,6 +96,12 @@ to i. Read from \code{.data} unless given, and reported when read.
 \item \code{random_intercept_nets} / \verb{_sender} / \verb{_receiver}: lme4-style REs.
 \item \code{random_intercept_reporter}: an lme4-style random intercept for each
 reporter of a cognitive social structure.
+\item \code{missing}: what to do with an unobserved dyad, that is, an \code{NA} in the
+outcome or in a predictor. \code{"available"} (the default) drops it, and
+permutes nodes only among nodes with the same unobserved cells, so that
+every permutation is fitted on the same dyads as the observed model.
+\code{"fail"} stops instead, and names how many dyads are unobserved on each
+variable. See the section on missing data.
 \item \code{less_mem}: drop the baseline model object from the return.
 }}
 }
@@ -118,6 +124,10 @@ row per permutation and one column per coefficient. The shares in
 \code{permute = "predictor"} each column comes from its own set of
 permutations, so rows pair columns only by position, and the intercept
 column is \code{NA}. A permutation that failed leaves its row \code{NA}.
+\item \code{missing}, a list of the treatment of unobserved dyads, the number of
+dyads the model could use (\code{possible}) and did use (\code{used}), the number
+unobserved on each variable (\code{unobserved}), and the number of nodes that
+stayed in place in each permutation set (\code{fixed_nodes}).
 \item \code{terms}, a tibble of one row for each coefficient, with the parts that
 its name joins: \code{term}, the coefficient's name; \code{effect}, the formula
 term it comes from, such as \code{"ego"} or \code{"match"}, or \code{"intercept"} or
@@ -187,6 +197,34 @@ them as missing, for example with
 \code{manynet::mutate_nodes(net, na = label \%in\% c(...))}.
 Their reports are then dropped. A report of zeros that is not so marked is
 kept, and named in a warning, since it may be either.
+}
+
+\section{Missing data}{
+
+An unobserved dyad is an \code{NA} in the outcome or in a predictor, never a
+zero tie. \code{{manynet}} records unobserved ties, and a CSS reporter who was
+not asked, and \code{manynet::as_matrix()} turns both into \code{NA}.
+By default (\code{control = list(missing = "available")}), the model drops each
+unobserved dyad and says how many it dropped on each variable.
+
+A permutation must then be fitted on the same dyads as the observed model,
+or the null distribution rests on more data than the estimate it is
+compared with. So nodes are permuted only among nodes with the same
+unobserved cells: a node that did not report, a node that nobody reported
+on, a reporter who was not asked, and a fully observed node are each
+exchanged only with nodes of their own kind. A node with scattered
+unobserved cells stays in place. This restricts the null hypothesis to
+exchangeability within those blocks, and with many fixed nodes it leaves
+few distinct permutations, which is reported with a warning.
+
+\code{control = list(missing = "fail")} stops instead, for a user who wants no
+dyad dropped without their decision.
+Multiple imputation is not yet available.
+
+A cell that cannot hold a tie, such as a tie between two levels of a
+multilevel network that the design rules out, is a structural zero rather
+than missing data. \code{{manynet}} does not mark such cells, so they enter the
+model as observed zeros. Remove them, or set them to \code{NA}, before fitting.
 }
 
 \section{Multiplex networks}{

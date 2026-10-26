@@ -62,3 +62,18 @@ test_that("the model advice on homophily terms is reported", {
                              times = 5, control = list(seed = 1))),
     "ego\\(Grp\\)")
 })
+
+test_that("dropped dyads and fixed nodes are reported", {
+  g <- qap_net_gaussian(n = 15)
+  m <- manynet::as_matrix(g)
+  m[2, 3] <- NA
+  holed <- manynet::mutate(manynet::as_tidygraph(m),
+                           Age = manynet::node_attribute(g, "Age"))
+  msgs <- testthat::capture_messages(
+    verbosely(estimate_mrqap(weight ~ ego(Age), holed, times = 5,
+                             control = list(seed = 1))))
+  msgs <- paste(msgs, collapse = "")
+  expect_match(msgs, "Using 209 of 210 dyads")
+  expect_match(msgs, "1 on weight")
+  expect_match(msgs, "2 nodes with scattered unobserved cells stay in place")
+})

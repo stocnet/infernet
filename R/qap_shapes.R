@@ -33,8 +33,9 @@
       list(pred = pred, valid = NULL)
     },
     permute = function(m, groups) RMPerm(m, groups),
-    unresidualise = function(xR, original, pred, large, valid, valid_list) {
-      residuals_to_matrix(xR, original, pred, large)
+    unresidualise = function(xR, original, pred, large, valid, valid_list,
+                             directed) {
+      residuals_to_matrix(xR, original, pred, large, directed)
     }
   )
 }
@@ -57,8 +58,10 @@
       make_css_data(y = y, x = x, nets = net, diag = diag, directed = directed)
     },
     permute = function(m, groups) RMPerm(m, groups, CSS = TRUE),
-    unresidualise = function(xR, original, pred, large, valid, valid_list) {
-      residuals_to_array(xR, original, valid, pred, large, valid_list)
+    unresidualise = function(xR, original, pred, large, valid, valid_list,
+                             directed) {
+      residuals_to_array(xR, original, valid, pred, large, valid_list,
+                         directed)
     }
   )
 }
