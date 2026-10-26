@@ -104,13 +104,17 @@ so \code{control = list(family = "poisson")} and
 \code{control = control_mrqap(family = "poisson")} fit the same model.
 Calling \code{control_mrqap()} first shows the full set of controls, and finds
 a mistake before a long run starts.
+The tests, such as \code{\link[=test_permutation]{test_permutation()}}, read \code{ncores}, \code{strategy}, and
+\code{seed} from the same object, so one set of controls serves a model and
+a test alike.
 
 A control that is not named keeps its default.
 A name that infernet used before is converted to its current name, with a
 warning.
 An option of another model that has no meaning in an MRQAP, such as
 goldfish's \code{max_iterations}, is dropped, with one warning that names each.
-The result of goldfish's \code{set_estimation_opt()} can be given whole.
+The result of goldfish's \code{set_algorithm_newton()} or \code{set_preprocessing()}
+(or \code{set_estimation_opt()} before goldfish 2.0.0) can be given whole.
 Any other name aborts, and the nearest control is suggested.
 }
 \examples{

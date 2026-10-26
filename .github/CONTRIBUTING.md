@@ -529,17 +529,22 @@ MRQAP — must install and run with no compiler and no heavy dependency tree.
 
 #### Parallelism
 
-Every simulation-heavy function takes:
+Every simulation-heavy function takes `times`, the number of simulations
+(default `1000`; 1,000–10,000 for publication), and `control`, which holds the rest.
+Keep the signature to what the function needs: data, a formula or statistic, `times`, and `control`.
+A user sets the controls once, with `control_mrqap()`, and gives the same object to every model and test;
+each function reads the controls it uses and leaves the others alone, without a message.
+The controls of parallelism are:
 
-- `times` — the number of simulations (default `1000`; 1,000–10,000 for publication).
 - `ncores` — a number of cores (default `NULL`).
   More than one runs on that many `"multisession"` workers, and one runs
   sequentially, whatever `strategy` says. This is the one to show users first.
 - `strategy` — a `{future}` plan name (default `"sequential"`;
   `"multisession"`/`"multicore"` for multiple cores), used where `ncores` is `NULL`.
+- `seed` — a number to set the random seed with before the simulations.
 
+Read `control` with `.resolve_control()`, so that a list and `control_mrqap()` are checked the same way.
 Set the plan with `setup_future_plan(strategy, ncores)` and restore it via `on.exit()`.
-In `estimate_mrqap()` both are passed through the `control` list.
 Name an argument that says whether ties from a node to itself count `loops`, never `diag`,
 since `diag` masks `base::diag()` in the same functions.
 

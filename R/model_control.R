@@ -18,13 +18,17 @@
 #'   `control = control_mrqap(family = "poisson")` fit the same model.
 #'   Calling `control_mrqap()` first shows the full set of controls, and finds
 #'   a mistake before a long run starts.
+#'   The tests, such as [test_permutation()], read `ncores`, `strategy`, and
+#'   `seed` from the same object, so one set of controls serves a model and
+#'   a test alike.
 #'
 #'   A control that is not named keeps its default.
 #'   A name that infernet used before is converted to its current name, with a
 #'   warning.
 #'   An option of another model that has no meaning in an MRQAP, such as
 #'   goldfish's `max_iterations`, is dropped, with one warning that names each.
-#'   The result of goldfish's `set_estimation_opt()` can be given whole.
+#'   The result of goldfish's `set_algorithm_newton()` or `set_preprocessing()`
+#'   (or `set_estimation_opt()` before goldfish 2.0.0) can be given whole.
 #'   Any other name aborts, and the nearest control is suggested.
 #' @param permute What the null distribution permutes.
 #'   `"predictor"` (the default) residualises each main predictor against the
@@ -180,8 +184,11 @@ print.mrqap_control <- function(x, ...) {
 #' @noRd
 .resolve_control <- function(control = list()) {
   if (inherits(control, "mrqap_control")) return(control)
-  if (inherits(control, "estimation_opt.goldfish")) {
+  if (inherits(control, c("estimation_opt.goldfish", "goldfishAlgo"))) {
     manynet::snet_info("Reading {.arg control} as goldfish's estimation options.")
+  }
+  if (inherits(control, "goldfishPrepCtrl")) {
+    manynet::snet_info("Reading {.arg control} as goldfish's preprocessing options.")
   }
   control <- unclass(control)
   if (!is.list(control)) {
@@ -227,8 +234,9 @@ print.mrqap_control <- function(x, ...) {
 
 # Options of other models, and of earlier versions, that an MRQAP has no use
 # for. Each is dropped with the reason. goldfish's come from
-# `set_estimation_opt()`, which steers an iterative estimation that an MRQAP
-# does not do.
+# `set_algorithm_newton()` (`set_estimation_opt()` before goldfish 2.0.0), which
+# steers an iterative estimation that an MRQAP does not do, and from
+# `set_preprocessing()`, which prepares goldfish's events.
 #' @keywords internal
 #' @noRd
 .control_foreign <- function() {
@@ -243,6 +251,19 @@ print.mrqap_control <- function(x, ...) {
     return_interval_loglik  = "is goldfish's, and an MRQAP has no log-likelihood for each event",
     return_probabilities    = "is goldfish's, and an MRQAP has no choice probabilities",
     fixed_parameters        = "fixes goldfish's parameters, and offsets are not yet supported here",
+    score_tol               = iterative,
+    step_tol                = iterative,
+    optimizer               = iterative,
+    backend                 = "chooses goldfish's estimation backend",
+    offset_coef             = "sets goldfish's offsets, and offsets are not yet supported here",
+    diagnostics             = "chooses goldfish's diagnostics for each event, which an MRQAP does not have",
+    return_event_scores     = "is goldfish's, and an MRQAP has no score for each event",
+    start_time              = "times goldfish's events, which an MRQAP does not have",
+    end_time                = "times goldfish's events, which an MRQAP does not have",
+    opportunities_list      = "sets goldfish's choice sets, which an MRQAP does not have",
+    impute                  = "is goldfish's imputation; see `missing` for an MRQAP's",
+    db                      = "stores goldfish's preprocessed statistics",
+    db_table                = "stores goldfish's preprocessed statistics",
     use_gpu                 = "chose a GPU path that is no longer in infernet (see stocnet/infernet#11)")
 }
 

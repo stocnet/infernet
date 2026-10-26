@@ -16,15 +16,14 @@
 #'   of the original network.
 #'   
 #' @inheritParams regression
-#' @param ncores A number of cores to run the simulations on.
-#'   More than one runs them on that many `"multisession"` workers, and one runs
-#'   them sequentially, whatever `strategy` says.
-#'   `NULL` (the default) leaves the choice to `strategy`.
-#'   Generally this is useful only when `times` > 1000.
-#' @param strategy A `{future}` plan that the simulations run on where `ncores`
-#'   is `NULL`: `"sequential"` (the default), `"multisession"`, `"multicore"`,
-#'   or `"cluster"`.
-#'   See [`{future.apply}`](https://future.apply.futureverse.org) for more.
+#' @param control The controls of the simulations, as the result of
+#'   [control_mrqap()] or a named list of its arguments, such as
+#'   `list(ncores = 4, seed = 1)`.
+#'   A test reads `ncores`, `strategy`, and `seed`, and leaves the other
+#'   controls alone, so that the controls of a model can be given to a test
+#'   whole.
+#'   `ncores` is generally useful only when `times` > 1000.
+#'   See [control_mrqap()] for each control and its default.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
@@ -43,15 +42,16 @@ NULL
 #' @export
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
-                        ncores = NULL,
-                        strategy = "sequential"){
-  args <- unlist(list(...))
+                        control = list()){
+  test <- .test_control(control, list(...))
+  ctrl <- test$ctrl
+  args <- unlist(test$args)
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::generate_random, bind = TRUE)
   out <- list(test = "CUG",
               testval = obsd,
@@ -71,15 +71,16 @@ test_random <- function(.data, FUN, ...,
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
-                        ncores = NULL,
-                        strategy = "sequential"){
-  args <- unlist(list(...))
+                        control = list()){
+  test <- .test_control(control, list(...))
+  ctrl <- test$ctrl
+  args <- unlist(test$args)
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::generate_configuration, bind = TRUE)
   out <- list(test = "configuration",
               testval = obsd,
@@ -103,15 +104,16 @@ test_configuration <- function(.data, FUN, ...,
 #' @export
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
-                             ncores = NULL,
-                             strategy = "sequential"){
-  args <- unlist(list(...))
+                             control = list()){
+  test <- .test_control(control, list(...))
+  ctrl <- test$ctrl
+  args <- unlist(test$args)
   if (!is.null(args)) {
     obsd <- FUN(.data, args)
   } else {
     obsd <- FUN(.data)
   }
-  simd <- .simulate_statistic(.data, FUN, args, times, ncores, strategy,
+  simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::to_permuted, bind = FALSE)
   out <- list(test = "QAP",
               testval = obsd,
@@ -125,16 +127,41 @@ test_permutation <- function(.data, FUN, ...,
   out
 }
 
-# The statistic on each of `times` simulated networks. Each draw gets its own
-# stream of random numbers, so a seed set before the call reproduces the result
-# sequentially and in parallel alike. A simulated network takes the observed
-# node attributes where the statistic needs one.
+# A test reads its controls through `control_mrqap()`, so a list and the
+# controls of a model are checked the same way. `strategy` and `ncores` were
+# arguments of the tests before 0.5.0; given by name, they would otherwise reach
+# `FUN` through `...`, so they are read as controls, with a warning.
 #' @keywords internal
 #' @noRd
-.simulate_statistic <- function(.data, FUN, args, times, ncores, strategy,
-                                draw, bind) {
-  .check_ncores(ncores)
-  old_plan <- setup_future_plan(.check_strategy(strategy), ncores)
+.test_control <- function(control, dots) {
+  is_old <- names(dots) %in% .test_formals()
+  if (!any(is_old)) return(list(ctrl = .resolve_control(control), args = dots))
+  old <- dots[is_old]
+  manynet::snet_warn(
+    c("{.arg {names(old)}} {?is/are} now {?a control/controls} of the tests.",
+      i = "Use {.code control = list({names(old)[1]} = ...)} instead."))
+  clash <- intersect(names(old), names(control))
+  if (!inherits(control, "mrqap_control") && length(clash) > 0) {
+    manynet::snet_abort(
+      "{.val {clash}} is given both as an argument and in {.arg control}.")
+  }
+  control <- utils::modifyList(unclass(control), old)
+  list(ctrl = .resolve_control(control), args = dots[!is_old])
+}
+
+#' @keywords internal
+#' @noRd
+.test_formals <- function() c("strategy", "ncores")
+
+# The statistic on each of `times` simulated networks. Each draw gets its own
+# stream of random numbers, so a `seed` control, or a seed set before the call,
+# reproduces the result sequentially and in parallel alike. A simulated network
+# takes the observed node attributes where the statistic needs one.
+#' @keywords internal
+#' @noRd
+.simulate_statistic <- function(.data, FUN, args, times, ctrl, draw, bind) {
+  if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
+  old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
   on.exit({
     future::plan(old_plan)
     options(future.globals.maxSize = attr(old_plan, "old_maxSize"))

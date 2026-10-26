@@ -88,17 +88,46 @@ test_that("the draws from a stocnet keep its attributes and its statistic", {
   expect_false(anyNA(cug$testdist))
 })
 
-test_that("the tests take ncores, and restore the plan after", {
+test_that("the tests take ncores and seed as controls, and restore the plan", {
   future::plan(future::sequential)
-  set.seed(1)
   one <- test_permutation(marvel_friends, netrics::net_by_heterophily,
-                          attribute = "Attractive", times = 20, ncores = 1)
-  set.seed(1)
+                          attribute = "Attractive", times = 20,
+                          control = list(ncores = 1, seed = 1))
   two <- test_permutation(marvel_friends, netrics::net_by_heterophily,
-                          attribute = "Attractive", times = 20, ncores = 2)
+                          attribute = "Attractive", times = 20,
+                          control = list(ncores = 2, seed = 1))
   expect_equal(one$testdist, two$testdist)
   expect_s3_class(future::plan(), "sequential")
   expect_error(test_random(marvel_friends, netrics::net_by_heterophily,
-                           attribute = "Attractive", times = 5, ncores = 0),
+                           attribute = "Attractive", times = 5,
+                           control = list(ncores = 0)),
                "ncores")
+})
+
+test_that("the tests read the controls of a model whole", {
+  ctrl <- control_mrqap(family = "poisson", seed = 3)
+  a <- test_random(marvel_friends, netrics::net_by_heterophily,
+                   attribute = "Attractive", times = 10, control = ctrl)
+  b <- test_random(marvel_friends, netrics::net_by_heterophily,
+                   attribute = "Attractive", times = 10,
+                   control = list(seed = 3))
+  expect_equal(a$testdist, b$testdist)
+})
+
+test_that("strategy and ncores given by name still work, with a warning", {
+  expect_warning(
+    old <- test_permutation(marvel_friends, netrics::net_by_heterophily,
+                            attribute = "Attractive", times = 10,
+                            strategy = "sequential",
+                            control = list(seed = 2)),
+    "control")
+  new <- test_permutation(marvel_friends, netrics::net_by_heterophily,
+                          attribute = "Attractive", times = 10,
+                          control = list(seed = 2))
+  expect_equal(old$testdist, new$testdist)
+  expect_error(suppressWarnings(
+    test_random(marvel_friends, netrics::net_by_heterophily,
+                attribute = "Attractive", times = 5, ncores = 1,
+                control = list(ncores = 2))),
+    "both")
 })

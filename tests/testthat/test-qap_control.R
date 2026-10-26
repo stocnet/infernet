@@ -173,6 +173,40 @@ test_that("goldfish's estimation options are dropped with one warning", {
   expect_identical(ctrl, control_mrqap())
 })
 
+test_that("goldfish 2.0's option objects are read whole", {
+  # The fields of goldfish 2.0.0's `set_algorithm_newton()` and
+  # `set_preprocessing()`, built by hand so that goldfish need not be installed.
+  algo <- structure(list(initial_parameters = NULL, fixed_parameters = NULL,
+                         offset_coef = NULL, max_iterations = 20,
+                         score_tol = 1e-6, step_tol = 1e-8,
+                         initial_damping = NULL, damping_increase_factor = 2,
+                         damping_decrease_factor = 3,
+                         return_interval_loglik = TRUE,
+                         return_probabilities = FALSE,
+                         return_event_scores = TRUE,
+                         diagnostics = c("loglik", "scores"),
+                         optimizer = "newton_raphson", backend = "cpp"),
+                    class = c("goldfishAlgoNewton", "goldfishAlgo", "list"))
+  prep <- structure(list(start_time = NULL, end_time = NULL,
+                         opportunities_list = NULL, impute = NULL, db = NULL,
+                         db_table = "stats"),
+                    class = c("goldfishPrepCtrl", "list"))
+  old <- options(snet_verbosity = "verbose")
+  on.exit(options(old), add = TRUE)
+  msgs <- testthat::capture_messages(
+    expect_warning(ctrl <- .resolve_control(algo), "Dropped 15 controls"))
+  expect_match(paste(msgs, collapse = ""), "estimation options")
+  expect_identical(ctrl, control_mrqap())
+  msgs <- testthat::capture_messages(
+    expect_warning(ctrl <- .resolve_control(prep), "Dropped 6 controls"))
+  expect_match(paste(msgs, collapse = ""), "preprocessing options")
+  expect_identical(ctrl, control_mrqap())
+  g <- qap_net_gaussian(n = 15)
+  expect_warning(fit <- suppressMessages(
+    estimate_mrqap(FORM, g, times = 5, control = algo)), "Dropped")
+  expect_s3_class(fit, "netreg")
+})
+
 test_that("an unknown name suggests the nearest, old names included", {
   expect_error(control_mrqap(familly = "poisson"), "Did you mean")
   expect_error(control_mrqap(nullhyps = "qapy"), "nullhyp")

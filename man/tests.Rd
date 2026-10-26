@@ -7,32 +7,11 @@
 \alias{test_permutation}
 \title{Tests of network measures}
 \usage{
-test_random(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  ncores = NULL,
-  strategy = "sequential"
-)
+test_random(.data, FUN, ..., times = 1000, control = list())
 
-test_configuration(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  ncores = NULL,
-  strategy = "sequential"
-)
+test_configuration(.data, FUN, ..., times = 1000, control = list())
 
-test_permutation(
-  .data,
-  FUN,
-  ...,
-  times = 1000,
-  ncores = NULL,
-  strategy = "sequential"
-)
+test_permutation(.data, FUN, ..., times = 1000, control = list())
 }
 \arguments{
 \item{.data}{A manynet-consistent network (see
@@ -48,16 +27,14 @@ e.g. the name of the attribute.}
 \item{times}{Integer.  Number of permutations for the null distribution.
 1000 is the default; publication-ready work usually needs 1000-10000.}
 
-\item{ncores}{A number of cores to run the simulations on.
-More than one runs them on that many \code{"multisession"} workers, and one runs
-them sequentially, whatever \code{strategy} says.
-\code{NULL} (the default) leaves the choice to \code{strategy}.
-Generally this is useful only when \code{times} > 1000.}
-
-\item{strategy}{A \code{{future}} plan that the simulations run on where \code{ncores}
-is \code{NULL}: \code{"sequential"} (the default), \code{"multisession"}, \code{"multicore"},
-or \code{"cluster"}.
-See \href{https://future.apply.futureverse.org}{\code{{future.apply}}} for more.}
+\item{control}{The controls of the simulations, as the result of
+\code{\link[=control_mrqap]{control_mrqap()}} or a named list of its arguments, such as
+\code{list(ncores = 4, seed = 1)}.
+A test reads \code{ncores}, \code{strategy}, and \code{seed}, and leaves the other
+controls alone, so that the controls of a model can be given to a test
+whole.
+\code{ncores} is generally useful only when \code{times} > 1000.
+See \code{\link[=control_mrqap]{control_mrqap()}} for each control and its default.}
 }
 \description{
 These functions conduct tests of any network-level statistic:

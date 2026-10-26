@@ -7,16 +7,19 @@
   - Added a rule on when a categorical term leaves out a reference
   - Added a rule on `levels =`
   - Added a rule on `ncores` before `strategy`, and on `loops` rather than `diag`
+  - Added a rule that a simulation-heavy function takes its controls through `control =`
 - Added `{fixest}` to `Suggests`, for fixed effects in models that are not gaussian
 - Improved the tutorial test to cap each `times =` at 20, since it checks only that the code runs
 - Added the diversity tutorial to the website, as a static article under "Tutorials"
 
 ## Tests
 
-- Added `ncores =` to `test_random()`, `test_configuration()`, and `test_permutation()`, 
-  which sets the plan whatever `strategy` says, as in `control_mrqap()`
+- Changed `test_random()`, `test_configuration()`, and `test_permutation()` to take `control =`
+  - Reads `ncores`, `strategy`, and `seed` from a list or from `control_mrqap()`, and leaves the other controls alone
+  - Takes the controls of a model whole, e.g. `ctrl <- control_mrqap(ncores = 4, seed = 1)` for both a model and a test
+  - `ncores` sets the plan whatever `strategy` says, as in `control_mrqap()`
+  - `strategy =` and `ncores =` given by name still work, and warn that they are now controls
   - Restores the `{future}` plan and `future.globals.maxSize` after the test
-  - Checks `strategy` and `ncores` before the simulations start
 - Renamed the `diag` element of a test's result to `loops`
 - Improved the speed of `test_permutation()` ~5x and `test_random()` ~3x on a stocnet
   - Draws from a `tbl_graph` made once, where the statistic gives the same value on it
@@ -44,7 +47,7 @@
   - `same(x, diff = TRUE)` names its columns for `same`, e.g. `same_dept_sales` rather than `match_dept_sales`
   - Aborts where `same()` names one attribute more than once, since `same(x, diff = TRUE)` adds up to `same(x)`
   - `mix()` stays its own term
-- Added `levels =` to `ego()`, `alter()`, `same()`, and `mix()`, as in ergm, to choose the categories that get a column
+- Added `levels =` to `ego()`, `alter()`, `same()`, and `mix()` to choose the categories that get a column
   - Takes names, e.g. `ego(dept, levels = c("sales", "hr"))`, or `mix(dept, levels = "sales -> hr")`
   - Takes positions, and negative positions to leave categories out, e.g. `levels = -1`
   - The categories left out are the reference together, and where every one is chosen, the first chosen is
@@ -52,7 +55,8 @@
   - Warns where a term has more than ten categories and no `levels =`
   - `specify_mrqap()` reads ergm's `levels =`, and `levels2 =` of `nodemix()`; `specify_ergm()` writes them
   - `specify_dynam()` drops a term with `levels =`, which goldfish does not have yet
-- Changed the order of the columns of `mix()` to ergm's, the sender's category changing fastest, so that a position in `levels =` is one in ergm's `levels2 =`
+- Changed the order of the columns of `mix()` to ergm's, the sender's category changing fastest, 
+  so that a position in `levels =` is one in ergm's `levels2 =`
 - Added fixed effects after a bare bar to the `specify_*()` functions
   - `specify_ergm()` writes `| sender + receiver` as ergm's `sender` and `receiver`
   - `specify_dynam()` drops them
@@ -61,9 +65,11 @@
 
 - Added `control_mrqap()`, with a help page for every control of `estimate_mrqap()`
   - `estimate_mrqap()` reads a `control` list through it, so each value is checked before a fit
-  - Converts a name that infernet used before, e.g. `nullhyp = "qapy"` to `permute = "outcome"`, with a warning
+  - Converts old names, e.g. `nullhyp = "qapy"` to `permute = "outcome"`, with a warning
   - Drops goldfish's estimation options, e.g. `max_iterations`, with one warning that names each
   - Reads the result of goldfish's `set_estimation_opt()` whole
+  - Fixed reading goldfish 2.0's options: `control = set_algorithm_newton()` and 
+    `control = set_preprocessing()` now drop each option
   - Aborts on any other name, with the nearest control
 - Renamed the `diag` control to `loops`, which says what it includes and does not mask `base::diag()`
   - `control = list(diag = TRUE)` still works, and warns that it is now `loops`
