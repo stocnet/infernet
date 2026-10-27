@@ -146,6 +146,107 @@ test_that("a layer named on its own is found as a predictor", {
   expect_named(fit$coefficients, c("(Intercept)", "reports"))
 })
 
+# ---- reporter terms ----------------------------------------------------------
+
+# The node each row of the fitted data names, as an integer.
+node_of <- function(f) as.integer(as.character(f))
+
+test_that("reporter() is the reporter's value, the same over a whole report", {
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter(age) + friends, HT, times = 5,
+                   control = list(seed = 1)))
+  age <- manynet::node_attribute(HT, "age")
+  expect_equal(fit$pred[["reporter_age"]], age[node_of(fit$pred$bv)])
+  expect_equal(fit$terms$effect[fit$terms$term == "reporter_age"], "reporter")
+  expect_equal(fit$terms$attribute[fit$terms$term == "reporter_age"], "age")
+})
+
+test_that("a categorical reporter() leaves out a reference, as ego() does", {
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter(dept), HT, times = 5,
+                   control = list(seed = 1)))
+  expect_equal(names(coef(fit))[-1], paste0("reporter_dept_", c("B", "C", "D", "E")))
+  expect_equal(unique(fit$terms$reference[-1]), "A")
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter(dept, levels = "B"), HT, times = 5,
+                   control = list(seed = 1)))
+  expect_equal(names(coef(fit))[-1], "reporter_dept_B")
+})
+
+test_that("reporter_ego and reporter_alter mark a report about the reporter's own ties", {
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter_ego + reporter_alter() + friends, HT,
+                   times = 5, control = list(seed = 1)))
+  expect_named(coef(fit), c("(Intercept)", "reporter_ego", "reporter_alter", "friends"))
+  by <- node_of(fit$pred$bv)
+  expect_equal(fit$pred$reporter_ego, (node_of(fit$pred$sv) == by) * 1)
+  expect_equal(fit$pred$reporter_alter, (node_of(fit$pred$rv) == by) * 1)
+  expect_equal(fit$terms$effect[-1], c("reporter_ego", "reporter_alter", "tie"))
+})
+
+test_that("reporter_same() compares the reporter with the sender or the receiver", {
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter_same(dept) + reporter_same(dept, node = "alter"),
+                   HT, times = 5, control = list(seed = 1)))
+  expect_named(coef(fit)[-1], c("reporter_same_ego_dept", "reporter_same_alter_dept"))
+  dept <- manynet::node_attribute(HT, "dept")
+  by <- node_of(fit$pred$bv)
+  expect_equal(fit$pred$reporter_same_ego_dept,
+               (dept[node_of(fit$pred$sv)] == dept[by]) * 1)
+  expect_equal(fit$pred$reporter_same_alter_dept,
+               (dept[node_of(fit$pred$rv)] == dept[by]) * 1)
+  expect_error(
+    estimate_mrqap(advice ~ reporter_same(dept, node = "both"), HT, times = 5),
+    "must be")
+})
+
+test_that("a reporter fixed effect absorbs reporter(), and not reporter_ego", {
+  expect_error(
+    estimate_mrqap(advice ~ reporter(age) + friends | reporter, HT, times = 5),
+    "absorbs")
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ reporter_ego + friends | reporter, HT, times = 5,
+                   control = list(seed = 1)))
+  expect_true(is.finite(coef(fit)[["reporter_ego"]]))
+})
+
+test_that("a reporter term interacts with a dyadic term", {
+  fit <- suppressMessages(
+    estimate_mrqap(advice ~ friends * reporter_ego, HT, times = 5,
+                   control = list(seed = 1)))
+  expect_true("friends:reporter_ego" %in% names(coef(fit)))
+})
+
+test_that("a reporter term on a network that is not a CSS is refused", {
+  g <- qap_net_gaussian(n = 12)
+  expect_error(estimate_mrqap(weight ~ reporter(Age), g, times = 5),
+               "cognitive social structure")
+  expect_error(estimate_mrqap(weight ~ reporter_ego, g, times = 5),
+               "cognitive social structure")
+})
+
+test_that("reporter_ego is refused on an undirected CSS", {
+  g <- css_net(directed = FALSE)
+  expect_error(suppressWarnings(suppressMessages(
+    estimate_mrqap(. ~ reporter_ego, g, times = 5))), "directed")
+  fit <- suppressWarnings(suppressMessages(
+    estimate_mrqap(. ~ reporter(age), g, times = 5, control = list(seed = 1))))
+  expect_true("reporter_age" %in% names(coef(fit)))
+})
+
+test_that("a two-mode CSS reads the column nodes' reports after the rows'", {
+  g <- css_net_twomode(people = 4, events = 3)
+  fit <- suppressWarnings(suppressMessages(
+    estimate_mrqap(. ~ reporter_ego + reporter_alter, g, times = 5,
+                   control = list(seed = 1))))
+  by <- node_of(fit$pred$bv)
+  expect_equal(fit$pred$reporter_ego, (node_of(fit$pred$sv) == by) * 1)
+  expect_equal(fit$pred$reporter_alter, (node_of(fit$pred$rv) + 4 == by) * 1)
+  expect_error(
+    estimate_mrqap(. ~ reporter_same(age), g, times = 5),
+    "two-mode")
+})
+
 # ---- random intercepts and permutation --------------------------------------
 
 test_that("each reporter can take a random intercept", {

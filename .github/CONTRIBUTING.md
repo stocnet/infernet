@@ -407,6 +407,13 @@ the engine fits. Do not build CSS arrays here: `df_to_mat()` did, and it is gone
 - **Lift predictors to the outcome.** A nodal term or a layer that is not a CSS
   is repeated along the reporter axis by `.lift_to_css()`. A CSS layer keeps its
   own reports. `tertius()` is computed within each report.
+- **A term about the reporter starts with `reporter`.** `reporter(x)`,
+  `reporter_ego`, `reporter_alter`, and `reporter_same(x, node =)` build an
+  array of sender, receiver, and reporter, and abort on a network that is not
+  a CSS. The prefix tells a reader that the term is for a CSS only, and the
+  registry marks each with `css = TRUE`, so that goldfish and ergm drop it
+  with that reason. A node that `node =` chooses is part of the term's name,
+  as in `reporter_same_alter_dept`.
 - **Missing stays missing.** `{manynet}` gives a node whose `na` attribute is
   `TRUE` a slice of `NA`, and those reports are dropped. A slice of zeros that is
   not so marked could be a report of no ties or a person who was not asked, so
@@ -767,6 +774,10 @@ A cognitive social structure and a list of networks abort.
 | `tertius(layer, x)` | fits | the mean of x over j's other in-neighbours | `edgecov` | — | — |
 | `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
 | `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
+| `reporter(x)` | fits, in a CSS | the reporter's value; `levels =` chooses the categories; a `\| reporter` fixed effect absorbs it | — | — | — |
+| `reporter_ego`, `reporter_ego()` | fits, in a CSS | 1 where the reporter is the sender | — | — | — |
+| `reporter_alter`, `reporter_alter()` | fits, in a CSS | 1 where the reporter is the receiver | — | — | — |
+| `reporter_same(x, node = "ego")` | fits, in a CSS | 1 where the reporter shares a value with the sender, or with `node = "alter"` the receiver | — | — | — |
 | `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
 | `\| sender` | fits | a fixed effect for each sender, receiver, reporter, or network; goldfish drops it | `sender`, `receiver` | — | — |
 | `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |

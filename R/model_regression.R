@@ -37,9 +37,31 @@
 #'   - `tertius()`, `recip()`, `indeg()`, and `outdeg()` on a CSS layer are
 #'     computed within each report, since each reporter sees different ties.
 #'
+#'   The `reporter` terms describe the reporter of each report, since a
+#'   report about one's own ties can differ from a report about the ties of
+#'   others (Krackhardt 1987):
+#'
+#'   - `reporter(age)` is the reporter's age, the same over their whole report;
+#'   - `reporter_ego` is 1 in a report about the reporter's own outgoing tie,
+#'     and `reporter_alter` in a report about a tie to the reporter;
+#'   - `reporter_same(dept, node = "alter")` is 1 where the reporter is of the
+#'     receiver's department.
+#'
+#'   `reporter_ego`, `reporter_alter`, and `reporter_same()` need a directed or
+#'   a two-mode network, since an undirected tie has no sender or receiver.
+#'   In a two-mode CSS the column nodes report after the row nodes, and
+#'   `reporter_same()` is not yet available. An attribute that only one mode
+#'   holds gives `reporter()` an `NA` for every report of the other mode,
+#'   so those reports are dropped.
+#'   On a network that is not a CSS, a `reporter` term aborts.
+#'   Goldfish and ergm have no reporter, so [specify_dynam()] and
+#'   [specify_ergm()] drop these terms.
+#'
 #'   A permutation relabels the nodes, and a reporter is a node, so the senders,
 #'   receivers, and reporters are relabelled together.
 #'   `(1 | reporter)` in the formula adds a random intercept for each reporter.
+#'   A `| reporter` fixed effect absorbs `reporter()`, which is then refused,
+#'   but not `reporter_ego` or `reporter_alter`, which vary within a report.
 #'
 #'   A person who was not asked has a report of zeros unless the network marks
 #'   them as missing, for example with
@@ -190,7 +212,18 @@
 #'   - `tertius_diff(layer, attr, summarizer_fn = "mean")` — how far the
 #'     sender's value lies from that mean, as an absolute difference,
 #'   - `global(var)` — a network-level variable from the network's `globals`,
-#'     in a list of networks; on one network it is the intercept.
+#'     in a list of networks; on one network it is the intercept,
+#'   - `reporter(attr, levels = NULL)` — the reporter's value of a node
+#'     attribute in a cognitive social structure, dummy-coded as `ego()` is,
+#'   - `reporter_ego` and `reporter_alter`, or `reporter_ego()` and
+#'     `reporter_alter()` — 1 where the reporter is the sender or the
+#'     receiver of the dyad, so a report about the reporter's own ties,
+#'   - `reporter_same(attr, node = "ego")` — 1 where the reporter shares a
+#'     value of an attribute with the sender (`"ego"`) or the receiver
+#'     (`"alter"`).
+#'
+#'   The `reporter` terms are for a cognitive social structure only (see the
+#'   section on cognitive social structures).
 #'
 #'   `:` and `*` give interactions of any order, as the product of the terms.
 #'
@@ -312,6 +345,11 @@
 #' # whom for advice, against the formal reporting structure that all share.
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)
+#' # Whether a manager reports their own advice ties differently, and whether
+#' # senior managers report more advice.
+#' css_reporter <- estimate_mrqap(
+#'   advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
+#'   manynet::ison_hightech, times = 5)
 #' @export
 estimate_mrqap <- function(formula,
                            .data,

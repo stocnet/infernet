@@ -19,6 +19,8 @@
     entry <- registry[[op$fn]]
     reason <- if (identical(entry$kind, "global")) {
       "is a network-level variable, the same for every dyad of the one network that ergm fits"
+    } else if (isTRUE(entry$css)) {
+      "describes the reporter of a cognitive social structure, which ergm does not have"
     } else if (is.na(entry$ergm)) {
       "has no ergm term"
     } else if (is.null(entry$to_ergm)) {

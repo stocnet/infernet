@@ -139,6 +139,29 @@
     global = list(
       formals = alist(x = ), kind = "global", build = .build_global,
       mrqap = "fits", dynam = "global", saom = NA_character_,
+      ergm = NA_character_),
+    # A cognitive social structure's terms, named for its reporter. No other
+    # model has a reporter, so `css` marks them for the other models' readers.
+    reporter = list(
+      formals = alist(x = , levels = NULL), kind = "attribute",
+      build = .build_reporter, css = TRUE,
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
+      ergm = NA_character_),
+    reporter_ego = list(
+      formals = alist(), kind = "reporter", build = .build_reporter_ego,
+      bare = TRUE, css = TRUE,
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
+      ergm = NA_character_),
+    reporter_alter = list(
+      formals = alist(), kind = "reporter", build = .build_reporter_alter,
+      bare = TRUE, css = TRUE,
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
+      ergm = NA_character_),
+    reporter_same = list(
+      formals = alist(x = , node = "ego"), kind = "attribute",
+      build = .build_reporter_same, css = TRUE, twomode = FALSE,
+      hint = "Use {.fn reporter} with {.fn ego} or {.fn alter} on the attribute instead.",
+      mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = NA_character_)
   ),
   .dynam_terms())
@@ -412,7 +435,9 @@
     if (identical(entry$formals[[nm]], quote(expr = ))) NULL else entry$formals[[nm]]
   })
   names(args) <- names(entry$formals)
-  list(fn = fn, name = .arg_name(args[[1]]), args = args, supplied = supplied)
+  # A term with no arguments, such as `reporter_ego()`, names nothing.
+  name <- if (length(args) > 0) .arg_name(args[[1]]) else NA_character_
+  list(fn = fn, name = name, args = args, supplied = supplied)
 }
 
 # The name an argument gives: a bare name or a string, as `ego(age)` and
@@ -730,11 +755,14 @@
 # once per mode rather than once per network.
 #' @keywords internal
 #' @noRd
-.node_values <- function(ctx, x, side = c("ego", "alter")) {
+.node_values <- function(ctx, x, side = c("ego", "alter", "reporter")) {
   side <- match.arg(side)
   v <- manynet::node_attribute(ctx$net, x)
-  if (ctx$twomode) v <- if (side == "ego") v[!ctx$node_type] else v[ctx$node_type]
-  v
+  if (!ctx$twomode) return(v)
+  # A two-mode CSS has a report from every node of both modes, the row nodes'
+  # first, so a reporter's value is read in that order.
+  switch(side, ego = v[!ctx$node_type], alter = v[ctx$node_type],
+         reporter = c(v[!ctx$node_type], v[ctx$node_type]))
 }
 
 #' @keywords internal
@@ -1387,6 +1415,92 @@
   }
   .named(matrix(row$value[[1]], nrow(ctx$DV), ncol(ctx$DV)),
          .col_name("global", op$name))
+}
+
+# ---- builders: reporters ---------------------------------------------------------
+
+# A cognitive social structure holds each reporter's report of the network, so
+# each dyad is observed once for each reporter. These terms describe the
+# reporter, and Krackhardt's analyses turn on them: a report about one's own
+# ties differs from a report about the ties of others. Each builds an array of
+# sender, receiver, and reporter, which `.lift_to_css()` keeps as it is.
+#' @keywords internal
+#' @noRd
+.need_css <- function(op, ctx) {
+  if (ctx$css) return(invisible())
+  manynet::snet_abort(
+    c("{.fn {op$fn}} needs a cognitive social structure, and this outcome has no reporters.",
+      i = "{.pkg manynet} records who reported each tie in a {.code by} column of the ties."))
+}
+
+# An undirected tie has no sender or receiver, so a reporter cannot be one of
+# them. A two-mode tie runs from a row node to a column node.
+#' @keywords internal
+#' @noRd
+.need_sides <- function(op, ctx) {
+  if (ctx$directed || ctx$twomode) return(invisible())
+  manynet::snet_abort(
+    c("{.fn {op$fn}} needs a directed network.",
+      i = "An undirected tie has no sender or receiver for the reporter to be."))
+}
+
+# A value for each reporter, repeated over every dyad of that reporter's report.
+#' @keywords internal
+#' @noRd
+.reporter_array <- function(ctx, v) {
+  d <- dim(ctx$DV)
+  if (length(v) != d[3]) {
+    manynet::snet_abort(
+      c("The outcome has {d[3]} reports, but {length(v)} nodes.",
+        i = "A reporter is a node, so each node needs one report."))
+  }
+  array(rep(v, each = d[1] * d[2]), dim = d, dimnames = dimnames(ctx$DV))
+}
+
+# The reporter's own value, as `ego()` gives the sender's, dummy-coded the same
+# way where it is categorical. It is the same over a reporter's whole report,
+# so a reporter fixed effect absorbs it.
+.build_reporter <- function(op, ctx) {
+  .need_css(op, ctx)
+  m <- .reporter_array(ctx, .node_values(ctx, op$name, "reporter"))
+  .build_side(op, ctx, "reporter", m)
+}
+
+.build_reporter_ego <- function(op, ctx) .build_reporter_is(op, ctx, "ego")
+.build_reporter_alter <- function(op, ctx) .build_reporter_is(op, ctx, "alter")
+
+# 1 where the reporter is the sender, `"ego"`, or the receiver, `"alter"`, of
+# the dyad. In a two-mode CSS the column nodes' reports follow the row nodes'.
+#' @keywords internal
+#' @noRd
+.build_reporter_is <- function(op, ctx, node) {
+  .need_css(op, ctx)
+  .need_sides(op, ctx)
+  .named(.reporter_is(ctx, node), .col_name(op$fn))
+}
+
+#' @keywords internal
+#' @noRd
+.reporter_is <- function(ctx, node) {
+  d <- dim(ctx$DV)
+  k <- slice.index(array(0L, d), 3)
+  self <- if (node == "ego") slice.index(k, 1)
+    else slice.index(k, 2) + if (ctx$twomode) d[1] else 0L
+  array((k == self) * 1, dim = d, dimnames = dimnames(ctx$DV))
+}
+
+# 1 where the reporter shares a value of `x` with the sender, `node = "ego"`, or
+# with the receiver, `node = "alter"`, as `same()` is for the sender and the
+# receiver. The node is part of the term's name, as in `reporter_ego`.
+.build_reporter_same <- function(op, ctx) {
+  .need_css(op, ctx)
+  .need_sides(op, ctx)
+  node <- .degree_node(op)
+  sides <- .side_matrices(ctx, op$name)
+  m <- .lift_to_css(if (node == "ego") sides$rows else sides$cols, ctx$DV)
+  r <- .reporter_array(ctx, .node_values(ctx, op$name, "reporter"))
+  .named(array((m == r) * 1, dim = dim(ctx$DV), dimnames = dimnames(ctx$DV)),
+         .col_name(op$fn, node, op$name))
 }
 
 # ---- checks and advice -------------------------------------------------------------

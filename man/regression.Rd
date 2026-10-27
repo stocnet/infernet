@@ -55,8 +55,19 @@ other in-neighbour takes the mean of the defined cells. The older
 \item \code{tertius_diff(layer, attr, summarizer_fn = "mean")} — how far the
 sender's value lies from that mean, as an absolute difference,
 \item \code{global(var)} — a network-level variable from the network's \code{globals},
-in a list of networks; on one network it is the intercept.
+in a list of networks; on one network it is the intercept,
+\item \code{reporter(attr, levels = NULL)} — the reporter's value of a node
+attribute in a cognitive social structure, dummy-coded as \code{ego()} is,
+\item \code{reporter_ego} and \code{reporter_alter}, or \code{reporter_ego()} and
+\code{reporter_alter()} — 1 where the reporter is the sender or the
+receiver of the dyad, so a report about the reporter's own ties,
+\item \code{reporter_same(attr, node = "ego")} — 1 where the reporter shares a
+value of an attribute with the sender (\code{"ego"}) or the receiver
+(\code{"alter"}).
 }
+
+The \code{reporter} terms are for a cognitive social structure only (see the
+section on cognitive social structures).
 
 \code{:} and \code{*} give interactions of any order, as the product of the terms.
 
@@ -194,9 +205,32 @@ as one matrix that every report shares.
 computed within each report, since each reporter sees different ties.
 }
 
+The \code{reporter} terms describe the reporter of each report, since a
+report about one's own ties can differ from a report about the ties of
+others (Krackhardt 1987):
+\itemize{
+\item \code{reporter(age)} is the reporter's age, the same over their whole report;
+\item \code{reporter_ego} is 1 in a report about the reporter's own outgoing tie,
+and \code{reporter_alter} in a report about a tie to the reporter;
+\item \code{reporter_same(dept, node = "alter")} is 1 where the reporter is of the
+receiver's department.
+}
+
+\code{reporter_ego}, \code{reporter_alter}, and \code{reporter_same()} need a directed or
+a two-mode network, since an undirected tie has no sender or receiver.
+In a two-mode CSS the column nodes report after the row nodes, and
+\code{reporter_same()} is not yet available. An attribute that only one mode
+holds gives \code{reporter()} an \code{NA} for every report of the other mode,
+so those reports are dropped.
+On a network that is not a CSS, a \code{reporter} term aborts.
+Goldfish and ergm have no reporter, so \code{\link[=specify_dynam]{specify_dynam()}} and
+\code{\link[=specify_ergm]{specify_ergm()}} drop these terms.
+
 A permutation relabels the nodes, and a reporter is a node, so the senders,
 receivers, and reporters are relabelled together.
 \code{(1 | reporter)} in the formula adds a random intercept for each reporter.
+A \verb{| reporter} fixed effect absorbs \code{reporter()}, which is then refused,
+but not \code{reporter_ego} or \code{reporter_alter}, which vary within a report.
 
 A person who was not asked has a report of zeros unless the network marks
 them as missing, for example with
@@ -327,6 +361,11 @@ print(model1)
 # whom for advice, against the formal reporting structure that all share.
 css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
+# Whether a manager reports their own advice ties differently, and whether
+# senior managers report more advice.
+css_reporter <- estimate_mrqap(
+  advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
+  manynet::ison_hightech, times = 5)
 }
 \references{
 Krackhardt, David. 1987.

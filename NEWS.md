@@ -4,6 +4,7 @@
 
 - Updated CONTRIBUTING
   - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
+  - Added the `reporter` terms to the formula dictionary
 
 ## Specification
 
@@ -12,6 +13,15 @@
   - `outdeg()` reads the sender's outdegree by default, `node = "ego"`
   - `specify_mrqap()` and `specify_ergm()` read a goldfish formula's with `type =` as `node =`
   - `specify_dynam()` writes `node =` as goldfish's `type =`
+- Added terms for the reporter of a CSS
+  - Added `reporter(x, levels = NULL)` for the reporter's value of a node attribute
+  - Added `reporter_ego` where the reporter is the sender
+  - Added `reporter_alter` where the reporter is the receiver
+  - Added `reporter_same(x, node =)` where the reporter shares a value with the `"ego"`/`"alter"`
+  - These terms abort on a network that is not a CSS, the last 3 for undirected networks,
+    and the last for a two-mode network 
+  - `specify_dynam()` and `specify_ergm()` drop these terms
+  - A `| reporter` fixed effect absorbs `reporter()`, and names it
 
 # infernet 0.5.0
 

@@ -856,6 +856,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     if (name %in% ctx$tie_names || is.null(entry) || !isTRUE(entry$bare)) {
       return(list(expr = call("tie", expr, weighted = TRUE)))
     }
+    if (isTRUE(entry$css)) return(.dynam_operand(call(name), registry, ctx, input))
     return(list(expr = expr))
   }
   fn <- as.character(expr[[1]])
@@ -880,7 +881,9 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     } else {
       list(expr = expr)
     },
-    if (is.na(entry$dynam)) {
+    if (isTRUE(entry$css)) {
+      list(reason = "describes the reporter of a cognitive social structure, which goldfish does not have")
+    } else if (is.na(entry$dynam)) {
       list(reason = "has no goldfish term")
     } else {
       list(expr = expr)

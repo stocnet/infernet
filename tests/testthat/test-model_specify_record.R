@@ -44,6 +44,10 @@ expected_status <- utils::read.table(header = TRUE, stringsAsFactors = FALSE, te
   tertius               fits   fits     interpreted adapted
   tertius_diff          fits   fits     interpreted adapted
   global                fits   refuses  fits        drops
+  reporter              fits   refuses  drops       drops
+  reporter_ego          fits   refuses  drops       drops
+  reporter_alter        fits   refuses  drops       drops
+  reporter_same         fits   refuses  drops       drops
   inertia               drops  drops    fits        drops
   trans                 drops  drops    fits        adapted
   cycle                 drops  drops    fits        adapted
