@@ -9,3 +9,203 @@ test_that("test_parameter() and test_time() refuse a class with no method", {
   expect_error(test_parameter(1:3), "no method")
   expect_error(test_time(1:3), "no method")
 })
+
+# ---- network regressions -----------------------------------------------------
+
+# A network whose outcome depends on the sender's Age, with a sender effect in
+# the noise, and an attribute B correlated with Age whose coefficient is
+# `b_alter_B`.
+param_net <- function(n = 10, family = "gaussian", b_alter_B = 0) {
+  age <- stats::rnorm(n)
+  B <- 0.6 * age + stats::rnorm(n, sd = 0.8)
+  eta <- outer(age, B, function(a, b) 0.5 * a + b_alter_B * b) +
+    stats::rnorm(n, sd = 0.5)
+  m <- switch(family,
+              gaussian = eta + matrix(stats::rnorm(n^2), n, n),
+              binomial = matrix(stats::rbinom(n^2, 1, stats::plogis(eta - 0.5)), n, n))
+  diag(m) <- 0
+  manynet::mutate_nodes(manynet::as_tidygraph(m), Age = age, B = B,
+                        Grp = rep(c("a", "b", "c"), length.out = n))
+}
+
+param_fit <- function(net, formula = . ~ ego(Age) + alter(B), family = "gaussian") {
+  suppressWarnings(suppressMessages(
+    estimate_mrqap(formula, net, times = 1, control = list(family = family))))
+}
+
+# A panel of three waves whose density changes, and whose effect of the
+# sender's age is `b` in the second wave and in the third.
+param_panel <- function(b = c(0.04, 0.04), n = 15) {
+  age <- stats::runif(n, 20, 60)
+  m <- matrix(stats::rbinom(n^2, 1, 0.2), n, n)
+  diag(m) <- 0
+  dens <- c(-1.5, -1)
+  el <- list(data.frame(which(m == 1, arr.ind = TRUE), time = 1))
+  for (t in 2:3) {
+    p <- stats::plogis(dens[t - 1] + 1.5 * t(m) + b[t - 1] * (age - 40))
+    m <- matrix(stats::rbinom(n^2, 1, p), n, n)
+    diag(m) <- 0
+    el[[t]] <- data.frame(which(m == 1, arr.ind = TRUE), time = t)
+  }
+  ties <- do.call(rbind, el)
+  names(ties) <- c("from", "to", "time")
+  manynet::as_tidygraph(list(nodes = data.frame(name = paste0("n", seq_len(n)),
+                                                age = age),
+                             ties = ties))
+}
+
+test_that("test_parameter() p-values are uniform under the hypothesis", {
+  set.seed(31)
+  p <- replicate(100, {
+    test_parameter(param_fit(param_net()), "alter_B", times = 39)$pgteobs
+  })
+  expect_gt(mean(p <= 0.05), 0.01)
+  expect_lt(mean(p <= 0.05), 0.12)
+  expect_gt(mean(p), 0.4)
+  expect_lt(mean(p), 0.6)
+})
+
+test_that("test_parameter() rejects a coefficient that is not the value", {
+  set.seed(32)
+  p <- replicate(30, {
+    test_parameter(param_fit(param_net(b_alter_B = 0.5)), "alter_B",
+                   times = 39)$pgteobs
+  })
+  expect_gt(mean(p <= 0.05), 0.6)
+})
+
+test_that("test_parameter() tests a value other than 0 in a gaussian model", {
+  # The sender's Age has a coefficient of 0.05 in this network
+  fit <- suppressMessages(estimate_mrqap(. ~ ego(Age) + alter(Age),
+                                         qap_net_gaussian(), times = 5))
+  at <- test_parameter(fit, "ego_Age", value = 0.05, times = 99,
+                       control = list(seed = 1))
+  zero <- test_parameter(fit, "ego_Age", times = 99, control = list(seed = 1))
+  expect_gt(at$pgteobs, 0.05)
+  expect_lt(zero$pgteobs, 0.05)
+  expect_equal(at$value, 0.05)
+  expect_s3_class(at, "network_test")
+  expect_equal(tidy(at)$p.upper, at$pgteobs)
+})
+
+test_that("test_parameter() tests the levels of an attribute together", {
+  set.seed(33)
+  fit <- param_fit(param_net(n = 12), . ~ ego(Age) + alter(B) + ego(Grp))
+  res <- test_parameter(fit, "ego_Grp", times = 39, control = list(seed = 1))
+  expect_equal(res$terms, c("ego_Grp_b", "ego_Grp_c"))
+  expect_true(all(res$testdist >= -1e-8))
+  both <- test_parameter(fit, c("ego_Age", "alter_B"), times = 39,
+                         control = list(seed = 1))
+  expect_equal(both$terms, c("ego_Age", "alter_B"))
+})
+
+test_that("test_parameter() agrees with estimate_mrqap() on one coefficient", {
+  # With one coefficient, the joint test is the engine's double
+  # semi-partialling, with the deviance in place of the t-statistic.
+  set.seed(34)
+  res <- t(replicate(25, {
+    fit <- suppressWarnings(suppressMessages(
+      estimate_mrqap(. ~ ego(Age) + alter(B), param_net(), times = 99)))
+    c(fit$abs["perm_t", "alter_B"],
+      test_parameter(fit, "alter_B", times = 99)$pgteobs)
+  }))
+  expect_gt(stats::cor(res[, 1], res[, 2]), 0.9)
+})
+
+test_that("test_parameter() runs on a binomial model", {
+  set.seed(35)
+  fit <- param_fit(param_net(n = 12, family = "binomial"), family = "binomial")
+  res <- test_parameter(fit, "ego_Age", times = 39, control = list(seed = 1))
+  expect_s3_class(res, "network_test")
+  expect_equal(res$failed, 0)
+})
+
+test_that("test_parameter() keeps the dyads of the model in every shape", {
+  u <- suppressMessages(estimate_mrqap(. ~ diff(Age), qap_net_undirected(n = 12),
+                                       times = 5))
+  expect_s3_class(test_parameter(u, "diff_Age", times = 19), "network_test")
+  tw <- suppressMessages(estimate_mrqap(. ~ ego(Att), qap_net_twomode_wide(),
+                                        times = 5))
+  expect_s3_class(test_parameter(tw, "ego_Att", times = 19), "network_test")
+  # A row and a cell unobserved: a draw that moved them would stop with a bug
+  g <- qap_net_gaussian(n = 12)
+  m <- manynet::as_matrix(g)
+  m[2, ] <- NA
+  m[5, 7] <- NA
+  gm <- manynet::mutate_nodes(manynet::as_tidygraph(m),
+                              Age = manynet::node_attribute(g, "Age"))
+  mm <- suppressMessages(estimate_mrqap(. ~ ego(Age) + alter(Age), gm, times = 5))
+  expect_s3_class(test_parameter(mm, "alter_Age", times = 19), "network_test")
+  l <- suppressMessages(estimate_mrqap(. ~ ego(Age), list(qap_net_binary(n = 10),
+                                       qap_net_binary(n = 12, seed = 3)), times = 5))
+  expect_s3_class(test_parameter(l, "ego_Age", times = 19), "network_test")
+  fe <- suppressMessages(estimate_mrqap(. ~ alter(Age) | sender,
+                                        qap_net_gaussian(n = 12), times = 5))
+  expect_lt(test_parameter(fe, "alter_Age", times = 39,
+                           control = list(seed = 1))$pgteobs, 0.05)
+})
+
+test_that("test_time() p-values are uniform when the coefficients are constant", {
+  set.seed(36)
+  p <- replicate(40, {
+    fit <- suppressWarnings(suppressMessages(
+      estimate_mrqap(. ~ ego(age) + recip, param_panel(), times = 1)))
+    test_time(fit, times = 39)$pgteobs
+  })
+  expect_lt(mean(p <= 0.05), 0.15)
+  expect_gt(mean(p), 0.38)
+  expect_lt(mean(p), 0.62)
+})
+
+test_that("test_time() finds a coefficient that changes between waves", {
+  set.seed(37)
+  fit <- suppressMessages(estimate_mrqap(. ~ ego(age) + recip,
+                                         param_panel(b = c(0.08, -0.04)), times = 5))
+  res <- test_time(fit, "ego_age", times = 99, control = list(seed = 1))
+  expect_lt(res$pgteobs, 0.05)
+  expect_equal(res$terms, "ego_age:wave2")
+  expect_equal(test_time(fit, times = 19)$terms,
+               c("ego_age:wave2", "recip:wave2"))
+})
+
+test_that("test_parameter() reproduces with a seed, in parallel too", {
+  skip_on_cran()
+  fit <- suppressMessages(estimate_mrqap(. ~ ego(Age) + alter(Age) + ego(Grp),
+                                         qap_net_gaussian(n = 12), times = 5))
+  one <- test_parameter(fit, "ego_Grp", times = 40, control = list(seed = 3))
+  two <- test_parameter(fit, "ego_Grp", times = 40,
+                        control = list(seed = 3, ncores = 2))
+  expect_equal(one, two)
+  expect_s3_class(future::plan(), "sequential")
+})
+
+test_that("test_parameter() and test_time() refuse what they cannot test", {
+  fit <- suppressMessages(estimate_mrqap(. ~ ego(Age) + alter(Age),
+                                         qap_net_gaussian(n = 12), times = 5))
+  expect_error(test_parameter(fit), "terms")
+  expect_error(test_parameter(fit, "Age"), "not a coefficient")
+  expect_error(test_parameter(fit, "(Intercept)"), "intercept")
+  expect_error(test_parameter(fit, "ego_Age", value = 1:3), "one number")
+  expect_error(test_time(fit), "one network")
+  bin <- suppressMessages(estimate_mrqap(. ~ ego(Age), qap_net_binary(n = 12),
+                                         times = 5))
+  expect_error(test_parameter(bin, "ego_Age", value = 1), "only in a gaussian")
+  l <- suppressMessages(estimate_mrqap(. ~ ego(Age), list(qap_net_binary(n = 10),
+                                       qap_net_binary(n = 12, seed = 3)), times = 5))
+  expect_error(test_time(l), "not a panel")
+  two <- suppressMessages(estimate_mrqap(. ~ ego(age), qap_net_panel(waves = 2),
+                                         times = 5))
+  expect_error(test_time(two), "two fitted waves")
+  css <- fit
+  class(css) <- c("netreg_css", class(fit))
+  expect_error(test_parameter(css, "ego_Age"), "cognitive")
+  rnd <- fit
+  rnd$random <- c(sender = TRUE)
+  expect_error(test_parameter(rnd, "ego_Age"), "random intercepts")
+  nb <- fit
+  nb$family <- "negbin"
+  expect_error(test_parameter(nb, "ego_Age"), "negbin")
+  fe <- bin
+  fe$fixed_effects <- "sender"
+  expect_error(test_parameter(fe, "ego_Age"), "fixed effects")
+})

@@ -33,6 +33,13 @@
   - Compares two `diffs_model` objects rather than two single diffusions
   - Replaces the Kolmogorov-Smirnov test, which took each step as independent
 - Added `test_parameter()` and `test_time()` as generics with the signature `(x, ...)`
+- Added `test_parameter.netreg()`, which tests that one or more coefficients together equal a value
+  - Uses a joint double semi-partialling, with the deviance as its statistic
+  - Tests the levels of a categorical attribute together, from the stem of their names
+  - Tests a value other than 0 only in a gaussian model
+- Added `test_time.netreg()`, which tests that coefficients are constant over the waves of a panel
+  - Tests the interactions of each term with each later wave, with an intercept for each wave
+  - Refuses a list of networks, since nothing says that its networks are in time order
 
 ## Specification
 
