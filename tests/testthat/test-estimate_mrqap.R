@@ -211,16 +211,3 @@ test_that("each class prints through its own method", {
   bare <- structure(list(coefficients = 1), class = "netreg")
   expect_output(print(bare), "<netreg>")
 })
-
-test_that("net_regression() still works, and warns that it is deprecated", {
-  .infernet_state$net_regression_warned <- NULL
-  g <- qap_net_gaussian(n = 10)
-  expect_warning(
-    old <- suppressMessages(net_regression(weight ~ ego(Age) + alter(Age), g,
-                                           times = 5, control = list(seed = 1))),
-    "estimate_mrqap")
-  new <- suppressMessages(estimate_mrqap(weight ~ ego(Age) + alter(Age), g,
-                                         times = 5, control = list(seed = 1)))
-  expect_equal(old$coefficients, new$coefficients)
-  expect_equal(old$abs, new$abs)
-})

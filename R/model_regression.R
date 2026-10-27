@@ -452,23 +452,6 @@ estimate_mrqap <- function(formula,
   fit
 }
 
-#' @describeIn regression The name this function had in `{migraph}`, and in
-#'   infernet before 0.4.0. It still works, and warns once that it is deprecated.
-#' @export
-net_regression <- function(formula,
-                           .data,
-                           times   = 1000,
-                           control = list()) {
-  if (!isTRUE(.infernet_state$net_regression_warned)) {
-    .infernet_state$net_regression_warned <- TRUE
-    manynet::snet_warn(
-      c("{.fn net_regression} is deprecated, and is now called {.fn estimate_mrqap}.",
-        i = "It takes the same arguments, and gives the same result."))
-  }
-  estimate_mrqap(formula, .data, times = times, control = control)
-}
-
-
 # ---- permutation schemes and missing data --------------------------------------
 
 # What the permutation scheme permutes, which is the only thing that separates

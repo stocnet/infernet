@@ -72,6 +72,14 @@
   - ~3.5-4x faster on a gaussian model of 60 or 200 nodes
   - ~1.5-1.8x faster on a binomial model, and on `ison_hightech`
   - ~7.5x faster for 100 draws on the 448 by 12489 network of #4
+- Removed `net_regression()`; `migraph::net_regression()` now calls `estimate_mrqap()`
+
+## Results
+
+- Moved `predict()` for `netlm` and `netlogit` from `{migraph}`
+- Added `predict()` for a `netreg`, on the `"link"` or the `"response"` scale
+  - Without `newdata`, the fitted values, with random intercepts and fixed effects
+  - With `newdata`, the values from the coefficients, read by column name
 
 ## Tutorials
 

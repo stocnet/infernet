@@ -15,7 +15,7 @@
 #'     from `estimate_mrqap()`
 #'   - `network_test`, from `test_random()`, `test_configuration()`,
 #'     `test_permutation()`, `test_gof()`, and `test_distributions()`
-#'   - `netlm` and `netlogit`, from `net_regression()` in `{migraph}`
+#'   - `netlm` and `netlogit`, from `net_regression()` in `{migraph}` before 2.0.0
 #'   - `ergm`, from `ergm()` in `{ergm}`
 #'   - `sienaFit`, from `siena07()` in `{RSiena}`
 #'

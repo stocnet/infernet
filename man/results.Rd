@@ -138,7 +138,7 @@ and the permutation p-values.
 from \code{estimate_mrqap()}
 \item \code{network_test}, from \code{test_random()}, \code{test_configuration()},
 \code{test_permutation()}, \code{test_gof()}, and \code{test_distributions()}
-\item \code{netlm} and \code{netlogit}, from \code{net_regression()} in \code{{migraph}}
+\item \code{netlm} and \code{netlogit}, from \code{net_regression()} in \code{{migraph}} before 2.0.0
 \item \code{ergm}, from \code{ergm()} in \code{{ergm}}
 \item \code{sienaFit}, from \code{siena07()} in \code{{RSiena}}
 }

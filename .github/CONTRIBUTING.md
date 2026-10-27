@@ -160,10 +160,10 @@ Division of labour to keep in mind when adding functions:
   along with deep (often institutional) theming. *All* plot methods should live there.
 - `{infernet}` (this package): testing and modelling, e.g. CUG/QAP/MRQAP.
 - `{migraph}`: the software companion to *Multimodal Political Networks*, holding the
-  `mpn_*` datasets and the diffusion models.
-  `{migraph}` still carries older copies, as `net_regression()`, and the `test_*()` family;
-  those are what `{infernet}` supersedes, so a fix made there needs porting here,
-  and a fix made here does not need porting back.
+  `mpn_*` datasets and the `over_*()` functions.
+  From `{migraph}` 2.0.0, its `net_regression()`, `test_*()` family, `play_diffusions()`,
+  `test_distribution()`, and `test_fit()` are shims: each calls `{infernet}`
+  and warns once that it is deprecated. A fix belongs here, never there.
 - `{goldfish}`: another stocnet package for estimating network event models 
   such as relational event models and dynamic network actor models. 
   Note that these two packages, `{infernet}` and `{goldfish}`, 
@@ -309,9 +309,10 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
-| `model_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share |
+| `model_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for a `netreg`, and the joint double semi-partialling they share |
 | `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it |
@@ -519,6 +520,33 @@ separate generic: a permutation test of which model each simulation came from.
 It dispatches on the first model; a method checks that the second is of the same class.
 A worker of a parallel plan may load an installed copy of the package, so give
 it the internal helpers it calls by value, as `test_gof.netreg()` does.
+
+#### Tests of parameters
+
+`test_parameter()` and `test_time()` test hypotheses about a fitted model's
+coefficients. Their methods for a `netreg` share `.joint_test()`:
+
+1. Take the dyads from `x$pred`, which every fit keeps, even with `less_mem`,
+   so the network is not needed again.
+2. Residualise the tested predictors on the untested ones, as one matrix.
+   With gaussian fixed effects, demean first, as the engine does.
+3. Draw every permutation order before any worker starts, from blocks built
+   from the cells in `x$pred`, so that a seed gives the same draws sequentially
+   and in parallel, and every draw uses the dyads of the observed model.
+4. Read each tested residual from the cell that the permuted nodes point to,
+   refit, and take the deviance that the tested predictors remove.
+
+`.dyad_layout()` reads each network's number of rows from `location`, which
+indexes a matrix by column, and reads a two-mode network from the cells where a
+row and a column have the same index. Keep the worker functions,
+`.deviance_fun()` and `.joint_draw()`, to base and stats functions, so that a
+worker needs nothing from the package.
+`test_time()` is `test_parameter()` on the interactions of the tested terms with
+each fitted wave after the first, with an intercept for each such wave left
+untested.
+A value other than 0 is tested only in a gaussian model, by subtracting it from
+the outcome: in any other family it would be an offset, and an offset under
+permutation has no clear meaning.
 
 #### Multivariate
 
@@ -975,8 +1003,9 @@ and are grouped by contract for the engine:
 | `test-model_specify_ergm.R` | `specify_ergm()` with a network: each term's ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
+| `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
 | `test-model_fit.R` | that the p-values of `test_gof()` and `test_distributions()` are uniform under the model, on cheap curves, and each method of `test_gof()` |
-| `test-model_parameter.R` | that `test_parameter()` and `test_time()` keep the signature of the generics of `{RSiena}` and `{goldfish}` |
+| `test-model_parameter.R` | that `test_parameter()` and `test_time()` keep the signature of the generics of `{RSiena}` and `{goldfish}`, that their p-values are uniform under the hypothesis, that they reject a false one, and that they keep the dyads of the model in every shape |
 | `test-model_diffusion.R` | `play_diffusions()` and its old arguments |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 

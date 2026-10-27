@@ -68,6 +68,7 @@ reference:
     contents:
       - regression
       - control_mrqap
+      - predict
   - title: "Diffusion"
     desc: "Functions for simulating many diffusions, to test a model's fit against:"
     contents:

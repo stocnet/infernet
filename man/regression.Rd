@@ -3,12 +3,9 @@
 \name{regression}
 \alias{regression}
 \alias{estimate_mrqap}
-\alias{net_regression}
 \title{Regression for network data}
 \usage{
 estimate_mrqap(formula, .data, times = 1000, control = list())
-
-net_regression(formula, .data, times = 1000, control = list())
 }
 \arguments{
 \item{formula}{A formula describing the model.  The left-hand side is the
@@ -185,12 +182,6 @@ dropped with a warning and the remaining networks are pooled;
 \item cognitive social structures, detected rather than declared (see below).
 }
 }
-\section{Functions}{
-\itemize{
-\item \code{net_regression()}: The name this function had in \code{{migraph}}, and in
-infernet before 0.4.0. It still works, and warns once that it is deprecated.
-
-}}
 \section{Cognitive social structures}{
 
 A cognitive social structure (CSS) records each person's report of the

@@ -17,9 +17,9 @@ function body and parallelism conventions, console messaging, dependency practic
 Read it before adding or restructuring functions, 
 or when you need the exact `devtools`/testing commands for this repo.
 
-Note that `{migraph}` still carries older copies of `estimate_mrqap()`, as `net_regression()`, and the `test_*()` family, 
-which `{infernet}` supersedes. 
-A fix made in `{migraph}` needs porting here; a fix made here does not need porting back.
+Note that from `{migraph}` 2.0.0, its `net_regression()`, `test_*()` family, `play_diffusions()`, `test_distribution()`, and `test_fit()` are shims that call `{infernet}` (`net_regression()` calls `estimate_mrqap()`), 
+and warn once that they are deprecated. 
+Make a fix here; `{migraph}` needs no port.
 
 ## Where to make changes
 
