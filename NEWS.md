@@ -32,6 +32,7 @@
   - Has a method for two `diffs_model` objects
   - Compares two `diffs_model` objects rather than two single diffusions
   - Replaces the Kolmogorov-Smirnov test, which took each step as independent
+- Added `test_parameter()` and `test_time()` as generics with the signature `(x, ...)`
 
 ## Specification
 

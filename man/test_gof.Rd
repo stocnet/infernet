@@ -190,6 +190,7 @@ Other models:
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
 \code{\link{specify}},
+\code{\link[=test_parameter]{test_parameter()}},
 \code{\link{tests}}
 }
 \concept{models}

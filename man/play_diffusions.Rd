@@ -58,6 +58,7 @@ Other models:
 \code{\link{regression}},
 \code{\link{specify}},
 \code{\link[=test_gof]{test_gof()}},
+\code{\link[=test_parameter]{test_parameter()}},
 \code{\link{tests}}
 }
 \concept{models}

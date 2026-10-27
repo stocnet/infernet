@@ -309,6 +309,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
 | `model_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
+| `model_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share |
 | `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
@@ -495,6 +496,9 @@ needs one method and no new test.
 argument in the method, not in the generic.
 Until the packages share one generic (D17 of the roadmap), the package that
 is attached last masks the others; `infernet::test_gof()` always reaches this one.
+The same holds for `test_parameter(x, ...)` and `test_time(x, ...)`, in
+[R/model_parameter.R](../R/model_parameter.R): their first argument is `x`,
+not `object`, as in `{RSiena}` and `{goldfish}`.
 Each method follows the same steps:
 
 1. Draw `times` simulations from the model, or take the simulations a
@@ -972,6 +976,7 @@ and are grouped by contract for the engine:
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
 | `test-model_fit.R` | that the p-values of `test_gof()` and `test_distributions()` are uniform under the model, on cheap curves, and each method of `test_gof()` |
+| `test-model_parameter.R` | that `test_parameter()` and `test_time()` keep the signature of the generics of `{RSiena}` and `{goldfish}` |
 | `test-model_diffusion.R` | `play_diffusions()` and its old arguments |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 

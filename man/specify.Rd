@@ -215,6 +215,7 @@ Other models:
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
 \code{\link[=test_gof]{test_gof()}},
+\code{\link[=test_parameter]{test_parameter()}},
 \code{\link{tests}}
 }
 \concept{models}
