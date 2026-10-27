@@ -327,15 +327,9 @@ run_permutations <- function(times, FUN, ...) {
 #' @keywords internal
 #' @noRd
 .permute_panel <- function(mats, groups = NULL) {
-  d <- dim(mats[[1]])
-  if (d[1] == d[2]) {
-    or <- oc <- .perm_order(d[1], .mode_groups(groups, "rows"))
-  } else {
-    or <- .perm_order(d[1], .mode_groups(groups, "rows"))
-    oc <- .perm_order(d[2], .mode_groups(groups, "cols"))
-  }
+  o <- .perm_orders(dim(mats[[1]]), groups)
   lapply(mats, function(m) {
-    p <- m[or, oc, drop = FALSE]
+    p <- m[o$rows, o$cols, drop = FALSE]
     dimnames(p) <- dimnames(m)
     p
   })
@@ -418,31 +412,46 @@ run_permutations <- function(times, FUN, ...) {
 # the report of the node now called j is the report node j made, re-read under
 # the new labels. Permuting the senders and receivers but not the reporters
 # would break the tie between a reporter and their own position in the network.
-#
-# A one-mode CSS has one nodeset on all three axes, so one order serves all of
-# them. A two-mode CSS from `{manynet}` has the first mode on its rows, the
-# second on its columns, and every node of both modes on its slices, so the
-# slice order is the row order followed by the column order, offset by the
-# number of rows.
 #' @keywords internal
 #' @noRd
 .perm_css <- function(m, groups = NULL) {
-  d <- dim(m)
-  nr <- d[1]; nc <- d[2]; np <- d[3]
-  if (nr == nc && nc == np) {
-    o <- .perm_order(nr, .mode_groups(groups, "rows"))
-    out <- m[o, o, o, drop = FALSE]
-  } else if (np == nr + nc) {
-    or <- .perm_order(nr, .mode_groups(groups, "rows"))
-    oc <- .perm_order(nc, .mode_groups(groups, "cols"))
-    out <- m[or, oc, c(or, nr + oc), drop = FALSE]
-  } else {
+  o <- .perm_orders(dim(m), groups, css = TRUE)
+  out <- m[o$rows, o$cols, o$slices, drop = FALSE]
+  dimnames(out) <- dimnames(m)
+  out
+}
+
+# The orders of one permutation: for each axis of a matrix or a CSS array, the
+# node whose row, column, or report each position now holds. `RMPerm()`
+# applies them to a matrix, and `.draw_cells()` to the cells a model reads.
+# Both draw them here, so a seed gives the same draws on either path.
+#
+# A one-mode network has one nodeset, so one order serves its rows and its
+# columns. A two-mode incidence matrix has two, and they permute independently.
+# A one-mode CSS has one nodeset on all three axes. A two-mode CSS from
+# `{manynet}` has the first mode on its rows, the second on its columns, and
+# every node of both modes on its slices, so the slice order is the row order
+# followed by the column order, offset by the number of rows.
+#' @keywords internal
+#' @noRd
+.perm_orders <- function(d, groups = NULL, css = FALSE) {
+  nr <- d[1]; nc <- d[2]
+  # A CSS says by its slices whether it has one nodeset: a two-mode CSS whose
+  # modes are the same size is square, but has twice as many slices as rows.
+  onemode <- nr == nc && (!css || d[3] == nr)
+  if (css && !onemode && d[3] != nr + nc) {
     manynet::snet_abort(
       c("Cannot permute a CSS array of dimensions {d}.",
         i = "Its reporters must be its nodes: as many as its rows, or as its rows and columns together."))
   }
-  dimnames(out) <- dimnames(m)
-  out
+  if (onemode) {
+    or <- oc <- .perm_order(nr, .mode_groups(groups, "rows"))
+  } else {
+    or <- .perm_order(nr, .mode_groups(groups, "rows"))
+    oc <- .perm_order(nc, .mode_groups(groups, "cols"))
+  }
+  if (!css) return(list(rows = or, cols = oc))
+  list(rows = or, cols = oc, slices = if (onemode) or else c(or, nr + oc))
 }
 
 #' @keywords internal
@@ -454,19 +463,10 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
   }
 
   if (length(dim(m)) == 2) {
-    nr <- dim(m)[1]
-    nc <- dim(m)[2]
-    if (nr == nc) {
-      o <- .perm_order(nr, .mode_groups(groups, "rows"))
-      p <- matrix(data = m[o, o], nrow = nr, ncol = nc)
-    } else {
-      # A two-mode incidence matrix has two nodesets, so the rows and the
-      # columns permute independently. Permuting both by one order, as the
-      # square case does, indexes past the shorter side and errors.
-      or <- .perm_order(nr, .mode_groups(groups, "rows"))
-      oc <- .perm_order(nc, .mode_groups(groups, "cols"))
-      p <- matrix(data = m[or, oc], nrow = nr, ncol = nc)
-    }
+    # Indexing makes the permuted matrix. Passing it to `matrix()` as well, as
+    # this used to, copied every draw a second time.
+    o <- .perm_orders(dim(m), groups)
+    p <- m[o$rows, o$cols, drop = FALSE]
     dimnames(p) <- dimnames(m)
   } else if (CSS) {
     p <- .perm_css(m, groups)
@@ -559,19 +559,33 @@ make_qap_data <- function(y, x, g = NULL, loops = FALSE, directed = TRUE,
 #' @keywords internal
 #' @noRd
 HC3 <- function(X, e) {
+  .hc3_se(.hc3_design(X), e)
+}
+
+# The part of HC3 that depends on the design only. A permutation of the outcome
+# leaves the design unchanged, so `.lm_solver()` computes this once per set.
+#' @keywords internal
+#' @noRd
+.hc3_design <- function(X) {
   XO <- cbind(matrix(1, dim(X)[1], 1), X)
   XTXINV <- solve(t(XO) %*% XO)
-  om <- c()
 
   hf <- function(z, XTXINV = XTXINV) {
     h <- z %*% XTXINV %*% z
     return(h)
   }
   h  <- apply(XO, 1, hf, XTXINV = XTXINV)
-  om <- e^2 / (1 - h)^2
+  list(XO = XO, XTXINV = XTXINV, h = h)
+}
+
+#' @keywords internal
+#' @noRd
+.hc3_se <- function(design, e) {
+  om <- e^2 / (1 - design$h)^2
   # No gc() here: this runs once per permutation, and forcing a collection
   # thousands of times costs far more than the memory it returns.
-  sqrt(diag(t(t(XTXINV %*% t(XO)) * om) %*% XO %*% XTXINV))
+  sqrt(diag(t(t(design$XTXINV %*% t(design$XO)) * om) %*%
+              design$XO %*% design$XTXINV))
 }
 
 
@@ -598,20 +612,31 @@ HC3 <- function(X, e) {
 #' @noRd
 fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
   fit <- .fit_qap_model(..., fixed_effects = fixed_effects)
+  .finish_fit(fit, fixed_effects, fixed_df)
+}
+
+# What every fit passes through on its way out, whether `.fit_qap_model()` or
+# a draw's solve in `.lm_solver()` made it. A solve has no model object, so it
+# gives its own number of observations and residual degrees of freedom.
+#' @keywords internal
+#' @noRd
+.finish_fit <- function(fit, fixed_effects = NULL, fixed_df = NULL) {
   for (el in c("coefficients", "t", "zi_coefficients")) {
     if (!is.null(fit[[el]]) && !is.null(names(fit[[el]]))) {
       names(fit[[el]]) <- gsub("`", "", names(fit[[el]]), fixed = TRUE)
     }
   }
   if (!is.null(fixed_df)) {
-    n  <- stats::nobs(fit$base_model)
+    n  <- if (is.null(fit$nobs)) stats::nobs(fit$base_model) else fit$nobs
     p  <- length(fit$coefficients)
-    df <- fit$base_model$df.residual
+    df <- if (is.null(fit$df.residual)) fit$base_model$df.residual
+          else fit$df.residual
     fit$t <- fit$t * sqrt((df - fixed_df) / df)
     # The R-squared of the demeaned variables is the within R-squared, since
     # their means are zero.
-    fit$adj.r.squared <- 1 - (1 - fit$r.squared) * (n - fixed_df) /
-      (n - fixed_df - p)
+    if (!is.null(fit$r.squared))
+      fit$adj.r.squared <- 1 - (1 - fit$r.squared) * (n - fixed_df) /
+        (n - fixed_df - p)
   }
   if (!is.null(fixed_effects) || !is.null(fixed_df)) {
     fit$coefficients <- c("(Intercept)" = NA_real_, fit$coefficients)

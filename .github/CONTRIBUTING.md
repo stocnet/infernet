@@ -8,6 +8,45 @@ Please note that the `infernet` project is released with a
 [Contributor Code of Conduct](CODE_OF_CONDUCT.md). 
 By contributing to this project, you agree to abide by its terms.
 
+## Contents
+
+- [Git](#git)
+  - [Identifying issues](#identifying-issues)
+  - [Cloning](#cloning)
+  - [Pull](#pull)
+  - [Commit and Push](#commit-and-push)
+  - [Branching and CI](#branching-and-ci)
+- [Design Principles](#design-principles)
+  - [Project overview](#project-overview)
+  - [Declarative simplicity](#declarative-simplicity)
+  - [Pleasant predictability](#pleasant-predictability)
+  - [Graceful inclusivity](#graceful-inclusivity)
+  - [Vocabulary](#vocabulary)
+- [Package architecture](#package-architecture)
+  - [Common commands](#common-commands)
+  - [File organization](#file-organization)
+  - [Input shapes](#input-shapes)
+    - [Longitudinal networks](#longitudinal-networks)
+    - [Fixed effects](#fixed-effects)
+    - [Cognitive social structures](#cognitive-social-structures)
+  - [Control flows](#control-flows)
+    - [Bivariate](#bivariate)
+    - [Multivariate](#multivariate)
+    - [One engine, two shapes](#one-engine-two-shapes)
+    - [Parallelism](#parallelism)
+    - [Console messaging](#console-messaging)
+  - [Formula conventions](#formula-conventions)
+    - [Rules](#rules)
+    - [The dictionary](#the-dictionary)
+    - [Adding a term](#adding-a-term)
+- [Preparing Contributions](#preparing-contributions)
+  - [Tests](#tests)
+  - [Documentation](#documentation)
+  - [README and website](#readme-and-website)
+  - [`NEWS.md` conventions](#newsmd-conventions)
+    - [Grouping](#grouping)
+    - [Writing the bullets](#writing-the-bullets)
+
 ## Git
 
 `stocnet` projects are maintained using the git version control system.
@@ -277,7 +316,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
-| `qap_utils.R` | formula parsing, input validation, `future` plumbing, matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
+| `qap_draws.R` | the draw plan: the cells a model reads, the values a draw permutes, and the design that a linear model or a glm solves once |
+| `qap_utils.R` | formula parsing, input validation, `future` plumbing, permutation orders (`.perm_orders()`) and matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
 | `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method |
 | `qap_gmm.R` | GMM moment conditions and residual functions for the `estimator = "gmm"` path |
 | `qap_gpu.R` | the optional `{torch}` batch OLS path, `gpu_batch_ols()` |
@@ -511,7 +551,7 @@ in a *shape* returned by `.qap_shape()`
 | Field | Dyadic | Cognitive |
 |---|---|---|
 | `vectorise()` | `make_qap_data()`, one row per dyad | `make_css_data()`, one row per dyad per reporter |
-| `permute()` | `RMPerm()` | `RMPerm(CSS = TRUE)`, which calls `.perm_css()` |
+| `permute()`, `orders()` | `RMPerm()`, and its orders | `RMPerm(CSS = TRUE)`, which calls `.perm_css()`, and its orders |
 | `unresidualise()` | `residuals_to_matrix()` | `residuals_to_array()` |
 | `rand_slots` | sender, receiver, network | and reporter |
 
@@ -519,6 +559,23 @@ A fifth field, `max_trials`, says how many permutations to redraw before giving
 up: one for a dyadic network, since a degenerate draw is simply dropped and
 counted, and 10,000 for a CSS, whose sparse arrays often permute into an
 outcome with a single value.
+
+A permutation set does not rebuild the data in each draw.
+`.draw_plan()` ([R/qap_draws.R](../R/qap_draws.R)) vectorises the networks once,
+and records the cell of the permuted matrix that each row reads.
+A draw then takes the orders from `.perm_orders()`, the same orders that `RMPerm()` takes,
+and reads the permuted values from the stored matrix, with no new matrix and no new data frame.
+A gaussian model without random or `{fixest}` effects also builds its design matrix once:
+under `"outcome"` it decomposes it once and solves each draw,
+and under `"predictor"` it replaces the predictor's one column in each draw.
+A binomial or Poisson model runs `glm.fit()` on the stored design.
+These give the same numbers as `lm()`, `glm()`, and their `summary()`, to the last bit,
+so a seed gives the same p-values; `test-qap_draws.R` checks this for each estimator and shape.
+Where a shortcut does not hold, such as a predictor in a factor or a rank-deficient draw,
+the draw refits from the data, and where no plan can be made, it permutes the whole matrix.
+Keep the two paths drawing the same random numbers: change `.perm_orders()`, not one path.
+Time a change with `benchmarks/benchmark.R`, which is outside the package and the test suite,
+and compare its p-values with `benchmarks/compare.R`.
 
 Add a shape rather than a second engine. A random-intercept slot a shape does
 not list cannot be requested, so a reporter intercept on a dyadic network
@@ -860,6 +917,7 @@ and are grouped by contract for the engine:
 | `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the `missing` control |
 | `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
 | `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
+| `test-qap_draws.R` | that a draw from a plan gives the same numbers, to the last bit, as a draw that permutes the whole matrix, for each estimator and shape |
 | `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, which are dropped, and how the model a formula was written for is read |
 | `test-model_specify_record.R` | the status each model gives each registered term, the record of each term, `tidy()` and the columns it names, and formulas from goldfish's documentation |

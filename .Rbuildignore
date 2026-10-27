@@ -25,3 +25,4 @@ vignettes/precompile\.R
 ^\.RData$
 ^vignettes/articles$
 ^\.git$
+^benchmarks$

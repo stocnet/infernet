@@ -937,13 +937,17 @@
     # A two-mode network has no tie between two nodes of one mode, so sameness
     # is the share of a node's ties that go to nodes like the other one. With
     # `levels =`, only those of the chosen categories count.
+    # Each node's share leaves the node out. The matrix is built once and the
+    # node's row or column dropped from it: deleting the node from the network
+    # and rebuilding the matrix, once for each node, took 98% of a fit on the
+    # 448 by 12489 network of #4.
+    whole <- manynet::as_matrix(.data)
     if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
       attrib <- attrib[manynet::node_is_mode(.data)]
       chosen <- .select_levels(op, .categories(attrib), ctx$env)
       if (is.null(chosen)) chosen <- .categories(attrib)
       out <- vapply(seq_along(attrib), function(x) {
-        held_out <- manynet::as_matrix(
-          manynet::delete_nodes(.data, manynet::net_dims(.data)[1] + x))
+        held_out <- whole[, -x, drop = FALSE]
         rowSums(held_out * matrix((attrib[-x] == attrib[x] & attrib[x] %in% chosen) * 1,
                                   nrow(DV), ncol(DV) - 1, byrow = TRUE)) /
           rowSums(held_out)
@@ -953,7 +957,7 @@
       chosen <- .select_levels(op, .categories(attrib), ctx$env)
       if (is.null(chosen)) chosen <- .categories(attrib)
       out <- t(vapply(seq_along(attrib), function(x) {
-        held_out <- manynet::as_matrix(manynet::delete_nodes(.data, x))
+        held_out <- whole[-x, , drop = FALSE]
         colSums(held_out * matrix((attrib[-x] == attrib[x] & attrib[x] %in% chosen) * 1,
                                   nrow(DV) - 1, ncol(DV))) /
           colSums(held_out)

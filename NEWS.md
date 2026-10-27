@@ -5,6 +5,8 @@
 - Updated CONTRIBUTING
   - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
   - Added the `reporter` terms to the formula dictionary
+  - Added how a permutation set draws from a plan, and how to time it
+- Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 
 ## Specification
 
@@ -22,10 +24,18 @@
     and the last for a two-mode network 
   - `specify_dynam()` and `specify_ergm()` drop these terms
   - A `| reporter` fixed effect absorbs `reporter()`, and names it
+- Improved the speed of `same()` on a two-mode network, with the same values
 
 ## Regression
 
 - Fixed `estimate_mrqap()` failing on an interaction with `{fixest}` fixed effects
+- Improved the speed of the permutations of `estimate_mrqap()`
+  - Permutes only the cells the model reads, and builds the data once
+  - Builds the design matrix of a gaussian, binomial, or Poisson model once
+  - Solves each permuted outcome of a gaussian model from one decomposition
+  - ~3.5-4x faster on a gaussian model of 60 or 200 nodes
+  - ~1.5-1.8x faster on a binomial model, and on `ison_hightech`
+  - ~7.5x faster for 100 draws on the 448 by 12489 network of #4
 
 # infernet 0.5.0
 
