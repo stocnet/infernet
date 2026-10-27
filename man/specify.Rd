@@ -211,8 +211,10 @@ tidy(g, ison_hightech)
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
+\code{\link[=test_gof]{test_gof()}},
 \code{\link{tests}}
 }
 \concept{models}

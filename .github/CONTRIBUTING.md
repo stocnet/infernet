@@ -308,6 +308,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | File | Contains |
 |---|---|
 | `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
+| `model_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
+| `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
@@ -482,6 +484,37 @@ Test functions consistently:
 4. Return a `network_test` object recording the test type, observed value,
    simulated distribution, one- and two-tailed p-values,
    and the network's properties (`is_directed()`, `is_complex()`).
+
+#### Goodness of fit
+
+`test_gof()` asks whether a model makes data like the observed data.
+It is a generic that dispatches on the model, so that a new kind of model
+needs one method and no new test.
+`{RSiena}` and `{goldfish}` export generics with the same name and signature,
+`test_gof(object, ...)`, so keep the signature: put `observed` and any other
+argument in the method, not in the generic.
+Until the packages share one generic (D17 of the roadmap), the package that
+is attached last masks the others; `infernet::test_gof()` always reaches this one.
+Each method follows the same steps:
+
+1. Draw `times` simulations from the model, or take the simulations a
+   `diffs_model` holds, and compute the same vector of statistics on each.
+2. Estimate the mean and the covariance of the statistics from the first half
+   of the simulations, with a ridge of a thousandth of the mean variance.
+3. Compare the Mahalanobis distance of the observed statistics with the
+   distances of the second half, the reference, in `.fit_test()`.
+   The p-value is (1 + the reference at least as far) / (1 + the reference).
+
+The reference does not estimate the mean and the covariance, so under the
+model the observed data are exchangeable with it, and the p-value is exact
+whatever the distribution of the statistics. Do not refer the distance to a
+chi-squared distribution: an adoption curve is bounded and monotone, and
+`{migraph}`'s `test_fit()` did that. A tie counts against the observed data.
+`test_distributions()` compares two models, not data with a model, so it is a
+separate generic: a permutation test of which model each simulation came from.
+It dispatches on the first model; a method checks that the second is of the same class.
+A worker of a parallel plan may load an installed copy of the package, so give
+it the internal helpers it calls by value, as `test_gof.netreg()` does.
 
 #### Multivariate
 
@@ -938,6 +971,8 @@ and are grouped by contract for the engine:
 | `test-model_specify_ergm.R` | `specify_ergm()` with a network: each term's ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
 | `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
+| `test-model_fit.R` | that the p-values of `test_gof()` and `test_distributions()` are uniform under the model, on cheap curves, and each method of `test_gof()` |
+| `test-model_diffusion.R` | `play_diffusions()` and its old arguments |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 
 [tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)

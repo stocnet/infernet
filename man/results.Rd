@@ -79,7 +79,7 @@
 \arguments{
 \item{x}{A model or test result, e.g. a \code{netreg} object, as returned by
 \code{estimate_mrqap()}, or a \code{network_test} object, as returned by
-\code{test_random()}, \code{test_configuration()}, or \code{test_permutation()}.}
+one of the \verb{test_*()} functions.}
 
 \item{...}{Further arguments, passed to \code{summary()} for an \code{ergm}
 and otherwise not used.}
@@ -121,6 +121,9 @@ For a \code{network_test}, both give one row with the observed statistic,
 the mean and standard deviation of the null distribution,
 and the share of the null distribution at or below (\code{p.lower})
 and at or above (\code{p.upper}) the observed statistic.
+For \code{test_gof()} and \code{test_distributions()}, the statistic is a distance,
+the null distribution is that of the reference simulations,
+and \code{p.upper} is the p-value.
 }
 \description{
 \code{print()} shows the result of \code{estimate_mrqap()} or of a test as a
@@ -133,8 +136,8 @@ and the permutation p-values.
 \itemize{
 \item \code{netreg}, \code{netreg_lm}, \code{netreg_glm}, and \code{netreg_css},
 from \code{estimate_mrqap()}
-\item \code{network_test}, from \code{test_random()}, \code{test_configuration()}, and
-\code{test_permutation()}
+\item \code{network_test}, from \code{test_random()}, \code{test_configuration()},
+\code{test_permutation()}, \code{test_gof()}, and \code{test_distributions()}
 \item \code{netlm} and \code{netlogit}, from \code{net_regression()} in \code{{migraph}}
 \item \code{ergm}, from \code{ergm()} in \code{{ergm}}
 \item \code{sienaFit}, from \code{siena07()} in \code{{RSiena}}
@@ -164,8 +167,10 @@ glance(css_model)
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link{regression}},
 \code{\link{specify}},
+\code{\link[=test_gof]{test_gof()}},
 \code{\link{tests}}
 }
 \concept{models}

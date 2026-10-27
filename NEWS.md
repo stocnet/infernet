@@ -7,7 +7,24 @@
   - Added the `reporter` terms to the formula dictionary
   - Added how a permutation set draws from a plan, and how to time it
   - Added goldfish's bare `indeg`, offsets, and node tables to the formula dictionary
+  - Added `model_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
+
+## Tests
+
+- Added `test_gof()`, which replaces `migraph::test_fit()`, 
+  as a generic with a simulated p-value
+  - Has the name and the signature, `test_gof(object, ...)`
+  - Takes the model first; the observed diffusion first still works but warns
+  - Compares the observed distance with those of held-out simulations
+  - Replaces the chi-squared p-value, which assumed normal curves
+  - Added a method for a `diffs_model`, on the curve of infected nodes
+  - Added a method for a `netreg`, which simulates outcomes from the model
+- Added `test_distributions()`, which replaces `migraph::test_distribution()`, 
+  as a generic with a permutation test over simulated models
+  - Has a method for two `diffs_model` objects
+  - Compares two `diffs_model` objects rather than two single diffusions
+  - Replaces the Kolmogorov-Smirnov test, which took each step as independent
 
 ## Specification
 

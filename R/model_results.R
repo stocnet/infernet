@@ -13,8 +13,8 @@
 #'
 #'   - `netreg`, `netreg_lm`, `netreg_glm`, and `netreg_css`,
 #'     from `estimate_mrqap()`
-#'   - `network_test`, from `test_random()`, `test_configuration()`, and
-#'     `test_permutation()`
+#'   - `network_test`, from `test_random()`, `test_configuration()`,
+#'     `test_permutation()`, `test_gof()`, and `test_distributions()`
 #'   - `netlm` and `netlogit`, from `net_regression()` in `{migraph}`
 #'   - `ergm`, from `ergm()` in `{ergm}`
 #'   - `sienaFit`, from `siena07()` in `{RSiena}`
@@ -33,7 +33,7 @@
 #'   not an interval around the estimate.
 #' @param x A model or test result, e.g. a `netreg` object, as returned by
 #'   `estimate_mrqap()`, or a `network_test` object, as returned by
-#'   `test_random()`, `test_configuration()`, or `test_permutation()`.
+#'   one of the `test_*()` functions.
 #' @param print_b Logical; also print coefficient-based (not t-based)
 #'   permutation p-values.
 #' @param print_random Logical; print random intercepts when present.
@@ -64,6 +64,9 @@
 #'   the mean and standard deviation of the null distribution,
 #'   and the share of the null distribution at or below (`p.lower`)
 #'   and at or above (`p.upper`) the observed statistic.
+#'   For `test_gof()` and `test_distributions()`, the statistic is a distance,
+#'   the null distribution is that of the reference simulations,
+#'   and `p.upper` is the p-value.
 #' @family models
 #' @examples
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
