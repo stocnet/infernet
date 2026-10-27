@@ -65,6 +65,10 @@ reference:
     contents:
       - regression
       - control_mrqap
+  - title: "Diffusion"
+    desc: "Functions for simulating many diffusions, to test a model's fit against:"
+    contents:
+      - play_diffusions
   - title: "Results"
     desc: "Functions for reporting the results of tests and regressions:"
     contents:

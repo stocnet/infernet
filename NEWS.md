@@ -26,6 +26,13 @@
   - Compares two `diffs_model` objects rather than two single diffusions
   - Replaces the Kolmogorov-Smirnov test, which took each step as independent
 
+## Diffusion
+
+- Moved `play_diffusions()` from `{migraph}`, with `control =` and `{future.apply}`
+  - A seed gives the same diffusions sequentially and in parallel
+  - `strategy` is read as a control; `verbose` warns and is dropped
+  - Names the step `time` on every network, as `{autograph}` reads it
+
 ## Specification
 
 - Renamed `type =` of `indeg()`/`outdeg()` to `node =`, as stocnet/goldfish#122 proposes (thanks @auzaheta)
