@@ -10,6 +10,13 @@
   - Added `model_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 
+## Diffusion
+
+- Moved `play_diffusions()` from `{migraph}`, with `control =` and `{future.apply}`
+  - A seed gives the same diffusions sequentially and in parallel
+  - `strategy` is read as a control; `verbose` warns and is dropped
+  - Names the step `time` on every network, as `{autograph}` reads it
+
 ## Tests
 
 - Added `test_gof()`, which replaces `migraph::test_fit()`, 
@@ -25,13 +32,6 @@
   - Has a method for two `diffs_model` objects
   - Compares two `diffs_model` objects rather than two single diffusions
   - Replaces the Kolmogorov-Smirnov test, which took each step as independent
-
-## Diffusion
-
-- Moved `play_diffusions()` from `{migraph}`, with `control =` and `{future.apply}`
-  - A seed gives the same diffusions sequentially and in parallel
-  - `strategy` is read as a control; `verbose` warns and is dropped
-  - Names the step `time` on every network, as `{autograph}` reads it
 
 ## Specification
 
@@ -71,6 +71,14 @@
   - ~3.5-4x faster on a gaussian model of 60 or 200 nodes
   - ~1.5-1.8x faster on a binomial model, and on `ison_hightech`
   - ~7.5x faster for 100 draws on the 448 by 12489 network of #4
+
+## Tutorials
+
+- Added the "Diffusion and Learning" tutorial from `{migraph}`, as `infernet2`
+  - Uses `play_diffusions()` with `control =`, rather than `strategy =`/`verbose =`
+  - Added a section on testing diffusions with `test_distributions()` and `test_gof()`
+  - Fixed the descriptions of `generate_scalefree()` and `generate_smallworld()`
+  - Fixed the Grey's Anatomy exercise, which failed when the diffusion died out early
 
 # infernet 0.5.0
 

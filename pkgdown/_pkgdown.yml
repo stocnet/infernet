@@ -32,6 +32,8 @@ navbar:
       menu:
       - text: Diversity and Regression
         href: articles/diversity-and-regression.html
+      - text: Diffusion and Learning
+        href: articles/diffusion-and-learning.html
     news:
       text: News
       href: news/index.html
@@ -51,6 +53,7 @@ articles:
       for the full interactive experience.
     contents:
       - "`articles/diversity-and-regression`"
+      - "`articles/diffusion-and-learning`"
 reference:
   - title: "Tests"
     desc: "Functions for testing network statistics against a null distribution:"
