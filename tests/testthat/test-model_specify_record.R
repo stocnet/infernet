@@ -40,7 +40,7 @@ expected_status <- utils::read.table(header = TRUE, stringsAsFactors = FALSE, te
   recip                 fits   fits     fits        adapted
   exchange              fits   fits     adapted     adapted
   indeg                 fits   fits     fits        adapted
-  outdeg                fits   fits     fits        adapted
+  outdeg                fits   fits     adapted     adapted
   tertius               fits   fits     interpreted adapted
   tertius_diff          fits   fits     interpreted adapted
   global                fits   refuses  fits        drops
@@ -163,7 +163,7 @@ test_that("tidy() returns the record as a tibble, with the same columns for each
 test_that("tidy() with the network names the columns estimate_mrqap() builds", {
   g <- formula_net()
   f <- suppressWarnings(specify_mrqap(
-    a ~ ego(x) + same(grp, diff = TRUE) + indeg(b, type = "ego") + ego(x):same(grp) + b + inertia, g))
+    a ~ ego(x) + same(grp, diff = TRUE) + indeg(b, node = "ego") + ego(x):same(grp) + b + inertia, g))
   t <- suppressWarnings(tidy(f, g))
   # `stats::terms()` puts an interaction after the terms of lower order.
   expect_equal(t$term[6], "ego(x):same(grp)")

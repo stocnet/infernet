@@ -124,8 +124,16 @@
 #'   previous wave where `.data` is a longitudinal network, and fit there; on a
 #'   cross-sectional network, `inertia` and `trans` are dropped too.
 #'
+#'   goldfish names the side of `indeg()` and `outdeg()` with `type =`, and
+#'   reads the receiver for both by default, where infernet's `outdeg()` reads
+#'   the sender. A goldfish formula is read as goldfish reads it:
+#'   `outdeg(friends)` becomes `outdeg(friends, node = "alter")`, with a
+#'   warning, and `type =` becomes `node =`.
+#'
 #'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
-#'   `exchange(layer)` becomes `recip(layer)`, and `dist(x)` becomes `diff(x)`.
+#'   `exchange(layer)` becomes `recip(layer)`, `dist(x)` becomes `diff(x)`,
+#'   and `node = "ego"` becomes `type = "ego"`, so that `outdeg(friends)`
+#'   becomes `outdeg(friends, type = "ego")`.
 #'   `same(x, diff = TRUE)`, `match()`, `mix()`, random intercepts, and fixed effects have no goldfish
 #'   term, and are dropped.
 #'
@@ -160,7 +168,7 @@ NULL
 #' @export
 specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   if (inherits(formula, "mrqap_formula")) return(formula)
-  read <- .read_formula(formula, .data, input)
+  read <- .read_dynam_degree(.read_formula(formula, .data, input))
   record <- read$record
   labels <- read$labels
 
@@ -178,6 +186,10 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   }
   record <- rbind(record, .interpreted_dynam(labels, read$input, "mrqap"))
   dropped <- .drop_labels(labels, read$ctx)
+  # A term rewritten on reading, and then dropped, is recorded once, as written.
+  gone <- dropped$record$term %in% names(read$renamed)
+  dropped$record$term[gone] <- read$renamed[dropped$record$term[gone]]
+  record <- record[!(record$term %in% dropped$record$term), , drop = FALSE]
   record <- rbind(record, dropped$record)
   record <- rbind(record, .fixed_rows(read$fixed, "mrqap"))
   .finish_formula(lhs, dropped$labels, read$bars, record, read, "mrqap",
@@ -207,14 +219,15 @@ specify_dynam <- function(formula, .data = NULL, input = NULL) {
       next
     }
     ops <- lapply(.flatten_interaction(str2lang(lab)), .dynam_operand,
-                  registry = registry, ctx = read$ctx)
+                  registry = registry, ctx = read$ctx, input = read$input)
     reason <- unlist(lapply(ops, `[[`, "reason"))
     if (length(reason) > 0) {
       record <- rbind(record, .record_row(lab, "", "drops", reason[1]))
       next
     }
     new <- .deparsed(Reduce(function(a, b) call(":", a, b), lapply(ops, `[[`, "expr")))
-    if (!identical(new, lab)) record <- rbind(record, .record_row(lab, new, "adapted", ""))
+    note <- c(unlist(lapply(ops, `[[`, "note")), "")[1]
+    if (!identical(new, lab)) record <- rbind(record, .record_row(lab, new, "adapted", note))
     out <- c(out, new)
   }
   for (bar in read$bars) {
@@ -238,7 +251,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
       c("{.pkg ergm} fits one network, and {.arg .data} is a list of {length(.data)} networks.",
         i = "Specify the formula for each network on its own."))
   }
-  read <- .read_formula(formula, .data, input)
+  read <- .read_dynam_degree(.read_formula(formula, .data, input))
   # A formula written for ergm is already one.
   if (read$input == "ergm") {
     return(structure(formula, class = c("ergm_formula", "formula"),
@@ -477,6 +490,50 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
                input = input, ctx = ctx,
                data = .data, env = if (is.null(env)) globalenv() else env,
                original = attr(tt, "term.labels")))
+}
+
+# goldfish's `indeg()` and `outdeg()` name the side with `type =`, and both
+# read the receiver by default, where infernet's `outdeg()` reads the sender.
+# A formula written for goldfish is read as goldfish reads it, with `node =`
+# made explicit, and a warning where `outdeg()` relies on goldfish's default.
+# `renamed` maps each rewritten label back to the label as written.
+#' @keywords internal
+#' @noRd
+.read_dynam_degree <- function(read) {
+  read$renamed <- character(0)
+  if (!read$input %in% c("dynam", "rem")) return(read)
+  defaulted <- character(0)
+  for (k in seq_along(read$labels)) {
+    lab <- read$labels[k]
+    ops <- lapply(.flatten_interaction(str2lang(lab)), function(expr) {
+      if (!is.call(expr) || !as.character(expr[[1]]) %in% c("indeg", "outdeg")) {
+        return(expr)
+      }
+      op <- .specify_operand(expr)
+      node <- if ("node" %in% op$supplied) op$args$node
+        else if ("type" %in% op$supplied) op$args$type
+        else "alter"
+      if (op$fn == "outdeg" && !any(c("node", "type") %in% op$supplied)) {
+        defaulted <<- c(defaulted, .deparsed(expr))
+      }
+      args <- list(op$args$layer, node = .arg_name(node))
+      if ("weighted" %in% op$supplied) args$weighted <- op$args$weighted
+      as.call(c(as.name(op$fn), args))
+    })
+    new <- .deparsed(Reduce(function(a, b) call(":", a, b), ops))
+    if (!identical(new, lab)) {
+      read$labels[k] <- new
+      read$renamed[[new]] <- lab
+      read$record <- rbind(read$record, .record_row(lab, new, "adapted", ""))
+    }
+  }
+  defaulted <- unique(defaulted)
+  if (length(defaulted) > 0) {
+    manynet::snet_warn(
+      c("{.code {defaulted}} read{?s/} the receiver's outdegree, as goldfish's {.fn outdeg} does.",
+        i = "infernet's {.fn outdeg} reads the sender's outdegree by default; write {.code node = \"ego\"} for it."))
+  }
+  read
 }
 
 # The names a bare name could be, and the outcome's own layer. Without a
@@ -792,7 +849,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 # that is no term is a layer, which goldfish names with `tie()`.
 #' @keywords internal
 #' @noRd
-.dynam_operand <- function(expr, registry, ctx) {
+.dynam_operand <- function(expr, registry, ctx, input = "mrqap") {
   if (is.name(expr)) {
     name <- as.character(expr)
     entry <- registry[[name]]
@@ -805,6 +862,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   entry <- registry[[fn]]
   if (is.null(entry)) return(list(expr = expr))
   switch(fn,
+    indeg    = ,
+    outdeg   = .dynam_degree(expr, input),
     exchange = list(expr = as.call(c(as.name("recip"), as.list(expr)[-1]))),
     dist     = list(expr = as.call(c(as.name("diff"), as.list(expr)[-1]))),
     same     = if (.same_by_category(.specify_operand(expr),
@@ -826,6 +885,24 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     } else {
       list(expr = expr)
     })
+}
+
+# goldfish names the side of `indeg()` and `outdeg()` with `type =`, and reads
+# the receiver by default, so only the sender's side is written. A formula
+# written for goldfish keeps its terms as they are.
+#' @keywords internal
+#' @noRd
+.dynam_degree <- function(expr, input) {
+  op <- .specify_operand(expr)
+  if (input %in% c("dynam", "rem")) return(list(expr = expr))
+  node <- .degree_node(op)
+  args <- list(op$args$layer)
+  if (node == "ego") args$type <- "ego"
+  if ("weighted" %in% op$supplied) args$weighted <- op$args$weighted
+  note <- if (op$fn == "outdeg" && node == "ego" && !any(c("node", "type") %in% op$supplied)) {
+    "since goldfish's outdeg() reads the receiver by default"
+  }
+  list(expr = as.call(c(as.name(op$fn), args)), note = note)
 }
 
 # ergm's structural terms that goldfish has, by goldfish's name.

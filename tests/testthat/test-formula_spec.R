@@ -3,15 +3,16 @@
 # outcome the left-hand side names, and the errors a formula can meet.
 
 test_that("a term's arguments can be given by position or by name", {
-  spec <- .specify(y ~ indeg(friends, type = "ego") + indeg(friends, "ego") +
+  spec <- .specify(y ~ indeg(friends, node = "ego") + indeg(friends, "ego") +
                      diff(age, transformer_fn = identity))
   ops <- lapply(spec$terms, function(t) t$operands[[1]])
-  expect_equal(.arg_name(ops[[1]]$args$type), "ego")
-  expect_equal(.arg_name(ops[[2]]$args$type), "ego")
+  expect_equal(.arg_name(ops[[1]]$args$node), "ego")
+  expect_equal(.arg_name(ops[[2]]$args$node), "ego")
   expect_identical(ops[[3]]$args$transformer_fn, quote(identity))
   # A default fills an argument that was not given.
-  spec2 <- .specify(y ~ indeg(friends))
-  expect_equal(spec2$terms[[1]]$operands[[1]]$args$type, "alter")
+  spec2 <- .specify(y ~ indeg(friends) + outdeg(friends))
+  expect_equal(spec2$terms[[1]]$operands[[1]]$args$node, "alter")
+  expect_equal(spec2$terms[[2]]$operands[[1]]$args$node, "ego")
 })
 
 test_that("a bare name is a dyadic covariate", {

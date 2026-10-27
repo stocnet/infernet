@@ -12,7 +12,7 @@
 # `refactor/rename-functions` branch.
 #
 # Before this, the formula was split as a string on its parentheses and commas.
-# That could not read a named argument such as `type = "ego"`, multiplied only
+# That could not read a named argument such as `node = "ego"`, multiplied only
 # a term of exactly two parts, and could not give several columns from one
 # term. The specification stays internal until the stocnet maintainers agree a
 # shared one; see "Formula conventions" in CONTRIBUTING.md.
@@ -113,13 +113,13 @@
       saom = NA_character_, ergm = "edgecov of the transpose",
       to_ergm = .ergm_recip),
     indeg = list(
-      formals = alist(layer = , type = "alter", weighted = FALSE),
+      formals = alist(layer = , node = "alter", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_indeg, outcome = "refuse",
       mrqap = "fits", dynam = "indeg", saom = NA_character_,
       ergm = "edgecov, or nodeicov of the degree",
       to_ergm = .ergm_built),
     outdeg = list(
-      formals = alist(layer = , type = "alter", weighted = FALSE),
+      formals = alist(layer = , node = "ego", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_outdeg, outcome = "refuse",
       mrqap = "fits", dynam = "outdeg", saom = NA_character_,
       ergm = "edgecov, or nodeocov of the degree",
@@ -1211,17 +1211,14 @@
 #' @noRd
 .build_degree <- function(op, ctx, direction) {
   .outcome_layer_check(op, ctx, op$name)
-  type <- .arg_name(op$args$type)
-  if (!type %in% c("alter", "ego")) {
-    manynet::snet_abort("{.arg type} must be {.val alter} or {.val ego}, not {.val {type}}.")
-  }
+  node <- .degree_node(op)
   weighted <- .arg_flag(op$args$weighted, ctx$env, "weighted")
   # In a two-mode network only the column nodes receive, and only the row nodes
   # send, so the other side has no such degree to read.
-  if (ctx$twomode && type == if (direction == "in") "ego" else "alter") {
+  if (ctx$twomode && node == if (direction == "in") "ego" else "alter") {
     manynet::snet_abort(
-      c("{.fn {op$fn}} with {.code type = \"{type}\"} is not defined for a two-mode network.",
-        i = "Its {type}s never {if (direction == 'in') 'receive' else 'send'} a tie."))
+      c("{.fn {op$fn}} with {.code node = \"{node}\"} is not defined for a two-mode network.",
+        i = "Its {node}s never {if (direction == 'in') 'receive' else 'send'} a tie."))
   }
   m <- .layer_matrix(ctx, op$name)
   if (length(dim(m)) != 3 && anyNA(m)) {
@@ -1233,10 +1230,39 @@
     if (!ctx$twomode) diag(s) <- 0
     w <- if (weighted) s else (s > 0) * 1
     deg <- if (direction == "in") colSums(w, na.rm = TRUE) else rowSums(w, na.rm = TRUE)
-    matrix(deg, nrow(s), ncol(s), byrow = type == "alter")
+    matrix(deg, nrow(s), ncol(s), byrow = node == "alter")
   }
-  fn_label <- .col_name(if (type == "ego") "ego", op$fn, op$name)
+  fn_label <- .col_name(if (node == "ego") "ego", op$fn, op$name)
   .named(.per_report(m, degree_of), fn_label)
+}
+
+# Whose degree a cell (i, j) holds: the sender's, `"ego"`, or the receiver's,
+# `"alter"`. `outdeg()` reads the sender by default and `indeg()` the receiver.
+# `type =`, the name before infernet 0.6.0 and still goldfish's, is kept as an
+# alias, and warns once.
+#' @keywords internal
+#' @noRd
+.degree_node <- function(op) {
+  if ("type" %in% op$supplied) {
+    if ("node" %in% op$supplied) {
+      manynet::snet_abort(
+        c("{.fn {op$fn}} takes {.arg node} or {.arg type}, not both.",
+          i = "{.arg type} is the old name of {.arg node}."))
+    }
+    if (!isTRUE(.infernet_state$type_warned)) {
+      .infernet_state$type_warned <- TRUE
+      side <- .arg_name(op$args$type)
+      manynet::snet_warn(
+        c("{.arg type} of {.fn indeg} and {.fn outdeg} is deprecated, and is now called {.arg node}.",
+          i = "{.code {op$fn}({op$name}, node = \"{side}\")} gives the same column."))
+    }
+    op$args$node <- op$args$type
+  }
+  node <- .arg_name(op$args$node)
+  if (!node %in% c("alter", "ego")) {
+    manynet::snet_abort("{.arg node} must be {.val alter} or {.val ego}, not {.val {node}}.")
+  }
+  node
 }
 
 # ---- builders: others' attributes ------------------------------------------------

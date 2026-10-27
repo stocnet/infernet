@@ -175,10 +175,13 @@
 #'   - `exchange(layer)` — the reverse tie, j to i, in another layer;
 #'     `recip(layer)` is the same, and `recip()`, or `recip` on its own,
 #'     reads the outcome's own reverse tie, and warns,
-#'   - `indeg(layer, type = "alter", weighted = FALSE)` and
-#'     `outdeg(layer, type = "alter", weighted = FALSE)` — a node's number of
+#'   - `indeg(layer, node = "alter", weighted = FALSE)` and
+#'     `outdeg(layer, node = "ego", weighted = FALSE)` — a node's number of
 #'     incoming or outgoing ties in another layer, for the receiver
-#'     (`"alter"`) or the sender (`"ego"`),
+#'     (`"alter"`) or the sender (`"ego"`). By default `indeg()` reads the
+#'     receiver and `outdeg()` the sender. `type =` is a deprecated alias of
+#'     `node =`, and goldfish's name for it; goldfish reads the receiver for
+#'     both, so a formula written for goldfish is read as goldfish reads it,
 #'   - `tertius(layer, attr, summarizer_fn = "mean")` — the mean (or the
 #'     tie-weighted sum, with `"sum"`) of an attribute over the receiver's
 #'     in-neighbours in a layer, other than the sender. A receiver with no

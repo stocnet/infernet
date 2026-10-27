@@ -226,13 +226,32 @@ test_that("a bare term name that is also a layer aborts", {
 
 test_that("indeg() and outdeg() count ties on the side they are asked for", {
   b <- layer_of("b")
-  m <- terms_of(a ~ indeg(b) + indeg(b, type = "ego") +
-                  outdeg(b) + outdeg(b, type = "ego"))
+  m <- terms_of(a ~ indeg(b) + indeg(b, node = "ego") +
+                  outdeg(b, node = "alter") + outdeg(b, node = "ego"))
   n <- nrow(b)
   expect_equal(unname(m[["indeg_b"]]), matrix(colSums(b), n, n, byrow = TRUE))
   expect_equal(unname(m[["ego_indeg_b"]]), matrix(colSums(b), n, n))
   expect_equal(unname(m[["outdeg_b"]]), matrix(rowSums(b), n, n, byrow = TRUE))
   expect_equal(unname(m[["ego_outdeg_b"]]), matrix(rowSums(b), n, n))
+})
+
+test_that("indeg() reads the receiver by default, and outdeg() the sender", {
+  b <- layer_of("b")
+  m <- terms_of(a ~ indeg(b) + outdeg(b))
+  n <- nrow(b)
+  expect_named(m, c("a", "indeg_b", "ego_outdeg_b"), ignore.order = TRUE)
+  expect_equal(unname(m[["ego_outdeg_b"]]), matrix(rowSums(b), n, n))
+})
+
+test_that("type = is a deprecated alias of node =", {
+  b <- layer_of("b")
+  .infernet_state$type_warned <- NULL
+  expect_warning(m <- terms_of(a ~ outdeg(b, type = "alter")), "deprecated")
+  expect_equal(unname(m[["outdeg_b"]]), matrix(rowSums(b), nrow(b), nrow(b), byrow = TRUE))
+  # Said once, not once per network of a list.
+  expect_no_warning(terms_of(a ~ indeg(b, type = "ego")))
+  expect_error(terms_of(a ~ indeg(b, node = "ego", type = "ego")), "not both")
+  expect_error(terms_of(a ~ indeg(b, node = "sender")), "alter")
 })
 
 test_that("indeg() on a two-mode network reads only the side that receives", {
@@ -245,8 +264,12 @@ test_that("indeg() on a two-mode network reads only the side that receives", {
   op <- .specify(y ~ indeg(weight))$terms[[1]]$operands[[1]]
   expect_equal(unname(.build_degree(op, ctx, "in")[["indeg_weight"]]),
                unname(matrix(colSums(inc > 0), 6, 9, byrow = TRUE)))
-  op <- .specify(y ~ indeg(weight, type = "ego"))$terms[[1]]$operands[[1]]
+  op <- .specify(y ~ indeg(weight, node = "ego"))$terms[[1]]$operands[[1]]
   expect_error(.build_degree(op, ctx, "in"), "two-mode")
+  # The defaults read the side of a two-mode network that has the degree.
+  op <- .specify(y ~ outdeg(weight))$terms[[1]]$operands[[1]]
+  expect_equal(unname(.build_degree(op, ctx, "out")[["ego_outdeg_weight"]]),
+               unname(matrix(rowSums(inc > 0), 6, 9)))
 })
 
 test_that("a layer term refuses the ties of a uniplex outcome too", {
@@ -444,7 +467,7 @@ test_that("the term table writes a mix() pair as a tie, directed or not", {
 })
 
 test_that("the term table gives the layer and attribute of tertius()", {
-  tt <- suppressWarnings(table_of(a ~ tertius(b, x) + indeg(b, type = "ego")))
+  tt <- suppressWarnings(table_of(a ~ tertius(b, x) + indeg(b, node = "ego")))
   expect_equal(tt$effect, c("tertius", "indeg"))
   expect_equal(tt$layer, c("b", "b"))
   expect_equal(tt$attribute, c("x", NA))

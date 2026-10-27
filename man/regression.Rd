@@ -40,10 +40,13 @@ enters with its values as stored,
 \item \code{exchange(layer)} — the reverse tie, j to i, in another layer;
 \code{recip(layer)} is the same, and \code{recip()}, or \code{recip} on its own,
 reads the outcome's own reverse tie, and warns,
-\item \code{indeg(layer, type = "alter", weighted = FALSE)} and
-\code{outdeg(layer, type = "alter", weighted = FALSE)} — a node's number of
+\item \code{indeg(layer, node = "alter", weighted = FALSE)} and
+\code{outdeg(layer, node = "ego", weighted = FALSE)} — a node's number of
 incoming or outgoing ties in another layer, for the receiver
-(\code{"alter"}) or the sender (\code{"ego"}),
+(\code{"alter"}) or the sender (\code{"ego"}). By default \code{indeg()} reads the
+receiver and \code{outdeg()} the sender. \verb{type =} is a deprecated alias of
+\verb{node =}, and goldfish's name for it; goldfish reads the receiver for
+both, so a formula written for goldfish is read as goldfish reads it,
 \item \code{tertius(layer, attr, summarizer_fn = "mean")} — the mean (or the
 tie-weighted sum, with \code{"sum"}) of an attribute over the receiver's
 in-neighbours in a layer, other than the sender. A receiver with no

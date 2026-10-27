@@ -70,7 +70,7 @@ test_that("the outcome's reverse tie is mutual, and another layer's is its matri
 test_that("terms with no ergm statistic are edgecov() of infernet's matrix", {
   f <- specify_ergm(a ~ sim(x) + tie(b) + b + indeg(b) + outdeg(b) +
                           tertius(b, x) + tertius_diff(b, x), formula_net())
-  covs <- c("sim_x", "tie_b", "b", "indeg_b", "outdeg_b", "tertius_b_x",
+  covs <- c("sim_x", "tie_b", "b", "indeg_b", "ego_outdeg_b", "tertius_b_x",
             "tertius_diff_b_x")
   expect_equal(rhs_of(f), c("edges", sprintf("edgecov(%s)", covs)))
   built <- suppressWarnings(built_of(

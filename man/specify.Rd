@@ -172,8 +172,16 @@ statistics of groups. \code{inertia}, \code{recip}, and \code{trans} read the ou
 previous wave where \code{.data} is a longitudinal network, and fit there; on a
 cross-sectional network, \code{inertia} and \code{trans} are dropped too.
 
+goldfish names the side of \code{indeg()} and \code{outdeg()} with \verb{type =}, and
+reads the receiver for both by default, where infernet's \code{outdeg()} reads
+the sender. A goldfish formula is read as goldfish reads it:
+\code{outdeg(friends)} becomes \code{outdeg(friends, node = "alter")}, with a
+warning, and \verb{type =} becomes \verb{node =}.
+
 For goldfish, a layer named on its own becomes \code{tie(layer, weighted = TRUE)},
-\code{exchange(layer)} becomes \code{recip(layer)}, and \code{dist(x)} becomes \code{diff(x)}.
+\code{exchange(layer)} becomes \code{recip(layer)}, \code{dist(x)} becomes \code{diff(x)},
+and \code{node = "ego"} becomes \code{type = "ego"}, so that \code{outdeg(friends)}
+becomes \code{outdeg(friends, type = "ego")}.
 \code{same(x, diff = TRUE)}, \code{match()}, \code{mix()}, random intercepts, and fixed effects have no goldfish
 term, and are dropped.
 }

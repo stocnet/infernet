@@ -627,7 +627,7 @@ correspond to those in other packages.
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
 | A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
 | The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
-| Options | named arguments, as goldfish; `levels` as ergm | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, `path_fn`, and `levels` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
+| Options | named arguments, as goldfish, but `node` for goldfish's `type`, and `outdeg()` reads the sender by default; `levels` as ergm | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, `path_fn`, and `levels` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
 | Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
 | Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control`; fixed effects after a bare bar, as `{fixest}`: `\| sender + receiver` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
@@ -680,7 +680,8 @@ correspond to those in other packages.
   The term comes first, then its layer, attribute, and category:
   `ego_age`, `indeg_friends`, `tertius_friends_age`, `same_dept_sales`,
   and `mix_dept_sales_hr` (the sender's category, then the receiver's).
-  `indeg(friends, type = "ego")` gives `ego_indeg_friends`.
+  `indeg(friends, node = "ego")` gives `ego_indeg_friends`, and
+  `outdeg(friends)`, which reads the sender by default, `ego_outdeg_friends`.
   A character that a name cannot hold, such as a space in a category,
   becomes one underscore, and an interaction joins its columns with `:`.
   The name is a label: since attributes and categories can hold underscores,

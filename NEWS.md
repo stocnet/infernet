@@ -1,3 +1,18 @@
+# infernet 0.6.0
+
+## Package
+
+- Updated CONTRIBUTING
+  - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
+
+## Specification
+
+- Renamed `type =` of `indeg()`/`outdeg()` to `node =`, as stocnet/goldfish#122 proposes (thanks @auzaheta)
+  - `type =` still works, and warns once that it is deprecated
+  - `outdeg()` reads the sender's outdegree by default, `node = "ego"`
+  - `specify_mrqap()` and `specify_ergm()` read a goldfish formula's with `type =` as `node =`
+  - `specify_dynam()` writes `node =` as goldfish's `type =`
+
 # infernet 0.5.0
 
 ## Package

@@ -131,6 +131,22 @@ test_that("goldfish terms that mean something different here are named", {
   expect_any_message(suppressWarnings(specify_mrqap(a ~ inertia + sim(x))), "1 - \\|d\\|")
 })
 
+test_that("goldfish's indeg() and outdeg() are read as goldfish reads them", {
+  .infernet_state$type_warned <- NULL
+  expect_warning(
+    f <- specify_mrqap(a ~ outdeg(b) + outdeg(b, type = "ego") + indeg(b) +
+                         indeg(b, type = "ego") + ego(x), input = "dynam"),
+    "`outdeg(b)` reads the receiver's outdegree", fixed = TRUE)
+  expect_equal(.deparsed(f[[3]]), paste(
+    "outdeg(b, node = \"alter\") + outdeg(b, node = \"ego\") +",
+    "indeg(b, node = \"alter\") + indeg(b, node = \"ego\") + ego(x)"))
+  # goldfish's `type =` is its own name, not infernet's deprecated one.
+  expect_null(.infernet_state$type_warned)
+  # An interaction that is dropped is recorded once, as it was written.
+  f <- suppressWarnings(specify_mrqap(a ~ ego(x) + inertia:outdeg(b), input = "dynam"))
+  expect_equal(record_of(f)$term, c("ego(x)", "inertia:outdeg(b)"))
+})
+
 test_that("a bare name that is a layer of the network stays a layer", {
   g <- manynet::add_tie_attribute(formula_net(), "size", 1)
   f <- specify_mrqap(a ~ size + ego(x), g)
@@ -171,6 +187,20 @@ test_that("an MRQAP formula is written for goldfish", {
                      "diff(x)"))
   ch <- record_of(f)
   expect_setequal(ch$term[ch$status == "drops"], c("same(grp, diff = TRUE)", "(1 | sender)"))
+})
+
+test_that("indeg() and outdeg() are written with goldfish's type =", {
+  f <- suppressWarnings(specify_dynam(
+    a ~ outdeg(b) + outdeg(b, node = "alter") + indeg(b) + indeg(b, "ego") +
+      outdeg(b, weighted = TRUE)))
+  expect_equal(.deparsed(f[[3]]), paste(
+    "outdeg(b, type = \"ego\") + outdeg(b) + indeg(b) + indeg(b, type = \"ego\") +",
+    "outdeg(b, type = \"ego\", weighted = TRUE)"))
+  ch <- record_of(f)
+  expect_match(ch$reason[ch$term == "outdeg(b)"], "receiver by default")
+  # A formula written for goldfish keeps them as they are.
+  f <- suppressMessages(specify_dynam(a ~ inertia + outdeg(b) + indeg(b, type = "ego")))
+  expect_equal(.deparsed(f[[3]]), "inertia + outdeg(b) + indeg(b, type = \"ego\")")
 })
 
 test_that("goldfish's own terms pass through, and those that differ are named", {
