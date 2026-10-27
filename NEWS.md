@@ -23,6 +23,10 @@
   - `specify_dynam()` and `specify_ergm()` drop these terms
   - A `| reporter` fixed effect absorbs `reporter()`, and names it
 
+## Regression
+
+- Fixed `estimate_mrqap()` failing on an interaction with `{fixest}` fixed effects
+
 # infernet 0.5.0
 
 ## Package

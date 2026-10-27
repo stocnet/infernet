@@ -147,6 +147,58 @@ test_that("a cognitive social structure absorbs a reporter fixed effect", {
   expect_output(print(fit), "Fixed effects were absorbed for each reporter")
 })
 
+# ---- interactions ----------------------------------------------------------------
+
+# {fixest} reads the `:` of an interaction column as `*`, so these fits need
+# the column under a syntactic name.
+FE_FORM_X <- "weight ~ diff(Age) + same(Grp) + diff(Age):same(Grp) |"
+FE_COEFS_X <- c(FE_COEFS, "diff_Age:same_Grp")
+
+test_that("a gaussian interaction fits with sender or receiver fixed effects", {
+  g <- qap_net_gaussian()
+  ref <- qap_reference_data(FE_FORM, g)$pred
+  ref$x <- ref$diff_Age * ref$same_Grp
+  for (fe in c("sender", "receiver")) {
+    dummies <- stats::lm(stats::as.formula(paste(
+      "weight ~ diff_Age + same_Grp + x + factor(",
+      c(sender = "sv", receiver = "rv")[[fe]], ")")), data = ref)
+    fit <- estimate_mrqap(stats::as.formula(paste(FE_FORM_X, fe)), g,
+                          times = 5, control = list(seed = 1))
+    expect_qap_shape(fit, FE_COEFS_X)
+    expect_equal(unname(fit$coefficients[-1]),
+                 unname(stats::coef(dummies)[2:4]))
+  }
+})
+
+test_that("a binomial interaction with fixed effects matches fixest::feglm()", {
+  skip_if_not_installed("fixest")
+  b <- qap_net_binary()
+  ref <- qap_reference_data(FE_FORM, b)$pred
+  ref$x <- ref$diff_Age * ref$same_Grp
+  fe <- fixest::feglm(weight ~ diff_Age + same_Grp + x | sv + rv, data = ref,
+                      family = stats::binomial(), notes = FALSE)
+  fit <- estimate_mrqap(stats::as.formula(paste(FE_FORM_X, "sender + receiver")),
+                        b, times = 5, control = list(seed = 1))
+  expect_qap_shape(fit, FE_COEFS_X)
+  expect_equal(unname(fit$coefficients[-1]), unname(stats::coef(fe)))
+  expect_equal(unname(fit$obs[-1]),
+               unname(fixest::coeftable(fe, vcov = "iid")[, 3]))
+})
+
+test_that("an interaction fits with a reporter fixed effect on a CSS", {
+  skip_if_not_installed("fixest")
+  for (family in c("gaussian", "binomial")) {
+    fit <- estimate_mrqap(
+      advice ~ friends + ego(level) + friends:ego(level) | reporter,
+      manynet::ison_hightech, times = 5,
+      control = list(seed = 1, family = family))
+    expect_s3_class(fit, "netreg_css")
+    expect_equal(names(fit$coefficients),
+                 c("(Intercept)", "friends", "ego_level", "friends:ego_level"))
+    expect_false(anyNA(fit$coefficients[-1]))
+  }
+})
+
 # ---- what cannot be fitted ------------------------------------------------------
 
 test_that("a predictor that the fixed effects absorb is named", {

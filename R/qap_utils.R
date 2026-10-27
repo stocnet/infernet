@@ -632,6 +632,16 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
   nx  <- length(main_vars)
 
   if (!is.null(fixed_effects)) {
+    # {fixest} reads a `:` inside a backticked name as `*`, so it looks for
+    # `friends*ego_level` and not the interaction column `friends:ego_level`.
+    # Fit on syntactic stand-ins and give the coefficients their names back.
+    colon <- grep(":", all.vars(mod), fixed = TRUE, value = TRUE)
+    stand_in <- stats::setNames(sprintf(".fe_x%d", seq_along(colon)), colon)
+    if (length(colon) > 0) {
+      mod <- stats::as.formula(do.call(substitute, list(
+        mod, lapply(stand_in, as.name))), env = environment(mod))
+      names(pred)[match(colon, names(pred))] <- stand_in
+    }
     # One thread: the permutations are already spread over the workers.
     fe_mod <- stats::as.formula(paste(
       paste(deparse(mod, width.cutoff = 500), collapse = " "), "|",
@@ -645,6 +655,9 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
     }
     fit$coefficients <- stats::coef(base_model)
     fit$t <- fixest::coeftable(base_model, vcov = "iid")[names(fit$coefficients), 3]
+    back <- match(names(fit$coefficients), stand_in)
+    names(fit$coefficients)[!is.na(back)] <- colon[back[!is.na(back)]]
+    names(fit$t) <- names(fit$coefficients)
     if (family == "negbin") fit$theta <- base_model$theta
     fit$base_model <- base_model
     return(fit)
