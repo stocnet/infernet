@@ -6,6 +6,7 @@
   - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
   - Added the `reporter` terms to the formula dictionary
   - Added how a permutation set draws from a plan, and how to time it
+  - Added goldfish's bare `indeg`, offsets, and node tables to the formula dictionary
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 
 ## Specification
@@ -25,6 +26,16 @@
   - `specify_dynam()` and `specify_ergm()` drop these terms
   - A `| reporter` fixed effect absorbs `reporter()`, and names it
 - Improved the speed of `same()` on a two-mode network, with the same values
+- Improved `specify_mrqap()` on the formulas in goldfish's documentation
+  - Fixed a bare `indeg` or `outdeg` read as a layer; it is dropped, as goldfish's outcome degree
+  - Fixed `recip(calls, weighted = TRUE)` aborting
+  - Fixed `offset()` aborting; an MRQAP drops it, and goldfish and ergm keep their own
+  - Fixed `ego(actors$floor)` failing when its matrix is built; it is read as `ego(floor)`
+- Added `weighted =` to `recip()` and `exchange()`, as goldfish's `recip()` has
+  - `weighted = FALSE` gives 0/1, and `TRUE` the values; without it, the values as stored
+- Fixed `specify_ergm()` without a network giving `inertia` the reason "needs .data"
+  - Gives the same reasons as with a network, e.g. "has no ergm term"
+  - Records a term rewritten on reading once, as written
 
 ## Regression
 

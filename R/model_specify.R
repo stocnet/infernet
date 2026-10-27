@@ -44,7 +44,9 @@
 #'
 #'   An MRQAP warns for a term that reads the outcome's own ties, such as
 #'   `recip`, and refuses `tie()`, `indeg()`, and `outdeg()` of the outcome
-#'   layer. For an MRQAP, `tidy()` with `.data` also builds each term and names
+#'   layer. It drops an offset, such as goldfish's `offset(recip, coef = 0)`,
+#'   since it estimates every coefficient; goldfish keeps a goldfish offset,
+#'   and ergm an ergm one. For an MRQAP, `tidy()` with `.data` also builds each term and names
 #'   its `columns`, as [estimate_mrqap()] names them.
 #'
 #' @section Reading the model a formula was written for:
@@ -128,7 +130,11 @@
 #'   reads the receiver for both by default, where infernet's `outdeg()` reads
 #'   the sender. A goldfish formula is read as goldfish reads it:
 #'   `outdeg(friends)` becomes `outdeg(friends, node = "alter")`, with a
-#'   warning, and `type =` becomes `node =`.
+#'   warning, and `type =` becomes `node =`. `indeg` or `outdeg` on its own
+#'   reads the outcome's own degree in goldfish, and is dropped for an MRQAP
+#'   and for ergm. goldfish's older formulas name a node attribute with its
+#'   table of nodes, as in `ego(actors$floor)`, which is read as `ego(floor)`,
+#'   since the network holds its nodes' attributes.
 #'
 #'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
 #'   `exchange(layer)` becomes `recip(layer)`, `dist(x)` becomes `diff(x)`,
@@ -168,8 +174,8 @@ NULL
 #' @export
 specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   if (inherits(formula, "mrqap_formula")) return(formula)
-  read <- .read_dynam_degree(.read_formula(formula, .data, input))
-  record <- read$record
+  read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
+  record <- rbind(read$record, .offset_rows(read, "mrqap"))
   labels <- read$labels
 
   native <- labels %in% read$native
@@ -236,6 +242,10 @@ specify_dynam <- function(formula, .data = NULL, input = NULL) {
   }
   record <- rbind(record, .fixed_rows(read$fixed, "dynam"))
   record <- rbind(record, .interpreted_dynam(out, read$input, "dynam"))
+  # goldfish fixes a coefficient with `offset(effect, coef = )`.
+  keep <- read$input %in% c("dynam", "rem")
+  record <- rbind(record, .offset_rows(read, "dynam", keep = keep))
+  if (keep) out <- c(out, read$offsets)
   .finish_formula(read$lhs, unique(out), character(0), record, read, "dynam")
 }
 
@@ -251,13 +261,13 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
       c("{.pkg ergm} fits one network, and {.arg .data} is a list of {length(.data)} networks.",
         i = "Specify the formula for each network on its own."))
   }
-  read <- .read_dynam_degree(.read_formula(formula, .data, input))
+  read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
   # A formula written for ergm is already one.
   if (read$input == "ergm") {
     return(structure(formula, class = c("ergm_formula", "formula"),
                      input = "ergm", record = .complete_record(.no_record(), read, "ergm")))
   }
-  record <- read$record
+  record <- rbind(read$record, .offset_rows(read, "ergm"))
   native <- intersect(read$labels, read$native)
   labels <- setdiff(read$labels, native)
   record <- rbind(record, .interpreted_dynam(labels, read$input, "ergm"))
@@ -295,13 +305,19 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
       converted <- lapply(spec$terms, .ergm_term, ctx = ctx)
     }
     for (x in converted) {
+      # A term rewritten on reading is recorded once, as written.
+      term <- x$label
+      if (term %in% names(read$renamed)) {
+        term <- read$renamed[[term]]
+        record <- record[record$term != term, , drop = FALSE]
+      }
       if (!is.null(x$reason)) {
-        record <- rbind(record, .record_row(x$label, "", "drops", x$reason))
+        record <- rbind(record, .record_row(term, "", "drops", x$reason))
         next
       }
       new <- paste(x$terms, collapse = " + ")
-      if (!identical(new, x$label)) {
-        record <- rbind(record, .record_row(x$label, new, "adapted", ""))
+      if (!identical(new, term)) {
+        record <- rbind(record, .record_row(term, new, "adapted", ""))
       }
       terms <- c(terms, x$terms)
       covariates <- c(covariates, x$covariates)
@@ -477,9 +493,10 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   ctx$panel <- panel
   input <- .read_input(formula, input, ctx)
   tt <- stats::terms(formula)
-  if (!is.null(attr(tt, "offset"))) {
-    manynet::snet_abort("{.fn offset} is not yet supported in the formula.")
-  }
+  # An offset fixes a term's coefficient, as `offset(recip, coef = 0)` does in
+  # goldfish. It is read apart from the terms, and each writer keeps or drops it.
+  offsets <- vapply(as.list(attr(tt, "variables"))[-1][attr(tt, "offset")],
+                    .deparsed, "")
   labels <- attr(tt, "term.labels")
   bars <- labels[grepl("|", labels, fixed = TRUE)]
   labels <- labels[!grepl("|", labels, fixed = TRUE)]
@@ -487,9 +504,61 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   if (input == "ergm") read <- .read_ergm_terms(labels, ctx)
   env <- environment(formula)
   c(read, list(lhs = formula[[2]], bars = bars, fixed = split$fixed,
-               input = input, ctx = ctx,
+               offsets = offsets, input = input, ctx = ctx,
                data = .data, env = if (is.null(env)) globalenv() else env,
-               original = attr(tt, "term.labels")))
+               original = c(attr(tt, "term.labels"), offsets)))
+}
+
+# The record of the offsets: a model that fixes coefficients in the same form
+# keeps them, and the others drop them. An MRQAP estimates every coefficient,
+# so its test of a term would no longer be of the model the formula describes.
+#' @keywords internal
+#' @noRd
+.offset_rows <- function(read, target, keep = FALSE) {
+  n <- length(read$offsets)
+  if (n == 0 || keep) return(.no_record())
+  reason <- switch(target,
+    mrqap = "fixes a coefficient, which an MRQAP does not do",
+    paste0("is an offset for ", .model_label(if (read$input == "rem") "dynam" else read$input),
+           ", which is not yet written for ", .model_label(target)))
+  .record_row(read$offsets, rep("", n), rep("drops", n), rep(reason, n))
+}
+
+# goldfish's older formulas name a node attribute with its table of nodes, as
+# in `ego(actors$floor)`. The network holds its nodes' attributes, so the
+# argument `x`, which names a node attribute in every term, is read as the
+# column alone. `renamed` maps each rewritten label back to the label as written.
+#' @keywords internal
+#' @noRd
+.read_node_tables <- function(read) {
+  if (is.null(read$renamed)) read$renamed <- character(0)
+  registry <- .formula_terms()
+  for (k in seq_along(read$labels)) {
+    lab <- read$labels[k]
+    ops <- lapply(.flatten_interaction(str2lang(lab)), function(expr) {
+      if (!is.call(expr) || !is.name(expr[[1]])) return(expr)
+      entry <- registry[[as.character(expr[[1]])]]
+      if (is.null(entry) || !"x" %in% names(entry$formals)) return(expr)
+      matched <- tryCatch(match.call(as.function(c(entry$formals, list(NULL))), expr),
+                          error = function(e) NULL)
+      x <- if (!is.null(matched)) matched$x
+      if (!(is.call(x) && identical(x[[1]], as.name("$")))) return(expr)
+      for (i in seq_along(expr)[-1]) {
+        if (identical(expr[[i]], x)) expr[[i]] <- x[[3]]
+      }
+      expr
+    })
+    new <- .deparsed(Reduce(function(a, b) call(":", a, b), ops))
+    if (!identical(new, lab)) {
+      read$labels[k] <- new
+      written <- if (lab %in% names(read$renamed)) read$renamed[[lab]] else lab
+      read$renamed[[new]] <- written
+      read$record <- read$record[read$record$term != written, , drop = FALSE]
+      read$record <- rbind(read$record, .record_row(
+        written, new, "adapted", "since the network holds its nodes' attributes"))
+    }
+  }
+  read
 }
 
 # goldfish's `indeg()` and `outdeg()` name the side with `type =`, and both
@@ -510,6 +579,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
         return(expr)
       }
       op <- .specify_operand(expr)
+      if (is.null(op$args$layer)) return(expr)
       node <- if ("node" %in% op$supplied) op$args$node
         else if ("type" %in% op$supplied) op$args$type
         else "alter"
@@ -823,8 +893,15 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     for (expr in .flatten_interaction(str2lang(lab))) {
       fn <- if (is.call(expr)) as.character(expr[[1]]) else as.character(expr)
       entry <- registry[[fn]]
-      if (is.null(entry) || entry$mrqap != "drops") next
+      if (is.null(entry)) next
       if (is.name(expr) && (fn %in% ctx$tie_names || !isTRUE(entry$bare))) next
+      # goldfish's `~ indeg` reads the outcome's own degree. Naming the outcome,
+      # `indeg(calls)`, is refused, but goldfish's default is dropped.
+      if (identical(entry$outcome, "refuse") && isTRUE(entry$bare) &&
+          (is.name(expr) || length(expr) == 1)) {
+        return(.endogenous_reason())
+      }
+      if (entry$mrqap != "drops") next
       if (identical(entry$kind, "endogenous") && is.call(expr) && length(expr) > 1) {
         layer <- .arg_name(.specify_operand(expr)$args[[1]])
         if (!is.na(layer) && !identical(layer, ctx$outcome_layer)) {
@@ -897,7 +974,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @noRd
 .dynam_degree <- function(expr, input) {
   op <- .specify_operand(expr)
-  if (input %in% c("dynam", "rem")) return(list(expr = expr))
+  if (input %in% c("dynam", "rem") || is.null(op$args$layer)) return(list(expr = expr))
   node <- .degree_node(op)
   args <- list(op$args$layer)
   if (node == "ego") args$type <- "ego"
@@ -933,6 +1010,10 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @keywords internal
 #' @noRd
 .ergm_term_nodata <- function(term) {
+  for (op in term$operands) {
+    reason <- if (!is.na(op$fn)) .ergm_reason(op)
+    if (!is.null(reason)) return(list(label = term$label, reason = reason))
+  }
   one <- function(op) {
     if (is.na(op$fn)) return(.ergm_call("edgecov", op$name))
     # `levels =` is written as it is given, and ergm reads names and positions
@@ -1064,7 +1145,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     edgecov     = function(expr) list(attr_of(expr))
   )
   c(read,
-    stats::setNames(rep(list("depends on the outcome's own ties"), length(structural)),
+    stats::setNames(rep(list(.endogenous_reason()), length(structural)),
                     structural),
     stats::setNames(rep(list("is a fixed effect for each node; (1 | sender) adds a random intercept instead"),
                         length(fixed)), fixed))

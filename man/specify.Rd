@@ -85,7 +85,9 @@ is fitted;
 
 An MRQAP warns for a term that reads the outcome's own ties, such as
 \code{recip}, and refuses \code{tie()}, \code{indeg()}, and \code{outdeg()} of the outcome
-layer. For an MRQAP, \code{tidy()} with \code{.data} also builds each term and names
+layer. It drops an offset, such as goldfish's \code{offset(recip, coef = 0)},
+since it estimates every coefficient; goldfish keeps a goldfish offset,
+and ergm an ergm one. For an MRQAP, \code{tidy()} with \code{.data} also builds each term and names
 its \code{columns}, as \code{\link[=estimate_mrqap]{estimate_mrqap()}} names them.
 }
 
@@ -176,7 +178,11 @@ goldfish names the side of \code{indeg()} and \code{outdeg()} with \verb{type =}
 reads the receiver for both by default, where infernet's \code{outdeg()} reads
 the sender. A goldfish formula is read as goldfish reads it:
 \code{outdeg(friends)} becomes \code{outdeg(friends, node = "alter")}, with a
-warning, and \verb{type =} becomes \verb{node =}.
+warning, and \verb{type =} becomes \verb{node =}. \code{indeg} or \code{outdeg} on its own
+reads the outcome's own degree in goldfish, and is dropped for an MRQAP
+and for ergm. goldfish's older formulas name a node attribute with its
+table of nodes, as in \code{ego(actors$floor)}, which is read as \code{ego(floor)},
+since the network holds its nodes' attributes.
 
 For goldfish, a layer named on its own becomes \code{tie(layer, weighted = TRUE)},
 \code{exchange(layer)} becomes \code{recip(layer)}, \code{dist(x)} becomes \code{diff(x)},

@@ -194,16 +194,20 @@
 #'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
 #'     0/1 unless `weighted = TRUE`; a layer or tie attribute named on its own
 #'     enters with its values as stored,
-#'   - `exchange(layer)` — the reverse tie, j to i, in another layer;
-#'     `recip(layer)` is the same, and `recip()`, or `recip` on its own,
-#'     reads the outcome's own reverse tie, and warns,
+#'   - `exchange(layer, weighted = NULL)` — the reverse tie, j to i, in another
+#'     layer; `recip(layer)` is the same, and `recip()`, or `recip` on its own,
+#'     reads the outcome's own reverse tie, and warns. `weighted = FALSE` gives
+#'     0/1, and `weighted = TRUE` the values, as goldfish's `recip()` does;
+#'     without it, the values are as stored,
 #'   - `indeg(layer, node = "alter", weighted = FALSE)` and
 #'     `outdeg(layer, node = "ego", weighted = FALSE)` — a node's number of
 #'     incoming or outgoing ties in another layer, for the receiver
 #'     (`"alter"`) or the sender (`"ego"`). By default `indeg()` reads the
 #'     receiver and `outdeg()` the sender. `type =` is a deprecated alias of
 #'     `node =`, and goldfish's name for it; goldfish reads the receiver for
-#'     both, so a formula written for goldfish is read as goldfish reads it,
+#'     both, so a formula written for goldfish is read as goldfish reads it.
+#'     goldfish's `indeg` or `outdeg` on its own reads the outcome's own
+#'     degree, and is dropped,
 #'   - `tertius(layer, attr, summarizer_fn = "mean")` — the mean (or the
 #'     tie-weighted sum, with `"sum"`) of an attribute over the receiver's
 #'     in-neighbours in a layer, other than the sender. A receiver with no

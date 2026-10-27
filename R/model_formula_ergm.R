@@ -16,19 +16,7 @@
   registry <- .formula_terms()
   for (op in term$operands) {
     if (is.na(op$fn)) next
-    entry <- registry[[op$fn]]
-    reason <- if (identical(entry$kind, "global")) {
-      "is a network-level variable, the same for every dyad of the one network that ergm fits"
-    } else if (isTRUE(entry$css)) {
-      "describes the reporter of a cognitive social structure, which ergm does not have"
-    } else if (is.na(entry$ergm)) {
-      "has no ergm term"
-    } else if (is.null(entry$to_ergm)) {
-      paste0("is not yet converted here; its nearest ergm term is {.code ",
-             .escape_braces(entry$ergm), "}")
-    } else if (ctx$twomode && identical(entry$twomode, FALSE)) {
-      "is not defined for a two-mode network"
-    } else NULL
+    reason <- .ergm_reason(op, ctx)
     if (!is.null(reason)) return(list(label = term$label, reason = reason))
   }
   if (length(term$operands) > 1) {
@@ -47,6 +35,29 @@
       else registry[[op$fn]]$to_ergm(op, ctx)
   }
   c(list(label = term$label), out)
+}
+
+# Why a term has no ergm form, or NULL where it has one. Without the network,
+# `ctx` is NULL, and only what the registry says is read.
+#' @keywords internal
+#' @noRd
+.ergm_reason <- function(op, ctx = NULL) {
+  entry <- .formula_terms()[[op$fn]]
+  if (identical(entry$kind, "global")) {
+    "is a network-level variable, the same for every dyad of the one network that ergm fits"
+  } else if (isTRUE(entry$css)) {
+    "describes the reporter of a cognitive social structure, which ergm does not have"
+  } else if (is.na(entry$ergm)) {
+    "has no ergm term"
+  } else if (is.null(entry$to_ergm)) {
+    paste0("is not yet converted here; its nearest ergm term is {.code ",
+           .escape_braces(entry$ergm), "}")
+  } else if (identical(entry$outcome, "refuse") && is.na(op$name)) {
+    # goldfish's `~ indeg`, which reads the outcome's own degree.
+    .endogenous_reason()
+  } else if (!is.null(ctx) && ctx$twomode && identical(entry$twomode, FALSE)) {
+    "is not defined for a two-mode network"
+  } else NULL
 }
 
 # `edgecov()` of each matrix infernet builds, named as its column so that the

@@ -689,11 +689,11 @@ correspond to those in other packages.
 | Model | `estimate_mrqap(advice ~ ego(age) + friends, net)` | `estimate_dynam(calls ~ inertia + recip + trans(friends))`, or `make_specification(rate = ~ ..., choice = ~ ..., data = net)` | `ergm(net ~ edges + nodematch("x"))` | `set_effect(effs, c(egoX, altX), covar1 = "age")` | `addEffect(effs, same_covariate, attribute.index = "region")` |
 | Outcome | the layer on the left-hand side; `.` is `info$focal`, or the whole network | the dependent events on the left-hand side; in `make_specification()`, `layer =`, by default `info$focal`, and a flavoured layer takes a list keyed by flavour, `rate = list(creation ~ ..., dissolution ~ ...)` | the network on the left-hand side | named in the data object | named in the state object |
 | An attribute | a bare name | a bare name | a string, `"x"` | a string, `covar1 = "x"` | a string |
-| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
-| The argument of a term | a node attribute for an attribute term, a layer for a layer term | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort | — | — | — |
+| A bare term | a layer or a tie attribute; where none has the name, a term that can stand alone, with its defaults (`recip`), or a goldfish effect that is then dropped (`inertia`, `indeg`) | an effect with its defaults, reading the dependent events: `~ inertia + recip` | — | — | — |
+| The argument of a term | a node attribute for an attribute term, a layer for a layer term; a node attribute is always the argument `x`, and goldfish's `actors$floor` is read as `floor` | a layer, then a node attribute, then a global variable; a layer silently wins over a node attribute, and a node attribute and a global variable of the same name abort; older formulas name a node attribute with its table, `ego(actors$floor)` | — | — | — |
 | Options | named arguments, as goldfish, but `node` for goldfish's `type`, and `outdeg()` reads the sender by default; `levels` as ergm | named arguments: `transformer_fn`, `summarizer_fn`, `weighted`, `window`, `type`, `history`, `sub_type` (DyNAM-i), `is_two_mode`; stocnet/goldfish#122 proposes `perspective` for `type`, `path_fn`, and `levels` | named arguments: `pow`, `diff`, `levels`, `dir`, `sign.action` | `parameter`, `interaction1`, ... | `attribute.index`, ... |
 | Interactions | `:` and `*`, any order, the product of the operands | `:` and `*`, any order, the product of the operands | `:` and `*`, for dyad-independent terms the product of the covariates | `set_interaction()` | — |
-| Offsets | not yet | `offset()` | `offset()` | `fix = TRUE` | — |
+| Offsets | dropped, since an MRQAP estimates every coefficient | `offset(recip, coef = 0)` | `offset()`, with `offset.coef` in `ergm()` | `fix = TRUE` | — |
 | Group effects | random intercepts, as `{lme4}`: `(1 \| sender)`, `(1 \| receiver)`, `(1 \| reporter)`, `(1 \| network)`, or the same in `control`; fixed effects after a bare bar, as `{fixest}`: `\| sender + receiver` | none; `\|` and `I()` are refused in the effects formula, and inside `support_constraint` a bar is a boolean OR | — | — | — |
 | Specification | internal: `.specify()` | the formula, or `make_specification()` | the formula | `make_specification()`, a `sienaEffects` | `createEffects()` |
 
@@ -734,6 +734,10 @@ correspond to those in other packages.
   not a translation from each of the others.
   For example, since MRQAPs rely on permutation,
   goldfish's `inertia` or `trans`, which read the outcome's own ties, are dropped.
+  So is goldfish's bare `indeg` or `outdeg`, the outcome's own degree,
+  though `indeg(calls)`, which names the outcome, is refused below.
+  An offset, such as goldfish's `offset(recip, coef = 0)`, is dropped too,
+  since an MRQAP estimates every coefficient.
   A formula aborts only where a name is known to no model,
   which is probably a typing error and gets the nearest name as a suggestion,
   where no term is left, or where a term is refused:
@@ -825,9 +829,11 @@ A cognitive social structure and a list of networks abort.
 | `match(x)` | warns | deprecated alias of `same(x, diff = TRUE)` | `nodematch(diff = TRUE)` | — | — |
 | `mix(x)` | fits | one 0/1 column per pair of categories, less the first, or per pair in `levels =` | `nodemix`, with `levels2 =` | — | — |
 | `tie(layer)`, or the bare name | fits; refuses the outcome layer | another layer as a dyadic covariate | `edgecov` | `X` | `dyadic_covariate` |
-| `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer | `edgecov` of the transpose | — | — |
+| `exchange(layer)`, `recip(layer)` | fits | the reverse tie in another layer; 0/1 with `weighted = FALSE`, the values with `weighted = TRUE` or as stored without it | `edgecov` of the transpose | — | — |
 | `recip`, `recip()` | warns; fits on a panel | the reverse tie in the previous wave on a panel; otherwise the reverse tie in the outcome, which is not permuted with the outcome | `mutual` | `recip` | `reciprocity_basic` |
-| `indeg(layer)`, `outdeg(layer)` | fits; refuses the outcome layer | a node's degree in another layer, on the `type` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
+| `indeg(layer)`, `outdeg(layer)` | fits; refuses the outcome layer | a node's degree in another layer, on the `node` side | `edgecov`, or `nodeicov`/`nodeocov` of the degree | — | — |
+| `indeg`, `outdeg` | drops | goldfish: the outcome's own degree | — | — | — |
+| `offset(recip, coef = 0)` | drops | goldfish and ergm: the term with its coefficient fixed | `offset()` | `fix = TRUE` | — |
 | `tertius(layer, x)` | fits | the mean of x over j's other in-neighbours | `edgecov` | — | — |
 | `tertius_diff(layer, x)` | fits | \|x_i − `tertius(layer, x)`\| | `edgecov` | — | — |
 | `global(x)` | fits, in a list of networks | a network-level variable; in goldfish a main effect in rate models, and in choice models only in interactions | — | — | — |
@@ -865,6 +871,13 @@ Two terms still differ from goldfish:
 - goldfish includes ego in `tertius()` and `tertius_diff()`, where infernet
   reads only j's other in-neighbours.
 
+`.ergm_terms()` in [R/model_specify.R](../R/model_specify.R) reads each ergm
+term as infernet's, by ergm's name, apart from the registry: several ergm terms
+read as one infernet term, by the network's shape, and most of ergm's terms have
+no infernet term. A test in `test-model_specify_ergm.R` reads each ergm term
+that has an infernet equivalent, writes it back with `specify_ergm()`, and
+checks that it comes back as itself, so that the reader and the writers agree.
+
 #### Adding a term
 
 1. Add an entry to `.formula_terms()` in
@@ -879,6 +892,7 @@ Two terms still differ from goldfish:
    [R/model_specify.R](../R/model_specify.R).
    A term of another model that MRQAP cannot fit goes in `.dynam_terms()`
    with `mrqap = "drops"` and a `reason`, and needs no builder.
+   A new reader in `.ergm_terms()` needs a row in the round-trip test.
 2. Write the builder. It takes the parsed operand and the context, and returns
    a named list of matrices: one for most terms, several for a term like
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.

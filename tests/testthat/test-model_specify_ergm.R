@@ -191,3 +191,56 @@ test_that("ergm counts what infernet builds with levels =", {
   stats <- summary(suppressMessages(specify_ergm(f, net)))
   expect_equal(unname(stats[-1]), unname(ours))
 })
+
+# ---- reading ergm and writing it back --------------------------------------------
+
+# `.ergm_terms()` reads each ergm term as infernet's, and the registry's
+# `to_ergm` writes each infernet term for ergm. The two are kept apart, since
+# several ergm terms read as one infernet term, by the network's shape. Each
+# ergm term that has an infernet equivalent is read, then written back, and
+# must come back as itself, or as the term this table names.
+test_that("each ergm term read as an infernet term is written back as itself", {
+  directed <- formula_net()
+  undirected <- manynet::mutate(qap_net_undirected(),
+                                Grp = rep(c("a", "b", "c"), length.out = 24))
+  twomode <- manynet::mutate_nodes(qap_net_twomode_wide(),
+                                   B = c(rep(NA, 12), seq_len(40)),
+                                   K = rep(c("u", "v"), 26))
+  trips <- utils::read.table(header = TRUE, sep = "|", strip.white = TRUE,
+                             stringsAsFactors = FALSE, quote = "", text = "
+    reader      | term                                | net        | back
+    edges       | edges                               | directed   | edges
+    density     | density                             | directed   | edges
+    mutual      | mutual                              | directed   | mutual
+    nodeocov    | nodeocov(\"x\")                     | directed   | nodeocov(\"x\")
+    nodeofactor | nodeofactor(\"grp\", levels = \"q\")| directed   | nodeofactor(\"grp\", levels = \"q\")
+    nodeicov    | nodeicov(\"x\")                     | directed   | nodeicov(\"x\")
+    nodeifactor | nodeifactor(\"grp\")                | directed   | nodeifactor(\"grp\")
+    nodematch   | nodematch(\"grp\", diff = TRUE)     | directed   | nodematch(\"grp\", diff = TRUE)
+    nodemix     | nodemix(\"grp\", levels2 = 2)       | directed   | nodemix(\"grp\", levels2 = 2)
+    absdiff     | absdiff(\"x\")                      | directed   | absdiff(\"x\")
+    diff        | diff(\"x\")                         | directed   | diff(\"x\")
+    edgecov     | edgecov(\"b\")                      | directed   | edgecov(b)
+    nodecov     | nodecov(\"Age\")                    | undirected | nodecov(\"Age\")
+    nodefactor  | nodefactor(\"Grp\")                 | undirected | nodefactor(\"Grp\")
+    b1cov       | b1cov(\"Att\")                      | twomode    | b1cov(\"Att\")
+    b1factor    | b1factor(\"GONGO\")                 | twomode    | b1factor(\"GONGO\")
+    b2cov       | b2cov(\"B\")                        | twomode    | b2cov(\"B\")
+    b2factor    | b2factor(\"K\")                     | twomode    | b2factor(\"K\")")
+  # A new reader fails here until its round trip is written down.
+  readers <- names(Filter(is.function, .ergm_terms()))
+  expect_setequal(trips$reader, readers)
+  nets <- list(directed = directed, undirected = undirected, twomode = twomode)
+  # Something that is not the intercept is always left to fit.
+  anchor <- c(directed = "nodeocov(\"x\")", undirected = "absdiff(\"Age\")",
+              twomode = "b1cov(\"Att\")")
+  for (k in seq_len(nrow(trips))) {
+    net <- nets[[trips$net[k]]]
+    lhs <- if (trips$net[k] == "directed") "a" else "."
+    f <- stats::as.formula(paste(lhs, "~", trips$term[k], "+", anchor[[trips$net[k]]]))
+    read <- suppressWarnings(suppressMessages(specify_mrqap(f, net, input = "ergm")))
+    back <- suppressWarnings(suppressMessages(specify_ergm(read, net)))
+    expect_setequal(rhs_of(back),
+                    unique(c("edges", anchor[[trips$net[k]]], trips$back[k])))
+  }
+})

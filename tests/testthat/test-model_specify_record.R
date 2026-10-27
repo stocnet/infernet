@@ -205,7 +205,11 @@ test_that("formulas from goldfish's documentation are read without aborting", {
     calls ~ 1 + indeg(friendship) + tie(friendship),
     calls ~ 1 + node_trans(calls, type = "ego") + alter(gradeType),
     calls ~ inertia + recip + same(gradeType) + diff(age, transformer_fn = abs) +
-      tertius_diff(friendship, age))
+      tertius_diff(friendship, age),
+    calls ~ 1 + indeg + outdeg + tie(friendship),
+    calls ~ inertia + recip(calls, weighted = TRUE) + tie(friendship),
+    calls ~ inertia + offset(recip, coef = 0) + tie(friendship),
+    calls ~ inertia + ego(actors$floor))
   expected <- list(
     c(inertia = "drops", recip = "warns", trans = "drops"),
     c(inertia = "drops", `alter(gradeType)` = "fits", recip = "warns", trans = "drops"),
@@ -213,10 +217,44 @@ test_that("formulas from goldfish's documentation are read without aborting", {
     c(`node_trans(calls, type = "ego")` = "drops", `alter(gradeType)` = "fits"),
     c(inertia = "drops", recip = "warns", `same(gradeType)` = "fits",
       `diff(age, transformer_fn = abs)` = "fits",
-      `tertius_diff(friendship, age)` = "interpreted"))
+      `tertius_diff(friendship, age)` = "interpreted"),
+    c(indeg = "drops", outdeg = "drops", `tie(friendship)` = "fits"),
+    c(inertia = "drops", `recip(calls, weighted = TRUE)` = "warns",
+      `tie(friendship)` = "fits"),
+    c(inertia = "drops", `tie(friendship)` = "fits",
+      `offset(recip, coef = 0)` = "drops"),
+    c(inertia = "drops", `ego(actors$floor)` = "adapted"))
   for (k in seq_along(formulas)) {
     t <- suppressWarnings(suppressMessages(tidy(specify_mrqap(formulas[[k]]))))
     expect_equal(stats::setNames(t$status, t$term), expected[[k]],
                  info = deparse(formulas[[k]]))
   }
+  # goldfish's `~ indeg` reads the outcome's own degree, and is dropped, where
+  # naming the outcome is refused.
+  t <- suppressWarnings(tidy(specify_mrqap(calls ~ indeg(calls) + tie(friendship))))
+  expect_equal(t$status[1], "refuses")
+  expect_error(suppressWarnings(specify_mrqap(calls ~ 1 + indeg + outdeg)),
+               "No term.*indeg.*outdeg")
+  t <- suppressWarnings(tidy(specify_mrqap(calls ~ ego(actors$floor))))
+  expect_equal(t$as, "ego(floor)")
+})
+
+test_that("goldfish's formulas are written for goldfish and ergm as they should be", {
+  # goldfish keeps its own offsets, bare degrees, and node tables.
+  d <- tidy(specify_dynam(calls ~ indeg + outdeg + offset(recip, coef = 0) +
+                            ego(actors$floor), input = "dynam"))
+  expect_equal(d$status, rep("fits", 4))
+  e <- suppressWarnings(suppressMessages(tidy(specify_ergm(
+    calls ~ inertia + indeg + offset(recip, coef = 0) + ego(actors$floor)))))
+  expect_equal(stats::setNames(e$reason, e$term),
+               c(inertia = "has no ergm term",
+                 indeg = "depends on the outcome's own ties",
+                 `ego(actors$floor)` = NA,
+                 `offset(recip, coef = 0)` = "is an offset for goldfish, which is not yet written for ergm"))
+  expect_equal(e$as[e$term == "ego(actors$floor)"], "nodeocov(\"floor\")")
+})
+
+test_that("the offsets of an ergm formula are kept for ergm", {
+  f <- suppressMessages(specify_ergm(net ~ edges + offset(mutual) + nodematch("grp")))
+  expect_match(paste(deparse(f[[3]]), collapse = ""), "offset(mutual)", fixed = TRUE)
 })

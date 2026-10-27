@@ -26,7 +26,9 @@
 # happens where a layer term names the outcome: "refuse", or "warn" where the
 # term is defined on the outcome but is then not permuted with it. `bare` is
 # TRUE where the term can be named on its own, as goldfish's endogenous effects
-# are: `~ recip` is then `recip()` of the outcome. `panel` is TRUE where the
+# are: `~ recip` is then `recip()` of the outcome. A bare term whose `outcome`
+# is "refuse", such as `~ indeg`, is dropped rather than refused, since it is
+# goldfish's default rather than a layer the formula names. `panel` is TRUE where the
 # term reads the outcome's previous wave on a longitudinal network, as goldfish
 # and RSiena read the state of the network before each change. It then fits
 # there without a warning, and `build` reads `ctx$previous`.
@@ -98,7 +100,7 @@
       mrqap = "fits", dynam = "tie", saom = "X", ergm = "edgecov",
       to_ergm = .ergm_built),
     recip = list(
-      formals = alist(layer = ), kind = "layer", build = .build_recip,
+      formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
       twomode = FALSE, bare = TRUE, panel = TRUE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
       outcome = "warn", mrqap = "warns", reason = .outcome_reason(),
@@ -106,7 +108,7 @@
       ergm = "mutual, or edgecov of the transpose",
       to_ergm = .ergm_recip),
     exchange = list(
-      formals = alist(layer = ), kind = "layer", build = .build_recip,
+      formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
       twomode = FALSE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
       outcome = "warn", mrqap = "fits", dynam = "recip with a network",
@@ -114,13 +116,13 @@
       to_ergm = .ergm_recip),
     indeg = list(
       formals = alist(layer = , node = "alter", weighted = FALSE, type = NULL),
-      kind = "layer", build = .build_indeg, outcome = "refuse",
+      kind = "layer", build = .build_indeg, outcome = "refuse", bare = TRUE,
       mrqap = "fits", dynam = "indeg", saom = NA_character_,
       ergm = "edgecov, or nodeicov of the degree",
       to_ergm = .ergm_built),
     outdeg = list(
       formals = alist(layer = , node = "ego", weighted = FALSE, type = NULL),
-      kind = "layer", build = .build_outdeg, outcome = "refuse",
+      kind = "layer", build = .build_outdeg, outcome = "refuse", bare = TRUE,
       mrqap = "fits", dynam = "outdeg", saom = NA_character_,
       ergm = "edgecov, or nodeocov of the degree",
       to_ergm = .ergm_built),
@@ -179,7 +181,7 @@
 .dynam_terms <- function() {
   endogenous <- function(saom, ergm, to_ergm = NULL, kind = "endogenous") {
     list(formals = alist(layer = , ... = ), kind = kind, bare = TRUE,
-         mrqap = "drops", reason = "depends on the outcome's own ties",
+         mrqap = "drops", reason = .endogenous_reason(),
          saom = saom, ergm = ergm, to_ergm = to_ergm)
   }
   mixed <- function(ergm = NA_character_) {
@@ -1119,6 +1121,12 @@
   .warn_outcome_ties(op$fn, .outcome_example(op$fn))
 }
 
+# Why a term that reads only the outcome's own ties, such as goldfish's
+# `inertia` or `~ indeg`, is dropped.
+#' @keywords internal
+#' @noRd
+.endogenous_reason <- function() "depends on the outcome's own ties"
+
 #' @keywords internal
 #' @noRd
 .outcome_reason <- function() {
@@ -1170,6 +1178,9 @@
 # The reverse tie: the transpose of a layer. `exchange(layer)` names the layer,
 # as goldfish proposes for its exogenous twin (stocnet/goldfish#122), and
 # `recip()` without one reads the outcome, as goldfish's endogenous `recip` does.
+# `weighted = FALSE` gives 1 where the reverse tie is positive, and
+# `weighted = TRUE` its value, as goldfish's `recip()` does. Without it, the
+# values are as stored, as before.
 .build_recip <- function(op, ctx) {
   if (is.na(op$name)) {
     if (identical(op$fn, "exchange")) {
@@ -1190,6 +1201,9 @@
   }
   out <- if (length(dim(m)) == 3) aperm(m, c(2, 1, 3)) else t(m)
   dimnames(out) <- dimnames(m)
+  if (!is.null(op$args$weighted) && !.arg_flag(op$args$weighted, ctx$env, "weighted")) {
+    out <- (out > 0) * 1
+  }
   .named(out, label)
 }
 

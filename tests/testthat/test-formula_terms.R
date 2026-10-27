@@ -210,6 +210,18 @@ test_that("recip() and exchange() are the transpose of the layer", {
   expect_equal(unname(m[["exchange_b"]]), t(layer_of("b")))
 })
 
+test_that("recip() and exchange() give 0/1 with weighted = FALSE, and values with TRUE", {
+  g <- qap_net_gaussian(n = 10)
+  g <- manynet::mutate_ties(g, w2 = abs(manynet::tie_attribute(g, "weight")))
+  w2 <- unname(t(manynet::as_matrix(manynet::to_uniplex(g, "w2"))))
+  m <- terms_of(weight ~ recip(w2, weighted = FALSE) + exchange(w2), g)
+  expect_equal(unname(m[["recip_w2"]]), (w2 > 0) * 1)
+  # Without weighted =, the values are as stored.
+  expect_equal(unname(m[["exchange_w2"]]), w2)
+  m <- terms_of(weight ~ recip(w2, weighted = TRUE), g)
+  expect_equal(unname(m[["recip_w2"]]), w2)
+})
+
 test_that("recip on its own reads the outcome's reverse tie, and warns", {
   expect_warning(m <- terms_of(a ~ recip), "outcome's own ties")
   expect_equal(unname(m[["recip"]]), t(layer_of("a")))
