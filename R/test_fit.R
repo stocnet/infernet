@@ -69,6 +69,9 @@
 #'   The model needs its `simple_fit`, so a model fitted with
 #'   `less_mem = TRUE` cannot be tested. A list of networks, a panel, and a
 #'   cognitive social structure cannot be tested yet.
+#'   Nor can a `gaussian` model: its draws are continuous, so every dyad of a
+#'   draw would hold a tie, and the test would always reject.
+#'   Fit a family whose outcomes are ties or counts.
 #'
 #'   An MRQAP models each dyad apart from the others. A statistic of the
 #'   dependence between dyads, such as transitivity or reciprocity, shows
@@ -123,7 +126,8 @@
 #' test_gof(slow, obs)
 #'
 #' # Does an MRQAP make as many reciprocated ties as the observed network?
-#' fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20)
+#' fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20,
+#'                       control = list(family = "poisson"))
 #' test_gof(fit, ison_algebra, net_by_reciprocity, times = 100,
 #'          control = list(seed = 1))
 #' @export
@@ -179,8 +183,8 @@ test_gof.netreg <- function(object, observed, FUN, ...,
                             times = 1000, control = list()) {
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
-  args <- unlist(test$args)
-  measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
+  args <- test$args
+  measure <- function(g) do.call(FUN, c(list(g), args))
   model <- .netreg_simulator(object, observed)
 
   obsd <- .as_statistic(measure(model$network(model$matrix)))
@@ -390,6 +394,14 @@ test_distributions.diffs_model <- function(object1, object2,
     manynet::snet_abort(
       c("The model has no {.code simple_fit} to simulate from.",
         i = "Fit it again without {.code less_mem = TRUE}."))
+  }
+  # `as_tidygraph()` makes a tie of every nonzero cell, and a continuous draw
+  # has no zero, so every draw would be a complete network.
+  if (identical(object$family, "gaussian")) {
+    manynet::snet_abort(
+      c("{.fn test_gof} cannot simulate networks from a {.val gaussian} model.",
+        i = "Its draws are continuous, so every dyad would hold a tie, and the test would always reject.",
+        i = "Fit a family whose outcomes are ties or counts, such as {.val binomial} or {.val poisson}."))
   }
   if (inherits(object, "netreg_css") || isTRUE(object$panel) ||
       length(unique(object$pred$nv)) > 1) {

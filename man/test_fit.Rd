@@ -142,6 +142,9 @@ the node attributes of the observed one.
 The model needs its \code{simple_fit}, so a model fitted with
 \code{less_mem = TRUE} cannot be tested. A list of networks, a panel, and a
 cognitive social structure cannot be tested yet.
+Nor can a \code{gaussian} model: its draws are continuous, so every dyad of a
+draw would hold a tie, and the test would always reject.
+Fit a family whose outcomes are ties or counts.
 
 An MRQAP models each dyad apart from the others. A statistic of the
 dependence between dyads, such as transitivity or reciprocity, shows
@@ -169,7 +172,8 @@ obs <- manynet::as_diffusion(manynet::play_diffusion(ison_adolescents,
 test_gof(slow, obs)
 
 # Does an MRQAP make as many reciprocated ties as the observed network?
-fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20)
+fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20,
+                      control = list(family = "poisson"))
 test_gof(fit, ison_algebra, net_by_reciprocity, times = 100,
          control = list(seed = 1))
 }

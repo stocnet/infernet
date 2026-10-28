@@ -165,3 +165,10 @@ test_that("the engine refuses an outcome or a predictor it cannot find", {
   expect_error(QAPengine(y ~ x, list(y = list(m), x = list(m)), css = TRUE, times = 2),
                "Network 1")
 })
+
+test_that("a predictor that combines the others is refused by name", {
+  net <- manynet::mutate_nodes(qap_net_gaussian(n = 12), Age2 = 2 * Age)
+  expect_error(suppressMessages(
+    estimate_mrqap(. ~ ego(Age) + ego(Age2), net, times = 5)),
+    "\"ego_Age2\" is a combination of the other predictors")
+})

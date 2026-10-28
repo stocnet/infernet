@@ -70,6 +70,11 @@ test_that("test_permutation() gives the same draws on two workers", {
                           attribute = "Attractive", times = 20,
                           control = list(seed = 1))
   expect_equal(par$testdist, sequential$permutation$testdist)
+  # Two arguments of the statistic reach it by name on the workers too.
+  scaled <- test_permutation(marvel, function(.data, loops = FALSE, attribute, scale) {
+    scale * netrics::net_by_heterophily(.data, attribute)
+  }, attribute = "Attractive", scale = 2, times = 20, control = list(seed = 1))
+  expect_equal(scaled$testdist, 2 * sequential$permutation$testdist)
 })
 
 test_that("play_diffusions() and test_distributions() agree on two workers", {

@@ -34,6 +34,8 @@
   - Replaces the chi-squared p-value, which assumed normal curves
   - Added a method for a `diffs_model`, on the curve of infected nodes
   - Added a method for a `netreg`, which simulates outcomes from the model
+    - Refuses a gaussian `netreg`, whose draws would hold a tie in every dyad
+- Fixed the `test_*()` family passing the arguments of `FUN` as one vector
 - Added `test_distributions()`, which replaces `migraph::test_distribution()`, 
   as a generic with a permutation test over simulated models
   - Has a method for two `diffs_model` objects
@@ -72,6 +74,7 @@
   - Fixed `ego(actors$floor)` failing when its matrix is built; it is read as `ego(floor)`
 - Added `weighted =` to `recip()` and `exchange()`, as goldfish's `recip()` has
   - `weighted = FALSE` gives 0/1, and `TRUE` the values; without it, the values as stored
+- Added `weighted =` to `inertia`, as goldfish's `inertia()` has
 - Fixed `specify_ergm()` without a network giving `inertia` the reason "needs .data"
   - Gives the same reasons as with a network, e.g. "has no ergm term"
   - Records a term rewritten on reading once, as written
@@ -95,6 +98,8 @@
   - A run leaves the user's plan as the same object, with the same workers
   - Added advice on when to run in parallel to `control_mrqap()` and CONTRIBUTING
 - Fixed `print()` of a mixed model with `print_random = TRUE`, which errored
+- Fixed `estimate_mrqap()` permuting a predictor that has no coefficient
+- Improved the message of a panel whose missing cells fix every node
 
 ## Results
 

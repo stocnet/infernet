@@ -196,9 +196,10 @@
   }
   # Fitted on the previous wave of a longitudinal network, and dropped from a
   # cross-sectional one, where they could only read the outcome's own ties.
-  lagged <- function(entry, build) {
+  lagged <- function(entry, build, formals = entry$formals) {
     entry$panel <- TRUE
     entry$build <- build
+    entry$formals <- formals
     entry$twomode <- FALSE
     entry$hint <- "A two-mode network has no two-paths or repeated ties of this kind."
     entry$reason <- "needs a longitudinal network, where it reads the outcome's previous wave"
@@ -206,7 +207,8 @@
   }
   terms <- list(
     inertia         = lagged(endogenous(NA_character_, NA_character_),
-                             .build_inertia),
+                             .build_inertia,
+                             formals = alist(layer = , weighted = FALSE, ... = )),
     trans           = lagged(endogenous("transTrip", "ttriple, or dgwesp(type = \"OTP\")",
                                         .ergm_endogenous("ttriple", "triangle")),
                              .build_trans),
@@ -1210,12 +1212,15 @@
 }
 
 # The outcome's own tie in the previous wave of a panel, 0/1 as goldfish's
-# `inertia` counts it. An unobserved tie stays NA.
+# `inertia` counts it, or its value with `weighted = TRUE`, as goldfish's
+# `inertia(weighted = TRUE)` reads it. A complete ranking has a tie in every
+# dyad, so only the value varies there. An unobserved tie stays NA.
 #' @keywords internal
 #' @noRd
 .build_inertia <- function(op, ctx) {
   m <- .previous_wave(op, ctx)
-  .named((m > 0) * 1, "inertia")
+  weighted <- .arg_flag(op$args$weighted, ctx$env, "weighted")
+  .named(if (weighted) m else (m > 0) * 1, "inertia")
 }
 
 # The two-paths i -> k -> j in the previous wave of a panel, as goldfish's

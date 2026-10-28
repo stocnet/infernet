@@ -121,3 +121,58 @@ test_that("a panel refuses global() and a lagged term of another layer", {
   expect_error(suppressMessages(.prepare_panel(a ~ inertia(b), g)),
                "previous wave, not another layer")
 })
+
+test_that("a panel names the rows whose missing cells fix every node", {
+  n <- 6
+  labels <- paste0("n", seq_len(n))
+  waves <- lapply(1:2, function(t) {
+    m <- matrix(stats::rbinom(n^2, 1, 0.4), n, n, dimnames = list(labels, labels))
+    diag(m) <- 0
+    # Node 2 did not report, but its tie to node 5 is observed.
+    m[2, -5] <- NA
+    m
+  })
+  expect_error(.permutation_blocks(waves, NULL, FALSE, 10, "inertia", panel = TRUE),
+               "\"n2\" is a row that the data leave unobserved except in 2 cells")
+  # Marked missing in every cell, the row is whole, and the nodes permute.
+  waves <- lapply(waves, function(m) { m[2, 5] <- NA; m })
+  expect_type(.permutation_blocks(waves, NULL, FALSE, 10, "inertia", panel = TRUE),
+              "list")
+})
+
+# A complete ranking, as in `manynet::ison_fraternity`: each node ranks every
+# other node in every wave, so every dyad holds a tie.
+ranking_panel <- function(n = 8, waves = 3, seed = 109) {
+  set.seed(seed)
+  el <- lapply(seq_len(waves), function(t) {
+    do.call(rbind, lapply(seq_len(n), function(i) {
+      data.frame(from = i, to = setdiff(seq_len(n), i), weight = sample(n - 1),
+                 time = t)
+    }))
+  })
+  manynet::as_tidygraph(list(
+    nodes = data.frame(name = paste0("n", seq_len(n)), age = stats::runif(n, 20, 60)),
+    ties = do.call(rbind, el)))
+}
+
+test_that("a 0/1 lagged term on a complete ranking is refused by name", {
+  g <- ranking_panel()
+  expect_error(suppressMessages(
+    estimate_mrqap(. ~ inertia + ego(age), g, times = 5, control = list(seed = 1))),
+    "\"inertia\" has one value in every dyad of the model")
+  fit <- suppressMessages(
+    estimate_mrqap(. ~ inertia(weighted = TRUE) + recip(weighted = TRUE), g,
+                   times = 5, control = list(seed = 1)))
+  expect_false(anyNA(fit$coefficients[-1]))
+  expect_qap_shape(fit, names(fit$coefficients))
+})
+
+test_that("inertia(weighted = TRUE) reads the value of the previous tie", {
+  waves <- manynet::to_waves(ranking_panel())
+  ml <- convertToMatrixList(. ~ inertia(weighted = TRUE), waves[[2]],
+                            advise = FALSE, previous = waves[[1]])
+  expect_equal(unname(ml$mydata$inertia), unname(manynet::as_matrix(waves[[1]])))
+  expect_error(convertToMatrixList(. ~ inertia(weighted = "yes"), waves[[2]],
+                                   advise = FALSE, previous = waves[[1]]),
+               "weighted")
+})

@@ -178,17 +178,36 @@ test_that("test_gof() on a netreg finds the dependence that an MRQAP leaves out"
 })
 
 test_that("test_gof() on a netreg takes a statistic of several values", {
-  net <- qap_net_gaussian(n = 12)
-  fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), net, times = 5)
+  net <- qap_net_count(n = 12)
+  fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), net, times = 5,
+                        control = list(family = "poisson"))
   stat <- function(g) c(mean(manynet::as_matrix(g)), stats::sd(manynet::as_matrix(g)))
   res <- test_gof(fit, net, stat, times = 40, control = list(seed = 1))
   expect_length(res$testdist, 20)
   expect_true(all(res$testdist >= 0))
 })
 
+test_that("test_gof() on a netreg passes each argument of FUN by its name", {
+  net <- qap_net_binary(n = 12)
+  fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
+  # Neither argument is the second formal of the statistic.
+  stat <- function(g, loops = FALSE, scale, shift) {
+    c(scale * netrics::net_by_reciprocity(g), shift)
+  }
+  res <- test_gof(fit, net, stat, scale = 2, shift = 1, times = 40,
+                  control = list(seed = 1))
+  expect_length(res$testdist, 20)
+  expect_error(test_gof(fit, net, stat, scale = 2, times = 5), "shift")
+})
+
 test_that("test_gof() on a netreg mirrors an undirected network", {
-  net <- qap_net_undirected(n = 12)
+  set.seed(6)
+  m <- matrix(stats::rbinom(144, 1, 0.3), 12, 12)
+  m[lower.tri(m)] <- t(m)[lower.tri(m)]
+  diag(m) <- 0
+  net <- manynet::mutate(manynet::as_tidygraph(m), Age = stats::runif(12))
   fit <- estimate_mrqap(. ~ diff(Age), net, times = 5)
+  expect_equal(fit$family, "binomial")
   sim <- infernet:::.netreg_simulator(fit, net)
   d <- sim$draw()
   expect_equal(d, t(d))
@@ -224,6 +243,20 @@ test_that("test_gof() and test_distributions() name what they need", {
   expect_error(test_gof(sims, 1:3), "diffusion record")
   expect_error(test_distributions(sims, fake_curve()), "two")
   expect_error(test_distributions(fake_diffs(1), sims, times = 5), "at least 2")
+})
+
+test_that("test_gof() on a netreg refuses a gaussian model", {
+  # A valued network of density about 0.33. A continuous draw has no zero, so
+  # each would have density 1, and the test would always reject.
+  set.seed(5)
+  m <- matrix(stats::rnorm(144, 2), 12, 12)
+  m[matrix(stats::runif(144), 12, 12) > 1 / 3] <- 0
+  diag(m) <- 0
+  net <- manynet::mutate(manynet::as_tidygraph(m), Age = stats::runif(12))
+  fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
+  expect_equal(fit$family, "gaussian")
+  expect_error(test_gof(fit, net, netrics::net_by_density, times = 5),
+               "cannot simulate networks from a \"gaussian\" model")
 })
 
 test_that("test_gof() on a netreg refuses a list, a panel, and a CSS", {

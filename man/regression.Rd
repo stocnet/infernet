@@ -280,7 +280,9 @@ each node keeps its own trajectory under the null hypothesis.
 Three of goldfish's effects then read the outcome's previous wave, as
 goldfish and RSiena read the state of the network before each change:
 \itemize{
-\item \code{inertia}, the tie from i to j in the previous wave;
+\item \code{inertia}, the tie from i to j in the previous wave, as 0/1, or its
+value with \code{inertia(weighted = TRUE)}, as on a complete ranking, where
+every dyad holds a tie;
 \item \code{recip}, the tie from j to i in the previous wave;
 \item \code{trans}, the number of two-paths i -> k -> j in the previous wave,
 counting only observed ties.

@@ -88,6 +88,28 @@ test_that("the draws from a stocnet keep its attributes and its statistic", {
   expect_false(anyNA(cug$testdist))
 })
 
+# Neither argument is the second formal of the statistic, so each must reach
+# it by name. migraph's `FUN(g, unlist(args))` gave both to `loops` as one vector.
+scaled_heterophily <- function(.data, loops = FALSE, attribute, scale) {
+  scale * netrics::net_by_heterophily(.data, attribute)
+}
+
+test_that("the tests pass each argument of FUN by its name", {
+  tests <- list(random = test_random, configuration = test_configuration,
+                permutation = test_permutation)
+  for (test in names(tests)) {
+    plain <- tests[[test]](marvel_friends, netrics::net_by_heterophily,
+                           attribute = "Attractive", times = 10,
+                           control = list(seed = 4))
+    scaled <- tests[[test]](marvel_friends, scaled_heterophily,
+                            attribute = "Attractive", scale = 2, times = 10,
+                            control = list(seed = 4))
+    expect_equal(as.numeric(scaled$testval), 2 * as.numeric(plain$testval),
+                 label = test)
+    expect_equal(scaled$testdist, 2 * plain$testdist, label = test)
+  }
+})
+
 # The same on two workers is in test-parallel.R.
 test_that("the tests take ncores and seed as controls, and refuse ncores = 0", {
   one <- test_permutation(marvel_friends, netrics::net_by_heterophily,

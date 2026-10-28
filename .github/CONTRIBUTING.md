@@ -936,7 +936,7 @@ A cognitive social structure and a list of networks abort.
 | `(1 \| sender)` | fits | a random intercept for each sender, receiver, reporter, or network | — | — | — |
 | `\| sender` | fits | a fixed effect for each sender, receiver, reporter, or network; goldfish drops it | `sender`, `receiver` | — | — |
 | `a:b`, `a*b` | fits | the product, of any order | `:` and `*`, converted as `edgecov` of the product | `set_interaction()` | — |
-| `inertia`, `inertia()` | drops; fits on a panel | the tie from i to j in the previous wave; goldfish: the past events from i to j | — | — | — |
+| `inertia`, `inertia(weighted = FALSE)` | drops; fits on a panel | the tie from i to j in the previous wave, 0/1, or its value with `weighted = TRUE`; goldfish: the past events from i to j | — | — | — |
 | `trans`, `trans()` | drops; fits on a panel | the two-paths i → k → j in the previous wave; goldfish: the two-paths i → k → j | `ttriple`, `dgwesp(type = "OTP")`; `triangle` in an undirected network | `transTrip` | — |
 | `cycle`, `cycle()` | drops | goldfish: the two-paths j → k → i | `ctriple`, `dgwesp(type = "ITP")` | `cycle3` | — |
 | `common_sender`, `common_sender()` | drops | goldfish: the nodes k with k → i and k → j | `dgwesp(type = "ISP")` | `gwespBF`, nearest | — |

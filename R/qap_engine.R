@@ -201,6 +201,7 @@ QAPengine <- function(formula,
                             has_random   = has_random,
                             fixed_effects = fit_fixed,
                             fixed_df     = fixed_df)
+  .check_estimable(fit$base$coefficients, pred)
   if (!is.null(fit_fixed)) {
     removed <- nrow(pred) - stats::nobs(fit$base$base_model)
     if (removed > 0)
@@ -545,4 +546,29 @@ QAPPermEst <- function(i,
     out[seq_len(nrow(draws)), ] <- draws
   }
   out
+}
+
+# A predictor that is constant in the dyads of the model, or a combination of
+# the others, has no coefficient: `lm()` and `glm()` give it NA. Every
+# permutation would then return one coefficient fewer than the baseline, and
+# the result could not be read, so the model stops here and names the term.
+# The intercept of a model with fixed effects is NA by design.
+#' @keywords internal
+#' @noRd
+.check_estimable <- function(coefs, pred) {
+  aliased <- setdiff(names(coefs)[is.na(coefs)], "(Intercept)")
+  if (length(aliased) == 0) return(invisible(NULL))
+  constant <- aliased[aliased %in% names(pred)]
+  constant <- constant[vapply(constant, function(v) {
+    length(unique(pred[[v]])) == 1
+  }, logical(1))]
+  if (length(constant) > 0) {
+    manynet::snet_abort(
+      c("{.val {constant}} {?has/have} one value in every dyad of the model, so {?it has/they have} no coefficient.",
+        i = "A 0/1 term of the ties, such as {.code inertia}, is 1 in every dyad where every dyad holds a tie, as in a complete ranking.",
+        i = "Remove such a term from the formula, or read the value of the tie, for example with {.code inertia(weighted = TRUE)}."))
+  }
+  manynet::snet_abort(
+    c("{.val {aliased}} {?is a combination/are combinations} of the other predictors, so {?it has/they have} no coefficient.",
+      i = "Remove one of the terms that it combines from the formula."))
 }

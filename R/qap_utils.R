@@ -236,14 +236,16 @@ run_permutations <- function(times, FUN, ...) {
   scattered <- na & !explained
   fix_row <- apply(scattered, 1, any)
   fix_col <- apply(scattered, 2, any)
+  near <- .near_whole(na, use, scattered, dimnames(m))
 
   if (!css) {
     if (nr == nc) {
       rows <- .block_labels(paste(row_na, col_na), fix_row | fix_col, groups)
-      return(list(rows = rows, cols = rows))
+      return(structure(list(rows = rows, cols = rows), near = near))
     }
-    return(list(rows = .block_labels(paste(row_na), fix_row, groups),
-                cols = .block_labels(paste(col_na), fix_col, groups)))
+    return(structure(list(rows = .block_labels(paste(row_na), fix_row, groups),
+                          cols = .block_labels(paste(col_na), fix_col, groups)),
+                     near = near))
   }
 
   # The slices of a CSS are its nodes, in the order `.perm_css()` reads them.
@@ -252,14 +254,34 @@ run_permutations <- function(times, FUN, ...) {
   if (nr == nc && nc == np) {
     rows <- .block_labels(paste(row_na, col_na, slice_na),
                           fix_row | fix_col | fix_slice, groups)
-    return(list(rows = rows, cols = rows))
+    return(structure(list(rows = rows, cols = rows), near = near))
   }
   if (np != nr + nc) return(NULL)
   ci <- nr + seq_len(nc)
-  list(rows = .block_labels(paste(row_na, slice_na[seq_len(nr)]),
-                            fix_row | fix_slice[seq_len(nr)], groups),
-       cols = .block_labels(paste(col_na, slice_na[ci]),
-                            fix_col | fix_slice[ci], groups))
+  structure(list(rows = .block_labels(paste(row_na, slice_na[seq_len(nr)]),
+                                      fix_row | fix_slice[seq_len(nr)], groups),
+                 cols = .block_labels(paste(col_na, slice_na[ci]),
+                                      fix_col | fix_slice[ci], groups)),
+            near = near)
+}
+
+# The rows and columns that are mostly unobserved, but not wholly. Their
+# missing cells are scattered, so each fixes the node at its other end, and a
+# few such lines can fix nearly every node. A node that did not report, but
+# whose line keeps an observed cell, is the usual cause. Each line is named,
+# with its number of observed cells.
+#' @keywords internal
+#' @noRd
+.near_whole <- function(na, use, scattered, labels = NULL) {
+  lines <- function(margin) {
+    n_na  <- apply(na, margin, sum)
+    n_use <- apply(use, margin, sum)
+    hit <- apply(scattered, margin, any) & n_na > n_use / 2
+    nm <- labels[[margin]]
+    if (is.null(nm)) nm <- as.character(seq_along(hit))
+    stats::setNames(n_use[hit] - n_na[hit], nm[hit])
+  }
+  list(rows = lines(1), cols = lines(2))
 }
 
 # Combines a mode's missing-data signature with the user's blocking factor,
@@ -318,10 +340,21 @@ run_permutations <- function(times, FUN, ...) {
   }, numeric(1)))
 
   if (log_perms == 0) {
+    near <- .combine_near(lapply(parts, attr, "near"))
+    rows <- names(near$rows)
+    cols <- names(near$cols)
+    seen <- sum(near$rows, near$cols)
     manynet::snet_abort(
       c("No permutation of {.val {label}} keeps its missing cells in place.",
         i = "Every node is fixed, or alone in its block.",
-        i = "Remove the scattered missing cells, for example with {.fn manynet::to_no_missing}."))
+        if (length(rows) > 0)
+          c(i = "{.val {rows}} {?is a row/are rows} that the data leave unobserved except in {seen} cell{?s}."),
+        if (length(cols) > 0 && length(rows) == 0)
+          c(i = "{.val {cols}} {?is a column/are columns} that the data leave unobserved except in {seen} cell{?s}."),
+        if (length(rows) + length(cols) > 0)
+          c(i = "Those missing cells are scattered, not whole lines, so each fixes the node that it points to.",
+            i = "If a node did not report, mark every cell of its line as missing."),
+        i = "Or remove the scattered missing cells, for example with {.fn manynet::to_no_missing}."))
   }
   if (log_perms < log(times)) {
     distinct <- round(exp(log_perms))
@@ -366,9 +399,24 @@ run_permutations <- function(times, FUN, ...) {
     fixed <- rowSums(matrix(startsWith(labs, "fixed"), nrow = n)) > 0
     .block_labels(apply(labs, 1, paste, collapse = "/"), fixed, groups)
   }
+  near <- .combine_near(lapply(per_wave, attr, "near"))
   rows <- mode_labels("rows", d[1])
-  if (d[1] == d[2]) return(list(rows = rows, cols = rows))
-  list(rows = rows, cols = mode_labels("cols", d[2]))
+  if (d[1] == d[2]) return(structure(list(rows = rows, cols = rows), near = near))
+  structure(list(rows = rows, cols = mode_labels("cols", d[2])), near = near)
+}
+
+# The mostly unobserved lines of several matrices, such as the waves of a
+# panel, with their observed cells summed over the matrices.
+#' @keywords internal
+#' @noRd
+.combine_near <- function(nears) {
+  nears <- Filter(Negate(is.null), nears)
+  side <- function(which) {
+    x <- unlist(lapply(nears, `[[`, which))
+    if (length(x) == 0) return(x)
+    tapply(x, factor(names(x), unique(names(x))), sum)
+  }
+  list(rows = side("rows"), cols = side("cols"))
 }
 
 # The cells a model could use, and how many of them are unobserved on each

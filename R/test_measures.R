@@ -46,12 +46,8 @@ test_random <- function(.data, FUN, ...,
                         control = list()){
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
-  args <- unlist(test$args)
-  if (!is.null(args)) {
-    obsd <- FUN(.data, args)
-  } else {
-    obsd <- FUN(.data)
-  }
+  args <- test$args
+  obsd <- do.call(FUN, c(list(.data), args))
   simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::generate_random, bind = TRUE)
   out <- list(test = "CUG",
@@ -75,12 +71,8 @@ test_configuration <- function(.data, FUN, ...,
                         control = list()){
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
-  args <- unlist(test$args)
-  if (!is.null(args)) {
-    obsd <- FUN(.data, args)
-  } else {
-    obsd <- FUN(.data)
-  }
+  args <- test$args
+  obsd <- do.call(FUN, c(list(.data), args))
   simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::generate_configuration, bind = TRUE)
   out <- list(test = "configuration",
@@ -108,12 +100,8 @@ test_permutation <- function(.data, FUN, ...,
                              control = list()){
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
-  args <- unlist(test$args)
-  if (!is.null(args)) {
-    obsd <- FUN(.data, args)
-  } else {
-    obsd <- FUN(.data)
-  }
+  args <- test$args
+  obsd <- do.call(FUN, c(list(.data), args))
   simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
                               draw = manynet::to_permuted, bind = FALSE)
   out <- list(test = "QAP",
@@ -164,7 +152,9 @@ test_permutation <- function(.data, FUN, ...,
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
   on.exit(restore_future_plan(old_plan), add = TRUE)
-  measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
+  # `do.call()` passes each argument by its name, so it need not be the second
+  # formal of `FUN`, and the closure needs nothing from the package.
+  measure <- function(g) do.call(FUN, c(list(g), args))
   .data <- .draw_from(.data, measure)
   rands <- future.apply::future_lapply(seq_len(times), function(i) draw(.data),
                                        future.seed = TRUE)

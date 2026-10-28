@@ -112,7 +112,9 @@
 #'   Three of goldfish's effects then read the outcome's previous wave, as
 #'   goldfish and RSiena read the state of the network before each change:
 #'
-#'   - `inertia`, the tie from i to j in the previous wave;
+#'   - `inertia`, the tie from i to j in the previous wave, as 0/1, or its
+#'     value with `inertia(weighted = TRUE)`, as on a complete ranking, where
+#'     every dyad holds a tie;
 #'   - `recip`, the tie from j to i in the previous wave;
 #'   - `trans`, the number of two-paths i -> k -> j in the previous wave,
 #'     counting only observed ties.
