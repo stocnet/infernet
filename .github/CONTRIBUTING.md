@@ -302,14 +302,14 @@ Likewise `README.md` is generated from `README.Rmd` — edit the `.Rmd` and re-k
 ### File organization
 
 `R/` files are grouped by theme rather than one file per function.
-The user-facing files are named `model_*.R`;
+The user-facing files are named `test_*.R` for the `test_*()` functions and `model_*.R` for the rest;
 the internal engine ported from `MrQAP` is named `qap_*.R`.
 
 | File | Contains |
 |---|---|
-| `model_tests.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
-| `model_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
-| `model_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for a `netreg`, and the joint double semi-partialling they share |
+| `test_measures.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
+| `test_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
+| `test_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for a `netreg`, and the joint double semi-partialling they share |
 | `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
 | `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
@@ -330,7 +330,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `infernet-package.R` | package-level doc, global variables, and the shim silencing R CMD check's unused-import note |
 | `zzz.R` | the attach-time greeting and the cached stocnet version check |
 
-Only `model_*.R` holds exported functions.
+Only `test_*.R` and `model_*.R` hold exported functions.
 Everything in `qap_*.R` is internal, and carries `@keywords internal` and `@noRd`.
 Keep it that way: the engine's argument names are the `MrQAP` ones, and
 exporting them would freeze an interface we still intend to tidy.
@@ -498,7 +498,7 @@ argument in the method, not in the generic.
 Until the packages share one generic (D17 of the roadmap), the package that
 is attached last masks the others; `infernet::test_gof()` always reaches this one.
 The same holds for `test_parameter(x, ...)` and `test_time(x, ...)`, in
-[R/model_parameter.R](../R/model_parameter.R): their first argument is `x`,
+[R/test_parameter.R](../R/test_parameter.R): their first argument is `x`,
 not `object`, as in `{RSiena}` and `{goldfish}`.
 Each method follows the same steps:
 

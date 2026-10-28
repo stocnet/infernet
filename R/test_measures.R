@@ -1,7 +1,8 @@
 # Tests of network measures ####
 
 #' Tests of network measures
-#' @name tests
+#' @name test_measures
+#' @aliases tests
 #' @description
 #'   These functions conduct tests of any network-level statistic:
 #'   
@@ -30,7 +31,7 @@
 #'   e.g. the name of the attribute.
 NULL
 
-#' @rdname tests 
+#' @rdname test_measures
 #' @importFrom manynet generate_random bind_node_attributes is_directed is_complex
 #' @examples 
 #' marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
@@ -66,7 +67,7 @@ test_random <- function(.data, FUN, ...,
   out
 }
 
-#' @rdname tests 
+#' @rdname test_measures
 #' @importFrom manynet generate_configuration
 #' @export
 test_configuration <- function(.data, FUN, ..., 
@@ -95,7 +96,7 @@ test_configuration <- function(.data, FUN, ...,
   out
 }
 
-#' @rdname tests 
+#' @rdname test_measures
 #' @examples 
 #' # (qaptest <- test_permutation(marvel_friends, 
 #' #                 net_by_heterophily, attribute = "Attractive",

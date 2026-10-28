@@ -12,49 +12,13 @@ test_that("test_parameter() and test_time() refuse a class with no method", {
 
 # ---- network regressions -----------------------------------------------------
 
-# A network whose outcome depends on the sender's Age, with a sender effect in
-# the noise, and an attribute B correlated with Age whose coefficient is
-# `b_alter_B`.
-param_net <- function(n = 10, family = "gaussian", b_alter_B = 0) {
-  age <- stats::rnorm(n)
-  B <- 0.6 * age + stats::rnorm(n, sd = 0.8)
-  eta <- outer(age, B, function(a, b) 0.5 * a + b_alter_B * b) +
-    stats::rnorm(n, sd = 0.5)
-  m <- switch(family,
-              gaussian = eta + matrix(stats::rnorm(n^2), n, n),
-              binomial = matrix(stats::rbinom(n^2, 1, stats::plogis(eta - 0.5)), n, n))
-  diag(m) <- 0
-  manynet::mutate_nodes(manynet::as_tidygraph(m), Age = age, B = B,
-                        Grp = rep(c("a", "b", "c"), length.out = n))
-}
-
 param_fit <- function(net, formula = . ~ ego(Age) + alter(B), family = "gaussian") {
   suppressWarnings(suppressMessages(
     estimate_mrqap(formula, net, times = 1, control = list(family = family))))
 }
 
-# A panel of three waves whose density changes, and whose effect of the
-# sender's age is `b` in the second wave and in the third.
-param_panel <- function(b = c(0.04, 0.04), n = 15) {
-  age <- stats::runif(n, 20, 60)
-  m <- matrix(stats::rbinom(n^2, 1, 0.2), n, n)
-  diag(m) <- 0
-  dens <- c(-1.5, -1)
-  el <- list(data.frame(which(m == 1, arr.ind = TRUE), time = 1))
-  for (t in 2:3) {
-    p <- stats::plogis(dens[t - 1] + 1.5 * t(m) + b[t - 1] * (age - 40))
-    m <- matrix(stats::rbinom(n^2, 1, p), n, n)
-    diag(m) <- 0
-    el[[t]] <- data.frame(which(m == 1, arr.ind = TRUE), time = t)
-  }
-  ties <- do.call(rbind, el)
-  names(ties) <- c("from", "to", "time")
-  manynet::as_tidygraph(list(nodes = data.frame(name = paste0("n", seq_len(n)),
-                                                age = age),
-                             ties = ties))
-}
-
 test_that("test_parameter() p-values are uniform under the hypothesis", {
+  skip_unless_slow("a calibration")
   set.seed(31)
   p <- replicate(100, {
     test_parameter(param_fit(param_net()), "alter_B", times = 39)$pgteobs
@@ -66,6 +30,7 @@ test_that("test_parameter() p-values are uniform under the hypothesis", {
 })
 
 test_that("test_parameter() rejects a coefficient that is not the value", {
+  skip_unless_slow("a calibration")
   set.seed(32)
   p <- replicate(30, {
     test_parameter(param_fit(param_net(b_alter_B = 0.5)), "alter_B",
@@ -100,6 +65,7 @@ test_that("test_parameter() tests the levels of an attribute together", {
 })
 
 test_that("test_parameter() agrees with estimate_mrqap() on one coefficient", {
+  skip_unless_slow("a calibration")
   # With one coefficient, the joint test is the engine's double
   # semi-partialling, with the deviance in place of the t-statistic.
   set.seed(34)
@@ -112,7 +78,7 @@ test_that("test_parameter() agrees with estimate_mrqap() on one coefficient", {
   expect_gt(stats::cor(res[, 1], res[, 2]), 0.9)
 })
 
-test_that("test_parameter() runs on a binomial model", {
+test_that("test_parameter() completes every draw of a binomial model", {
   set.seed(35)
   fit <- param_fit(param_net(n = 12, family = "binomial"), family = "binomial")
   res <- test_parameter(fit, "ego_Age", times = 39, control = list(seed = 1))
@@ -146,6 +112,7 @@ test_that("test_parameter() keeps the dyads of the model in every shape", {
 })
 
 test_that("test_time() p-values are uniform when the coefficients are constant", {
+  skip_unless_slow("a calibration")
   set.seed(36)
   p <- replicate(40, {
     fit <- suppressWarnings(suppressMessages(
@@ -168,15 +135,13 @@ test_that("test_time() finds a coefficient that changes between waves", {
                c("ego_age:wave2", "recip:wave2"))
 })
 
-test_that("test_parameter() reproduces with a seed, in parallel too", {
-  skip_on_cran()
+# The same on two workers is in test-parallel.R.
+test_that("test_parameter() reproduces with a seed", {
   fit <- suppressMessages(estimate_mrqap(. ~ ego(Age) + alter(Age) + ego(Grp),
                                          qap_net_gaussian(n = 12), times = 5))
-  one <- test_parameter(fit, "ego_Grp", times = 40, control = list(seed = 3))
-  two <- test_parameter(fit, "ego_Grp", times = 40,
-                        control = list(seed = 3, ncores = 2))
+  one <- test_parameter(fit, "ego_Grp", times = 20, control = list(seed = 3))
+  two <- test_parameter(fit, "ego_Grp", times = 20, control = list(seed = 3))
   expect_equal(one, two)
-  expect_s3_class(future::plan(), "sequential")
 })
 
 test_that("test_parameter() and test_time() refuse what they cannot test", {

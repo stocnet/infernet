@@ -58,5 +58,5 @@ Config/Needs/website:
     pkgdown
 Config/testthat/parallel: true
 Config/testthat/edition: 3
-Config/testthat/start-first: qap_estimators, model_tests
+Config/testthat/start-first: qap_css, qap_draws, qap_estimators, qap_fixed
 Config/roxygen2/version: 8.1.1

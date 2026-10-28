@@ -59,6 +59,7 @@ test_that("test_gof() rejects a curve from another model", {
 })
 
 test_that("test_distributions() p-values are uniform under one model", {
+  skip_unless_slow("a calibration")
   set.seed(13)
   p <- replicate(120, {
     test_distributions(fake_diffs(10), fake_diffs(10), times = 39)$pgteobs
@@ -130,20 +131,18 @@ test_that("test_gof() aligns curves of different lengths", {
   expect_equal(curves$simulated, rbind(c(1, 2, 3, 4), c(1, 1, 1, 1)))
 })
 
-test_that("test_gof() of a diffusion reproduces with a seed, in parallel too", {
-  skip_on_cran()
+# The same on two workers is in test-parallel.R.
+test_that("play_diffusions() and test_distributions() reproduce with a seed", {
   set.seed(16)
   g <- manynet::generate_random(12, 0.25)
-  one <- play_diffusions(g, transmissibility = 0.4, times = 40,
+  one <- play_diffusions(g, transmissibility = 0.4, times = 8,
                          control = list(seed = 1))
-  two <- play_diffusions(g, transmissibility = 0.4, times = 40,
-                         control = list(seed = 1, ncores = 2))
+  two <- play_diffusions(g, transmissibility = 0.4, times = 8,
+                         control = list(seed = 1))
   expect_equal(one, two)
-  a <- test_distributions(one, one, times = 20, control = list(seed = 2))
-  b <- test_distributions(one, one, times = 20,
-                         control = list(seed = 2, ncores = 2))
+  a <- test_distributions(one, one, times = 5, control = list(seed = 2))
+  b <- test_distributions(one, one, times = 5, control = list(seed = 2))
   expect_equal(a, b)
-  expect_s3_class(future::plan(), "sequential")
 })
 
 # ---- network regressions -----------------------------------------------------
@@ -196,14 +195,13 @@ test_that("test_gof() on a netreg mirrors an undirected network", {
   expect_false(manynet::is_directed(sim$network(d)))
 })
 
-test_that("test_gof() on a netreg reproduces with a seed, in parallel too", {
-  skip_on_cran()
+test_that("test_gof() on a netreg reproduces with a seed", {
   net <- qap_net_binary(n = 12)
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
   one <- test_gof(fit, net, netrics::net_by_reciprocity, times = 40,
                   control = list(seed = 3))
   two <- test_gof(fit, net, netrics::net_by_reciprocity, times = 40,
-                  control = list(seed = 3, ncores = 2))
+                  control = list(seed = 3))
   expect_equal(one, two)
 })
 
@@ -219,4 +217,19 @@ test_that("test_gof() on a netreg refuses what it cannot simulate", {
                "not the network")
   expect_error(test_gof(fit, net, function(g) numeric(0), times = 5),
                "at least one number")
+})
+
+test_that("test_gof() and test_distributions() name what they need", {
+  sims <- fake_diffs(5)
+  expect_error(test_gof(sims, 1:3), "diffusion record")
+  expect_error(test_distributions(sims, fake_curve()), "two")
+  expect_error(test_distributions(fake_diffs(1), sims, times = 5), "at least 2")
+})
+
+test_that("test_gof() on a netreg refuses a list, a panel, and a CSS", {
+  pooled <- suppressMessages(estimate_mrqap(
+    . ~ ego(Age), list(qap_net_binary(n = 10), qap_net_binary(n = 10, seed = 2)),
+    times = 2))
+  expect_error(test_gof(pooled, qap_net_binary(n = 10), netrics::net_by_reciprocity,
+                        times = 5), "cannot yet simulate")
 })

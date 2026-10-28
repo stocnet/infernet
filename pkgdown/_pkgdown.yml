@@ -56,13 +56,18 @@ articles:
       - "`articles/diffusion-and-learning`"
 reference:
   - title: "Tests"
-    desc: "Functions for testing network statistics against a null distribution:"
+    desc: >
+      Functions for testing a network statistic against random networks,
+      networks with the same degrees, or permutations of the network,
+      and for testing the parameters and the fit of a model:
     contents:
-      - starts_with("test")
-  - title: "Formulas"
-    desc: "Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:"
+      - starts_with("test_")
+  - title: "Specification"
+    desc: >
+      Functions for reading one formula for an MRQAP, a goldfish DyNAM, or an ERGM,
+      and for seeing what each model makes of each term:
     contents:
-      - specify
+      - starts_with("specify_")
   - title: "Regression"
     desc: "Functions for regressing networks on nodal and dyadic covariates:"
     contents:

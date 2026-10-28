@@ -1,7 +1,7 @@
 # Tests of model fit ####
 
 #' Tests of model fit
-#' @name test_gof
+#' @name test_fit
 #' @description
 #'   These functions test whether a model makes data like the observed data,
 #'   or whether two models make the same data:
@@ -73,7 +73,7 @@
 #'   An MRQAP models each dyad apart from the others. A statistic of the
 #'   dependence between dyads, such as transitivity or reciprocity, shows
 #'   what that misses.
-#' @inheritParams tests
+#' @inheritParams test_measures
 #' @param object A model to simulate from:
 #'   a `diffs_model`, from `play_diffusions()`, or a `netreg`, from
 #'   `estimate_mrqap()`.
@@ -129,7 +129,7 @@
 #' @export
 test_gof <- function(object, ...) UseMethod("test_gof")
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_gof.default <- function(object, observed, ...) {
   manynet::snet_abort(
@@ -139,7 +139,7 @@ test_gof.default <- function(object, observed, ...) {
 
 # `{migraph}`'s `test_fit()` took the observed diffusion first. The model now
 # comes first, so that `test_gof()` can dispatch on it.
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_gof.diff_model <- function(object, observed, ...) {
   if (inherits(observed, "diffs_model")) {
@@ -154,7 +154,7 @@ test_gof.diff_model <- function(object, observed, ...) {
       i = "Simulate many diffusions with {.fn play_diffusions}, and give them first."))
 }
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_gof.diffs_model <- function(object, observed, ...) {
   if (!inherits(observed, "diff_model")) {
@@ -173,7 +173,7 @@ test_gof.diffs_model <- function(object, observed, ...) {
   .fit_test(curves$observed, curves$simulated, test = "Goodness-of-fit")
 }
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_gof.netreg <- function(object, observed, FUN, ...,
                             times = 1000, control = list()) {
@@ -203,13 +203,13 @@ test_gof.netreg <- function(object, observed, FUN, ...,
   out
 }
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_distributions <- function(object1, object2, ...) {
   UseMethod("test_distributions")
 }
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_distributions.default <- function(object1, object2, ...) {
   manynet::snet_abort(
@@ -218,7 +218,7 @@ test_distributions.default <- function(object1, object2, ...) {
       i = "To compare one observed diffusion with a model, use {.fn test_gof}."))
 }
 
-#' @rdname test_gof
+#' @rdname test_fit
 #' @export
 test_distributions.diffs_model <- function(object1, object2,
                                            times = 1000, control = list(), ...) {

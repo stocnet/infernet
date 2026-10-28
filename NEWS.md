@@ -7,7 +7,7 @@
   - Added the `reporter` terms to the formula dictionary
   - Added how a permutation set draws from a plan, and how to time it
   - Added goldfish's bare `indeg`, offsets, and node tables to the formula dictionary
-  - Added `model_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
+  - Added `test_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 
 ## Diffusion
