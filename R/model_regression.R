@@ -679,6 +679,20 @@ print.netreg <- function(x, ...) {
   out
 }
 
+# `random.intercepts` holds one vector for each slot that has an intercept, so
+# each is printed as its own column.
+.print_random_intercepts <- function(x, rule) {
+  slots <- c(sv = "sender", rv = "receiver", nv = "network", bv = "reporter")
+  for (nm in names(x$random.intercepts)) {
+    v <- x$random.intercepts[[nm]]
+    who <- if (nm %in% names(slots)) slots[[nm]] else nm
+    cmat <- matrix(round(as.numeric(v), 3), ncol = 1,
+                   dimnames = list(names(v), paste0("Random intercepts of each ", who, ":")))
+    print.table(cmat)
+    cat(rule)
+  }
+}
+
 .print_qap_regression <- function(x, print_b = FALSE, print_random = FALSE) {
   if (is.null(x$random.intercepts)) {
     cat("\nOLS Network Model\n\n")
@@ -743,11 +757,7 @@ print.netreg <- function(x, ...) {
   cat("\n--------------\n")
 
   if (!is.null(x$random.intercepts) && print_random) {
-    cmat <- matrix(round(x$random.intercepts, 3),
-                   nrow = length(x$random.intercepts), ncol = 1)
-    colnames(cmat) <- "Random Intercepts:"
-    print.table(cmat)
-    cat("\n--------------\n")
+    .print_random_intercepts(x, "\n--------------\n")
   }
 
   if (!is.null(x$confusion_matrix)) {
@@ -828,11 +838,7 @@ print.netreg <- function(x, ...) {
   cat("--------------\n")
 
   if (!is.null(x$random.intercepts) && print_random) {
-    cmat <- matrix(round(x$random.intercepts, 3),
-                   nrow = length(x$random.intercepts), ncol = 1)
-    colnames(cmat) <- "Random Intercepts:"
-    print.table(cmat)
-    cat("--------------\n")
+    .print_random_intercepts(x, "--------------\n")
   }
 
   if (!is.null(x$simple_fit)) {

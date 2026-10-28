@@ -13,7 +13,7 @@ control_mrqap(
   seed = NULL,
   groups = NULL,
   ncores = NULL,
-  strategy = "sequential",
+  strategy = NULL,
   use_robust_errors = FALSE,
   random_intercept_nets = FALSE,
   random_intercept_sender = FALSE,
@@ -60,12 +60,22 @@ On a two-mode network, its length says which mode it groups.
 \item{ncores}{A number of cores to run the permutations on.
 More than one runs them on that many \code{"multisession"} workers, and one runs
 them sequentially, whatever \code{strategy} says.
-\code{NULL} (the default) leaves the choice to \code{strategy}.}
+\code{NULL} (the default) leaves the choice to \code{strategy}.
+A parallel run helps only where each permutation is costly: a family
+other than \code{"gaussian"}, random intercepts, or a cognitive social
+structure, on a network of more than about 50 nodes, with 1,000 or more
+\code{times}. Elsewhere the start of the workers costs more than it saves:
+a gaussian model solves its design once, so each permutation is cheap.
+Give \code{ncores} rather than \code{strategy = "multisession"}, which starts a
+worker on every core.}
 
 \item{strategy}{The \code{{future}} plan that the permutations run on where
-\code{ncores} is \code{NULL}: \code{"sequential"} (the default), \code{"multisession"},
-\code{"multicore"}, or \code{"cluster"}. The plan that was set before is restored
-after the fit.}
+\code{ncores} is \code{NULL}: \code{"sequential"}, \code{"multisession"}, \code{"multicore"}, or
+\code{"cluster"}. The plan that was set before is restored after the fit.
+\code{NULL} (the default) uses the plan that was set with \code{future::plan()},
+which is sequential unless it was changed. Set a plan once in a session,
+with \code{future::plan(future::multisession, workers = 2)}, and its workers
+start once, not once in each call.}
 
 \item{use_robust_errors}{Logical, whether to use HC3 robust standard errors
 for the observed model's t values. \code{FALSE} by default.}
@@ -134,8 +144,8 @@ Other models:
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
 \code{\link{specify}},
-\code{\link[=test_gof]{test_gof()}},
-\code{\link[=test_parameter]{test_parameter()}},
-\code{\link{tests}}
+\code{\link{test_fit}},
+\code{\link{test_measures}},
+\code{\link[=test_parameter]{test_parameter()}}
 }
 \concept{models}

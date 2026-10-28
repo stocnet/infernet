@@ -320,14 +320,9 @@ tidy.ergm <- function(x, conf.int = FALSE, conf.level = 0.95,
     out$conf.low <- out$estimate - z * out$std.error
     out$conf.high <- out$estimate + z * out$std.error
   }
-  if (exponentiate) {
-    if (is.null(x$glm) ||
-        (x$glm$family$link != "logit" && x$glm$family$link != "log")) {
-      manynet::snet_warn("Coefficients will be exponentiated, but the model did not
-                use a {.code log} or {.code logit} link.")
-    }
-    out <- .exponentiate(out)
-  }
+  # An ERGM's coefficients are conditional log-odds, so their exponents are
+  # odds ratios. `{ergm}` no longer keeps the `glm` this once checked a link on.
+  if (exponentiate) out <- .exponentiate(out)
   out
 }
 

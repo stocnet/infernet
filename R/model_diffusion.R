@@ -49,10 +49,7 @@ play_diffusions <- function(.data, ..., times = 5, control = list()) {
 
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
   out <- future.apply::future_lapply(seq_len(times), function(j) {
     diff <- manynet::as_diffusion(do.call(manynet::play_diffusion,
                                           c(list(.data), args)))

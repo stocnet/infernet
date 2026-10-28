@@ -21,7 +21,7 @@ QAPengine <- function(formula,
                       times     = 1000,
                       seed      = NULL,
                       groups    = NULL,
-                      strategy  = "sequential",
+                      strategy  = NULL,
                       ncores    = NULL,
                       random_intercept_nets      = FALSE,
                       random_intercept_sender    = FALSE,
@@ -222,10 +222,7 @@ QAPengine <- function(formula,
   # ---- permute --------------------------------------------------------------
 
   old_plan <- setup_future_plan(strategy, ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
 
   perm_args <- list(shape. = shape, directed. = directed, loops. = loops,
                     mod. = mod, groups. = groups, fit. = fit$base,

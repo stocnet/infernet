@@ -114,20 +114,31 @@ validate_qap_input <- function(matlist, parsed, css = FALSE) {
 
 #' @keywords internal
 #' @noRd
-setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
+setup_future_plan <- function(strategy = NULL, ncores = NULL) {
   old_plan <- future::plan()
   old_maxSize <- getOption("future.globals.maxSize")
   options(future.globals.maxSize = +Inf)
-  # A number of cores says the plan itself, whatever `strategy` says.
+  # A number of cores says the plan itself, whatever `strategy` says. With
+  # neither, the plan the user set with `future::plan()` stays, so that its
+  # workers start once in a session rather than once in each call.
   if (is.null(ncores)) {
-    future::plan(strategy)
+    if (!is.null(strategy)) future::plan(strategy)
   } else if (ncores > 1) {
     future::plan(future::multisession, workers = ncores)
   } else {
     future::plan(future::sequential)
   }
-  attr(old_plan, "old_maxSize") <- old_maxSize
-  invisible(old_plan)
+  invisible(list(plan = old_plan, maxSize = old_maxSize))
+}
+
+# Puts back what `setup_future_plan()` changed. The plan is set again only where
+# it was changed, so the user's plan stays the same object, with the same
+# workers.
+#' @keywords internal
+#' @noRd
+restore_future_plan <- function(old) {
+  if (!identical(future::plan(), old$plan)) future::plan(old$plan)
+  options(future.globals.maxSize = old$maxSize)
 }
 
 

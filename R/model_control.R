@@ -58,10 +58,20 @@
 #'   More than one runs them on that many `"multisession"` workers, and one runs
 #'   them sequentially, whatever `strategy` says.
 #'   `NULL` (the default) leaves the choice to `strategy`.
+#'   A parallel run helps only where each permutation is costly: a family
+#'   other than `"gaussian"`, random intercepts, or a cognitive social
+#'   structure, on a network of more than about 50 nodes, with 1,000 or more
+#'   `times`. Elsewhere the start of the workers costs more than it saves:
+#'   a gaussian model solves its design once, so each permutation is cheap.
+#'   Give `ncores` rather than `strategy = "multisession"`, which starts a
+#'   worker on every core.
 #' @param strategy The `{future}` plan that the permutations run on where
-#'   `ncores` is `NULL`: `"sequential"` (the default), `"multisession"`,
-#'   `"multicore"`, or `"cluster"`. The plan that was set before is restored
-#'   after the fit.
+#'   `ncores` is `NULL`: `"sequential"`, `"multisession"`, `"multicore"`, or
+#'   `"cluster"`. The plan that was set before is restored after the fit.
+#'   `NULL` (the default) uses the plan that was set with `future::plan()`,
+#'   which is sequential unless it was changed. Set a plan once in a session,
+#'   with `future::plan(future::multisession, workers = 2)`, and its workers
+#'   start once, not once in each call.
 #' @param use_robust_errors Logical, whether to use HC3 robust standard errors
 #'   for the observed model's t values. `FALSE` by default.
 #' @param random_intercept_nets,random_intercept_sender,random_intercept_receiver,random_intercept_reporter
@@ -103,7 +113,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           seed = NULL,
                           groups = NULL,
                           ncores = NULL,
-                          strategy = "sequential",
+                          strategy = NULL,
                           use_robust_errors = FALSE,
                           random_intercept_nets = FALSE,
                           random_intercept_sender = FALSE,
@@ -162,7 +172,9 @@ print.mrqap_control <- function(x, ...) {
     v <- x[[nm]]
     if (is.null(v)) {
       return(switch(nm, seed = "NULL, not set", groups = "NULL, all nodes together",
-                    ncores = "NULL, as strategy says", "NULL, read from the data"))
+                    ncores = "NULL, as strategy says",
+                    strategy = "NULL, the plan set with future::plan()",
+                    "NULL, read from the data"))
     }
     if (nm == "groups") return(paste(length(v), "nodes in", length(unique(v)), "groups"))
     paste(format(v), collapse = ", ")
@@ -364,9 +376,9 @@ print.mrqap_control <- function(x, ...) {
 #' @noRd
 .check_strategy <- function(value) {
   plans <- c("sequential", "multisession", "multicore", "cluster")
-  if (is.function(value)) return(value)
+  if (is.null(value) || is.function(value)) return(value)
   if (!(is.character(value) && length(value) == 1 && value %in% plans)) {
-    manynet::snet_abort("{.arg strategy} must be one of {.val {plans}}.")
+    manynet::snet_abort("{.arg strategy} must be one of {.val {plans}}, or {.code NULL}.")
   }
   value
 }

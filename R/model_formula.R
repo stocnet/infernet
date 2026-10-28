@@ -943,7 +943,9 @@
     # node's row or column dropped from it: deleting the node from the network
     # and rebuilding the matrix, once for each node, took 98% of a fit on the
     # 448 by 12489 network of #4.
-    whole <- manynet::as_matrix(.data)
+    # The ties are the outcome's. `as_matrix()` of a multiplex two-mode
+    # network is one square matrix of every layer and both modes.
+    whole <- DV
     if (all(is.na(attrib[!manynet::node_is_mode(.data)]))) {
       attrib <- attrib[manynet::node_is_mode(.data)]
       chosen <- .select_levels(op, .categories(attrib), ctx$env)
@@ -1419,6 +1421,13 @@
   if (!ctx$pooled) {
     manynet::snet_abort(
       c("{.fn global} is the same for every dyad of one network, so it cannot be told apart from the intercept.",
+        i = "Use it on a list of networks, where its value can differ between them."))
+  }
+  # The waves of a panel are one network, with one value of each global
+  # variable, so it is the intercept again.
+  if (!is.null(ctx$previous)) {
+    manynet::snet_abort(
+      c("{.fn global} is the same in every wave of a panel, so it cannot be told apart from the intercept.",
         i = "Use it on a list of networks, where its value can differ between them."))
   }
   globals <- tryCatch(manynet::as_globallist(ctx$net), error = function(e) NULL)

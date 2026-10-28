@@ -10,6 +10,7 @@
   - Added `test_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 - Updated the README with an example of each family and infernet's place in stocnet
+- Removed the unused `combine_qap_estimates()`
 
 ## Diffusion
 
@@ -72,6 +73,7 @@
 
 ## Regression
 
+- Removed `net_regression()`; `migraph::net_regression()` now calls `estimate_mrqap()`
 - Fixed `estimate_mrqap()` failing on an interaction with `{fixest}` fixed effects
 - Improved the speed of the permutations of `estimate_mrqap()`
   - Permutes only the cells the model reads, and builds the data once
@@ -80,7 +82,11 @@
   - ~3.5-4x faster on a gaussian model of 60 or 200 nodes
   - ~1.5-1.8x faster on a binomial model, and on `ison_hightech`
   - ~7.5x faster for 100 draws on the 448 by 12489 network of #4
-- Removed `net_regression()`; `migraph::net_regression()` now calls `estimate_mrqap()`
+- Improved `strategy` control; `NULL`, default, keeps plan set with `future::plan()`
+  - Workers started once in a session now serve every call
+  - A run leaves the user's plan as the same object, with the same workers
+  - Added advice on when to run in parallel to `control_mrqap()` and CONTRIBUTING
+- Fixed `print()` of a mixed model with `print_random = TRUE`, which errored
 
 ## Results
 
