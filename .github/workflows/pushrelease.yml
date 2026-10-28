@@ -43,6 +43,10 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         env:
           _R_CHECK_FORCE_SUGGESTS_: false
+          # The calibrations and the tutorials, and the functional audit's
+          # AUDIT skips as failures. See the Tests section of CONTRIBUTING.md.
+          INFERNET_SLOW_TESTS: true
+          INFERNET_STRICT_AUDIT: true
         with:
           upload-snapshots: true
 
@@ -64,7 +68,12 @@ jobs:
         if: runner.os == 'macOS'
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: Rscript -e 'covr::codecov(token = Sys.getenv("CODECOV_TOKEN"))'
+        run: |
+          Rscript -e 'covr::codecov(token = Sys.getenv("CODECOV_TOKEN"), quiet = FALSE, clean = FALSE, install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package"))'
+
+      - name: Show testthat output
+        if: failure() && runner.os == 'macOS'
+        run: find "${{ runner.temp }}/package" -name 'testthat.Rout*' -exec cat '{}' \;
 
   release:
     name: Bump version and release
