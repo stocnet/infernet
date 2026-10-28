@@ -291,6 +291,21 @@ test_that("the model advice on homophily terms is reported", {
     "ego\\(Grp\\)")
 })
 
+test_that("the advice on homophily leaves out what the fixed effects absorb", {
+  msgs <- testthat::capture_messages(
+    verbosely(estimate_mrqap(weight ~ same(Grp) | sender + receiver,
+                             qap_net_gaussian(n = 15), times = 5,
+                             control = list(seed = 1))))
+  expect_no_match(paste(msgs, collapse = ""), "more fundamental effects")
+  msgs <- testthat::capture_messages(
+    verbosely(estimate_mrqap(weight ~ same(Grp) | sender,
+                             qap_net_gaussian(n = 15), times = 5,
+                             control = list(seed = 1))))
+  msgs <- paste(msgs, collapse = "")
+  expect_match(msgs, "alter\\(Grp\\)")
+  expect_no_match(msgs, "ego\\(Grp\\)")
+})
+
 test_that("dropped dyads and fixed nodes are reported", {
   g <- qap_net_gaussian(n = 15)
   m <- manynet::as_matrix(g)

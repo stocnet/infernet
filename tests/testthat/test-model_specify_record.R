@@ -250,3 +250,11 @@ test_that("the offsets of an ergm formula are kept for ergm", {
   f <- suppressMessages(specify_ergm(net ~ edges + offset(mutual) + nodematch("grp")))
   expect_match(paste(deparse(f[[3]]), collapse = ""), "offset(mutual)", fixed = TRUE)
 })
+
+test_that("tidy() gives each reason as text, without cli markup", {
+  d <- suppressWarnings(suppressMessages(tidy(specify_dynam(
+    weight ~ diff(Age) + same(Grp, diff = TRUE) + ego(Grp, levels = "a")))))
+  expect_equal(d$reason[-1],
+               c("has no goldfish term with `diff = TRUE`",
+                 "has no goldfish term with `levels =` yet (stocnet/goldfish#26)"))
+})

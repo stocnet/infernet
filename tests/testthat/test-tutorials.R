@@ -41,8 +41,8 @@ run_tutorial_code <- function(path) {
   expr
 }
 
-# {autograph} cannot plot a netreg result yet (stocnet/autograph#68), so such a
-# call is set aside until it can.
+# {autograph} plots a netreg result from 1.2.8 (stocnet/autograph#68). Where an
+# older {autograph} is installed, as from CRAN, such a call is set aside.
 .plots_a_netreg <- function(expr, env) {
   if (!is.call(expr) || !identical(expr[[1]], as.name("plot"))) return(FALSE)
   obj <- tryCatch(eval(expr[[2]], envir = env), error = function(e) NULL)
@@ -71,7 +71,7 @@ for (tute in tutorials) {
     on.exit(options(old), add = TRUE)
     waiting <- run_tutorial_code(tute)
     if (length(waiting) > 0)
-      skip(paste("autograph cannot plot a netreg yet (autograph#68):",
+      skip(paste("autograph before 1.2.8 cannot plot a netreg (autograph#68):",
                  paste(waiting, collapse = "; ")))
   })
 }

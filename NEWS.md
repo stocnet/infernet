@@ -111,6 +111,14 @@
   - Added a section on testing diffusions with `test_distributions()` and `test_gof()`
   - Fixed the descriptions of `generate_scalefree()` and `generate_smallworld()`
   - Fixed the Grey's Anatomy exercise, which failed when the diffusion died out early
+- Updated the "Diversity and Regression" tutorial to the current formula
+  - Uses `diff()` rather than `sim()`, and says that `dist()` is deprecated
+  - Added sections on categories, with `same(diff = TRUE)`, `mix()`, and `levels =`
+  - Added sections on fixed effects, random intercepts, and `control_mrqap()`
+  - Added a section on layers and a cognitive social structure, on `ison_hightech`
+  - Added a section on moving a formula with `specify_ergm()`
+  - Plots the regression result, with `{autograph}` 1.2.8
+  - Runs the CUG and QAP tests with 500 simulations, so each exercise takes seconds
 
 # infernet 0.5.0
 
