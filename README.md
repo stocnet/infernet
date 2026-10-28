@@ -19,21 +19,323 @@ coverage](https://codecov.io/gh/stocnet/infernet/branch/main/graph/badge.svg)](h
 ## About the package
 
 `{infernet}` is the inferential layer of the
-[stocnet](https://github.com/stocnet) ecosystem. It offers two things:
+[stocnet](https://github.com/stocnet) ecosystem. It asks whether what we
+see in a network could have come about by chance. Each of its answers
+compares an observed value with a distribution of values from networks
+that a null hypothesis allows: random networks, networks with the same
+degrees, or the same network with its nodes relabelled.
 
-- **Tests of network statistics.** `test_random()` runs a conditional
-  uniform graph (CUG) test, `test_configuration()` conditions on the
-  degree sequence, and `test_permutation()` runs a quadratic assignment
-  procedure (QAP) test. Each takes any graph-level statistic and
-  compares it against a simulated null distribution.
-- **Network regression.** `estimate_mrqap()` fits a multiple regression
-  quadratic assignment procedure (MRQAP) model, using either Dekker et
-  al’s double semi-partialling or a permutation of the dependent network
-  alone.
+The package has five families of functions:
 
-The package combines the formula interface of `{migraph}` with the
-estimators, missing-data handling, and cognitive social structure
-treatment of Robert Krause’s `MrQAP`.
+- **Tests** of a network statistic, of a model’s parameters, or of a
+  model’s fit: `test_random()`, `test_configuration()`,
+  `test_permutation()`, `test_parameter()`, `test_time()`, `test_gof()`,
+  and `test_distributions()`.
+- **Specification** of a formula that one model can read and another can
+  fit: `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`.
+- **Regression** of a network on nodal and dyadic covariates, by
+  multiple regression quadratic assignment procedure (MRQAP):
+  `estimate_mrqap()` and `control_mrqap()`.
+- **Diffusion**, simulated many times, to test a model of diffusion
+  against: `play_diffusions()`.
+- **Results**, as tidy data frames: `tidy()`, `glance()`, and
+  `predict()`.
+
+Every function accepts the networks that `{manynet}` reads: matrices,
+edgelists, `{igraph}`, `{network}`, and `{tidygraph}` objects, one-mode
+or two-mode, directed or undirected, cross-sectional or longitudinal.
+
+## Where infernet sits in stocnet
+
+`{infernet}` does one job, and leaves the other jobs to its neighbours:
+
+- [`{manynet}`](https://stocnet.github.io/manynet/) holds the data: the
+  network classes, the conversions between them, and the networks that
+  the examples below use.
+- [`{netrics}`](https://stocnet.github.io/netrics/) holds the measures,
+  such as `net_by_heterophily()`, that the tests take as their
+  statistic.
+- [`{autograph}`](https://stocnet.github.io/autograph/) draws the
+  results: `plot()` of a test or a diffusion.
+- [`{goldfish}`](https://stocnet.github.io/goldfish/) and
+  [`{ergm}`](https://statnet.org) fit the models that a formula can move
+  to, with `specify_dynam()` and `specify_ergm()`.
+- [`{migraph}`](https://stocnet.github.io/migraph/) holds the book and
+  the teaching material that uses all of these.
+
+`{infernet}` loads `{manynet}` and `{netrics}`, so their networks and
+measures are available after `library(infernet)`.
+
+``` r
+library(infernet)
+```
+
+## Tests
+
+A conditional uniform graph (CUG) test compares a statistic with its
+values on random networks of the same size and density. A configuration
+test keeps the degree of each node too. A quadratic assignment procedure
+(QAP) test relabels the nodes of the observed network, so that the ties
+stay as they are and only the attributes move. Each test takes a
+network, a statistic from `{netrics}`, any arguments of that statistic,
+and a number of simulations as `times`:
+
+``` r
+marvel <- fict_marvel |> to_uniplex("relationship") |>
+  to_unsigned() |> to_giant()
+test_random(marvel, net_by_heterophily, attribute = "Gender",
+            times = 200, control = list(seed = 1))
+test_configuration(marvel, net_by_heterophily, attribute = "Gender",
+                   times = 200, control = list(seed = 1))
+test_permutation(marvel, net_by_heterophily, attribute = "Gender",
+                 times = 200, control = list(seed = 1))
+```
+
+`control` takes a seed, and a number of cores to run the simulations on.
+The same seed gives the same result, sequentially or in parallel.
+
+## Specification
+
+A model is written as a formula. The terms on the right-hand side
+construct a matrix each:
+
+| Term | Constructs a matrix of |
+|----|----|
+| `ego(attr)`, `alter(attr)` | the sender’s or the receiver’s value of a nodal attribute |
+| `same(attr)` | 1 where sender and receiver share a value |
+| `diff(attr)`, `sim(attr)` | the difference, or the similarity, of a numeric attribute |
+| `tie(layer)`, or the name of a layer | the ties of another layer of the network |
+| `recip(layer)`, `exchange(layer)` | the reverse tie, in this or another layer |
+| `indeg(layer)`, `outdeg(layer)` | the degree of the sender or the receiver |
+| `tertius(attr)` | an aggregate of an attribute over a node’s other ties |
+| `inertia`, `recip`, `trans` | the outcome’s own ties, in the previous wave of a panel |
+
+The same formula can be read for an MRQAP, a goldfish DyNAM, or an ERGM.
+A `specify_*()` function reads a formula written for any of the three
+models, rewrites each term with its equivalent in its own model, and
+drops, with a warning, each term that its model cannot fit:
+
+``` r
+# An ergm formula, read for an MRQAP
+specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
+#> advice ~ recip + same(dept) + friends
+#> Read from a formula for ergm 
+#>   adapted edges: is the intercept that the model always has
+#>   adapted mutual -> recip
+#>   adapted nodematch("dept") -> same(dept)
+#>   adapted edgecov("friends") -> friends
+# An MRQAP formula, written for goldfish
+specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
+#> advice ~ ego(age) + same(dept) + tie(friends, weighted = TRUE) + 
+#>     recip(friends)
+#> Read from a formula for mrqap 
+#>   fits ego(age)
+#>   fits same(dept)
+#>   adapted friends -> tie(friends, weighted = TRUE)
+#>   adapted exchange(friends) -> recip(friends)
+# A goldfish formula, written for ergm
+specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
+#> advice ~ edges + nodeocov("age") + nodematch("dept") + mutual + 
+#>     ttriple
+#> Read from a formula for dynam 
+#>   adapted ego(age) -> nodeocov("age")
+#>   adapted same(dept) -> nodematch("dept")
+#>   adapted recip -> mutual
+#>   adapted trans -> ttriple
+```
+
+`tidy()` of a specification gives one row for each term, with what the
+model makes of it on a network:
+
+``` r
+spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
+                      ison_hightech)
+tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+#> # A tibble: 4 × 3
+#>   term           status reason                                                  
+#>   <chr>          <chr>  <chr>                                                   
+#> 1 ego(age)       fits   <NA>                                                    
+#> 2 same(dept)     fits   <NA>                                                    
+#> 3 recip(friends) fits   <NA>                                                    
+#> 4 inertia        drops  needs a longitudinal network, where it reads the outcom…
+```
+
+With a network as `.data`, `specify_ergm()` also gives the matrices of
+the terms that ergm has no name for, so that `ergm::ergm()` can fit the
+formula that it returns.
+
+## Regression
+
+`estimate_mrqap()` fits a regression to a network, and permutes the
+nodes to find the p-value of each coefficient. By default it uses
+Dekker, Krackhardt, and Snijders’ (2007) double semi-partialling, which
+permutes the residuals of each predictor:
+
+``` r
+networkers <- ison_networkers |> to_subgraph(Discipline == "Sociology")
+model <- estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+                        networkers, times = 200, control = list(seed = 1))
+model
+#> 
+#> OLS Network Model
+#> 
+#> Significance was estimated using Dekker's
+#>   'semi-partialling plus' procedure with 200 permutations.
+#> Diagonal values (loops) were ignored.
+#> The outcome was treated as directed. 
+#> 
+#> R-squared:     0.0674
+#> Adj R-squared: 0.057 
+#> 
+#> Coefficients:
+#>                 Estimate   Pr(<=t) Pr(>=t) Pr(>=|t|)
+#> (Intercept)      2.9285238 *       *       *        
+#> ego_Citations   -0.2690674 0.260   0.740   0.48     
+#> alter_Citations -0.1584963 0.260   0.740   0.51     
+#> sim_Citations   39.4165316 0.985   0.015   0.04     
+#> 
+#> * The intercept has no significance test when predictors are permuted.
+#> 
+#> --------------
+```
+
+`control_mrqap()` holds the other choices of the model: the family, what
+the permutations permute, robust standard errors, how to treat missing
+data, and the cores to run on. The family is read from the outcome when
+`control` does not give one.
+
+``` r
+control_mrqap(family = "poisson", permute = "outcome", seed = 1)
+#> Controls for an MRQAP
+#> 
+#>   permute                    outcome  (set)
+#>   family                     poisson  (set)
+#>   directed                   NULL, read from the data
+#>   loops                      NULL, read from the data
+#>   seed                       1  (set)
+#>   groups                     NULL, all nodes together
+#>   ncores                     NULL, as strategy says
+#>   strategy                   sequential
+#>   use_robust_errors          FALSE
+#>   random_intercept_nets      FALSE
+#>   random_intercept_sender    FALSE
+#>   random_intercept_receiver  FALSE
+#>   random_intercept_reporter  FALSE
+#>   missing                    available
+#>   less_mem                   FALSE
+```
+
+A formula adds random intercepts as `{lme4}` does, and absorbs fixed
+effects after a bar, as `{fixest}` does:
+
+``` r
+estimate_mrqap(weight ~ sim(Citations) + (1 | sender) + (1 | receiver),
+               networkers, times = 50, control = list(seed = 1))
+estimate_mrqap(weight ~ sim(Citations) | sender + receiver,
+               networkers, times = 50, control = list(seed = 1))
+```
+
+A cognitive social structure (CSS) records each person’s report of the
+whole network. `estimate_mrqap()` reads a CSS from the network itself,
+and fits one observation for each sender, receiver, and reporter. The
+`reporter` terms describe the person who made the report:
+
+``` r
+css <- estimate_mrqap(advice ~ same(dept) + reports + reporter_ego,
+                      ison_hightech, times = 50, control = list(seed = 1))
+tidy(css)[, c("term", "estimate", "p.value")]
+```
+
+A longitudinal network is fitted as a panel. Each wave after the first
+is an outcome, and one permutation relabels the nodes in the same way in
+every wave. `inertia`, `recip`, and `trans` then read the previous wave:
+
+``` r
+panel <- estimate_mrqap(like ~ inertia + recip + same(groups),
+                        ison_monks, times = 50, control = list(seed = 1))
+tidy(panel)[, c("term", "estimate", "p.value")]
+```
+
+An unobserved tie is missing, not absent. By default, the model drops
+each unobserved dyad, and permutes the nodes only among nodes with the
+same unobserved cells, so that every permutation uses the same dyads as
+the observed model. `control_mrqap(missing = "fail")` stops instead. One
+student in the second wave of Knecht’s classmates did not report:
+
+``` r
+classmates <- to_wave(ison_classmates, 2)
+missing <- estimate_mrqap(friends ~ ego(sex) + alter(sex) + same(sex),
+                          classmates, times = 50, control = list(seed = 1))
+glance(missing)[, c("nobs", "permute", "times")]
+```
+
+`test_parameter()` tests one or more coefficients together, such as the
+levels of a categorical attribute. `test_time()` tests whether
+coefficients are the same in each wave of a panel.
+
+## Diffusion
+
+`play_diffusions()` simulates a diffusion on a network many times.
+`test_distributions()` tests whether two models of diffusion differ, and
+`test_gof()` tests whether a model fits an observed diffusion:
+
+``` r
+fast <- play_diffusions(ison_adolescents, transmissibility = 0.5,
+                        times = 40, control = list(seed = 1))
+slow <- play_diffusions(ison_adolescents, transmissibility = 0.2,
+                        times = 40, control = list(seed = 1))
+test_distributions(fast, slow, times = 200)
+observed <- as_diffusion(play_diffusion(ison_adolescents, transmissibility = 0.2))
+test_gof(slow, observed)
+```
+
+`test_gof()` also tests the fit of a network regression to a statistic
+of the observed network, from the outcomes that the model simulates.
+
+## Results
+
+`tidy()` gives one row for each coefficient, and `glance()` one row for
+the model. Both work on a regression and on a test, and both give a
+tibble that other tools can read:
+
+``` r
+tidy(model)[, c("term", "estimate", "statistic", "p.value")]
+#> # A tibble: 4 × 4
+#>   term            estimate statistic p.value
+#>   <chr>              <dbl>     <dbl>   <dbl>
+#> 1 (Intercept)        2.93      0.242   NA   
+#> 2 ego_Citations     -0.269    -1.69     0.48
+#> 3 alter_Citations   -0.158    -0.997    0.51
+#> 4 sim_Citations     39.4       3.13     0.04
+glance(model)[, c("r.squared", "nobs", "permute", "times")]
+#> # A tibble: 1 × 4
+#>   r.squared  nobs permute   times
+#>       <dbl> <int> <chr>     <dbl>
+#> 1    0.0674   272 predictor   200
+```
+
+`predict()` gives the fitted value of each dyad, or of new data:
+
+``` r
+predict(model, data.frame(ego_Citations = 10, alter_Citations = 50,
+                          sim_Citations = 0.5))
+#> [1] 12.0213
+```
+
+`{autograph}` draws a test or a diffusion with `plot()`.
+
+## Learn more
+
+The [website](https://stocnet.github.io/infernet/) has a page for every
+function, and two tutorials:
+
+- “Diversity and Regression” moves from univariate tests to network
+  regression.
+- “Diffusion and Learning” simulates diffusions and tests their fit.
+
+Run each tutorial interactively with
+`learnr::run_tutorial("infernet1", "infernet")` or
+`learnr::run_tutorial("infernet2", "infernet")`.
 
 ## Design principles
 
@@ -55,38 +357,6 @@ packages aim for three things:
 See the [contributing
 guide](https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style)
 for how these principles translate into rules for the package.
-
-## Reuseable formulas
-
-Models are specified with a formula, so the same specification can be
-moved between networks and between model types:
-
-``` r
-library(infernet)
-
-networkers <- manynet::ison_networkers |>
-  manynet::to_subgraph(Discipline == "Sociology")
-
-estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
-               networkers, times = 200)
-```
-
-Alongside plain references to other networks, which enter as dyadic
-covariates, the right-hand side accepts:
-
-| Term                | Constructs a matrix of                                |
-|---------------------|-------------------------------------------------------|
-| `ego(attr)`         | the sender’s value of a nodal attribute               |
-| `alter(attr)`       | the receiver’s value                                  |
-| `same(attr)`        | 1 where sender and receiver share an attribute value  |
-| `dist(attr)`        | the absolute difference in a numeric attribute        |
-| `sim(attr)`         | the proportional similarity in a numeric attribute    |
-| `tertius(attr, fn)` | an aggregate of an attribute over a node’s other ties |
-
-Further options are passed through a `control` list: the model family,
-the null hypothesis, random or fixed effects, robust standard errors,
-the parallel strategy, and an optional `{torch}` path for running
-permutations on a GPU.
 
 ## Installation
 

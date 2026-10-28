@@ -9,6 +9,7 @@
   - Added goldfish's bare `indeg`, offsets, and node tables to the formula dictionary
   - Added `test_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
+- Updated the README with an example of each family and infernet's place in stocnet
 
 ## Diffusion
 
