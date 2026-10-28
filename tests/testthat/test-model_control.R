@@ -24,14 +24,14 @@ test_that("an unnamed control entry is rejected", {
 test_that("an empty control list gives the defaults", {
   expect_equal(.resolve_control(list()), .resolve_control())
   expect_equal(.resolve_control()$permute, "predictor")
-  expect_equal(.resolve_control()$strategy, "sequential")
+  expect_null(.resolve_control()$strategy)
   expect_equal(.resolve_control()$family, "auto")
 })
 
 test_that("a named control overrides only that default", {
   ctrl <- .resolve_control(list(family = "poisson"))
   expect_equal(ctrl$family, "poisson")
-  expect_equal(ctrl$strategy, "sequential")
+  expect_null(ctrl$strategy)
   expect_null(ctrl$directed)
 })
 
@@ -116,18 +116,30 @@ test_that("diag is now called loops, with a warning", {
   expect_false(fit$loops)
 })
 
-test_that("ncores sets the plan, whatever strategy says", {
+# Two workers or more start a plan, which test-parallel.R checks once. Here only
+# the sequential cases, which start no workers.
+test_that("ncores = 1 runs sequentially, whatever strategy says", {
   on.exit(future::plan(future::sequential), add = TRUE)
   old <- setup_future_plan("multisession", ncores = 1)
   expect_s3_class(future::plan(), "sequential")
-  future::plan(old)
-  old <- setup_future_plan("sequential", ncores = 2)
-  expect_s3_class(future::plan(), "multisession")
-  expect_equal(future::nbrOfWorkers(), 2)
-  future::plan(old)
+  restore_future_plan(old)
   old <- setup_future_plan("sequential", ncores = NULL)
   expect_s3_class(future::plan(), "sequential")
-  future::plan(old)
+  restore_future_plan(old)
+})
+
+test_that("the default leaves the plan set with future::plan() as it is", {
+  on.exit(future::plan(future::sequential), add = TRUE)
+  # A sequential plan with an option of its own, so that a plan the default
+  # replaced would not be identical to it.
+  future::plan(future::sequential, split = TRUE)
+  before <- future::plan()
+  old <- setup_future_plan()
+  expect_identical(future::plan(), before)
+  restore_future_plan(old)
+  expect_identical(future::plan(), before)
+  expect_null(control_mrqap()$strategy)
+  expect_error(control_mrqap(strategy = "parallel"), "NULL")
 })
 
 test_that("a control with a value it cannot take aborts", {
@@ -210,4 +222,90 @@ test_that("goldfish 2.0's option objects are read whole", {
 test_that("an unknown name suggests the nearest, old names included", {
   expect_error(control_mrqap(familly = "poisson"), "Did you mean")
   expect_error(control_mrqap(nullhyps = "qapy"), "nullhyp")
+})
+
+# ---- reporting what the model resolved -----------------------------------------
+
+# Anything the model resolves for itself is reported, so that a user can
+# describe the model they actually fitted.
+#
+# These run with `snet_verbosity = "verbose"`, which is not the default. That
+# matters: an informational message is silent in every other test, so a broken
+# one stays invisible. A `{cli}` brace expression beginning with a dot is read
+# as a style rather than as code, and two of these messages shipped that way
+# before this file existed.
+
+verbosely <- function(expr) {
+  old <- options(snet_verbosity = "verbose")
+  on.exit(options(old), add = TRUE)
+  force(expr)
+}
+
+FORM_REPORT <- weight ~ ego(Age) + alter(Age) + sim(Age)
+
+test_that("every reporting message renders", {
+  g <- qap_net_gaussian(n = 15)
+  # A message that cli cannot parse aborts, so reaching the end is the test.
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(FORM_REPORT, g, times = 5, control = list(seed = 1)))))
+  expect_no_error(testthat::capture_messages(verbosely(
+    estimate_mrqap(weight ~ ego(Age), g, times = 5, control = list(seed = 1)))))
+})
+
+test_that("a family resolved from the outcome is reported", {
+  expect_any_message(
+    verbosely(estimate_mrqap(. ~ ego(Age) + alter(Age), qap_net_binary(n = 15),
+                             times = 5, control = list(seed = 1))),
+    "binomial")
+})
+
+test_that("directedness read from the network is reported", {
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ ego(Age) + alter(Age),
+                             qap_net_undirected(n = 14),
+                             times = 5, control = list(seed = 1))),
+    "undirected")
+})
+
+test_that("a stated family and directedness are not reported", {
+  g <- qap_net_gaussian(n = 15)
+  expect_no_message(
+    verbosely(estimate_mrqap(FORM_REPORT, g, times = 5,
+                             control = list(seed = 1, family = "gaussian",
+                                            directed = TRUE))))
+})
+
+test_that("the fallback to permuting the outcome is reported", {
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ ego(Age), qap_net_gaussian(n = 15),
+                             times = 5,
+                             control = list(seed = 1, permute = "predictor"))),
+    "residualise")
+})
+
+
+test_that("the model advice on homophily terms is reported", {
+  expect_any_message(
+    verbosely(estimate_mrqap(weight ~ same(Grp), qap_net_gaussian(n = 15),
+                             times = 5, control = list(seed = 1))),
+    "ego\\(Grp\\)")
+})
+
+test_that("dropped dyads and fixed nodes are reported", {
+  g <- qap_net_gaussian(n = 15)
+  m <- manynet::as_matrix(g)
+  m[2, 3] <- NA
+  holed <- manynet::mutate(manynet::as_tidygraph(m),
+                           Age = manynet::node_attribute(g, "Age"))
+  msgs <- testthat::capture_messages(
+    verbosely(estimate_mrqap(weight ~ ego(Age), holed, times = 5,
+                             control = list(seed = 1))))
+  msgs <- paste(msgs, collapse = "")
+  expect_match(msgs, "Using 209 of 210 dyads")
+  expect_match(msgs, "1 on weight")
+  expect_match(msgs, "2 nodes with scattered unobserved or fixed cells stay in place")
+})
+
+test_that("control_mrqap() refuses groups that are not a vector", {
+  expect_error(control_mrqap(groups = list(1, 2)), "vector with a group")
 })

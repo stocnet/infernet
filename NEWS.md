@@ -10,6 +10,11 @@
   - Added `test_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
 - Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
 - Updated the README with an example of each family and infernet's place in stocnet
+- Improved the tests, which now take ~22 s on two processes, from ~52 s
+  - Moved the shared fixtures to `helper-fixtures.R` and `helper-expectations.R`
+  - Added `test-parallel.R`, which starts two workers once for every family
+  - Added a functional audit of every term on six shapes of network
+  - Moved the calibrations and the tutorials behind `INFERNET_SLOW_TESTS=true`
 - Removed the unused `combine_qap_estimates()`
 
 ## Diffusion
@@ -70,6 +75,8 @@
 - Fixed `specify_ergm()` without a network giving `inertia` the reason "needs .data"
   - Gives the same reasons as with a network, e.g. "has no ergm term"
   - Records a term rewritten on reading once, as written
+- Fixed `same()` on a multiplex two-mode network, which read every layer as its ties
+- Fixed `global()` on a panel to abort, as on one network, since it is the intercept
 
 ## Regression
 
@@ -94,6 +101,7 @@
 - Added `predict()` for a `netreg`, on the `"link"` or the `"response"` scale
   - Without `newdata`, the fitted values, with random intercepts and fixed effects
   - With `newdata`, the values from the coefficients, read by column name
+- Fixed `tidy()` of an `ergm` fit, which warned on every `exponentiate = TRUE`
 
 ## Tutorials
 

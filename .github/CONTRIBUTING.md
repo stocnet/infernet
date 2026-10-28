@@ -323,10 +323,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `qap_draws.R` | the draw plan: the cells a model reads, the values a draw permutes, and the design that a linear model or a glm solves once |
 | `qap_utils.R` | formula parsing, input validation, `future` plumbing, permutation orders (`.perm_orders()`) and matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
 | `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method |
-| `qap_gmm.R` | GMM moment conditions and residual functions for the `estimator = "gmm"` path |
-| `qap_gpu.R` | the optional `{torch}` batch OLS path, `gpu_batch_ols()` |
 | `qap_confusion.R` | probabilistic confusion matrices for binary outcomes |
-| `qap_misc.R` | small combining and reshaping helpers |
+| `qap_misc.R` | `.directed_label()`, which the print methods share |
 | `infernet-package.R` | package-level doc, global variables, and the shim silencing R CMD check's unused-import note |
 | `zzz.R` | the attach-time greeting and the cached stocnet version check |
 
@@ -668,12 +666,17 @@ The controls of parallelism are:
 - `ncores` — a number of cores (default `NULL`).
   More than one runs on that many `"multisession"` workers, and one runs
   sequentially, whatever `strategy` says. This is the one to show users first.
-- `strategy` — a `{future}` plan name (default `"sequential"`;
-  `"multisession"`/`"multicore"` for multiple cores), used where `ncores` is `NULL`.
+- `strategy` — a `{future}` plan name (`"sequential"`, `"multisession"`, `"multicore"`,
+  or `"cluster"`), used where `ncores` is `NULL`.
+  `NULL`, the default, uses the plan that the user set with `future::plan()`,
+  which is sequential unless they changed it.
 - `seed` — a number to set the random seed with before the simulations.
 
 Read `control` with `.resolve_control()`, so that a list and `control_mrqap()` are checked the same way.
-Set the plan with `setup_future_plan(strategy, ncores)` and restore it via `on.exit()`.
+Set the plan with `old <- setup_future_plan(strategy, ncores)`, and restore it with
+`on.exit(restore_future_plan(old), add = TRUE)`.
+`restore_future_plan()` sets the plan again only where it was changed,
+so the user's plan stays the same object, with the same workers.
 Name an argument that says whether ties from a node to itself count `loops`, never `diag`,
 since `diag` masks `base::diag()` in the same functions.
 
@@ -682,6 +685,30 @@ and `future_vapply()`, using `future.seed = TRUE` for reproducible parallel RNG.
 The regression engine uses the same `setup_future_plan()`, and
 `run_permutations()` ([R/qap_utils.R](../R/qap_utils.R)); use those rather than
 calling `future::plan()` from a new engine function.
+
+A parallel run pays only where each draw is costly.
+Starting a plan of two workers takes about half a second, and each worker then loads the package;
+switching to another plan and back starts the workers again.
+These are the times of `estimate_mrqap()` with `times = 500`, sequentially and with `ncores = 2`:
+
+| Network | Family | Sequential | `ncores = 2` |
+|---|---|---|---|
+| 30 nodes | gaussian | 0.6 s | 1.1 s |
+| 30 nodes | binomial | 1.3 s | 1.4 s |
+| 100 nodes | gaussian | 1.1 s | 1.4 s |
+| 100 nodes | binomial | 11.1 s | 5.9 s |
+
+So the advice to users, in `control_mrqap()` and in the tutorials, is:
+
+- Run a gaussian model sequentially. Its draw plan solves the design once, so each draw is cheap.
+- Run in parallel where each draw refits a model on a large network:
+  a family other than gaussian, random intercepts, or a cognitive social structure,
+  on more than about 50 nodes, with 1,000 or more `times`.
+- Give `ncores`, not `strategy = "multisession"`, which starts a worker on every core.
+- To run many models in one session, start the workers once with
+  `future::plan(future::multisession, workers = 2)` and leave `ncores` and `strategy` unset.
+  Each call then uses those workers, rather than starting its own.
+- Do not use more cores than the machine has free. CRAN permits at most two.
 
 Progress reporting is not a separate argument.
 It is read from `options(snet_verbosity)`, so that one option governs how
@@ -974,76 +1001,160 @@ checks that it comes back as itself, so that the reader and the writers agree.
 
 ### Tests
 
-This package uses the `testthat` package for testing functions.
-Please see the [testthat website](https://testthat.r-lib.org) for more details.
-`testthat` edition 3 with parallel execution is configured in `DESCRIPTION`
-(`Config/testthat/parallel: true`).
-`Config/testthat/start-first` should prioritise the test files that take longest to run.
+This package uses `testthat` edition 3 for its tests.
+See the [testthat website](https://testthat.r-lib.org) for more details.
+The tests run on parallel processes (`Config/testthat/parallel: true` in `DESCRIPTION`),
+and `Config/testthat/start-first` names the slowest files, so that they start first.
 
-Tests in `tests/testthat/` mirror the `R/` files for the exported functions
-(`test-estimate_mrqap.R`, `test-model_tests.R`),
-and are grouped by contract for the engine:
+#### File structure
+
+The test files mirror `R/`.
+`test-test_*.R` and `test-model_*.R` test the exported functions of `R/test_*.R` and `R/model_*.R`,
+and `test-qap_*.R` tests the contracts of the engine in `R/qap_*.R`.
+A file name says where to look when a test fails,
+and a test name says what failed: write it as a statement of what is true,
+such as "a two-mode network contributes every cell of the incidence matrix",
+not "two-mode works".
 
 | File | Asserts |
 |---|---|
-| `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |
-| `test-qap_shapes.R` | the dyads that reach the model, for each shape of network |
-| `test-qap_reproducibility.R` | that a seed reproduces a run, sequentially and in parallel |
-| `test-qap_control.R` | the `control` list and the choice of null hypothesis |
-| `test-qap_reporting.R` | the messages that report what the model resolved, with verbosity on |
-| `test-qap_shape_css.R` | the CSS shape of the engine, on hand-built arrays |
-| `test-qap_panel.R` | a longitudinal network as a panel: the waves, the lagged terms, one permutation for every wave, and its missing cells |
-| `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, for each shape, and the `missing` control |
-| `test-estimate_mrqap_css.R` | CSS models through `estimate_mrqap()`, from `{manynet}` networks |
-| `test-qap_testdist.R` | that the p-values can be read back from the stored null distribution |
-| `test-qap_draws.R` | that a draw from a plan gives the same numbers, to the last bit, as a draw that permutes the whole matrix, for each estimator and shape |
-| `test-formula_spec.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
-| `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, which are dropped, and how the model a formula was written for is read |
-| `test-model_specify_record.R` | the status each model gives each registered term, the record of each term, `tidy()` and the columns it names, and formulas from goldfish's documentation |
-| `test-model_specify_ergm.R` | `specify_ergm()` with a network: each term's ergm term or `edgecov()` matrix, two-mode and undirected networks, and an ergm fit of the result |
-| `test-formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
-| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results and on fits |
-| `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
-| `test-model_fit.R` | that the p-values of `test_gof()` and `test_distributions()` are uniform under the model, on cheap curves, and each method of `test_gof()` |
-| `test-model_parameter.R` | that `test_parameter()` and `test_time()` keep the signature of the generics of `{RSiena}` and `{goldfish}`, that their p-values are uniform under the hypothesis, that they reject a false one, and that they keep the dyads of the model in every shape |
+| `test-test_measures.R` | `test_random()`, `test_configuration()`, and `test_permutation()`: the statistic, its draws, both tails, and the controls they read |
+| `test-test_fit.R` | `test_gof()` and `test_distributions()`: each method, and what they refuse |
+| `test-test_parameter.R` | `test_parameter()` and `test_time()`: the signature of the generics of `{RSiena}` and `{goldfish}`, and the dyads of the model in every shape |
 | `test-model_diffusion.R` | `play_diffusions()` and its old arguments |
+| `test-model_regression.R` | what `estimate_mrqap()` returns: the classes of a result, and what each print method reports |
+| `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
+| `test-model_control.R` | `control_mrqap()`, the choice of null hypothesis, and the messages that report what the model resolved |
+| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; and the stored null distribution, `testdist` |
+| `test-model_formula.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
+| `test-model_formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
+| `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |
+| `test-model_specify_record.R` | the status that each model gives each registered term, and `tidy()` of the record |
+| `test-model_specify_ergm.R` | `specify_ergm()` with a network, and an ergm fit of the result |
+| `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |
+| `test-qap_shapes.R` | the dyads that reach the model, for each shape of network, and the engine's own checks |
+| `test-qap_css.R` | the CSS shape: the engine on hand-built arrays, then `estimate_mrqap()` on `{manynet}` networks |
+| `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, and the `missing` control |
+| `test-qap_panel.R` | a longitudinal network as a panel: the waves, the lagged terms, and one permutation for every wave |
+| `test-qap_fixed.R` | fixed effects, against `lm()` with dummies and `{fixest}` |
+| `test-qap_draws.R` | that a draw from a plan gives the same numbers, to the last bit, as a draw that permutes the whole matrix |
+| `test-qap_reproducibility.R` | that a seed reproduces a run |
+| `test-parallel.R` | that a seed gives the same numbers on two workers, for each family, and that a run restores the plan |
+| `test-functional.R` | the functional audit: every term on every shape |
 | `test-tutorials.R` | that the code of each tutorial in `inst/tutorials/` runs without error |
 
-[tests/testthat/helper-infernet.R](../tests/testthat/helper-infernet.R)
-holds the shared fixtures and expectations:
+#### Fixtures and helpers
 
-- `qap_net_gaussian()`, `qap_net_binary()`, `qap_net_count()`, `qap_net_zip()`,
-  `qap_net_undirected()`, `qap_net_twomode()` — each seeded, and each carrying
-  real signal, so that every family converges and the comparison is not testing
-  noise against noise.
-- `formula_net()` — a six-node multiplex network with two layers, small enough
-  that a term's matrix can be checked by hand.
-- `qap_reference_data()` — rebuilds the dyad-level data frame the engine fits,
-  so a baseline coefficient can be compared against `lm()`, `glm()`,
-  `MASS::glm.nb()`, `pscl::zeroinfl()`, `lme4::lmer()` or `fixest::feglm()`
-  on identical data.
-- `expect_qap_shape()` — the shape contract every estimator meets, whatever it
-  fits underneath: named coefficients, and `lower`/`larger`/`abs` as
-  two-row matrices of proportions with matching dimnames.
+Three helper files hold what more than one file uses.
+Put a fixture there as soon as a second file needs it.
+A test file keeps only its own small accessors, such as `terms_of()`.
+
+- [helper-fixtures.R](../tests/testthat/helper-fixtures.R) holds the networks.
+  Each one is small, takes its size and its seed as arguments,
+  and carries real signal, so that every family converges and a comparison
+  with a standard fit does not test noise against noise.
+  - `qap_net_gaussian()`, `qap_net_binary()`, `qap_net_count()`, `qap_net_zip()`:
+    one network for each family.
+  - `qap_net_undirected()`, `qap_net_twomode()`, `qap_net_twomode_wide()`, `qap_net_panel()`:
+    one network for each shape. The wide two-mode network has more columns than rows,
+    which is the case that turned a wrong number into an error (#4).
+  - `css_hightech()`: the first 10 managers of `manynet::ison_hightech`.
+    It fits in a third of the time of the full network.
+    `test-qap_css.R` fits the full 21 managers once.
+  - `css_net()`, `css_net_twomode()`, `css_fixture()`: constructed CSS networks and arrays.
+  - `formula_net()`: a six-node multiplex network, small enough to check a term's matrix by hand.
+  - `param_net()`, `param_panel()`, `holed_matlist()`, `fixed_net()`:
+    networks for the tests of parameters and of missing and fixed cells.
+- [helper-expectations.R](../tests/testthat/helper-expectations.R) holds the expectations and the skips.
+  - `qap_reference_data()` rebuilds the dyad-level data frame that the engine fits,
+    so that a baseline coefficient can be compared with `lm()`, `glm()`,
+    `MASS::glm.nb()`, `pscl::zeroinfl()`, `lme4::lmer()`, or `fixest::feglm()` on the same data.
+  - `expect_qap_shape()` is the shape contract that every estimator meets:
+    named coefficients, and `lower`, `larger`, and `abs` as two-row matrices of proportions.
+  - `expect_same_draws()` compares a fit with the draw plan and a fit without it.
+  - `expect_missing_fixed()` checks that a permutation keeps the missing cells in place.
+  - `expect_any_message()` and `expect_snet_warning()` read a message or a warning.
+  - `skip_unless_slow()` skips a slow test (see the time budget below).
+- [helper-functional.R](../tests/testthat/helper-functional.R) holds the functional audit.
+
+#### What to assert
 
 Four things are worth asserting for every estimator that is added:
 
 1. That the baseline coefficients match those of the equivalent standard fit on
-   the same dyad-level data, using `qap_reference_data()`.
+   the same dyad-level data, with `qap_reference_data()`.
    The permutation inference is what is novel; the point estimates are not,
    and they should agree.
 2. That the result meets `expect_qap_shape()`.
    Most engine defects found so far surfaced as a name or a dimension, not as a
-   wrong number: a backticked coefficient name broke double semi-partialling,
-   and a stray placeholder intercept broke the `{fixest}` path.
+   wrong number.
 3. That a given `seed` reproduces the same p-values.
-   Permutation results are only comparable across runs if the RNG is,
-   and `future.seed = TRUE` is what makes that
-   true in parallel.
 4. That the estimator is reached at all.
    Several paths in `fit_qap_model()` are selected by a combination of `family`,
-   `estimator` and the random/fixed effects flags,
+   `estimator`, and the random and fixed effects,
    so a test that does not name that combination does not cover it.
+
+Count the dyads rather than checking that a call returns.
+A directed network of *n* nodes contributes *n*(*n*-1) dyads, an undirected one
+*n*(*n*-1)/2, and a two-mode one every cell of its incidence matrix.
+Each of those was wrong at some point, and each looked like a working model.
+
+Test each error path that a user can reach, with `expect_error()` and a pattern
+from its message, so that a test fails when the message stops saying what to do.
+Do not test the input classes (matrix, igraph, network, tidygraph, stocnet):
+`{manynet}` converts them, and tests that conversion.
+
+#### The functional audit
+
+`test-functional.R` reads the term registry, `.formula_terms()`,
+and builds every term that an MRQAP fits on one small network of each of six shapes:
+directed, undirected, two-mode, a cognitive social structure, a panel, and a list of networks.
+A shape is what changes which cells enter the model, or how a permutation moves them.
+Each term must either build columns of the outcome's dimensions,
+or be refused with a message that names it, where the registry says that the shape cannot have it
+(`twomode = FALSE`, `css = TRUE`, `panel = TRUE`, or `kind = "global"`).
+A term added to the registry is then audited on every shape without a new test.
+
+The audit builds the matrices and fits no model, so its 132 blocks take about 2 seconds.
+It asks only whether a term builds and what shape it gives;
+whether the values are right is for `test-model_formula_terms.R`.
+
+A combination that does neither is skipped with a message that starts `AUDIT [term() x shape]`,
+so that `devtools::test()` lists the remaining work without stopping a release.
+CI sets `INFERNET_STRICT_AUDIT=true`, so the same cases fail there.
+The audit is for coverage of the grid only.
+The numerical contracts (the baselines, the seed, the dyad counts) always fail when they are wrong.
+
+#### The time budget
+
+A slow suite delays development, and CRAN complains when tests take too long.
+Keep `devtools::test()` under 30 seconds on two processes, and aim for 20.
+When a change adds time, measure where it goes:
+
+```r
+res <- as.data.frame(devtools::test(reporter = "silent"))
+head(res[order(-res$real), c("file", "test", "real")], 20)
+```
+
+- Use the smallest network that the contract needs, and `times = 5` unless the test reads the null distribution.
+  A fit takes about 10 ms; the permutations are seldom the cost.
+- A calibration (that a test's p-values are uniform under its null, or that it has power)
+  and a tutorial take seconds.
+  Start them with `skip_unless_slow("a calibration")`.
+  They run where `INFERNET_SLOW_TESTS=true`, as CI sets it, and not on CRAN or in a plain `devtools::test()`.
+  Set the variable before changing a test's statistic or a tutorial:
+  `Sys.setenv(INFERNET_SLOW_TESTS = "true"); devtools::test()`.
+- Run every file except `test-parallel.R` sequentially.
+  A plan of workers takes about half a second to start, and switching to another plan and back starts the workers again.
+  `test-parallel.R` computes its sequential references first, then starts two workers once for the whole file.
+  Do not give `ncores` or `strategy = "multisession"` in another file.
+- Use `skip_on_cran()` for anything else that is slow or that starts processes.
+
+#### Dependencies and CI
+
+Do not add a package to `Suggests` for the tests alone, unless nothing else can do the job.
+`{testthat}` and base R are enough for fixtures, skips, and teardown:
+`test-parallel.R`, for example, restores the plan in its last block rather than with `withr::defer()`.
 
 An estimator that needs a package from `Suggests` takes
 `skip_if_not_installed()`, so the suite still passes where that package is
@@ -1057,29 +1168,22 @@ backend is downloaded, and `torch::cuda_is_available()` then throws rather than
 returning `FALSE`. Guard on the capability, not on the package.
 
 A test must not depend on a `{manynet}` feature newer than the CRAN version, or
-it passes here and fails on CI. 
+it passes here and fails on CI.
 
-Note that `options(snet_verbosity)` is unset under `R CMD check`, 
-because manynet's `.onAttach` only sets it in an interactive session. 
-Never write a test that depends on `snet_info()` output.
-
-Count the dyads rather than checking that a call returns.
-A directed network of *n* nodes contributes *n*(*n*-1) dyads, an undirected one
-*n*(*n*-1)/2, and a two-mode one every cell of its incidence matrix.
-Each of those was wrong at some point, and each looked like a working model.
+Note that `options(snet_verbosity)` is unset under `R CMD check`,
+because manynet's `.onAttach` only sets it in an interactive session.
+Never write a test that depends on `snet_info()` output
+unless it sets `snet_verbosity = "verbose"` itself, as the messages in `test-model_control.R` do.
 
 A fitter's warning raised inside the permutation loop is held back, since it
 would print once per draw; `aggregate_perm_results()` reports the number of
 draws that failed outright. A test therefore should not expect a convergence
 warning from a permutation, only from the baseline.
 
-The aim is to work towards comprehensive coverage,
-so each change should be fully covered by tests.
-However, we also need to keep an eye on the clock:
-CRAN complains if tests take too long,
-so use small fixtures, low `times`, and `skip_on_cran()` for taxing tests.
-`# nocov start` and `# nocov end` can be used to exclude lines or functions
-that are too difficult to cover.
+Cover each change with tests. Measure the coverage with
+`covr::package_coverage()` before a release, and close the gaps in error paths,
+messages, and the two-mode and CSS paths first.
+`# nocov start` and `# nocov end` can exclude lines that cannot be reached from a test.
 
 ### Documentation
 

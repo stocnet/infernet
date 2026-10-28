@@ -117,3 +117,16 @@ test_that("a multiplex network without a focal layer says how to declare one", {
     convertToMatrixList(. ~ ego(age), manynet::ison_hightech, advise = FALSE),
     "info\\$focal")
 })
+
+test_that("a missing attribute names what is available", {
+  g <- qap_net_gaussian(n = 10)
+  expect_error(estimate_mrqap(weight ~ ego(Nope), g, times = 10),
+               "Age")
+})
+
+test_that("a formula with no outcome, no predictor, or an unreadable term is refused", {
+  expect_error(.specify(~ ego(x)), "outcome")
+  expect_error(specify_mrqap(~ ego(x)), "outcome")
+  expect_error(.specify(a ~ 1), "at least one predictor")
+  expect_error(.specify(a ~ ego(x)(y)), "Cannot read")
+})

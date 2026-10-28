@@ -49,8 +49,9 @@ articles:
   - title: Tutorials
     desc: |
       Static, read-only versions of the interactive `learnr` tutorials
-      bundled with the package. Install the package and run `run_tute()`
-      for the full interactive experience.
+      bundled with the package. 
+      To run them, install `{migraph}` and run `migraph::run_tute("diversity")` 
+      or `migraph::run_tute("diffusion")` for the full interactive experience.
     contents:
       - "`articles/diversity-and-regression`"
       - "`articles/diffusion-and-learning`"
@@ -69,16 +70,23 @@ reference:
     contents:
       - starts_with("specify_")
   - title: "Regression"
-    desc: "Functions for regressing networks on nodal and dyadic covariates:"
+    desc: >
+      Functions for regressing a network on nodal and dyadic covariates
+      by multiple regression quadratic assignment procedure (MRQAP),
+      with random or fixed effects, missing data, panels, and cognitive social structures:
     contents:
       - regression
       - control_mrqap
-      - predict
   - title: "Diffusion"
-    desc: "Functions for simulating many diffusions, to test a model's fit against:"
+    desc: >
+      Functions for simulating many diffusions on a network,
+      to test a model of diffusion against:
     contents:
       - play_diffusions
   - title: "Results"
-    desc: "Functions for reporting the results of tests and regressions:"
+    desc: >
+      Functions for reporting the results of tests and regressions as tidy data frames,
+      and for predicting from a regression:
     contents:
       - results
+      - predict

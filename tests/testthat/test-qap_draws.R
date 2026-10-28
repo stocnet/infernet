@@ -5,20 +5,8 @@
 # distribution, to the last bit, as a draw that permutes the whole matrix and
 # refits from the data. Without a plan, `QAPPermEst()` does exactly that.
 
-expect_same_draws <- function(formula, .data, ...) {
-  ctrl <- list(seed = 1, ...)
-  planned <- suppressWarnings(suppressMessages(
-    estimate_mrqap(formula, .data, times = 15, control = ctrl)))
-  testthat::local_mocked_bindings(.draw_plan = function(...) NULL)
-  whole <- suppressWarnings(suppressMessages(
-    estimate_mrqap(formula, .data, times = 15, control = ctrl)))
-  for (el in c("coefficients", "lower", "larger", "abs", "testdist")) {
-    testthat::expect_identical(planned[[el]], whole[[el]], info = el)
-  }
-}
-
 test_that("a gaussian model gives the same draws from a plan", {
-  g <- qap_net_gaussian(n = 20)
+  g <- qap_net_gaussian(n = 12)
   f <- weight ~ ego(Age) + alter(Age) + sim(Age) + same(Grp)
   expect_same_draws(f, g, permute = "outcome")
   expect_same_draws(f, g, permute = "predictor")
@@ -33,10 +21,10 @@ test_that("an interaction gives the same draws from a plan", {
 
 test_that("a glm gives the same draws from a plan", {
   f <- . ~ ego(Age) + alter(Age)
-  expect_same_draws(f, qap_net_binary(n = 20), permute = "outcome")
-  expect_same_draws(f, qap_net_binary(n = 20), permute = "predictor")
-  expect_same_draws(f, qap_net_count(n = 20), permute = "predictor")
-  expect_same_draws(f, qap_net_binary(n = 20), use_robust_errors = TRUE)
+  expect_same_draws(f, qap_net_binary(n = 12), permute = "outcome")
+  expect_same_draws(f, qap_net_binary(n = 12), permute = "predictor")
+  expect_same_draws(f, qap_net_count(n = 12), permute = "predictor")
+  expect_same_draws(f, qap_net_binary(n = 12), use_robust_errors = TRUE)
 })
 
 test_that("other estimators give the same draws from a plan", {
@@ -66,7 +54,7 @@ test_that("every shape of network gives the same draws from a plan", {
   expect_same_draws(weight ~ ego(Age) + alter(Age), qap_net_gaussian(n = 18),
                     groups = rep(1:3, 6))
   expect_same_draws(advice ~ ego(age) + alter(age) + same(dept) + reports,
-                    manynet::ison_hightech, permute = "predictor")
+                    css_hightech(), permute = "predictor")
 })
 
 test_that("missing and fixed cells give the same draws from a plan", {

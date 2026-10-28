@@ -1,61 +1,100 @@
+# The engine fits two shapes, a dyadic network and a cognitive social structure,
+# through one skeleton. These assert that the CSS half of that skeleton works at
+# the level of the engine, on hand-built arrays. Models fitted through
+# `estimate_mrqap()` from a `{manynet}` network are in the second half of this file.
+
+test_that("the engine fits a CSS and counts its observations", {
+  n <- 8
+  fit <- QAPengine(ties ~ cov, css_fixture(n), css = TRUE,
+                   family = "binomial", times = 20, seed = 1)
+  expect_s3_class(fit, "netreg_css")
+  expect_named(fit$coefficients, c("(Intercept)", "cov"))
+  # Every cell of every reporter's report, less the diagonals.
+  expect_equal(nrow(fit$pred), n * n * n - n * n)
+  expect_equal(dim(fit$lower), c(2L, 2L))
+  expect_equal(rownames(fit$lower), c("perm_coefs", "perm_t"))
+})
+
+test_that("a CSS baseline matches glm() on the same observations", {
+  ml <- css_fixture()
+  fit <- QAPengine(ties ~ cov, ml, css = TRUE, family = "binomial",
+                   times = 10, seed = 1)
+  ref <- stats::glm(ties ~ cov, data = fit$pred, family = stats::binomial())
+  expect_equal(unname(fit$coefficients), unname(stats::coef(ref)))
+})
+
+test_that("a CSS carries sender, receiver, reporter and network indices", {
+  fit <- QAPengine(ties ~ cov, css_fixture(), css = TRUE,
+                   family = "binomial", times = 10, seed = 1)
+  expect_true(all(c("sv", "rv", "bv", "nv") %in% names(fit$pred)))
+  expect_s3_class(fit$pred$bv, "factor")
+})
+
+test_that("a reporter random intercept is available to a CSS only", {
+  skip_if_not_installed("lme4")
+  fit <- suppressMessages(suppressWarnings(
+    QAPengine(ties ~ cov, css_fixture(), css = TRUE, family = "binomial",
+              times = 10, seed = 1, random_intercept_reporter = TRUE)))
+  expect_named(fit$random.intercepts, "bv")
+  expect_true(fit$random[["reporter"]])
+})
+
+test_that("a dyadic network rejects a reporter random intercept", {
+  m <- matrix(stats::rnorm(64), 8, 8)
+  diag(m) <- 0
+  expect_error(
+    QAPengine(ties ~ cov, list(ties = m, cov = matrix(stats::rnorm(64), 8, 8)),
+              times = 5, random_intercept_reporter = TRUE),
+    "reporter")
+})
+
+test_that("a CSS rejects an outcome that is not three-dimensional", {
+  m <- matrix(stats::rnorm(64), 8, 8)
+  expect_error(
+    QAPengine(ties ~ cov, list(ties = m, cov = m), css = TRUE, times = 5),
+    "3-dimensional")
+})
+
+test_that("a CSS fit prints as a model", {
+  fit <- QAPengine(ties ~ cov, css_fixture(), css = TRUE,
+                   family = "binomial", times = 10, seed = 1)
+  expect_output(shown <- withVisible(print(fit)), "cognitive social structure")
+  expect_false(shown$visible)
+  expect_output(print(fit), "Coefficients")
+})
+
+test_that("both shapes reproduce under the same seed", {
+  ml <- css_fixture()
+  a <- QAPengine(ties ~ cov, ml, css = TRUE, family = "binomial",
+                 times = 20, seed = 42)
+  b <- QAPengine(ties ~ cov, ml, css = TRUE, family = "binomial",
+                 times = 20, seed = 42)
+  expect_equal(a$lower, b$lower)
+})
+
+# ---- through estimate_mrqap() -------------------------------------------------
+
 # Cognitive social structures through `estimate_mrqap()`.
 #
 # A CSS is detected, not declared: `{manynet}` records who reported each tie in
 # a `by` column, and `as_matrix()` then returns an array of sender, receiver,
 # and reporter. These tests fit models on `manynet::ison_hightech`, a real CSS
-# of 21 managers, and on small constructed networks for the shapes and the
+# of 21 managers, most of them on its first 10, and on small constructed networks for the shapes and the
 # missing reports it does not have.
 
 # ---- fixtures ---------------------------------------------------------------
 
-# A directed CSS of `n` nodes, in which the first `reporting` nodes report and
-# the others do not. `mark_missing` records the others as not asked.
-css_net <- function(n = 10, reporting = 8, directed = TRUE,
-                    mark_missing = FALSE, seed = 3) {
-  set.seed(seed)
-  truth <- matrix(stats::rbinom(n^2, 1, 0.3), n, n)
-  diag(truth) <- 0
-  el <- do.call(rbind, lapply(seq_len(reporting), function(k) {
-    m <- pmin(truth + matrix(stats::rbinom(n^2, 1, 0.1), n, n), 1)
-    diag(m) <- 0
-    if (!directed) m[lower.tri(m)] <- 0
-    w <- which(m == 1, arr.ind = TRUE)
-    data.frame(from = w[, 1], to = w[, 2], by = k)
-  }))
-  el[] <- lapply(el, as.integer)
-  nodes <- data.frame(label = LETTERS[seq_len(n)],
-                      age = round(stats::runif(n, 20, 60)))
-  g <- manynet::make_stocnet(ties = el, nodes = nodes,
-                             info = list(directed = directed))
-  if (mark_missing) {
-    g <- manynet::mutate_nodes(g, na = seq_len(n) > reporting)
-  }
-  g
-}
-
-# A two-mode CSS: people report which events other people attended.
-css_net_twomode <- function(people = 4, events = 3, seed = 4) {
-  set.seed(seed)
-  nodes <- data.frame(label = c(paste0("p", seq_len(people)), paste0("e", seq_len(events))),
-                      mode = rep(c("people", "events"), c(people, events)),
-                      age = c(stats::runif(people, 20, 60), rep(NA, events)))
-  el <- do.call(rbind, lapply(seq_len(people + events), function(k) {
-    w <- which(matrix(stats::rbinom(people * events, 1, 0.5), people, events) == 1,
-               arr.ind = TRUE)
-    data.frame(from = w[, 1], to = people + w[, 2], by = k)
-  }))
-  el[] <- lapply(el, as.integer)
-  manynet::make_stocnet(ties = el, nodes = nodes)
-}
-
-HT <- manynet::ison_hightech
+HT <- css_hightech()
 FORM_HT <- advice ~ ego(age) + alter(age) + same(dept) + reports
 
 # ---- detection and shape -----------------------------------------------------
 
+# The one fit of the real network, all 21 managers. The other blocks fit its
+# first 10, `css_hightech()`.
 test_that("a CSS layer is detected and fitted as one", {
   fit <- suppressMessages(
-    estimate_mrqap(FORM_HT, HT, times = 10, control = list(seed = 1)))
+    estimate_mrqap(FORM_HT, manynet::ison_hightech, times = 10,
+                   control = list(seed = 1)))
   expect_s3_class(fit, "netreg")
   expect_s3_class(fit, "netreg_css")
   expect_named(fit$coefficients,
@@ -71,7 +110,7 @@ test_that("detecting a CSS is reported", {
   expect_any_message(
     estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1)),
-    "cognitive social structure, with 21 reporters")
+    "cognitive social structure, with 10 reporters")
 })
 
 test_that("a CSS baseline matches glm() on the same reported dyads", {
@@ -88,7 +127,7 @@ test_that("a layer that is not a CSS is the outcome of a dyadic model", {
     estimate_mrqap(reports ~ ego(age) + alter(age), HT, times = 5,
                    control = list(seed = 1)))
   expect_false(inherits(fit, "netreg_css"))
-  expect_equal(nrow(fit$pred), 21 * 20)
+  expect_equal(nrow(fit$pred), 10 * 9)
 })
 
 test_that("a multiplex network asks for a layer to be named as the outcome", {
@@ -255,7 +294,7 @@ test_that("each reporter can take a random intercept", {
     estimate_mrqap(advice ~ ego(age) + friends, HT, times = 5,
                    control = list(seed = 1, random_intercept_reporter = TRUE))))
   expect_named(fit$random.intercepts, "bv")
-  expect_length(fit$random.intercepts$bv, 21)
+  expect_length(fit$random.intercepts$bv, 10)
   expect_true(fit$random[["reporter"]])
   expect_output(print(fit), "Each reporter has a random intercept")
 })
@@ -353,7 +392,7 @@ test_that("a list of CSS networks is pooled", {
     estimate_mrqap(advice ~ ego(age) + friends, list(HT, HT), times = 5,
                    control = list(seed = 1)))
   expect_s3_class(fit, "netreg_css")
-  expect_equal(nrow(fit$pred), 2 * 21 * 21 * 20)
+  expect_equal(nrow(fit$pred), 2 * 10 * 10 * 9)
 })
 
 test_that("a CSS cannot be pooled with a network that is not one", {

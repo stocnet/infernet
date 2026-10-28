@@ -3,16 +3,8 @@
 # registered term in every model, so a new term fails here until its status in
 # each model is written down.
 
-# One example of each registered term, by its kind.
-term_example <- function(name, entry) {
-  if (name %in% c("match", "mix")) return(paste0(name, "(grp)"))
-  switch(entry$kind,
-    attribute = , interaction = paste0(name, "(x)"),
-    layer = , mixed = paste0(name, "(b)"),
-    tertius = paste0(name, "(b, x)"),
-    global = paste0(name, "(gdp)"),
-    name)
-}
+# `term_example()`, one example of each registered term, is in
+# helper-functional.R.
 
 # The status a model gives one term, next to `ego(x)` so that something is
 # always left to fit.

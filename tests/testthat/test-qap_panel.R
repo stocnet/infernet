@@ -113,3 +113,11 @@ test_that("a panel with missing data uses the observed dyads in every draw", {
     expect_equal(nrow(fit$pred), 2 * 12 * 11 - 3 * 11)
   }
 })
+
+test_that("a panel refuses global() and a lagged term of another layer", {
+  g <- functional_nets()$panel
+  expect_error(suppressMessages(.prepare_panel(a ~ global(gdp), g)),
+               "every wave of a panel")
+  expect_error(suppressMessages(.prepare_panel(a ~ inertia(b), g)),
+               "previous wave, not another layer")
+})

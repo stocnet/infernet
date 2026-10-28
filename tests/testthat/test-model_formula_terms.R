@@ -530,3 +530,46 @@ test_that("every registered term is in the dictionary in CONTRIBUTING", {
     expect_true(any(startsWith(status, registry[[term]]$mrqap)), info = term)
   }
 })
+
+# ---- tertius() through estimate_mrqap() ----------------------------------------
+
+test_that("tertius() accepts a quoted and an unquoted summary function", {
+  g <- qap_net_gaussian(n = 10)
+  # The old spelling names no layer, so it reads the outcome, and warns.
+  quoted   <- suppressWarnings(estimate_mrqap(weight ~ tertius(Age, "mean"), g, times = 10))
+  unquoted <- suppressWarnings(estimate_mrqap(weight ~ tertius(Age, mean), g, times = 10))
+  bare     <- suppressWarnings(estimate_mrqap(weight ~ tertius(Age), g, times = 10))
+  expect_equal(quoted$coefficients, unquoted$coefficients)
+  expect_equal(quoted$coefficients, bare$coefficients)
+})
+
+test_that("tertius() sum differs from mean, and rejects anything else", {
+  g <- qap_net_gaussian(n = 10)
+  mean_fit <- suppressWarnings(estimate_mrqap(weight ~ tertius(Age, "mean"), g, times = 10))
+  sum_fit  <- suppressWarnings(estimate_mrqap(weight ~ tertius(Age, "sum"), g, times = 10))
+  expect_false(isTRUE(all.equal(mean_fit$coefficients, sum_fit$coefficients)))
+  expect_error(estimate_mrqap(weight ~ tertius(Age, "median"), g, times = 10),
+               "mean")
+})
+
+# ---- terms that cannot be built ---------------------------------------------------
+
+test_that("a term that cannot be built says what it needs", {
+  g <- manynet::mutate_nodes(formula_net(), one = rep("p", 6))
+  expect_error(terms_of(a ~ exchange(), g), "needs a layer")
+  expect_error(terms_of(a ~ tertius(b, grp), g), "numeric attribute")
+  expect_error(terms_of(a ~ mix(one), g), "at least two categories")
+  expect_error(terms_of(a ~ ego(one), g), "at least two categories")
+  expect_error(terms_of(a ~ global(nope), g, pooled = TRUE), "not found")
+  expect_error(terms_of(a ~ nope, g), "nope")
+})
+
+# `as_matrix()` of a multiplex two-mode network is one square matrix of every
+# layer and both modes, and `same()` once read its ties from that.
+test_that("same() on a multiplex two-mode network reads the outcome's ties", {
+  g <- functional_nets()$twomode
+  multiplex <- terms_of(a ~ same(grp), g)$same_grp
+  uniplex <- terms_of(a ~ same(grp), manynet::to_uniplex(g, "a"))$same_grp
+  expect_equal(dim(multiplex), c(4L, 3L))
+  expect_equal(multiplex, uniplex, ignore_attr = TRUE)
+})
