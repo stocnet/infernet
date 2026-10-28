@@ -321,7 +321,7 @@ and the right-hand side lists the terms that might explain them:
   `diff(Citations, transformer_fn = identity)` gives the signed difference instead.
 - `ego(Discipline)` and `alter(Discipline)` are the sender's and the receiver's discipline.
   A categorical attribute gets one 0/1 column for each category,
-  less the first category (here Anthropology), which is the reference.
+  less the first category (here Anthropology), which is the `r gloss("reference", "reference category")`.
 - `same(Discipline)` is 1 where the sender and the receiver share a discipline.
   This is $H_2$.
 
@@ -392,7 +392,7 @@ The ties of one sender are then not independent of one another,
 and a model that ignores this may mistake a busy sender for an effect of their attributes.
 There are two ways to account for each node's own level of activity and popularity.
 
-**Fixed effects** absorb a separate intercept for each sender and each receiver.
+**`r gloss("Fixed effects", "fixed effect")`** absorb a separate intercept for each sender and each receiver.
 Write them after a bare bar at the end of the formula, as in `{fixest}`:
 `| sender + receiver`.
 Because these intercepts absorb everything about a sender or a receiver,
@@ -405,7 +405,7 @@ the share of the variance within senders and receivers that it explains.
 Fit a model of citation difference and discipline homophily with sender and receiver fixed effects.
 
 
-**Random intercepts** instead treat each sender's and each receiver's intercept
+**`r gloss("Random intercepts", "random intercept")`** instead treat each sender's and each receiver's intercept
 as drawn from a normal distribution, as in `{lme4}`.
 Write each one in parentheses: `(1 | sender) + (1 | receiver)`.
 Random intercepts keep the nodal terms in the model,
@@ -456,7 +456,7 @@ A `r gloss("multiplex")` network has several, called layers,
 and one layer can explain another.
 `ison_hightech` holds Krackhardt's (1987) data on 21 managers of a high-tech company.
 Every manager reported who goes to whom for advice, and who is friends with whom.
-Each of those layers is a cognitive social structure (CSS):
+Each of those layers is a `r gloss("cognitive social structure")` (CSS):
 21 reports of the whole network, one from each manager.
 The `reports` layer is the formal reporting structure, which is the same for everyone.
 
@@ -487,7 +487,7 @@ and we use `times = 50` with a seed.
 
 
 A report about one's own ties can differ from a report about the ties of others.
-The reporter terms describe who made each report:
+The `r gloss("reporter")` terms describe who made each report:
 
 - `reporter(level)` is the reporter's level in the hierarchy, the same over their whole report.
 - `reporter_ego` is 1 where the reporter is the sender,
