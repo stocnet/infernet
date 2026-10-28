@@ -77,6 +77,7 @@
   - Records a term rewritten on reading once, as written
 - Fixed `same()` on a multiplex two-mode network, which read every layer as its ties
 - Fixed `global()` on a panel to abort, as on one network, since it is the intercept
+- Fixed homophily advice suggesting `ego()` or `alter()` absorbed by fixed effects
 
 ## Regression
 

@@ -333,9 +333,8 @@ function, and two tutorials:
   regression.
 - “Diffusion and Learning” simulates diffusions and tests their fit.
 
-Run each tutorial interactively with
-`learnr::run_tutorial("infernet1", "infernet")` or
-`learnr::run_tutorial("infernet2", "infernet")`.
+To run them interactively, install `{migraph}` and run
+`migraph::run_tute("diversity")` or `migraph::run_tute("diffusion")`.
 
 ## Design principles
 

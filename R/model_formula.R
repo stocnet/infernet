@@ -1599,6 +1599,13 @@ specificationAdvice <- function(spec, net) {
   if (!manynet::is_directed(net)) {
     suggests <- suggests[!grepl("^ego\\(", suggests)]
   }
+  # A sender or a receiver fixed effect absorbs ego() or alter(), which would
+  # then abort, so it is no advice to add them. An undirected network drops
+  # those fixed effects, and so keeps the advice.
+  if (manynet::is_directed(net) || manynet::is_twomode(net)) {
+    if ("sender" %in% spec$fixed) suggests <- suggests[!grepl("^ego\\(", suggests)]
+    if ("receiver" %in% spec$fixed) suggests <- suggests[!grepl("^alter\\(", suggests)]
+  }
   if (length(suggests) > 0) {
     suggests <- paste0(suggests, collapse = ", ")
     manynet::snet_info(

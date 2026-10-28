@@ -946,15 +946,15 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     dist     = list(expr = as.call(c(as.name("diff"), as.list(expr)[-1]))),
     same     = if (.same_by_category(.specify_operand(expr),
                                      if (is.null(ctx$env)) globalenv() else ctx$env)) {
-      list(reason = "has no goldfish term with {.code diff = TRUE}")
+      list(reason = "has no goldfish term with `diff = TRUE`")
     } else if (!is.null(.specify_operand(expr)$args$levels)) {
-      list(reason = "has no goldfish term with {.code levels =} yet (stocnet/goldfish#26)")
+      list(reason = "has no goldfish term with `levels =` yet (stocnet/goldfish#26)")
     } else {
       list(expr = expr)
     },
     ego      = ,
     alter    = if (!is.null(.specify_operand(expr)$args$levels)) {
-      list(reason = "has no goldfish term with {.code levels =} yet (stocnet/goldfish#26)")
+      list(reason = "has no goldfish term with `levels =` yet (stocnet/goldfish#26)")
     } else {
       list(expr = expr)
     },
