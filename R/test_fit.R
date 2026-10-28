@@ -186,10 +186,7 @@ test_gof.netreg <- function(object, observed, FUN, ...,
   obsd <- .as_statistic(measure(model$network(model$matrix)))
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
   # The workers of a parallel plan get the helpers by value, so that they
   # need no internal function of the package.
   as_statistic <- .as_statistic
@@ -233,8 +230,10 @@ test_distributions.diffs_model <- function(object1, object2,
   }
   ctrl <- .resolve_control(control)
   curves <- .align_curves(.adoption_curves(object1), .adoption_curves(object2))
-  first <- curves$observed
-  second <- curves$simulated
+  # One diffusion gives a curve rather than a matrix of them, so each is made
+  # a matrix with a row for each diffusion.
+  first <- rbind(curves$observed)
+  second <- rbind(curves$simulated)
   n1 <- nrow(first)
   if (n1 < 2 || nrow(second) < 2) {
     manynet::snet_abort("Each model needs at least 2 diffusions.")
@@ -248,10 +247,7 @@ test_distributions.diffs_model <- function(object1, object2,
 
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
   simd <- future.apply::future_vapply(seq_len(times), function(i) {
     idx <- sample.int(nrow(pooled), n1)
     distance(pooled[idx, , drop = FALSE], pooled[-idx, , drop = FALSE], ridge)

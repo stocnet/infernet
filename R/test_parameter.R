@@ -413,10 +413,7 @@ test_time.netreg <- function(x, terms = NULL, ..., times = 1000,
   })
 
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
   draw <- .joint_draw(layout, rc$cells, XU, reduced, deviance_of)
   dist <- future.apply::future_vapply(orders, draw, numeric(1),
                                       future.seed = TRUE)

@@ -162,10 +162,7 @@ test_permutation <- function(.data, FUN, ...,
 .simulate_statistic <- function(.data, FUN, args, times, ctrl, draw, bind) {
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
   measure <- if (!is.null(args)) function(g) FUN(g, args) else function(g) FUN(g)
   .data <- .draw_from(.data, measure)
   rands <- future.apply::future_lapply(seq_len(times), function(i) draw(.data),
