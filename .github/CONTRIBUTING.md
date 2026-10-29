@@ -311,10 +311,10 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `test_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
 | `test_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for a `netreg`, and the joint double semi-partialling they share |
 | `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
-| `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `results` page |
+| `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `netreg_results` page |
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
-| `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
+| `model_results.R` | three help pages: `netreg_results`, with `summary()`, `tidy()`, `glance()`, and the accessors of a `netreg` (`nobs()`, `logLik()`, `deviance()`, `fitted()`, `residuals()`, `formula()`, `terms()`), each read from the observed model; `test_results`, with `tidy()` and `glance()` of a `network_test`; and `other_results`, for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `specify_registry.R` | the term registry `.formula_terms()` and goldfish's terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term's equation |
 | `specify_builders.R` | the builder of each term, which makes its matrices for one network |
 | `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
@@ -851,7 +851,7 @@ correspond to those in other packages.
   The name is a label: since attributes and categories can hold underscores,
   do not parse it back into its parts.
   The parts are kept instead in the fit's term table, `fit$terms`,
-  one row for each coefficient, and `tidy()` adds them to the estimates:
+  one row for each coefficient, and `summary()` adds them to the estimates:
   `effect` (the term, such as `"same"`, or `"intercept"` or `"interaction"`),
   `layer`, `attribute`, `category` as the data hold it, `reference`,
   and, for an interaction, `operands`, the columns it multiplies.
@@ -1055,7 +1055,7 @@ not "two-mode works".
 | `test-model_regression.R` | what `estimate_mrqap()` returns: the classes of a result, and what each print method reports |
 | `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
 | `test-model_control.R` | `control_mrqap()`, the choice of null hypothesis, and the messages that report what the model resolved |
-| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; and the stored null distribution, `testdist` |
+| `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; the stored null distribution, `testdist`; and the methods of a `netreg`, against the values of the equivalent `lm()` or `glm()`, with fixed effects, fixed ties, and `less_mem` |
 | `test-specify_parse.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-specify_builders.R` | each term's matrix against a value computed by hand, or by a loop over the equation on `terms_mrqap`, and the dictionary |
 | `test-specify_formula.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |

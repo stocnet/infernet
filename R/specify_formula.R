@@ -418,17 +418,24 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   out
 }
 
+# A specification as the formula it holds, without its class and its record,
+# so that it reads as the formula a user would write.
+#' @keywords internal
+#' @noRd
+.plain_formula <- function(x) {
+  attr(x, "record") <- NULL
+  attr(x, "input") <- NULL
+  class(x) <- "formula"
+  x
+}
+
 # A term that fits as written needs no note, so the print lists only the terms
 # that the model changes, warns about, drops, or refuses. `tidy()` gives them all.
 #' @keywords internal
 #' @noRd
 .print_specified <- function(x) {
   record <- attr(x, "record")
-  f <- x
-  attr(f, "record") <- NULL
-  attr(f, "input") <- NULL
-  class(f) <- "formula"
-  print(f, showEnv = FALSE)
+  print(.plain_formula(x), showEnv = FALSE)
   if (!is.null(record)) record <- record[record$status != "fits", , drop = FALSE]
   if (!is.null(record) && nrow(record) > 0) {
     cat("Read from a formula for", attr(x, "input"), "\n")

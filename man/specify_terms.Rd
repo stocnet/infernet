@@ -71,6 +71,7 @@ Some terms measure the same thing in different ways: \code{same(x)},
 \code{same(x, diff = TRUE)}, and \code{mix(x)}, and \code{diff(x)} and \code{sim(x)}.
 Of each such set, \code{formula()} keeps the first row, and a message names
 the others, since a model of all of them is collinear.
+For the formula that a regression fitted, see \link{netreg_results}.
 }
 
 \examples{
@@ -86,6 +87,7 @@ what each model makes of a formula.
 
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
@@ -93,6 +95,7 @@ Other models:
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link[=test_parameter]{test_parameter()}},
+\code{\link{test_results}}
 }
 \concept{models}

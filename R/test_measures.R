@@ -180,7 +180,7 @@ test_permutation <- function(.data, FUN, ...,
   if (same) tg else .data
 }
 
-#' @rdname results
+#' @rdname test_results
 #' @export
 print.network_test <- function(x, ...,
                              max.length = 6,

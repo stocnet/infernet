@@ -98,7 +98,13 @@ term it comes from, such as \code{"ego"} or \code{"same"}, or \code{"intercept"}
 \code{"interaction"}; its \code{layer} and \code{attribute}; its \code{category} and the
 \code{reference} category it is compared with, where the term is
 categorical; and for an interaction, its \code{operands}, the names of the
-columns it multiplies. \code{tidy()} adds these columns to the estimates.
+columns it multiplies. \code{summary()} adds these columns to the estimates.
+\item \code{call}, \code{formula}, and \code{model_formula}: the call, the formula as
+\code{\link[=specify_mrqap]{specify_mrqap()}} read it, and the formula of the columns that were
+fitted. \code{update()}, \code{formula()}, and \code{terms()} read them
+(see \link{netreg_results}).
+\item \code{fixed_df}, the number of parameters that a gaussian model absorbed by
+demeaning, or \code{NULL}.
 }
 
 When the outcome is binary -- either \code{family = "binomial"} or
@@ -337,6 +343,7 @@ conditions."
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{specify}},
@@ -344,6 +351,7 @@ Other models:
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link[=test_parameter]{test_parameter()}},
+\code{\link{test_results}}
 }
 \concept{models}

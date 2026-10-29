@@ -355,6 +355,9 @@ QAPengine <- function(formula,
   fit$robust_se <- use_robust_errors
   fit$random    <- requested[names(slots)]
   fit$fixed_effects <- fixed_effects
+  # The parameters that a gaussian model absorbed by demeaning, which its
+  # baseline fit does not count, so that `logLik()` can.
+  fit$fixed_df  <- fixed_df
   fit$pred      <- pred_observed
   fit$dep       <- dep
   fit$missing   <- list(treatment   = missing,

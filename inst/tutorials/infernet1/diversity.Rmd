@@ -722,7 +722,7 @@ model2b <- estimate_mrqap(weight ~ ego(Discipline, levels = "Sociology") +
                             alter(Discipline, levels = "Sociology") +
                             same(Discipline),
                           ison_networkers, times = 200)
-tidy(model2b)
+summary(model2b)
 ```
 
 ```{r cats-qn, echo=FALSE, purl = FALSE}

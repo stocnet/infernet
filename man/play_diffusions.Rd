@@ -54,6 +54,7 @@ play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link{other_results}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
 \code{\link{specify}},
@@ -61,6 +62,7 @@ Other models:
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link[=test_parameter]{test_parameter()}},
+\code{\link{test_results}}
 }
 \concept{models}

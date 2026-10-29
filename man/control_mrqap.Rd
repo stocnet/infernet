@@ -140,6 +140,7 @@ Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
 }
 \seealso{
 Other models:
+\code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
@@ -148,6 +149,7 @@ Other models:
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link[=test_parameter]{test_parameter()}},
+\code{\link{test_results}}
 }
 \concept{models}

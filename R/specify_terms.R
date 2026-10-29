@@ -51,6 +51,7 @@
 #'   `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and `sim(x)`.
 #'   Of each such set, `formula()` keeps the first row, and a message names
 #'   the others, since a model of all of them is collinear.
+#'   For the formula that a regression fitted, see [netreg_results].
 #'
 #' @param x The table of every term.
 #' @param lhs The outcome of the formula, as a name or a string. `NULL`, the

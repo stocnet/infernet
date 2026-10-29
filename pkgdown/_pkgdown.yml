@@ -89,8 +89,11 @@ reference:
       - play_diffusions
   - title: "Results"
     desc: >
-      Functions for reporting the results of tests and regressions as tidy data frames,
+      Functions for reporting and reading the results of regressions and tests,
+      for tidying the results of other network models beside them,
       and for predicting from a regression:
     contents:
-      - results
+      - netreg_results
+      - test_results
+      - other_results
       - predict

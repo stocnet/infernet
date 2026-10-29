@@ -113,6 +113,15 @@
 
 ## Results
 
+- Added methods for `netreg` fitted models
+  - `nobs()`, `logLik()`, `deviance()`, `fitted()`, and `residuals()`
+  - `formula()`, `terms()`, and `update()`, from the call and formula it keeps
+  - `AIC()` and `BIC()` count the fixed effects that a gaussian model absorbs
+- Improved `tidy()` of a `netreg` to give only the columns of `generics::tidy()`
+  - The term table columns, such as `effect` and `reference`, moved to `summary()`
+- Fixed `glance()` giving `NA` fit statistics with `less_mem = TRUE`
+- Fixed `glance()` of a gaussian model with fixed effects
+  - `AIC`, `BIC`, `sigma`, and `df.residual` now count the absorbed parameters
 - Moved `predict()` for `netlm` and `netlogit` from `{migraph}`
 - Added `predict()` for a `netreg`, on the `"link"` or the `"response"` scale
   - Without `newdata`, the fitted values, with random intercepts and fixed effects

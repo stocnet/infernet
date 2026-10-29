@@ -253,7 +253,13 @@
 #'     `"interaction"`; its `layer` and `attribute`; its `category` and the
 #'     `reference` category it is compared with, where the term is
 #'     categorical; and for an interaction, its `operands`, the names of the
-#'     columns it multiplies. `tidy()` adds these columns to the estimates.
+#'     columns it multiplies. `summary()` adds these columns to the estimates.
+#'   - `call`, `formula`, and `model_formula`: the call, the formula as
+#'     [specify_mrqap()] read it, and the formula of the columns that were
+#'     fitted. `update()`, `formula()`, and `terms()` read them
+#'     (see [netreg_results]).
+#'   - `fixed_df`, the number of parameters that a gaussian model absorbed by
+#'     demeaning, or `NULL`.
 #'
 #'   When the outcome is binary -- either `family = "binomial"` or
 #'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
@@ -308,10 +314,12 @@ estimate_mrqap <- function(formula,
                            times   = 1000,
                            control = list()) {
 
+  call <- match.call()
   ctrl <- .resolve_control(control)
   # A formula written for another model is read as an MRQAP reads it, and the
   # terms it cannot fit are dropped and named.
   formula <- specify_mrqap(formula, .data)
+  specified <- .plain_formula(formula)
   # `(1 | sender)` in the formula sets the same switch as its control, and
   # `| sender` after a bare bar absorbs a fixed effect.
   spec <- .specify(formula)
@@ -396,6 +404,11 @@ estimate_mrqap <- function(formula,
     fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
   }
   fit$terms <- .coef_terms(names(fit$coefficients), terms)
+  # `update()` refits from the call and the formula as the user's terms give
+  # it; `terms()` reads the formula of the columns that were fitted.
+  fit$call <- call
+  fit$formula <- specified
+  fit$model_formula <- formula
 
   fit
 }
@@ -579,21 +592,24 @@ estimate_mrqap <- function(formula,
 # method and none of them branches on the class of another. `print.netreg()` is
 # the fallback for a `netreg` with no more specific class.
 
-#' @rdname results
+#' @rdname netreg_results
+#' @order 1
 #' @export
 print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
   .print_qap_regression(x, print_b = print_b, print_random = print_random)
   invisible(x)
 }
 
-#' @rdname results
+#' @rdname netreg_results
+#' @order 2
 #' @export
 print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
   .print_qap_glm(x, print_b = print_b, print_random = print_random)
   invisible(x)
 }
 
-#' @rdname results
+#' @rdname netreg_results
+#' @order 4
 #' @export
 print.netreg <- function(x, ...) {
   cat("<netreg>\n")
