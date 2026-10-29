@@ -315,7 +315,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
-| `model_specify.R` | `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it |
+| `model_specify.R` | `specify_mrqap()` and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it; goldfish's writer is goldfish's own `specify_dynam()` |
+| `model_specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, and its `print()`, `tidy()`, and `formula()` methods |
 | `model_formula_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
 | `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
@@ -820,7 +821,8 @@ correspond to those in other packages.
   `nodematch("dept")` as `same(dept)`, and names a term that means something
   different here, such as goldfish's `sim()`, with `snet_info()`.
   An interaction with such a term is dropped whole.
-  `specify_dynam()` and `specify_ergm()` do the same for goldfish and ergm.
+  `specify_ergm()` does the same for ergm, and goldfish's own
+  `specify_dynam()` for goldfish.
   Each reads the formula into infernet's terms, and then writes them for its
   model, so a new model needs one reader and one writer,
   not a translation from each of the others.
@@ -899,6 +901,24 @@ The statuses are one vocabulary, `.statuses()`, for every model:
 **warns**, **drops**, and **refuses**.
 `test-model_specify_record.R` holds the expected status of every registered
 term in every model.
+
+Without a formula, or with `.` as the whole right-hand side (`advice ~ .`),
+each `specify_*()` function gives a table of every term that its model can take
+for `.data`, as `RSiena::getEffects()` does.
+`.term_candidates()` in [R/model_specify_terms.R](../R/model_specify_terms.R)
+writes out each registered term for the network's layers and node attributes,
+by the shape of the network: `same()` and `mix()` for a categorical attribute,
+`diff()` and `sim()` for a numeric one, no second side for an undirected
+network, the reporter terms only for a CSS, and `global()` only for a list.
+A row is kept where the record of a formula of that term alone says that the
+model fits it, so the table and a written formula cannot disagree; a term the
+model drops, refuses, or warns about has no row.
+The table is of class `"mrqap_terms"` or `"ergm_terms"`, with
+its methods on `"specify_terms"`. `.one_of_each()` keeps one term of each set
+that measures the same thing, such as `same()` and `mix()` of one attribute;
+a new term that is another way to measure an existing one joins its set there. A new term needs a line in `.term_candidates()` where it reads a layer
+or an attribute, and a test in `test-model_specify_terms.R`.
+`formula()` of chosen rows gives their formula, through the same `specify_*()`.
 
 The ergm column is also what `specify_ergm()` writes each term as,
 through the term's `to_ergm` function in the registry:
@@ -979,9 +999,9 @@ checks that it comes back as itself, so that the reader and the writers agree.
    its nearest DyNAM, SAOM, and ERGM terms (`dynam`, `saom`, `ergm`),
    and its writer for ergm (`to_ergm`,
    in [R/model_formula_ergm.R](../R/model_formula_ergm.R)).
-   A term whose meaning or name differs in goldfish also needs a line in
-   `.dynam_operand()` or `.interpreted_dynam()` in
-   [R/model_specify.R](../R/model_specify.R).
+   A term whose meaning differs in goldfish also needs a line in
+   `.interpreted_dynam()` in [R/model_specify.R](../R/model_specify.R), and a
+   term whose name differs needs a line in goldfish's `specify_dynam()`.
    A term of another model that MRQAP cannot fit goes in `.dynam_terms()`
    with `mrqap = "drops"` and a `reason`, and needs no builder.
    A new reader in `.ergm_terms()` needs a row in the round-trip test.
@@ -991,11 +1011,14 @@ checks that it comes back as itself, so that the reader and the writers agree.
    `.build_operand()` records each column's term, layer, and attribute
    from the term's `kind`. A builder that knows more, such as each column's
    category, gives it in a `parts` attribute of the list it returns.
-3. Add a row to the dictionary above, with its MRQAP status,
+3. Write the term out in `.term_candidates()`, in
+   [R/model_specify_terms.R](../R/model_specify_terms.R), for the shapes of
+   network it suits, so that the table of every term lists it.
+4. Add a row to the dictionary above, with its MRQAP status,
    a row to `expected_status` in `test-model_specify_record.R`, with its
    status in each model, and a test to `test-formula_terms.R` that
    checks the matrix against a value computed by hand or by a loop.
-4. Add the term to the `formula` parameter of `estimate_mrqap()`.
+5. Add the term to the `formula` parameter of `estimate_mrqap()`.
 
 ## Preparing Contributions
 

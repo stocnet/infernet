@@ -27,6 +27,8 @@ test_that("the result is an mrqap_formula, and reading it again changes nothing"
   expect_identical(specify_mrqap(f), f)
   expect_output(print(f), "y ~ same\\(dept\\)")
   expect_output(print(f), "adapted nodematch")
+  # A term that fits as written gets no line.
+  expect_false(any(grepl("fits|Read from", capture.output(print(specify_mrqap(y ~ ego(age)))))))
 })
 
 test_that("ergm terms become their infernet equivalents", {
@@ -174,64 +176,6 @@ test_that("a name that no model knows is left for estimate_mrqap() to refuse", {
                                                times = 5)), "Did you mean")
 })
 
-# ---- specify_dynam() -----------------------------------------------------------
-
-test_that("an MRQAP formula is written for goldfish", {
-  expect_warning(
-    f <- specify_dynam(a ~ ego(x) + same(grp) + b + exchange(b) + dist(x) +
-                         same(grp, diff = TRUE) + (1 | sender), formula_net()),
-    "Dropped 2 terms that goldfish cannot fit")
-  expect_s3_class(f, c("dynam_formula", "formula"), exact = TRUE)
-  expect_equal(.deparsed(f[[3]]),
-               paste("ego(x) + same(grp) + tie(b, weighted = TRUE) + recip(b) +",
-                     "diff(x)"))
-  ch <- record_of(f)
-  expect_setequal(ch$term[ch$status == "drops"], c("same(grp, diff = TRUE)", "(1 | sender)"))
-})
-
-test_that("indeg() and outdeg() are written with goldfish's type =", {
-  f <- suppressWarnings(specify_dynam(
-    a ~ outdeg(b) + outdeg(b, node = "alter") + indeg(b) + indeg(b, "ego") +
-      outdeg(b, weighted = TRUE)))
-  expect_equal(.deparsed(f[[3]]), paste(
-    "outdeg(b, type = \"ego\") + outdeg(b) + indeg(b) + indeg(b, type = \"ego\") +",
-    "outdeg(b, type = \"ego\", weighted = TRUE)"))
-  ch <- record_of(f)
-  expect_match(ch$reason[ch$term == "outdeg(b)"], "receiver by default")
-  # A formula written for goldfish keeps them as they are.
-  f <- suppressMessages(specify_dynam(a ~ inertia + outdeg(b) + indeg(b, type = "ego")))
-  expect_equal(.deparsed(f[[3]]), "inertia + outdeg(b) + indeg(b, type = \"ego\")")
-})
-
-test_that("goldfish's own terms pass through, and those that differ are named", {
-  f <- suppressMessages(specify_dynam(a ~ inertia + trans(b) + sim(x) + tertius(b, x)))
-  expect_equal(.deparsed(f[[3]]), "inertia + trans(b) + sim(x) + tertius(b, x)")
-  # Written for goldfish already, so nothing means anything different.
-  expect_equal(unique(record_of(f)$status), "fits")
-  f <- specify_dynam(a ~ sim(x) + ego(x))
-  expect_equal(record_of(f)$status, c("interpreted", "fits"))
-})
-
-test_that("an ergm formula is written for goldfish", {
-  expect_warning(
-    f <- specify_dynam(net ~ edges + mutual + ttriple + ctriple + cycle(4) +
-                         gwesp(0.5) + nodematch("grp")),
-    "`gwesp(0.5)` has no goldfish term", fixed = TRUE)
-  expect_equal(.deparsed(f[[3]]), "recip + trans + cycle + four + same(grp)")
-})
-
-test_that("goldfish drops a term with levels =", {
-  expect_warning(f <- specify_dynam(a ~ ego(grp, levels = "q") + same(grp, levels = 1) +
-                                      alter(x)),
-                 "stocnet/goldfish#26", fixed = TRUE)
-  expect_equal(.deparsed(f[[3]]), "alter(x)")
-})
-
-test_that("a formula with nothing goldfish can fit aborts", {
-  expect_error(specify_dynam(a ~ same(grp, diff = TRUE) + mix(grp)),
-               "No term of the formula can be fitted by goldfish")
-})
-
 # ---- specify_ergm() without the network -----------------------------------------
 
 test_that("without the network, each term ergm names is written by name", {
@@ -281,7 +225,8 @@ test_that("each specify function reads the class the others give", {
   expect_equal(attr(g, "input"), "mrqap")
   expect_equal(attr(stats::terms(g), "term.labels"),
                c("edges", "mutual", "nodematch(\"grp\")"))
-  h <- suppressMessages(specify_dynam(g))
-  expect_equal(attr(h, "input"), "ergm")
-  expect_equal(.deparsed(h[[3]]), "recip + same(grp)")
+  # goldfish's specify_dynam() gives a "goldfishFormula", read as goldfish's.
+  h <- structure(a ~ inertia + same(grp), class = c("goldfishFormula", "formula"))
+  expect_equal(attr(suppressWarnings(suppressMessages(specify_mrqap(h))), "input"),
+               "dynam")
 })

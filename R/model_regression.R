@@ -54,8 +54,8 @@
 #'   holds gives `reporter()` an `NA` for every report of the other mode,
 #'   so those reports are dropped.
 #'   On a network that is not a CSS, a `reporter` term aborts.
-#'   Goldfish and ergm have no reporter, so [specify_dynam()] and
-#'   [specify_ergm()] drop these terms.
+#'   ergm has no reporter, so [specify_ergm()] drops these terms, and so does
+#'   goldfish's `specify_dynam()`.
 #'
 #'   A permutation relabels the nodes, and a reporter is a node, so the senders,
 #'   receivers, and reporters are relabelled together.

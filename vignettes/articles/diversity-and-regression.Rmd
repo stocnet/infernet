@@ -511,7 +511,7 @@ so try these outside the tutorial, with `ncores = 2` and more permutations.
 
 The same formula can describe other models of the same network.
 `specify_ergm()` rewrites an MRQAP formula for `{ergm}`,
-and `specify_dynam()` for a `{goldfish}` DyNAM.
+and `{goldfish}`'s own `specify_dynam()` for a DyNAM.
 Each term that has an equivalent is rewritten,
 such as `diff(Citations)` as `absdiff("Citations")`
 and a `| sender` fixed effect as ergm's `sender` term,

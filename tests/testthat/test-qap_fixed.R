@@ -32,10 +32,6 @@ test_that("each model's formula says what it makes of a fixed effect", {
   expect_equal(deparse(f[[3]]), "same(dept) | sender + receiver")
   expect_equal(tidy(f)$status, c("fits", "fits", "fits"))
 
-  d <- suppressWarnings(specify_dynam(advice ~ same(dept) | sender))
-  expect_false(grepl("|", deparse(d), fixed = TRUE))
-  expect_equal(tidy(d)$status[tidy(d)$term == "| sender"], "drops")
-
   e <- specify_ergm(advice ~ same(dept) | sender + receiver)
   expect_true(all(c("sender", "receiver") %in% all.vars(e)))
   expect_equal(tidy(e)$as[tidy(e)$term == "| sender"], "sender")

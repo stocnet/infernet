@@ -218,8 +218,8 @@ In a two-mode CSS the column nodes report after the row nodes, and
 holds gives \code{reporter()} an \code{NA} for every report of the other mode,
 so those reports are dropped.
 On a network that is not a CSS, a \code{reporter} term aborts.
-Goldfish and ergm have no reporter, so \code{\link[=specify_dynam]{specify_dynam()}} and
-\code{\link[=specify_ergm]{specify_ergm()}} drop these terms.
+ergm has no reporter, so \code{\link[=specify_ergm]{specify_ergm()}} drops these terms, and so does
+goldfish's \code{specify_dynam()}.
 
 A permutation relabels the nodes, and a reporter is a node, so the senders,
 receivers, and reporters are relabelled together.

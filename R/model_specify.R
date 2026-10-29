@@ -6,7 +6,8 @@
 # equivalent there, names a term that means something different there, and
 # drops a term the model cannot fit. One reader and one writer for each model
 # keeps the number of translations at twice the number of models, rather than
-# one for each pair of them.
+# one for each pair of them. goldfish's writer is goldfish's own
+# `specify_dynam()`, which reads the same terms.
 
 #' Specify a model from a formula written for many models
 #'
@@ -15,8 +16,10 @@
 #' return the formula that another model fits from it:
 #'
 #' - `specify_mrqap()` for [estimate_mrqap()], which calls it on every formula;
-#' - `specify_dynam()` for a DyNAM or REM in `{goldfish}`;
 #' - `specify_ergm()` for `ergm::ergm()`.
+#'
+#' `{goldfish}`'s own `specify_dynam()` writes a formula for a DyNAM or REM,
+#' and reads the same terms.
 #'
 #' A term with an equivalent in the model is rewritten as that term.
 #' A term that means something different in the model is kept and named.
@@ -45,8 +48,7 @@
 #'   An MRQAP warns for a term that reads the outcome's own ties, such as
 #'   `recip`, and refuses `tie()`, `indeg()`, and `outdeg()` of the outcome
 #'   layer. It drops an offset, such as goldfish's `offset(recip, coef = 0)`,
-#'   since it estimates every coefficient; goldfish keeps a goldfish offset,
-#'   and ergm an ergm one. For an MRQAP, `tidy()` with `.data` also builds each term and names
+#'   since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, `tidy()` with `.data` also builds each term and names
 #'   its `columns`, as [estimate_mrqap()] names them.
 #'
 #' @section Reading the model a formula was written for:
@@ -136,14 +138,50 @@
 #'   table of nodes, as in `ego(actors$floor)`, which is read as `ego(floor)`,
 #'   since the network holds its nodes' attributes.
 #'
-#'   For goldfish, a layer named on its own becomes `tie(layer, weighted = TRUE)`,
-#'   `exchange(layer)` becomes `recip(layer)`, `dist(x)` becomes `diff(x)`,
-#'   and `node = "ego"` becomes `type = "ego"`, so that `outdeg(friends)`
-#'   becomes `outdeg(friends, type = "ego")`.
-#'   `same(x, diff = TRUE)`, `match()`, `mix()`, random intercepts, and fixed effects have no goldfish
-#'   term, and are dropped.
+#' @section A table of every term:
+#'   Without a formula, or with `.` as its whole right-hand side, as in
+#'   `advice ~ .`, each `specify_*()` function returns a table of every term
+#'   that its model can take for `.data`, as `RSiena::getEffects()` does for a
+#'   Siena data object. Each term is written out for the network's layers and
+#'   node attributes, such as `ego(age)`, `same(dept)`, `tie(friends)`, and
+#'   `indeg(friends, node = 'ego')`.
+#'
+#'   - A numeric attribute gets `ego()`, `alter()`, `diff()`, and `sim()`,
+#'     and a categorical one `ego()`, `alter()`, `same()`, and `mix()`.
+#'     A name, a label, or an attribute with a different category for each
+#'     node gets no term.
+#'   - An undirected network has no `alter()`, `exchange()`, `outdeg()`, or
+#'     `recip`, since the two sides of its ties are the same.
+#'   - A two-mode network reads `ego()` on the first mode and `alter()` on
+#'     the second. A term of both sides needs the attribute on both modes.
+#'   - The reporter terms are only for a cognitive social structure, and
+#'     `global()` only for a list of networks. An MRQAP takes `inertia` and
+#'     `trans` only on a panel.
+#'   - A term that the model drops or refuses, such as `tie()` of the outcome
+#'     layer, has no row. Nor has a term that reads the outcome's own ties,
+#'     such as `recip` in an MRQAP of one network, since permuting the
+#'     outcome also permutes the term.
+#'
+#'   The terms are for the outcome on the left-hand side, by default `.`.
+#'   Where `.` is not one layer, as in a multiplex network without a focal
+#'   layer, the terms are for its first layer, and a message says so.
+#'
+#'   The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`, and
+#'   also `"specify_terms"`, with the columns `term`,
+#'   `effect`, `layer`, and `attribute`. `print()` shows every row, and `tidy()`
+#'   returns the table as a plain tibble.
+#'   What the model makes of each term is in the record of the formula that
+#'   `formula()` gives. Choose rows with `[` or `dplyr::filter()`,
+#'   and `formula()` of the rows gives the formula of those terms, read by the
+#'   same `specify_*()` function, for the same outcome or for `lhs`.
+#'   Some terms measure the same thing in different ways: `same(x)`,
+#'   `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and `sim(x)`.
+#'   Of each such set, `formula()` keeps the first row, and a message names
+#'   the others, since a model of all of them is collinear.
 #'
 #' @param formula A formula written for an MRQAP, goldfish, or ergm.
+#'   Without it, or with `.` as its right-hand side, the table of every term
+#'   for `.data`.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
 #'   In `tidy()` of an MRQAP formula, the network to build the columns from.
@@ -151,14 +189,18 @@
 #'   `edgecov()` of a matrix, and drops them without it.
 #' @param input The model the formula was written for: `"mrqap"`, `"dynam"`,
 #'   `"rem"`, or `"ergm"`. `NULL`, the default, reads it from the class of the
-#'   formula, or else from the names in the formula.
-#' @return A formula of class `c("mrqap_formula", "formula")`,
-#'   `c("dynam_formula", "formula")`, or `c("ergm_formula", "formula")`.
+#'   formula, such as goldfish's `"goldfishFormula"`, or else from the names in
+#'   the formula.
+#' @return A formula of class `c("mrqap_formula", "formula")` or
+#'   `c("ergm_formula", "formula")`.
 #'   Its `input` attribute names the model it was read from, and its `record`
 #'   attribute holds what the model makes of each term.
-#'   Printing the formula lists them, and `tidy()` returns them as a tibble,
+#'   Printing the formula lists the terms that do not fit as written, and
+#'   `tidy()` returns every term as a tibble,
 #'   with the columns `term`, `status`, `as`, and `reason`, and for an MRQAP
 #'   also `columns`.
+#'   Without a formula, a tibble of class `"specify_terms"`, one row for each
+#'   term, as the section "A table of every term" describes.
 #' @name specify
 #' @family models
 NULL
@@ -173,6 +215,15 @@ NULL
 #' f
 #' @export
 specify_mrqap <- function(formula, .data = NULL, input = NULL) {
+  if (.wants_term_table(formula, .data)) {
+    return(.every_term_table(.data, .table_lhs(formula), "mrqap"))
+  }
+  .specify_mrqap(formula, .data, input)
+}
+
+#' @keywords internal
+#' @noRd
+.specify_mrqap <- function(formula, .data = NULL, input = NULL, abort = TRUE) {
   if (inherits(formula, "mrqap_formula")) return(formula)
   read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
   record <- rbind(read$record, .offset_rows(read, "mrqap"))
@@ -199,54 +250,7 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   record <- rbind(record, dropped$record)
   record <- rbind(record, .fixed_rows(read$fixed, "mrqap"))
   .finish_formula(lhs, dropped$labels, read$bars, record, read, "mrqap",
-                  fixed = read$fixed)
-}
-
-#' @rdname specify
-#' @examples
-#' # An MRQAP formula, written for goldfish
-#' specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
-#' @export
-specify_dynam <- function(formula, .data = NULL, input = NULL) {
-  if (inherits(formula, "dynam_formula")) return(formula)
-  read <- .read_formula(formula, .data, input)
-  record <- read$record
-  registry <- .formula_terms()
-  out <- character(0)
-  for (lab in read$labels) {
-    if (lab %in% read$native) {
-      new <- .dynam_from_ergm(lab)
-      if (is.null(new)) {
-        record <- rbind(record, .record_row(lab, "", "drops", "has no goldfish term"))
-      } else {
-        record <- rbind(record, .record_row(lab, new, "adapted", ""))
-        out <- c(out, new)
-      }
-      next
-    }
-    ops <- lapply(.flatten_interaction(str2lang(lab)), .dynam_operand,
-                  registry = registry, ctx = read$ctx, input = read$input)
-    reason <- unlist(lapply(ops, `[[`, "reason"))
-    if (length(reason) > 0) {
-      record <- rbind(record, .record_row(lab, "", "drops", reason[1]))
-      next
-    }
-    new <- .deparsed(Reduce(function(a, b) call(":", a, b), lapply(ops, `[[`, "expr")))
-    note <- c(unlist(lapply(ops, `[[`, "note")), "")[1]
-    if (!identical(new, lab)) record <- rbind(record, .record_row(lab, new, "adapted", note))
-    out <- c(out, new)
-  }
-  for (bar in read$bars) {
-    record <- rbind(record, .record_row(paste0("(", bar, ")"), "", "drops",
-                                      "is a random intercept, which goldfish does not fit"))
-  }
-  record <- rbind(record, .fixed_rows(read$fixed, "dynam"))
-  record <- rbind(record, .interpreted_dynam(out, read$input, "dynam"))
-  # goldfish fixes a coefficient with `offset(effect, coef = )`.
-  keep <- read$input %in% c("dynam", "rem")
-  record <- rbind(record, .offset_rows(read, "dynam", keep = keep))
-  if (keep) out <- c(out, read$offsets)
-  .finish_formula(read$lhs, unique(out), character(0), record, read, "dynam")
+                  fixed = read$fixed, abort = abort)
 }
 
 #' @rdname specify
@@ -255,12 +259,17 @@ specify_dynam <- function(formula, .data = NULL, input = NULL) {
 #' specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 #' @export
 specify_ergm <- function(formula, .data = NULL, input = NULL) {
-  if (inherits(formula, "ergm_formula")) return(formula)
-  if (.is_list_of_graphs(.data)) {
-    manynet::snet_abort(
-      c("{.pkg ergm} fits one network, and {.arg .data} is a list of {length(.data)} networks.",
-        i = "Specify the formula for each network on its own."))
+  if (.wants_term_table(formula, .data)) {
+    return(.every_term_table(.data, .table_lhs(formula), "ergm"))
   }
+  .specify_ergm(formula, .data, input)
+}
+
+#' @keywords internal
+#' @noRd
+.specify_ergm <- function(formula, .data = NULL, input = NULL, abort = TRUE) {
+  if (inherits(formula, "ergm_formula")) return(formula)
+  .ergm_one_network(.data)
   read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
   # A formula written for ergm is already one.
   if (read$input == "ergm") {
@@ -276,11 +285,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   ctx <- NULL
   if (!is.null(.data)) {
     ctx <- .spec_context(list(outcome = .deparsed(lhs), env = read$env), .data)
-    if (ctx$css) {
-      manynet::snet_abort(
-        c("{.pkg ergm} has no form for the cognitive social structure {.val {ctx$out$label}}.",
-          i = "Each reporter reports its ties, and ergm fits one report of a network."))
-    }
+    .ergm_one_report(ctx)
   }
 
   terms <- character(0)
@@ -362,20 +367,42 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
     lhs <- as.name(ctx$out$label)
   }
   .finish_formula(lhs, c("edges", unique(terms), native), character(0), record,
-                  read, "ergm", env = env)
+                  read, "ergm", env = env, abort = abort)
+}
+
+# ergm fits one report of one network, so a list of networks and a cognitive
+# social structure abort, for a formula and for the table of every term.
+#' @keywords internal
+#' @noRd
+.ergm_one_network <- function(.data) {
+  if (.is_list_of_graphs(.data)) {
+    manynet::snet_abort(
+      c("{.pkg ergm} fits one network, and {.arg .data} is a list of {length(.data)} networks.",
+        i = "Specify the formula for each network on its own."))
+  }
+  invisible()
+}
+
+#' @keywords internal
+#' @noRd
+.ergm_one_report <- function(ctx) {
+  if (ctx$css) {
+    manynet::snet_abort(
+      c("{.pkg ergm} has no form for the cognitive social structure {.val {ctx$out$label}}.",
+        i = "Each reporter reports its ties, and ergm fits one report of a network."))
+  }
+  invisible()
 }
 
 #' @export
 print.mrqap_formula <- function(x, ...) .print_specified(x)
 
 #' @export
-print.dynam_formula <- function(x, ...) .print_specified(x)
-
-#' @export
 print.ergm_formula <- function(x, ...) .print_specified(x)
 
 #' @rdname specify
-#' @param x A formula returned by a `specify_*()` function.
+#' @param x A formula returned by a `specify_*()` function, or for
+#'   `formula()` and `tidy()`, the table of every term.
 #' @param ... Not used.
 #' @examples
 #' # Each term, and what the model makes of it
@@ -389,10 +416,6 @@ tidy.mrqap_formula <- function(x, .data = NULL, ...) {
   if (is.null(.data)) return(out)
   .record_columns(x, out, .data)
 }
-
-#' @rdname specify
-#' @export
-tidy.dynam_formula <- function(x, ...) .tidy_specified(x)
 
 #' @rdname specify
 #' @export
@@ -415,10 +438,13 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @noRd
 .record_columns <- function(x, out, .data) {
   spec <- .specify(x)
-  # A panel's columns are those of its second wave, read against its first.
+  # A panel's columns are those of its second wave, read against its first,
+  # and a list's columns those of its first network, pooled with the others.
   ctx <- if (.is_panel(.data)) {
     waves <- manynet::to_waves(.data)
     .spec_context(spec, waves[[2]], previous = waves[[1]])
+  } else if (.is_list_of_graphs(.data)) {
+    .spec_context(spec, .data[[1]], pooled = TRUE)
   } else {
     .spec_context(spec, .data)
   }
@@ -446,6 +472,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   out
 }
 
+# A term that fits as written needs no note, so the print lists only the terms
+# that the model changes, warns about, drops, or refuses. `tidy()` gives them all.
 #' @keywords internal
 #' @noRd
 .print_specified <- function(x) {
@@ -455,6 +483,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   attr(f, "input") <- NULL
   class(f) <- "formula"
   print(f, showEnv = FALSE)
+  if (!is.null(record)) record <- record[record$status != "fits", , drop = FALSE]
   if (!is.null(record) && nrow(record) > 0) {
     cat("Read from a formula for", attr(x, "input"), "\n")
     for (k in seq_len(nrow(record))) {
@@ -644,6 +673,8 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     }
     return(input)
   }
+  # goldfish's `specify_dynam()` returns a `"goldfishFormula"`.
+  if (inherits(formula, "goldfishFormula")) return("dynam")
   classed <- sub("_formula$", "", grep("_formula$", class(formula), value = TRUE))
   classed <- intersect(classed, inputs)
   if (length(classed) > 0) return(classed[1])
@@ -786,9 +817,16 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @keywords internal
 #' @noRd
 .finish_formula <- function(lhs, labels, bars, record, read, target,
-                            env = read$env, fixed = character(0)) {
+                            env = read$env, fixed = character(0), abort = TRUE) {
   model <- .model_label(target)
   record <- .complete_record(record, read, target)
+  # The table of every term reads the record of a term that the model drops,
+  # so there it has a formula with no term rather than an abort.
+  if (length(labels) == 0 && !abort) {
+    return(structure(eval(call("~", lhs, 1)),
+                     class = c(paste0(target, "_formula"), "formula"),
+                     input = read$input, record = record))
+  }
   if (length(labels) == 0) {
     lost <- record[record$status == "drops" |
                       (record$status == "adapted" & !nzchar(record$as)), ]
@@ -810,7 +848,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 }
 
 # The record of the fixed effects after a bare bar, one row for each group.
-# An MRQAP fits them. goldfish has none. ergm's `sender` and `receiver` terms
+# An MRQAP fits them. ergm's `sender` and `receiver` terms
 # are fixed effects for each node, so the two are the same model there; ergm
 # has no reporter or network to absorb.
 #' @keywords internal
@@ -820,8 +858,6 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   term <- paste("|", fixed)
   switch(target,
     mrqap = .record_row(term, term, rep("fits", length(fixed)), rep("", length(fixed))),
-    dynam = .record_row(term, "", rep("drops", length(fixed)),
-                        rep("is a fixed effect, which goldfish does not fit", length(fixed))),
     ergm = {
       node <- fixed %in% c("sender", "receiver")
       .record_row(term, ifelse(node, fixed, ""), ifelse(node, "adapted", "drops"),
@@ -858,11 +894,11 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 .escape <- function(x) gsub("}", "}}", gsub("{", "{{", x, fixed = TRUE), fixed = TRUE)
 
 # The terms both packages have, but define differently, named where a formula
-# moves between goldfish and the others.
+# written for goldfish is read for another model.
 #' @keywords internal
 #' @noRd
 .interpreted_dynam <- function(labels, input, target) {
-  if ((input %in% c("dynam", "rem")) == (target == "dynam")) return(.no_record())
+  if (!input %in% c("dynam", "rem")) return(.no_record())
   differs <- c(
     sim          = "is 1 - |d| / range in infernet, and -|d| in goldfish, so its coefficient is on another scale, though its test is the same",
     tertius      = "leaves out the sender in infernet, and includes it in goldfish",
@@ -917,89 +953,6 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
   list(labels = labels[!dropped],
        record = .record_row(labels[dropped], rep("", sum(dropped)),
                          rep("drops", sum(dropped)), reasons[dropped]))
-}
-
-# ---- writing for goldfish ----------------------------------------------------------------
-
-# One operand written for goldfish: as it is where goldfish has the term, and
-# otherwise its goldfish equivalent, or the reason it has none. A bare name
-# that is no term is a layer, which goldfish names with `tie()`.
-#' @keywords internal
-#' @noRd
-.dynam_operand <- function(expr, registry, ctx, input = "mrqap") {
-  if (is.name(expr)) {
-    name <- as.character(expr)
-    entry <- registry[[name]]
-    if (name %in% ctx$tie_names || is.null(entry) || !isTRUE(entry$bare)) {
-      return(list(expr = call("tie", expr, weighted = TRUE)))
-    }
-    if (isTRUE(entry$css)) return(.dynam_operand(call(name), registry, ctx, input))
-    return(list(expr = expr))
-  }
-  fn <- as.character(expr[[1]])
-  entry <- registry[[fn]]
-  if (is.null(entry)) return(list(expr = expr))
-  switch(fn,
-    indeg    = ,
-    outdeg   = .dynam_degree(expr, input),
-    exchange = list(expr = as.call(c(as.name("recip"), as.list(expr)[-1]))),
-    dist     = list(expr = as.call(c(as.name("diff"), as.list(expr)[-1]))),
-    same     = if (.same_by_category(.specify_operand(expr),
-                                     if (is.null(ctx$env)) globalenv() else ctx$env)) {
-      list(reason = "has no goldfish term with `diff = TRUE`")
-    } else if (!is.null(.specify_operand(expr)$args$levels)) {
-      list(reason = "has no goldfish term with `levels =` yet (stocnet/goldfish#26)")
-    } else {
-      list(expr = expr)
-    },
-    ego      = ,
-    alter    = if (!is.null(.specify_operand(expr)$args$levels)) {
-      list(reason = "has no goldfish term with `levels =` yet (stocnet/goldfish#26)")
-    } else {
-      list(expr = expr)
-    },
-    if (isTRUE(entry$css)) {
-      list(reason = "describes the reporter of a cognitive social structure, which goldfish does not have")
-    } else if (is.na(entry$dynam)) {
-      list(reason = "has no goldfish term")
-    } else {
-      list(expr = expr)
-    })
-}
-
-# goldfish names the side of `indeg()` and `outdeg()` with `type =`, and reads
-# the receiver by default, so only the sender's side is written. A formula
-# written for goldfish keeps its terms as they are.
-#' @keywords internal
-#' @noRd
-.dynam_degree <- function(expr, input) {
-  op <- .specify_operand(expr)
-  if (input %in% c("dynam", "rem") || is.null(op$args$layer)) return(list(expr = expr))
-  node <- .degree_node(op)
-  args <- list(op$args$layer)
-  if (node == "ego") args$type <- "ego"
-  if ("weighted" %in% op$supplied) args$weighted <- op$args$weighted
-  note <- if (op$fn == "outdeg" && node == "ego" && !any(c("node", "type") %in% op$supplied)) {
-    "since goldfish's outdeg() reads the receiver by default"
-  }
-  list(expr = as.call(c(as.name(op$fn), args)), note = note)
-}
-
-# ergm's structural terms that goldfish has, by goldfish's name.
-#' @keywords internal
-#' @noRd
-.dynam_from_ergm <- function(label) {
-  expr <- str2lang(label)
-  if (is.name(expr)) {
-    map <- c(ttriple = "trans", ctriple = "cycle", triangle = "triangle")
-    name <- as.character(expr)
-    return(if (name %in% names(map)) map[[name]] else NULL)
-  }
-  if (is.call(expr) && identical(expr[[1]], as.name("cycle")) &&
-      length(expr) == 2 && isTRUE(expr[[2]] == 4)) {
-    return("four")
-  }
-  NULL
 }
 
 # ---- writing for ergm --------------------------------------------------------------------

@@ -1079,8 +1079,8 @@ takes much longer, so try these outside the tutorial, with
 <h2>Moving a formula</h2>
 <p>The same formula can describe other models of the same network.
 <code>specify_ergm()</code> rewrites an MRQAP formula for
-<code>{ergm}</code>, and <code>specify_dynam()</code> for a
-<code>{goldfish}</code> DyNAM. Each term that has an equivalent is
+<code>{ergm}</code>, and <code>{goldfish}</code>’s own <code>specify_dynam()</code> for a
+DyNAM. Each term that has an equivalent is
 rewritten, such as <code>diff(Citations)</code> as
 <code>absdiff("Citations")</code> and a <code>| sender</code> fixed
 effect as ergm’s <code>sender</code> term, and each term that the other

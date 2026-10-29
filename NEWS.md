@@ -52,11 +52,17 @@
 
 ## Specification
 
+- Improved `specify_mrqap(.data = net)`, or `advice ~ .`, to tabulate all terms 
+  that suit `net` like `RSiena::getEffects()`
+  - Each row has available terms, their effects, and related layers/attributes
+- Added `formula()` method to this output
+  - By default, composes a maximal formula, skipping the more complex of jointly redundant terms
+  - Terms can also be chosen by grep
+- Removed `specify_dynam()`, which moves to `{goldfish}` (stocnet/goldfish#124)
 - Renamed `type =` of `indeg()`/`outdeg()` to `node =`, as stocnet/goldfish#122 proposes (thanks @auzaheta)
   - `type =` still works, and warns once that it is deprecated
   - `outdeg()` reads the sender's outdegree by default, `node = "ego"`
   - `specify_mrqap()` and `specify_ergm()` read a goldfish formula's with `type =` as `node =`
-  - `specify_dynam()` writes `node =` as goldfish's `type =`
 - Added terms for the reporter of a CSS
   - Added `reporter(x, levels = NULL)` for the reporter's value of a node attribute
   - Added `reporter_ego` where the reporter is the sender
@@ -64,9 +70,9 @@
   - Added `reporter_same(x, node =)` where the reporter shares a value with the `"ego"`/`"alter"`
   - These terms abort on a network that is not a CSS, the last 3 for undirected networks,
     and the last for a two-mode network 
-  - `specify_dynam()` and `specify_ergm()` drop these terms
+  - `specify_ergm()` drops these terms
   - A `| reporter` fixed effect absorbs `reporter()`, and names it
-- Improved the speed of `same()` on a two-mode network, with the same values
+- Accelerated `same()` on a two-mode network, with the same values
 - Improved `specify_mrqap()` on the formulas in goldfish's documentation
   - Fixed a bare `indeg` or `outdeg` read as a layer; it is dropped, as goldfish's outcome degree
   - Fixed `recip(calls, weighted = TRUE)` aborting

@@ -16,55 +16,55 @@ status_in <- function(specify, label, g, tidied = FALSE) {
 }
 
 # mrqap is the record; tidied is `tidy()` with the network, which builds each
-# term. The other models name the term in their own formula, and the registry's
-# `dynam`, `saom`, and `ergm` say which term that is.
+# term. ergm names the term in its own formula, and the registry's `ergm` says
+# which term that is.
 expected_status <- utils::read.table(header = TRUE, stringsAsFactors = FALSE, text = "
-  term                  mrqap  tidied   dynam       ergm
-  ego                   fits   fits     fits        adapted
-  alter                 fits   fits     fits        adapted
-  same                  fits   fits     fits        adapted
-  diff                  fits   fits     fits        adapted
-  dist                  warns  warns    adapted     adapted
-  sim                   fits   fits     interpreted adapted
-  match                 warns  warns    drops       adapted
-  mix                   fits   fits     drops       adapted
-  tie                   fits   fits     fits        adapted
-  recip                 fits   fits     fits        adapted
-  exchange              fits   fits     adapted     adapted
-  indeg                 fits   fits     fits        adapted
-  outdeg                fits   fits     adapted     adapted
-  tertius               fits   fits     interpreted adapted
-  tertius_diff          fits   fits     interpreted adapted
-  global                fits   refuses  fits        drops
-  reporter              fits   refuses  drops       drops
-  reporter_ego          fits   refuses  drops       drops
-  reporter_alter        fits   refuses  drops       drops
-  reporter_same         fits   refuses  drops       drops
-  inertia               drops  drops    fits        drops
-  trans                 drops  drops    fits        adapted
-  cycle                 drops  drops    fits        adapted
-  common_sender         drops  drops    fits        drops
-  common_receiver       drops  drops    fits        drops
-  four                  drops  drops    fits        adapted
-  triangle              drops  drops    fits        fits
-  node_trans            drops  drops    fits        drops
-  degree                drops  drops    fits        drops
-  mixed_trans           drops  drops    fits        drops
-  mixed_cycle           drops  drops    fits        drops
-  mixed_common_sender   drops  drops    fits        drops
-  mixed_common_receiver drops  drops    fits        drops
-  ego_alter_interaction drops  drops    fits        drops
-  alterdeg              drops  drops    fits        drops
-  alterpop              drops  drops    fits        drops
-  egodeg                drops  drops    fits        drops
-  egopop                drops  drops    fits        drops
-  dyad                  drops  drops    fits        drops
-  dyadXdiff             drops  drops    fits        drops
-  dyadXego              drops  drops    fits        drops
-  size                  drops  drops    fits        drops
-  sizeXdiff             drops  drops    fits        drops
-  sizeXego              drops  drops    fits        drops
-  intercept             drops  drops    fits        drops
+  term                  mrqap  tidied   ergm
+  ego                   fits   fits     adapted
+  alter                 fits   fits     adapted
+  same                  fits   fits     adapted
+  diff                  fits   fits     adapted
+  dist                  warns  warns    adapted
+  sim                   fits   fits     adapted
+  match                 warns  warns    adapted
+  mix                   fits   fits     adapted
+  tie                   fits   fits     adapted
+  recip                 fits   fits     adapted
+  exchange              fits   fits     adapted
+  indeg                 fits   fits     adapted
+  outdeg                fits   fits     adapted
+  tertius               fits   fits     adapted
+  tertius_diff          fits   fits     adapted
+  global                fits   refuses  drops
+  reporter              fits   refuses  drops
+  reporter_ego          fits   refuses  drops
+  reporter_alter        fits   refuses  drops
+  reporter_same         fits   refuses  drops
+  inertia               drops  drops    drops
+  trans                 drops  drops    adapted
+  cycle                 drops  drops    adapted
+  common_sender         drops  drops    drops
+  common_receiver       drops  drops    drops
+  four                  drops  drops    adapted
+  triangle              drops  drops    fits
+  node_trans            drops  drops    drops
+  degree                drops  drops    drops
+  mixed_trans           drops  drops    drops
+  mixed_cycle           drops  drops    drops
+  mixed_common_sender   drops  drops    drops
+  mixed_common_receiver drops  drops    drops
+  ego_alter_interaction drops  drops    drops
+  alterdeg              drops  drops    drops
+  alterpop              drops  drops    drops
+  egodeg                drops  drops    drops
+  egopop                drops  drops    drops
+  dyad                  drops  drops    drops
+  dyadXdiff             drops  drops    drops
+  dyadXego              drops  drops    drops
+  size                  drops  drops    drops
+  sizeXdiff             drops  drops    drops
+  sizeXego              drops  drops    drops
+  intercept             drops  drops    drops
 ")
 
 test_that("every registered term has an expected status in every model", {
@@ -83,7 +83,6 @@ test_that("each model gives each registered term its expected status", {
     expect_equal(status_in(specify_mrqap, label, g), row$mrqap, info = label)
     expect_equal(status_in(specify_mrqap, label, g, tidied = TRUE), row$tidied,
                  info = label)
-    expect_equal(status_in(specify_dynam, label, g), row$dynam, info = label)
     expect_equal(status_in(specify_ergm, label, g), row$ergm, info = label)
   }
 })
@@ -149,8 +148,6 @@ test_that("tidy() returns the record as a tibble, with the same columns for each
   expect_true(is.na(t$reason[2]))
   # Without the network, nothing is built.
   expect_equal(lengths(t$columns), c(0, 0, 0))
-  d <- suppressWarnings(specify_dynam(a ~ ego(x) + same(grp, diff = TRUE)))
-  expect_named(tidy(d), c("term", "status", "as", "reason"))
   e <- suppressMessages(specify_ergm(a ~ ego(x) + same(grp)))
   expect_named(tidy(e), c("term", "status", "as", "reason"))
   expect_equal(tidy(e)$as, c("nodeocov(\"x\")", "nodematch(\"grp\")"))
@@ -231,11 +228,7 @@ test_that("formulas from goldfish's documentation are read without aborting", {
   expect_equal(t$as, "ego(floor)")
 })
 
-test_that("goldfish's formulas are written for goldfish and ergm as they should be", {
-  # goldfish keeps its own offsets, bare degrees, and node tables.
-  d <- tidy(specify_dynam(calls ~ indeg + outdeg + offset(recip, coef = 0) +
-                            ego(actors$floor), input = "dynam"))
-  expect_equal(d$status, rep("fits", 4))
+test_that("goldfish's formulas are written for ergm as they should be", {
   e <- suppressWarnings(suppressMessages(tidy(specify_ergm(
     calls ~ inertia + indeg + offset(recip, coef = 0) + ego(actors$floor)))))
   expect_equal(stats::setNames(e$reason, e$term),
@@ -252,9 +245,8 @@ test_that("the offsets of an ergm formula are kept for ergm", {
 })
 
 test_that("tidy() gives each reason as text, without cli markup", {
-  d <- suppressWarnings(suppressMessages(tidy(specify_dynam(
-    weight ~ diff(Age) + same(Grp, diff = TRUE) + ego(Grp, levels = "a")))))
-  expect_equal(d$reason[-1],
-               c("has no goldfish term with `diff = TRUE`",
-                 "has no goldfish term with `levels =` yet (stocnet/goldfish#26)"))
+  e <- suppressWarnings(suppressMessages(tidy(specify_ergm(
+    a ~ ego(x) + sim(x) + indeg(b)))))
+  expect_false(any(grepl("{", e$reason, fixed = TRUE)))
+  expect_match(e$reason[e$term == "sim(x)"], "needs .data", fixed = TRUE)
 })
