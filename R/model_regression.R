@@ -175,77 +175,23 @@
 #'   dependent network: a layer, a tie attribute such as `weight`, or `.` for
 #'   the network's focal layer or the whole network.
 #'   The right-hand side accepts these terms, whose arguments can be given by
-#'   position or by name:
-#'   - `ego(attr, levels = NULL)`, `alter(attr, levels = NULL)` — the sender's
-#'     or the receiver's value of a node attribute; a categorical attribute is
-#'     dummy-coded, with the first category as the reference,
-#'   - `same(attr, diff = FALSE, levels = NULL)` — 1 where sender and receiver
-#'     share an attribute value; with `diff = TRUE`, as in ergm's
-#'     `nodematch()`, one 0/1 column for each category, 1 where sender and
-#'     receiver both hold it.
-#'     `match(attr)` is a deprecated alias of `same(attr, diff = TRUE)`,
-#'   - `diff(attr, transformer_fn = abs)` — the transformed difference between
-#'     the sender's and the receiver's values: absolute by default, and signed
-#'     with `transformer_fn = identity`. `dist(attr)` is a deprecated alias,
-#'   - `sim(attr)` — proportional similarity in a numeric attribute,
-#'     1 - |d| / range,
-#'   - `mix(attr, levels = NULL)` — one 0/1 column for each pair of a
-#'     sender's and a receiver's category, less the first pair as the
-#'     reference. The pairs are in ergm's order for `nodemix()`, the sender's
-#'     category changing fastest,
-#'   - `tie(layer, weighted = FALSE)` — another layer as a dyadic covariate,
-#'     0/1 unless `weighted = TRUE`; a layer or tie attribute named on its own
-#'     enters with its values as stored,
-#'   - `exchange(layer, weighted = NULL)` — the reverse tie, j to i, in another
-#'     layer; `recip(layer)` is the same, and `recip()`, or `recip` on its own,
-#'     reads the outcome's own reverse tie, and warns. `weighted = FALSE` gives
-#'     0/1, and `weighted = TRUE` the values, as goldfish's `recip()` does;
-#'     without it, the values are as stored,
-#'   - `indeg(layer, node = "alter", weighted = FALSE)` and
-#'     `outdeg(layer, node = "ego", weighted = FALSE)` — a node's number of
-#'     incoming or outgoing ties in another layer, for the receiver
-#'     (`"alter"`) or the sender (`"ego"`). By default `indeg()` reads the
-#'     receiver and `outdeg()` the sender. `type =` is a deprecated alias of
-#'     `node =`, and goldfish's name for it; goldfish reads the receiver for
-#'     both, so a formula written for goldfish is read as goldfish reads it.
-#'     goldfish's `indeg` or `outdeg` on its own reads the outcome's own
-#'     degree, and is dropped,
-#'   - `tertius(layer, attr, summarizer_fn = "mean")` — the mean (or the
-#'     tie-weighted sum, with `"sum"`) of an attribute over the receiver's
-#'     in-neighbours in a layer, other than the sender. A receiver with no
-#'     other in-neighbour takes the mean of the defined cells. The older
-#'     `tertius(attr)` reads the outcome's own ties, and warns,
-#'   - `tertius_diff(layer, attr, summarizer_fn = "mean")` — how far the
-#'     sender's value lies from that mean, as an absolute difference,
-#'   - `global(var)` — a network-level variable from the network's `globals`,
-#'     in a list of networks; on one network it is the intercept,
-#'   - `reporter(attr, levels = NULL)` — the reporter's value of a node
-#'     attribute in a cognitive social structure, dummy-coded as `ego()` is,
-#'   - `reporter_ego` and `reporter_alter`, or `reporter_ego()` and
-#'     `reporter_alter()` — 1 where the reporter is the sender or the
-#'     receiver of the dyad, so a report about the reporter's own ties,
-#'   - `reporter_same(attr, node = "ego")` — 1 where the reporter shares a
-#'     value of an attribute with the sender (`"ego"`) or the receiver
-#'     (`"alter"`).
-#'
-#'   The `reporter` terms are for a cognitive social structure only (see the
-#'   section on cognitive social structures).
+#'   position or by name. [terms_mrqap] says what each one measures, with its
+#'   equation, and [specify_terms] lists those that suit a network.
+#'   - of node attributes: `ego(x)`, `alter(x)`, `same(x)`, `mix(x)`,
+#'     `diff(x)`, and `sim(x)`;
+#'   - of other layers: `tie(layer)`, or the layer named on its own,
+#'     `exchange(layer)`, `indeg(layer)`, and `outdeg(layer)`;
+#'   - of others' attributes: `tertius(layer, x)` and `tertius_diff(layer, x)`;
+#'   - of the outcome's previous wave, on a longitudinal network: `inertia`,
+#'     `recip`, and `trans`;
+#'   - of a list of networks: `global(x)`;
+#'   - of the reporter of a cognitive social structure: `reporter(x)`,
+#'     `reporter_ego`, `reporter_alter`, and `reporter_same(x)`, for which
+#'     see the section on cognitive social structures.
 #'
 #'   `:` and `*` give interactions of any order, as the product of the terms.
-#'
-#'   `levels =` chooses the categories that get a column in `ego()`,
-#'   `alter()`, and `same()`, or the pairs in `mix()`, as in ergm. Give the
-#'   names, such as `levels = c("sales", "hr")` or, for `mix()`,
-#'   `levels = "sales -> hr"`, written as in `fit$terms` (`--` for an
-#'   undirected network). Or give positions in the order of the columns,
-#'   where a negative position leaves that one out: `levels = -1` is the
-#'   default of `ego()`, `alter()`, and `mix()`. In `ego()`, `alter()`, and
-#'   `mix()`, the categories left out are the reference together; where every
-#'   one is chosen, the first chosen is the reference. In `same()`, a dyad
-#'   that shares a category left out is not counted. An unknown name aborts
-#'   and lists the categories. A term with more than ten categories and no
-#'   `levels =` warns, since under `permute = "predictor"` each column is
-#'   permuted on its own.
+#'   `match(x)` and `dist(x)` are deprecated aliases of `same(x, diff = TRUE)`
+#'   and `diff(x)`.
 #'
 #'   A formula written for `{goldfish}` or `{ergm}` can be used as it is.
 #'   It is first read by [specify_mrqap()], which rewrites each term that has
@@ -860,9 +806,10 @@ print.netreg <- function(x, ...) {
 # Formula -> matrix-list front end
 # ============================================================================
 
-# The formula is parsed and evaluated in `R/model_formula.R`. This keeps the
-# shape the engine and the list path read: the matrices, the formula over their
-# column names, and whether the outcome is a cognitive social structure.
+# The formula is parsed in `R/specify_parse.R`, and its terms are built in
+# `R/specify_builders.R`. This keeps the shape the engine and the list path
+# read: the matrices, the formula over their column names, and whether the
+# outcome is a cognitive social structure.
 #' @keywords internal
 #' @noRd
 convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE,

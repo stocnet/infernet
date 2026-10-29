@@ -170,6 +170,8 @@ Other models:
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link{regression}},
 \code{\link{specify}},
+\code{\link{specify_terms}},
+\code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
 \code{\link[=test_parameter]{test_parameter()}}

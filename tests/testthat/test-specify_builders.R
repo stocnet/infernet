@@ -31,6 +31,31 @@ test_that("diff() is the absolute difference, and signed with identity", {
   expect_error(terms_of(a ~ diff(grp)), "same")
 })
 
+test_that("sim() is 1 less the difference as a share of the largest", {
+  m <- terms_of(a ~ sim(x))
+  expect_equal(unname(m[["sim_x"]]), 1 - abs(outer(X, X, "-")) / diff(range(X)))
+})
+
+test_that("same() is 1 where the sender and receiver share a category", {
+  m <- terms_of(a ~ same(grp))
+  expect_equal(unname(m[["same_grp"]]), outer(GRP, GRP, "==") * 1)
+})
+
+# The equation on the help page `terms_mrqap`, as a loop: the share of the
+# receiver's other ties that come from nodes like the sender.
+test_that("same() on a two-mode network is the share of the other ties", {
+  g <- functional_nets()$twomode
+  y <- unname(manynet::as_matrix(manynet::to_uniplex(g, "a")))
+  grp <- c("p", "q", "p", "q")
+  want <- matrix(0, nrow(y), ncol(y))
+  for (i in seq_len(nrow(y))) for (j in seq_len(ncol(y))) {
+    others <- setdiff(seq_len(nrow(y)), i)
+    total <- sum(y[others, j])
+    if (total > 0) want[i, j] <- sum(y[others, j] * (grp[others] == grp[i])) / total
+  }
+  expect_equal(unname(terms_of(a ~ same(grp), g)$same_grp), want)
+})
+
 test_that("dist() is a deprecated alias that keeps its column name", {
   .infernet_state$dist_warned <- NULL
   expect_warning(m <- terms_of(a ~ dist(x)), "deprecated")

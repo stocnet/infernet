@@ -10,7 +10,7 @@
 # message rather than failed, so that `devtools::test()` lists the remaining
 # work without stopping a release. CI sets `INFERNET_STRICT_AUDIT=true`, so the
 # same cases fail there. The audit asks only whether a term builds and what
-# shape it gives. Whether its values are right is in test-model_formula_terms.R,
+# shape it gives. Whether its values are right is in test-specify_builders.R,
 # and those tests always fail when they are wrong.
 
 # ---- the audit ------------------------------------------------------------------

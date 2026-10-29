@@ -73,22 +73,7 @@
 #'   Both read `levels =` as names or positions. infernet does not read ergm's
 #'   functions for `levels =`, such as `LARGEST`, or `nodemix()`'s `levels =`,
 #'   which changes the positions of `levels2 =`: such a term is left to ergm,
-#'   and an MRQAP drops it.
-#'
-#'   | infernet | ergm |
-#'   |---|---|
-#'   | `ego(x)` | `nodeocov("x")`, `nodeofactor("x")`; `b1cov("x")` in a two-mode network; `nodecov("x")` in an undirected one |
-#'   | `alter(x)` | `nodeicov("x")`, `nodeifactor("x")`; `b2cov("x")` in a two-mode network |
-#'   | `same(x)` | `nodematch("x")` |
-#'   | `same(x, diff = TRUE)` | `nodematch("x", diff = TRUE)` |
-#'   | `mix(x)` | `nodemix("x")` |
-#'   | `ego(x, levels = )`, `same(x, levels = )` | `nodeofactor("x", levels = )`, `nodematch("x", levels = )` |
-#'   | `mix(x, levels = )` | `nodemix("x", levels2 = )` |
-#'   | `diff(x)` | `absdiff("x")` |
-#'   | `diff(x, transformer_fn = identity)` | `diff("x")` |
-#'   | a layer, or `tie(layer)` | `edgecov()` |
-#'   | `recip` | `mutual` |
-#'   | `trans`, `cycle`, `four`, `triangle` | `ttriple`, `ctriple`, `cycle(4)`, `triangle` |
+#'   and an MRQAP drops it. [terms_mrqap] gives each term's ergm equivalent.
 #'
 #'   Read from ergm, `nodecov("x")` becomes `ego(x) + alter(x)`, and `edges`
 #'   and `density` are the intercept, which an MRQAP always has.
@@ -114,7 +99,8 @@
 #'   fits one report of one network.
 #'
 #' @section goldfish and infernet:
-#'   goldfish's terms are infernet's where the two packages share them.
+#'   goldfish's terms are infernet's where the two packages share them, as
+#'   [terms_mrqap] lists.
 #'   `sim()` is 1 - |d| / range in infernet and -|d| in goldfish,
 #'   which changes the scale of its coefficient but not its test, and
 #'   `tertius()` and `tertius_diff()` leave out the sender in infernet and
@@ -138,50 +124,9 @@
 #'   table of nodes, as in `ego(actors$floor)`, which is read as `ego(floor)`,
 #'   since the network holds its nodes' attributes.
 #'
-#' @section A table of every term:
-#'   Without a formula, or with `.` as its whole right-hand side, as in
-#'   `advice ~ .`, each `specify_*()` function returns a table of every term
-#'   that its model can take for `.data`, as `RSiena::getEffects()` does for a
-#'   Siena data object. Each term is written out for the network's layers and
-#'   node attributes, such as `ego(age)`, `same(dept)`, `tie(friends)`, and
-#'   `indeg(friends, node = 'ego')`.
-#'
-#'   - A numeric attribute gets `ego()`, `alter()`, `diff()`, and `sim()`,
-#'     and a categorical one `ego()`, `alter()`, `same()`, and `mix()`.
-#'     A name, a label, or an attribute with a different category for each
-#'     node gets no term.
-#'   - An undirected network has no `alter()`, `exchange()`, `outdeg()`, or
-#'     `recip`, since the two sides of its ties are the same.
-#'   - A two-mode network reads `ego()` on the first mode and `alter()` on
-#'     the second. A term of both sides needs the attribute on both modes.
-#'   - The reporter terms are only for a cognitive social structure, and
-#'     `global()` only for a list of networks. An MRQAP takes `inertia` and
-#'     `trans` only on a panel.
-#'   - A term that the model drops or refuses, such as `tie()` of the outcome
-#'     layer, has no row. Nor has a term that reads the outcome's own ties,
-#'     such as `recip` in an MRQAP of one network, since permuting the
-#'     outcome also permutes the term.
-#'
-#'   The terms are for the outcome on the left-hand side, by default `.`.
-#'   Where `.` is not one layer, as in a multiplex network without a focal
-#'   layer, the terms are for its first layer, and a message says so.
-#'
-#'   The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`, and
-#'   also `"specify_terms"`, with the columns `term`,
-#'   `effect`, `layer`, and `attribute`. `print()` shows every row, and `tidy()`
-#'   returns the table as a plain tibble.
-#'   What the model makes of each term is in the record of the formula that
-#'   `formula()` gives. Choose rows with `[` or `dplyr::filter()`,
-#'   and `formula()` of the rows gives the formula of those terms, read by the
-#'   same `specify_*()` function, for the same outcome or for `lhs`.
-#'   Some terms measure the same thing in different ways: `same(x)`,
-#'   `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and `sim(x)`.
-#'   Of each such set, `formula()` keeps the first row, and a message names
-#'   the others, since a model of all of them is collinear.
-#'
 #' @param formula A formula written for an MRQAP, goldfish, or ergm.
 #'   Without it, or with `.` as its right-hand side, the table of every term
-#'   for `.data`.
+#'   for `.data`, as [specify_terms] describes.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
 #'   In `tidy()` of an MRQAP formula, the network to build the columns from.
@@ -199,8 +144,10 @@
 #'   `tidy()` returns every term as a tibble,
 #'   with the columns `term`, `status`, `as`, and `reason`, and for an MRQAP
 #'   also `columns`.
-#'   Without a formula, a tibble of class `"specify_terms"`, one row for each
-#'   term, as the section "A table of every term" describes.
+#'   Without a formula, the table of every term for `.data`, as
+#'   [specify_terms] describes.
+#' @seealso [terms_mrqap] for what each term measures, and [specify_terms]
+#'   for the terms that suit a network.
 #' @name specify
 #' @family models
 NULL
@@ -401,8 +348,7 @@ print.mrqap_formula <- function(x, ...) .print_specified(x)
 print.ergm_formula <- function(x, ...) .print_specified(x)
 
 #' @rdname specify
-#' @param x A formula returned by a `specify_*()` function, or for
-#'   `formula()` and `tidy()`, the table of every term.
+#' @param x A formula returned by a `specify_*()` function.
 #' @param ... Not used.
 #' @examples
 #' # Each term, and what the model makes of it

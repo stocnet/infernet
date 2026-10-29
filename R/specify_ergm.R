@@ -1,6 +1,6 @@
 # Infernet terms -> ergm terms --------------------------------------------------
 #
-# `specify_ergm()` in model_specify.R writes each term as its named ergm term
+# `specify_ergm()` in specify_formula.R writes each term as its named ergm term
 # where ergm has one, and otherwise as `edgecov()` of the matrix infernet
 # builds. Each registry entry in `.formula_terms()` says how with its `to_ergm`
 # function, next to the `ergm` name it documents. A term whose `ergm` is NA has

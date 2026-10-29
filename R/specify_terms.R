@@ -8,15 +8,72 @@
 # formula of it alone says that the model fits it. The table and a formula of
 # its terms therefore always agree.
 
-#' @rdname specify
+#' The terms that suit a network
+#'
+#' @description
+#' Without a formula, or with `.` as its whole right-hand side, as in
+#' `advice ~ .`, [specify_mrqap()] and [specify_ergm()] return a table of
+#' every term that the model can take for `.data`, as `RSiena::getEffects()`
+#' does for a Siena data object. Each term is written out for the network's
+#' layers and node attributes, such as `ego(age)`, `same(dept)`,
+#' `tie(friends)`, and `indeg(friends, node = 'ego')`.
+#' Choose rows with `[` or `dplyr::filter()`, and `formula()` of the rows
+#' gives the formula of those terms.
+#' [terms_mrqap] says what each term measures.
+#'
+#' @section Which terms are listed:
+#'   - A numeric attribute gets `ego()`, `alter()`, `diff()`, and `sim()`,
+#'     and a categorical one `ego()`, `alter()`, `same()`, and `mix()`.
+#'     A name, a label, or an attribute with a different category for each
+#'     node gets no term.
+#'   - An undirected network has no `alter()`, `exchange()`, `outdeg()`, or
+#'     `recip`, since the two sides of its ties are the same.
+#'   - A two-mode network reads `ego()` on the first mode and `alter()` on
+#'     the second. A term of both sides needs the attribute on both modes.
+#'   - The reporter terms are only for a cognitive social structure, and
+#'     `global()` only for a list of networks. An MRQAP takes `inertia` and
+#'     `trans` only on a panel.
+#'   - A term that the model drops or refuses, such as `tie()` of the outcome
+#'     layer, has no row. Nor has a term that reads the outcome's own ties,
+#'     such as `recip` in an MRQAP of one network, since permuting the
+#'     outcome does not permute the term with it.
+#'
+#'   The terms are for the outcome on the left-hand side, by default `.`.
+#'   Where `.` is not one layer, as in a multiplex network without a focal
+#'   layer, the terms are for its first layer, and a message says so.
+#'
+#' @section A formula of chosen rows:
+#'   `formula()` of the rows gives the formula of their terms, read by the
+#'   same `specify_*()` function, for the same outcome or for `lhs`.
+#'   What the model makes of each term is in the record of that formula, as
+#'   [specify] describes.
+#'   Some terms measure the same thing in different ways: `same(x)`,
+#'   `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and `sim(x)`.
+#'   Of each such set, `formula()` keeps the first row, and a message names
+#'   the others, since a model of all of them is collinear.
+#'
+#' @param x The table of every term.
 #' @param lhs The outcome of the formula, as a name or a string. `NULL`, the
 #'   default, is the outcome the table was made for.
+#' @param ... Not used.
+#' @return The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`,
+#'   and also `"specify_terms"`, with the columns `term`, `effect`, `layer`,
+#'   and `attribute`. `print()` shows every row, and `tidy()` returns the
+#'   table as a plain tibble. `formula()` returns the formula of the chosen
+#'   rows, as [specify_mrqap()] or [specify_ergm()] returns it.
+#' @seealso [terms_mrqap] for what each term measures, and [specify] for
+#'   what each model makes of a formula.
+#' @name specify_terms
+#' @family models
 #' @examples
 #' # Every term for a network, and a formula of some of them
 #' terms <- specify_mrqap(advice ~ ., ison_hightech)
 #' terms
 #' formula(terms[terms$term %in% c("ego(age)", "same(dept)", "tie(friends)"), ])
 #' formula(terms[terms$effect == "reporter", ], friends)
+NULL
+
+#' @rdname specify_terms
 #' @export
 formula.specify_terms <- function(x, lhs = NULL, ...) {
   lhs <- substitute(lhs)
@@ -34,7 +91,7 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
   specify(f, attr(x, "data"), input = "mrqap")
 }
 
-#' @rdname specify
+#' @rdname specify_terms
 #' @export
 tidy.specify_terms <- function(x, ...) {
   out <- as.data.frame(x)

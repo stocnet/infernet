@@ -65,10 +65,14 @@ reference:
       - starts_with("test_")
   - title: "Specification"
     desc: >
-      Functions for reading one formula for an MRQAP, a goldfish DyNAM, or an ERGM,
+      The terms of an MRQAP formula and what each measures,
+      the terms that suit a network,
+      and functions for reading one formula for an MRQAP or an ERGM,
       and for seeing what each model makes of each term:
     contents:
-      - starts_with("specify_")
+      - terms_mrqap
+      - specify_terms
+      - specify
   - title: "Regression"
     desc: >
       Functions for regressing a network on nodal and dyadic covariates

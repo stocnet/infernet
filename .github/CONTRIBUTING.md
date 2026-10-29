@@ -302,7 +302,7 @@ Likewise `README.md` is generated from `README.Rmd` — edit the `.Rmd` and re-k
 ### File organization
 
 `R/` files are grouped by theme rather than one file per function.
-The user-facing files are named `test_*.R` for the `test_*()` functions and `model_*.R` for the rest;
+The user-facing files are named `test_*.R` for the `test_*()` functions, `specify_*.R` for the formula, its terms, and the `specify_*()` functions, and `model_*.R` for the rest;
 the internal engine ported from `MrQAP` is named `qap_*.R`.
 
 | File | Contains |
@@ -315,10 +315,12 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
 | `model_results.R` | the `results` help page, and `tidy()` and `glance()` for `netreg` and `network_test` results and for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
-| `model_specify.R` | `specify_mrqap()` and `specify_ergm()`: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it; goldfish's writer is goldfish's own `specify_dynam()` |
-| `model_specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, and its `print()`, `tidy()`, and `formula()` methods |
-| `model_formula_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
-| `model_formula.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term registry `.formula_terms()` and its builders, and `specificationAdvice()` |
+| `specify_registry.R` | the term registry `.formula_terms()` and goldfish's terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term's equation |
+| `specify_builders.R` | the builder of each term, which makes its matrices for one network |
+| `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
+| `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify` help page: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it; goldfish's writer is goldfish's own `specify_dynam()` |
+| `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its `print()`, `tidy()`, and `formula()` methods |
+| `specify_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_draws.R` | the draw plan: the cells a model reads, the values a draw permutes, and the design that a linear model or a glm solves once |
@@ -329,7 +331,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `infernet-package.R` | package-level doc, global variables, and the shim silencing R CMD check's unused-import note |
 | `zzz.R` | the attach-time greeting and the cached stocnet version check |
 
-Only `test_*.R` and `model_*.R` hold exported functions.
+Only `test_*.R`, `specify_*.R`, and `model_*.R` hold exported functions.
 Everything in `qap_*.R` is internal, and carries `@keywords internal` and `@noRd`.
 Keep it that way: the engine's argument names are the `MrQAP` ones, and
 exporting them would freeze an interface we still intend to tidy.
@@ -899,13 +901,13 @@ The statuses are one vocabulary, `.statuses()`, for every model:
 **fits**, **adapted** (rewritten as the model's equivalent),
 **interpreted** (kept, but the model defines it differently),
 **warns**, **drops**, and **refuses**.
-`test-model_specify_record.R` holds the expected status of every registered
+`test-specify_record.R` holds the expected status of every registered
 term in every model.
 
 Without a formula, or with `.` as the whole right-hand side (`advice ~ .`),
 each `specify_*()` function gives a table of every term that its model can take
 for `.data`, as `RSiena::getEffects()` does.
-`.term_candidates()` in [R/model_specify_terms.R](../R/model_specify_terms.R)
+`.term_candidates()` in [R/specify_terms.R](../R/specify_terms.R)
 writes out each registered term for the network's layers and node attributes,
 by the shape of the network: `same()` and `mix()` for a categorical attribute,
 `diff()` and `sim()` for a numeric one, no second side for an undirected
@@ -917,7 +919,7 @@ The table is of class `"mrqap_terms"` or `"ergm_terms"`, with
 its methods on `"specify_terms"`. `.one_of_each()` keeps one term of each set
 that measures the same thing, such as `same()` and `mix()` of one attribute;
 a new term that is another way to measure an existing one joins its set there. A new term needs a line in `.term_candidates()` where it reads a layer
-or an attribute, and a test in `test-model_specify_terms.R`.
+or an attribute, and a test in `test-specify_terms.R`.
 `formula()` of chosen rows gives their formula, through the same `specify_*()`.
 
 The ergm column is also what `specify_ergm()` writes each term as,
@@ -983,42 +985,47 @@ Two terms still differ from goldfish:
 - goldfish includes ego in `tertius()` and `tertius_diff()`, where infernet
   reads only j's other in-neighbours.
 
-`.ergm_terms()` in [R/model_specify.R](../R/model_specify.R) reads each ergm
+`.ergm_terms()` in [R/specify_formula.R](../R/specify_formula.R) reads each ergm
 term as infernet's, by ergm's name, apart from the registry: several ergm terms
 read as one infernet term, by the network's shape, and most of ergm's terms have
-no infernet term. A test in `test-model_specify_ergm.R` reads each ergm term
+no infernet term. A test in `test-specify_ergm.R` reads each ergm term
 that has an infernet equivalent, writes it back with `specify_ergm()`, and
 checks that it comes back as itself, so that the reader and the writers agree.
 
 #### Adding a term
 
 1. Add an entry to `.formula_terms()` in
-   [R/model_formula.R](../R/model_formula.R): its `formals`, its `kind`, its
+   [R/specify_registry.R](../R/specify_registry.R): its `formals`, its `kind`, its
    builder, whether it accepts a two-mode network, what it does with the outcome
    layer, its MRQAP status (`mrqap`, with a `reason` where it warns or drops),
    its nearest DyNAM, SAOM, and ERGM terms (`dynam`, `saom`, `ergm`),
    and its writer for ergm (`to_ergm`,
-   in [R/model_formula_ergm.R](../R/model_formula_ergm.R)).
+   in [R/specify_ergm.R](../R/specify_ergm.R)).
    A term whose meaning differs in goldfish also needs a line in
-   `.interpreted_dynam()` in [R/model_specify.R](../R/model_specify.R), and a
+   `.interpreted_dynam()` in [R/specify_formula.R](../R/specify_formula.R), and a
    term whose name differs needs a line in goldfish's `specify_dynam()`.
    A term of another model that MRQAP cannot fit goes in `.dynam_terms()`
    with `mrqap = "drops"` and a `reason`, and needs no builder.
    A new reader in `.ergm_terms()` needs a row in the round-trip test.
-2. Write the builder. It takes the parsed operand and the context, and returns
+2. Write the builder in [R/specify_builders.R](../R/specify_builders.R).
+   It takes the parsed operand and the context, and returns
    a named list of matrices: one for most terms, several for a term like
    `match()`. `.evaluate_spec()` lifts each to a CSS array where needed.
    `.build_operand()` records each column's term, layer, and attribute
    from the term's `kind`. A builder that knows more, such as each column's
    category, gives it in a `parts` attribute of the list it returns.
 3. Write the term out in `.term_candidates()`, in
-   [R/model_specify_terms.R](../R/model_specify_terms.R), for the shapes of
+   [R/specify_terms.R](../R/specify_terms.R), for the shapes of
    network it suits, so that the table of every term lists it.
 4. Add a row to the dictionary above, with its MRQAP status,
-   a row to `expected_status` in `test-model_specify_record.R`, with its
-   status in each model, and a test to `test-formula_terms.R` that
+   a row to `expected_status` in `test-specify_record.R`, with its
+   status in each model, and a test to `test-specify_builders.R` that
    checks the matrix against a value computed by hand or by a loop.
-5. Add the term to the `formula` parameter of `estimate_mrqap()`.
+5. Add the term to the help page `terms_mrqap`, in
+   [R/specify_registry.R](../R/specify_registry.R): what it measures, the
+   equation of its cell `x_ij` as the builder computes it, its column
+   names, and its equivalents in other models; and add its name to the list
+   in the `formula` parameter of `estimate_mrqap()`.
 
 ## Preparing Contributions
 
@@ -1032,7 +1039,7 @@ and `Config/testthat/start-first` names the slowest files, so that they start fi
 #### File structure
 
 The test files mirror `R/`.
-`test-test_*.R` and `test-model_*.R` test the exported functions of `R/test_*.R` and `R/model_*.R`,
+`test-test_*.R`, `test-specify_*.R`, and `test-model_*.R` test the exported functions of `R/test_*.R`, `R/specify_*.R`, and `R/model_*.R`,
 and `test-qap_*.R` tests the contracts of the engine in `R/qap_*.R`.
 A file name says where to look when a test fails,
 and a test name says what failed: write it as a statement of what is true,
@@ -1049,11 +1056,12 @@ not "two-mode works".
 | `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
 | `test-model_control.R` | `control_mrqap()`, the choice of null hypothesis, and the messages that report what the model resolved |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; and the stored null distribution, `testdist` |
-| `test-model_formula.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
-| `test-model_formula_terms.R` | each term's matrix against a value computed by hand, and the dictionary |
-| `test-model_specify.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |
-| `test-model_specify_record.R` | the status that each model gives each registered term, and `tidy()` of the record |
-| `test-model_specify_ergm.R` | `specify_ergm()` with a network, and an ergm fit of the result |
+| `test-specify_parse.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
+| `test-specify_builders.R` | each term's matrix against a value computed by hand, or by a loop over the equation on `terms_mrqap`, and the dictionary |
+| `test-specify_formula.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |
+| `test-specify_record.R` | the status that each model gives each registered term, and `tidy()` of the record |
+| `test-specify_ergm.R` | `specify_ergm()` with a network, and an ergm fit of the result |
+| `test-specify_terms.R` | the table of every term for each shape of network, and `formula()` of its rows |
 | `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |
 | `test-qap_shapes.R` | the dyads that reach the model, for each shape of network, and the engine's own checks |
 | `test-qap_css.R` | the CSS shape: the engine on hand-built arrays, then `estimate_mrqap()` on `{manynet}` networks |
@@ -1140,7 +1148,7 @@ A term added to the registry is then audited on every shape without a new test.
 
 The audit builds the matrices and fits no model, so its 132 blocks take about 2 seconds.
 It asks only whether a term builds and what shape it gives;
-whether the values are right is for `test-model_formula_terms.R`.
+whether the values are right is for `test-specify_builders.R`.
 
 A combination that does neither is skipped with a message that starts `AUDIT [term() x shape]`,
 so that `devtools::test()` lists the remaining work without stopping a release.

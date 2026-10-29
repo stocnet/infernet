@@ -3,6 +3,7 @@
 ## Package
 
 - Updated CONTRIBUTING
+  - Added the help page `terms_mrqap` to the steps for adding a term
   - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
   - Added the `reporter` terms to the formula dictionary
   - Added how a permutation set draws from a plan, and how to time it
@@ -58,6 +59,9 @@
 - Added `formula()` method to this output
   - By default, composes a maximal formula, skipping the more complex of jointly redundant terms
   - Terms can also be chosen by grep
+- Added the help page `terms_mrqap`, which says what each MRQAP term measures
+  - Gives each term's equation
+  - Gives each term's equivalent in ergm, goldfish, and RSiena, with references
 - Removed `specify_dynam()`, which moves to `{goldfish}` (stocnet/goldfish#124)
 - Renamed `type =` of `indeg()`/`outdeg()` to `node =`, as stocnet/goldfish#122 proposes (thanks @auzaheta)
   - `type =` still works, and warns once that it is deprecated
