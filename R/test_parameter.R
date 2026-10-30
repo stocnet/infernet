@@ -429,5 +429,8 @@ test_time.netreg <- function(x, terms = NULL, ..., times = 1000,
   out$failed <- failed
   out$directed <- x$directed
   out$loops <- x$loops
+  out$statistic <- "the change in deviance"
+  out$model <- paste(.fit_label(x), "MRQAP of", x$dep)
+  out$control <- ctrl
   out
 }

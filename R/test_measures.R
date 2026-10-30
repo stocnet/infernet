@@ -44,6 +44,7 @@ NULL
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
                         control = list()){
+  statistic <- .fun_name(substitute(FUN))
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
   args <- test$args
@@ -58,7 +59,9 @@ test_random <- function(.data, FUN, ...,
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              times = times)
+              times = times,
+              statistic = statistic,
+              control = ctrl)
   class(out) <- "network_test"
   out
 }
@@ -69,6 +72,7 @@ test_random <- function(.data, FUN, ...,
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
                         control = list()){
+  statistic <- .fun_name(substitute(FUN))
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
   args <- test$args
@@ -83,7 +87,9 @@ test_configuration <- function(.data, FUN, ...,
               cmode = "edges",
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              times = times)
+              times = times,
+              statistic = statistic,
+              control = ctrl)
   class(out) <- "network_test"
   out
 }
@@ -98,6 +104,7 @@ test_configuration <- function(.data, FUN, ...,
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 
                              control = list()){
+  statistic <- .fun_name(substitute(FUN))
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
   args <- test$args
@@ -111,7 +118,9 @@ test_permutation <- function(.data, FUN, ...,
               loops = manynet::is_complex(.data),
               plteobs = mean(simd <= obsd),
               pgteobs = mean(simd >= obsd),
-              times = times)
+              times = times,
+              statistic = statistic,
+              control = ctrl)
   class(out) <- "network_test"
   out
 }
@@ -178,17 +187,5 @@ test_permutation <- function(.data, FUN, ...,
   same <- tryCatch(isTRUE(all.equal(measure(tg), measure(.data))),
                    error = function(e) FALSE)
   if (same) tg else .data
-}
-
-#' @rdname test_results
-#' @export
-print.network_test <- function(x, ...,
-                             max.length = 6,
-                             digits = 3){
-  cat(paste("\n", x$test, "Test Results\n\n"))
-  cat("Observed Value:", x$testval, "\n")
-  cat("Pr(X>=Obs):", x$pgteobs, "\n")
-  cat("Pr(X<=Obs):", x$plteobs, "\n\n")
-  invisible(x)
 }
 

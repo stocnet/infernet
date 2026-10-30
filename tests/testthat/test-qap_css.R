@@ -58,9 +58,9 @@ test_that("a CSS rejects an outcome that is not three-dimensional", {
 test_that("a CSS fit prints as a model", {
   fit <- QAPengine(ties ~ cov, css_fixture(), css = TRUE,
                    family = "binomial", times = 10, seed = 1)
-  expect_output(shown <- withVisible(print(fit)), "cognitive social structure")
+  expect_output(shown <- withVisible(print(fit)), "reporters alike")
   expect_false(shown$visible)
-  expect_output(print(fit), "Coefficients")
+  expect_output(print(fit), "Logistic MRQAP of ties")
 })
 
 test_that("both shapes reproduce under the same seed", {
@@ -296,7 +296,7 @@ test_that("each reporter can take a random intercept", {
   expect_named(fit$random.intercepts, "bv")
   expect_length(fit$random.intercepts$bv, 10)
   expect_true(fit$random[["reporter"]])
-  expect_output(print(fit), "Each reporter has a random intercept")
+  expect_output(print(fit), "with reporter random intercepts")
 })
 
 test_that("a reporter intercept on a network that is not a CSS is refused", {
@@ -357,7 +357,7 @@ test_that("a non-reporter marked as missing is dropped, not read as zeros", {
   # Eight reports of 10 x 9 ordered dyads; the two unasked are not in the model.
   expect_equal(nrow(fit$pred), 8 * 10 * 9)
   expect_setequal(as.integer(as.character(unique(fit$pred$bv))), 1:8)
-  expect_output(print(fit), "from 8 reporters")
+  expect_equal(glance(fit)$reporters, 8)
 })
 
 # ---- other shapes ------------------------------------------------------------

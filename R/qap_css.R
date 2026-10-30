@@ -60,30 +60,3 @@ make_css_data <- function(y, x, nets, loops, directed) {
   list(pred = pred, valid = valid)
 }
 
-# Coefficient-table helper used by print.netreg_css
-#' @keywords internal
-#' @noRd
-glm_tab <- function(x) {
-  cat("\n\nCoefficients:\n")
-
-  nc <- length(x$base$coefficients)
-  cmat <- matrix(NA, nrow = nc, ncol = 4)
-  cmat[, 1] <- format(round(as.numeric(x$base$coefficients), 3))
-  cmat[, 2] <- format(x$lower[2, ])
-  cmat[, 3] <- format(x$larger[2, ])
-  cmat[, 4] <- format(x$abs[2, ])
-  if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-  colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-  rownames(cmat) <- names(x$base$coefficients)
-  print.table(cmat)
-
-  if (x$permute == "predictor")
-    cat("\n* The intercept has no significance test when predictors are permuted.\n")
-
-  if (!is.null(x$base$base_model)) {
-    cat("\nAIC of base model:", format(stats::AIC(x$base$base_model)))
-    cat("\nBIC of base model:", format(stats::BIC(x$base$base_model)))
-  }
-  cat("\n")
-}
-

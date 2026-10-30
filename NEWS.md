@@ -118,14 +118,24 @@
 
 ## Reporting
 
+- Improved `print()` for every infernet object to a shared layout and syntax
+  - A title says what was fitted or tested, then a blank line
+  - A body is `tidy()`, with significance marks, then a blank line
+  - A footer gives the null, any changed controls, other methods if `options(snet_verbosity = "debug")`
+  - `netreg`: one print for every family, panel, CSS, and effect
+  - `network_test`: names the statistic and the null
+  - `diffs_model`: names the model, and the steps to adoption
+  - `mrqap_formula` and `ergm_formula`: name the model the formula was read from
+  - `mrqap_control`: lists the controls that were set, and counts the defaults
 - Added methods for `netreg` fitted models
   - `nobs()`, `logLik()`, `deviance()`, `fitted()`, and `residuals()`
   - `formula()`, `terms()`, and `update()`, from the call and formula it keeps
   - `AIC()` and `BIC()` count the fixed effects that a gaussian model absorbs
-- Improved `tidy()` of a `netreg` to give only the columns of `generics::tidy()`
-  - The term table columns, such as `effect` and `reference`, moved to `summary()`
-- Fixed `glance()` giving `NA` fit statistics with `less_mem = TRUE`
-- Fixed `glance()` of a gaussian model with fixed effects
+- Improved `tidy.netreg()` to give only the columns of `generics::tidy()`
+- Improved `summary.netreg()` to give the full report
+  - Adds `p.lower`, `p.upper` to the results table
+  - Prints random intercepts, `glance()`, unobserved dyads, and dropped terms
+- Fixed `glance.netreg()` of a gaussian model with fixed effects
   - `AIC`, `BIC`, `sigma`, and `df.residual` now count the absorbed parameters
 - Moved `predict()` for `netlm` and `netlogit` from `{migraph}`
 - Added `predict()` for a `netreg`, on the `"link"` or the `"response"` scale

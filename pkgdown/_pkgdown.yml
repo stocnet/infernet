@@ -56,14 +56,14 @@ articles:
       - "`articles/diversity-and-regression`"
       - "`articles/diffusion-and-learning`"
 reference:
-  - title: "Tests"
+  - title: "Testing"
     desc: >
       Functions for testing a network statistic against random networks,
       networks with the same degrees, or permutations of the network,
       and for testing the parameters and the fit of a model:
     contents:
       - starts_with("test_")
-  - title: "Specification"
+  - title: "Specifying"
     desc: >
       The terms of an MRQAP formula and what each measures,
       the terms that suit a network,
@@ -73,15 +73,15 @@ reference:
       - terms_mrqap
       - specify_terms
       - specify
-  - title: "Regression"
+  - title: "Regressing"
     desc: >
       Functions for regressing a network on nodal and dyadic covariates
       by multiple regression quadratic assignment procedure (MRQAP),
       with random or fixed effects, missing data, panels, and cognitive social structures:
     contents:
-      - regression
-      - control_mrqap
-  - title: "Diffusion"
+      - starts_with("control_")
+      - starts_with("estimate_")
+  - title: "Diffusing"
     desc: >
       Functions for simulating many diffusions on a network,
       to test a model of diffusion against:

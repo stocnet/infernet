@@ -149,10 +149,12 @@
 #' @seealso [terms_mrqap] for what each term measures, and [specify_terms]
 #'   for the terms that suit a network.
 #' @name specify
+#' @order 1
 #' @family models
 NULL
 
 #' @rdname specify
+#' @order 2
 #' @examples
 #' # An ergm formula, read for an MRQAP
 #' specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
@@ -201,6 +203,7 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
 }
 
 #' @rdname specify
+#' @order 3
 #' @examples
 #' # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it
 #' specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
@@ -341,42 +344,6 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   invisible()
 }
 
-#' @export
-print.mrqap_formula <- function(x, ...) .print_specified(x)
-
-#' @export
-print.ergm_formula <- function(x, ...) .print_specified(x)
-
-#' @rdname specify
-#' @param x A formula returned by a `specify_*()` function.
-#' @param ... Not used.
-#' @examples
-#' # Each term, and what the model makes of it
-#' tidy(f)
-#' g <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends), ison_hightech)
-#' tidy(g, ison_hightech)
-#' @export
-tidy.mrqap_formula <- function(x, .data = NULL, ...) {
-  out <- .tidy_specified(x)
-  out$columns <- rep(list(character(0)), nrow(out))
-  if (is.null(.data)) return(out)
-  .record_columns(x, out, .data)
-}
-
-#' @rdname specify
-#' @export
-tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
-
-#' @keywords internal
-#' @noRd
-.tidy_specified <- function(x) {
-  record <- attr(x, "record")
-  if (is.null(record)) record <- .no_record()
-  blank <- function(v) ifelse(nzchar(v), v, NA_character_)
-  tibble::tibble(term = record$term, status = record$status,
-                 as = blank(record$as), reason = blank(record$reason))
-}
-
 # The columns that an MRQAP builds for each term the formula keeps, named as
 # `estimate_mrqap()` names them. A term whose matrix cannot be built, such as
 # `tie()` of the outcome layer, is refused, with the reason the builder gives.
@@ -416,37 +383,6 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
     }
   }
   out
-}
-
-# A specification as the formula it holds, without its class and its record,
-# so that it reads as the formula a user would write.
-#' @keywords internal
-#' @noRd
-.plain_formula <- function(x) {
-  attr(x, "record") <- NULL
-  attr(x, "input") <- NULL
-  class(x) <- "formula"
-  x
-}
-
-# A term that fits as written needs no note, so the print lists only the terms
-# that the model changes, warns about, drops, or refuses. `tidy()` gives them all.
-#' @keywords internal
-#' @noRd
-.print_specified <- function(x) {
-  record <- attr(x, "record")
-  print(.plain_formula(x), showEnv = FALSE)
-  if (!is.null(record)) record <- record[record$status != "fits", , drop = FALSE]
-  if (!is.null(record) && nrow(record) > 0) {
-    cat("Read from a formula for", attr(x, "input"), "\n")
-    for (k in seq_len(nrow(record))) {
-      as <- if (nzchar(record$as[k]) && record$as[k] != record$term[k])
-        paste0(" -> ", record$as[k]) else ""
-      why <- if (nzchar(record$reason[k])) paste0(": ", record$reason[k]) else ""
-      cat("  ", record$status[k], " ", record$term[k], as, why, "\n", sep = "")
-    }
-  }
-  invisible(x)
 }
 
 # ---- reading --------------------------------------------------------------------------

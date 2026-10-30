@@ -111,6 +111,14 @@ When the outcome is binary -- either \code{family = "binomial"} or
 \code{"gaussian"} with a 0/1 dependent -- a probabilistic confusion matrix is
 attached as \verb{$confusion_matrix}; for the gaussian-binary case the linear
 probability fitted values are clamped to 0/1 before sampling.
+\code{\link[=diagnose_confusion]{diagnose_confusion()}} gives it again with another threshold or number
+of draws.
+\itemize{
+\item \code{node_names}, the names of the nodes, which name the random
+intercepts; \code{control}, the controls as the fit resolved them; and
+\code{record}, what \code{\link[=specify_mrqap]{specify_mrqap()}} made of each term. \code{print()} and
+\code{summary()} read them.
+}
 }
 \description{
 Fits a regression model to one (or a list of) manynet-compatible network(s)
@@ -343,6 +351,7 @@ conditions."
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link[=diagnose_confusion]{diagnose_confusion()}},
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
@@ -351,7 +360,6 @@ Other models:
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}},
-\code{\link{test_results}}
+\code{\link[=test_parameter]{test_parameter()}}
 }
 \concept{models}

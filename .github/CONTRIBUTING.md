@@ -302,36 +302,39 @@ Likewise `README.md` is generated from `README.Rmd` — edit the `.Rmd` and re-k
 ### File organization
 
 `R/` files are grouped by theme rather than one file per function.
-The user-facing files are named `test_*.R` for the `test_*()` functions, `specify_*.R` for the formula, its terms, and the `specify_*()` functions, and `model_*.R` for the rest;
+The user-facing files are named `test_*.R` for the `test_*()` functions, `specify_*.R` for the formula, its terms, and the `specify_*()` functions, `diagnose_*.R` for the `diagnose_*()` functions, `report_*.R` for every `print()`, `summary()`, `tidy()`, and `glance()` method, and `model_*.R` for the rest;
 the internal engine ported from `MrQAP` is named `qap_*.R`.
 
 | File | Contains |
 |---|---|
-| `test_measures.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and `print.network_test()` |
+| `test_measures.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and the null distribution of each |
 | `test_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
 | `test_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for a `netreg`, and the joint double semi-partialling they share |
-| `model_diffusion.R` | `play_diffusions()`, and the `print()` and `summary()` methods of its `diffs_model` |
-| `model_regression.R` | `estimate_mrqap()`, the list path, and the `print.*` methods for its results, documented on the `netreg_results` page |
+| `model_diffusion.R` | `play_diffusions()`, which simulates the diffusions of a `diffs_model` |
+| `model_regression.R` | `estimate_mrqap()` and the list path |
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
 | `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
-| `model_results.R` | three help pages: `netreg_results`, with `summary()`, `tidy()`, `glance()`, and the accessors of a `netreg` (`nobs()`, `logLik()`, `deviance()`, `fitted()`, `residuals()`, `formula()`, `terms()`), each read from the observed model; `test_results`, with `tidy()` and `glance()` of a `network_test`; and `other_results`, for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
+| `report_models.R` | two help pages: `netreg_results`, with the `print()` of each `netreg` class, `summary()` and its print, `tidy()`, `glance()`, and the accessors of a `netreg` (`nobs()`, `logLik()`, `deviance()`, `fitted()`, `residuals()`, `formula()`, `terms()`), each read from the observed model; and `other_results`, for the `{migraph}`, `{ergm}`, and `{RSiena}` results; and the `print()` and `summary()` of a `diffs_model` |
+| `report_tests.R` | the `report_tests` help page, with `print()`, `tidy()`, and `glance()` of a `network_test` |
+| `report_diagnose.R` | `print()`, `tidy()`, and `glance()` of the result of `diagnose_confusion()` |
+| `report_specify.R` | `print()` and `tidy()` of a formula from `specify_*()`, of the term table from `specify_terms()`, and of `control_mrqap()` |
+| `report_print.R` | what every print shares: the `#` title, sections, and footer, the p-values and their marks, the controls that differ from the default, and the verbosity at which a footer names more methods |
+| `diagnose_confusion.R` | `diagnose_confusion()`, with a method for each `netreg` of a binary outcome, the probabilistic confusion matrix, and the ROC curve and AUC |
 | `specify_registry.R` | the term registry `.formula_terms()` and goldfish's terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term's equation |
 | `specify_builders.R` | the builder of each term, which makes its matrices for one network |
 | `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
-| `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify` help page: one reader of a formula written for any model, one writer for each model, the record of what each model makes of each term, and `tidy()` of it; goldfish's writer is goldfish's own `specify_dynam()` |
-| `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its `print()`, `tidy()`, and `formula()` methods |
+| `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify` help page: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish's writer is goldfish's own `specify_dynam()` |
+| `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its `formula()` method |
 | `specify_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_draws.R` | the draw plan: the cells a model reads, the values a draw permutes, and the design that a linear model or a glm solves once |
 | `qap_utils.R` | formula parsing, input validation, `future` plumbing, permutation orders (`.perm_orders()`) and matrix permutation (`RMPerm()`), the model-fitting dispatcher `fit_qap_model()`, and the permutation aggregators |
-| `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array, and a print method |
-| `qap_confusion.R` | probabilistic confusion matrices for binary outcomes |
-| `qap_misc.R` | `.directed_label()`, which the print methods share |
+| `qap_css.R` | what a CSS needs that a dyadic network does not: a vectoriser for a three-dimensional array |
 | `infernet-package.R` | package-level doc, global variables, and the shim silencing R CMD check's unused-import note |
 | `zzz.R` | the attach-time greeting and the cached stocnet version check |
 
-Only `test_*.R`, `specify_*.R`, and `model_*.R` hold exported functions.
+Only `test_*.R`, `specify_*.R`, `diagnose_*.R`, `report_*.R`, and `model_*.R` hold exported functions.
 Everything in `qap_*.R` is internal, and carries `@keywords internal` and `@noRd`.
 Keep it that way: the engine's argument names are the `MrQAP` ones, and
 exporting them would freeze an interface we still intend to tidy.
@@ -572,7 +575,7 @@ regression entry point. Its control flow is:
    these (default) choices in a paper.
 5. Call `QAPengine()`, which parses the formula, fits the baseline model once
    via `fit_qap_model()`, then runs `times` permutations and aggregates them.
-6. Attach a probabilistic confusion matrix where the outcome is binary.
+6. Attach a probabilistic confusion matrix where the outcome is binary, as `diagnose_confusion()` makes it.
 7. Attach the term table, `fit$terms`, from the parts that `.evaluate_spec()`
    records for each column, in the order of the coefficients.
 
@@ -770,6 +773,40 @@ Where a function needs a package from `Suggests`, name it and say how to get it:
 
 The model specification advice printed by `specificationAdvice()` is
 informational, not load-bearing, so it belongs at `snet_info()`.
+
+#### Printing results
+
+A print is not a message: `snet_verbosity = "quiet"` silences the `snet_*()`
+wrappers, and a print must show whatever the verbosity.
+So every print writes with `cat()`, through the helpers in
+[R/report_print.R](../R/report_print.R), and every print has the same three parts:
+
+1. A title of `#` lines (`.print_title()`): what was fitted or tested, then a
+   blank line. Do not describe the network: `{manynet}` prints it.
+2. A body that is the result's own `tidy()`, as a tibble, with one column of
+   significance marks. Print what a method gives, rather than a second table
+   that can drift from it.
+3. A footer of `#` lines (`.print_footer()`): how the null distribution was
+   made and from how many draws, the controls that differ
+   from their default (`.controls_line()`), and, only at
+   `options(snet_verbosity = "debug")`, one `# i` line that names the
+   methods that give more.
+
+`summary()` gives more than `print()`, as `summary.lm()` does: the full table,
+`glance()`, and the parts of the fit that a print leaves out.
+Start each of these with `.print_section()`, which puts a blank line before
+its heading, so that a reader can find each part.
+Do not say in a footer what `glance()` prints above it, such as the number of
+dyads or of permutations. `.print_glance()` shows every column of `glance()`.
+`.print_footer()` puts a blank line before the footer too, so that it is not
+read as a part of the table.
+
+A permutation p-value of 0 says only that no draw reached the observed value.
+`.format_perm_p()` shows it as below `1/times`, and `.signif_marks()` marks it
+as that bound, so that 20 permutations never earn `***`.
+Cover a print with `expect_snapshot()` in
+[tests/testthat/test-report_print.R](../tests/testthat/test-report_print.R),
+on a seeded result with few permutations, and read the snapshot before you accept it.
 
 ### Formula conventions
 
@@ -1056,6 +1093,8 @@ not "two-mode works".
 | `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
 | `test-model_control.R` | `control_mrqap()`, the choice of null hypothesis, and the messages that report what the model resolved |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; the stored null distribution, `testdist`; and the methods of a `netreg`, against the values of the equivalent `lm()` or `glm()`, with fixed effects, fixed ties, and `less_mem` |
+| `test-report_print.R` | the print of every result and of `summary()`, as snapshots |
+| `test-diagnose_confusion.R` | `diagnose_confusion()`: the metrics and the AUC against a hand count, the models it refuses, and its print |
 | `test-specify_parse.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-specify_builders.R` | each term's matrix against a value computed by hand, or by a loop over the equation on `terms_mrqap`, and the dictionary |
 | `test-specify_formula.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |

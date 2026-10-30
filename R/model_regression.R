@@ -265,6 +265,12 @@
 #'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
 #'   attached as `$confusion_matrix`; for the gaussian-binary case the linear
 #'   probability fitted values are clamped to 0/1 before sampling.
+#'   [diagnose_confusion()] gives it again with another threshold or number
+#'   of draws.
+#'   - `node_names`, the names of the nodes, which name the random
+#'     intercepts; `control`, the controls as the fit resolved them; and
+#'     `record`, what [specify_mrqap()] made of each term. `print()` and
+#'     `summary()` read them.
 #' @name regression
 #' @family models
 #' @references
@@ -319,6 +325,7 @@ estimate_mrqap <- function(formula,
   # A formula written for another model is read as an MRQAP reads it, and the
   # terms it cannot fit are dropped and named.
   formula <- specify_mrqap(formula, .data)
+  record <- attr(formula, "record")
   specified <- .plain_formula(formula)
   # `(1 | sender)` in the formula sets the same switch as its control, and
   # `| sender` after a bare bar absorbs a fixed effect.
@@ -401,7 +408,7 @@ estimate_mrqap <- function(formula,
   )
 
   if (user_requested_gaussian_binary) {
-    fit$confusion_matrix <- .lpm_confusion_matrix(fit, ctrl$seed)
+    fit$confusion_matrix <- .lpm_confusion(fit, seed = ctrl$seed)
   }
   fit$terms <- .coef_terms(names(fit$coefficients), terms)
   # `update()` refits from the call and the formula as the user's terms give
@@ -409,6 +416,17 @@ estimate_mrqap <- function(formula,
   fit$call <- call
   fit$formula <- specified
   fit$model_formula <- formula
+  # What a print says of the fit: the network as `{manynet}` describes it,
+  # the controls as resolved, and what the reading of the formula changed.
+  fit$node_names <- .node_names(.data)
+  # As used: a permutation of the predictors falls back to the outcome where
+  # the engine cannot residualise them.
+  ctrl$permute <- fit$permute
+  fit$control <- ctrl
+  fit$record <- record
+  if (!is.null(fit$confusion_matrix)) {
+    fit$confusion_matrix <- .confusion_model(fit$confusion_matrix, fit)
+  }
 
   fit
 }
@@ -558,263 +576,6 @@ estimate_mrqap <- function(formula,
   v <- all.vars(formula)
   if (length(v) == 0) return(NA_character_)
   v[1]
-}
-
-
-.is_binary_outcome <- function(y) {
-  vals <- if (is.list(y)) unlist(y, use.names = FALSE) else as.vector(y)
-  vals <- vals[!is.na(vals)]
-  if (length(vals) == 0) return(FALSE)
-  all(vals %in% c(0, 1))
-}
-
-
-.lpm_confusion_matrix <- function(fit, seed) {
-  bm <- fit$simple_fit
-  if (is.null(bm)) return(NULL)
-  actual <- fit$pred[[fit$dep]]
-  # The observed values less the residuals, rather than `fitted()`, since a
-  # model with fixed effects was fitted to demeaned values.
-  predicted <- actual - stats::residuals(bm)
-  predicted <- pmin(pmax(predicted, 0), 1)
-  probabilistic_confusion_matrix(
-    actual = as.integer(actual),
-    predicted_prob = predicted,
-    n_draws = 1000,
-    seed = seed
-  )
-}
-
-
-# ---- print method ----------------------------------------------------------
-
-# S3 dispatches on the most specific class, so each kind of result has its own
-# method and none of them branches on the class of another. `print.netreg()` is
-# the fallback for a `netreg` with no more specific class.
-
-#' @rdname netreg_results
-#' @order 1
-#' @export
-print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
-  .print_qap_regression(x, print_b = print_b, print_random = print_random)
-  invisible(x)
-}
-
-#' @rdname netreg_results
-#' @order 2
-#' @export
-print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
-  .print_qap_glm(x, print_b = print_b, print_random = print_random)
-  invisible(x)
-}
-
-#' @rdname netreg_results
-#' @order 4
-#' @export
-print.netreg <- function(x, ...) {
-  cat("<netreg>\n")
-  utils::str(unclass(x), max.level = 1)
-  invisible(x)
-}
-
-
-# What a result was fitted on, where that is not every cell of one network:
-# the dyads that unobserved cells left, and the waves of a panel. A reader
-# needs both to interpret the estimates.
-#' @keywords internal
-#' @noRd
-.sample_lines <- function(x) {
-  out <- character(0)
-  m <- x$missing
-  if (!is.null(m) && m$used < m$possible) {
-    out <- c(out, paste("Fitted on", format(m$used), "of", format(m$possible),
-                        "dyads; the others were unobserved and dropped."))
-  }
-  if (isTRUE(m$fixed_ties > 0)) {
-    out <- c(out, paste(format(m$fixed_ties),
-                        "fixed ties were left out, and kept in place under permutation."))
-  }
-  if (isTRUE(x$panel)) {
-    waves <- length(unique(x$pred$nv))
-    out <- c(out, paste0("A panel: each of ", waves, " waves was fitted against ",
-                         "the wave before it,"),
-             "  and each permutation relabelled the nodes in every wave alike.")
-  }
-  out
-}
-
-# `random.intercepts` holds one vector for each slot that has an intercept, so
-# each is printed as its own column.
-.print_random_intercepts <- function(x, rule) {
-  slots <- c(sv = "sender", rv = "receiver", nv = "network", bv = "reporter")
-  for (nm in names(x$random.intercepts)) {
-    v <- x$random.intercepts[[nm]]
-    who <- if (nm %in% names(slots)) slots[[nm]] else nm
-    cmat <- matrix(round(as.numeric(v), 3), ncol = 1,
-                   dimnames = list(names(v), paste0("Random intercepts of each ", who, ":")))
-    print.table(cmat)
-    cat(rule)
-  }
-}
-
-.print_qap_regression <- function(x, print_b = FALSE, print_random = FALSE) {
-  if (is.null(x$random.intercepts)) {
-    cat("\nOLS Network Model\n\n")
-  } else {
-    cat("\nLinear Mixed Network Model fit by REML\n\n")
-  }
-
-  cat(.fixed_label(x))
-  if (!is.null(x$groups))
-    cat("Permutations were performed within groups only.\n")
-  lines <- .sample_lines(x)
-  if (length(lines)) cat(paste0(lines, "\n"), sep = "")
-
-  if (x$permute == "outcome")
-    cat("The outcome matrix Y was permuted", format(x$times), "times.\n")
-  if (x$permute == "predictor") {
-    cat("Significance was estimated using Dekker's\n")
-    cat("  'semi-partialling plus' procedure with",
-        format(x$times), "permutations.\n")
-  }
-
-  if (x$loops) {
-    cat("Diagonal values (loops) were used in the estimation.\n")
-  } else {
-    cat("Diagonal values (loops) were ignored.\n")
-  }
-  cat("The outcome was treated as",
-      format(paste0(.directed_label(x$directed), ".")), "\n")
-
-  if (!is.null(x$r.squared)) {
-    # With fixed effects, the R-squared is that of what they leave.
-    within <- if (length(x$fixed_effects) > 0) "Within " else ""
-    cat(paste0("\n", within, "R-squared:    "), format(round(x$r.squared, 4)))
-    cat(paste0("\n", within, "Adj R-squared:"), format(round(x$adj.r.squared, 4)), "\n")
-  }
-
-  cat("\nCoefficients:\n")
-  if (print_b) {
-    cmat <- cbind(format(as.numeric(x$coefficients)),
-                  format(x$lower[1, ]),
-                  format(x$larger[1, ]),
-                  format(x$abs[1, ]))
-    colnames(cmat) <- c("Estimate", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
-    rownames(cmat) <- names(x$coefficients)
-    if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-    print.table(cmat)
-    cat("\n--------------\n")
-  }
-
-  cmat <- cbind(format(as.numeric(x$coefficients)),
-                format(x$lower[2, ]),
-                format(x$larger[2, ]),
-                format(x$abs[2, ]))
-  colnames(cmat) <- c("Estimate", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-  rownames(cmat) <- names(x$coefficients)
-  if (x$permute == "predictor") cmat[1, 2:4] <- "*"
-  print.table(cmat)
-
-  if (x$permute == "predictor")
-    cat("\n* The intercept has no significance test when predictors are permuted.\n")
-
-  cat("\n--------------\n")
-
-  if (!is.null(x$random.intercepts) && print_random) {
-    .print_random_intercepts(x, "\n--------------\n")
-  }
-
-  if (!is.null(x$confusion_matrix)) {
-    cat("\n")
-    print(x$confusion_matrix)
-  }
-  cat("\n")
-}
-
-
-.print_qap_glm <- function(x, print_b = FALSE, print_random = FALSE) {
-  if (is.null(x$random.intercepts)) {
-    cat("\nGeneralized Linear Network Model\n")
-  } else {
-    cat("\nGeneralized Linear Mixed Network Model fit by REML\n")
-  }
-  if (!is.null(x$theta))
-    cat("\nNegative binomial dispersion (theta):", format(round(x$theta, 4)))
-  if (!is.null(x$zi_coefficients)) {
-    cat("\nZero-inflation coefficients:")
-    cat("\n  ", paste(names(x$zi_coefficients),
-                      format(round(x$zi_coefficients, 4)),
-                      sep = " = ", collapse = ", "))
-  }
-  if (length(x$fixed_effects) > 0)
-    cat("\n", sub("\n$", "", .fixed_label(x)), sep = "")
-  if (!is.null(x$groups))
-    cat("\nPermutations were performed within groups only.")
-  lines <- .sample_lines(x)
-  if (length(lines)) cat(paste0("\n", lines), sep = "")
-
-  if (x$permute == "outcome")
-    cat("\nThe outcome matrix Y was permuted", format(x$times), "times.")
-  if (x$permute == "predictor") {
-    cat("\nSignificance was estimated using Dekker's")
-    cat("\n  'semi-partialling plus' procedure with",
-        format(x$times), "permutations.")
-  }
-
-  if (x$loops) {
-    cat("\nDiagonal values (loops) were used in the estimation.")
-  } else {
-    cat("\nDiagonal values (loops) were ignored.")
-  }
-  cat("\nThe outcome was treated as",
-      format(paste0(.directed_label(x$directed), ".")))
-  cat("\nModel family:", format(x$family))
-
-  cat("\n\nCoefficients:\n")
-  if (print_b) {
-    cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
-    cmat[, 1] <- format(as.numeric(x$coefficients))
-    cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-    cmat[, 3] <- format(x$lower[1, ])
-    cmat[, 4] <- format(x$larger[1, ])
-    cmat[, 5] <- format(x$abs[1, ])
-    if (x$permute == "predictor") cmat[1, 3:5] <- "*"
-    colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=b)", "Pr(>=b)", "Pr(>=|b|)")
-    rownames(cmat) <- names(x$coefficients)
-    print.table(cmat)
-    cat("--------------\n")
-  }
-
-  cmat <- matrix(NA, nrow = length(x$coefficients), ncol = 5)
-  cmat[, 1] <- format(as.numeric(x$coefficients))
-  cmat[, 2] <- format(exp(as.numeric(x$coefficients)))
-  cmat[, 3] <- format(x$lower[2, ])
-  cmat[, 4] <- format(x$larger[2, ])
-  cmat[, 5] <- format(x$abs[2, ])
-  if (x$permute == "predictor") cmat[1, 3:5] <- "*"
-  colnames(cmat) <- c("Estimate", "Exp(b)", "Pr(<=t)", "Pr(>=t)", "Pr(>=|t|)")
-  rownames(cmat) <- names(x$coefficients)
-  print.table(cmat)
-
-  if (x$permute == "predictor")
-    cat("\n* The intercept has no significance test when predictors are permuted.\n")
-
-  cat("--------------\n")
-
-  if (!is.null(x$random.intercepts) && print_random) {
-    .print_random_intercepts(x, "--------------\n")
-  }
-
-  if (!is.null(x$simple_fit)) {
-    cat("\nAIC:", format(stats::AIC(x$simple_fit)))
-    cat("\nBIC:", format(stats::BIC(x$simple_fit)))
-  }
-
-  if (!is.null(x$confusion_matrix)) {
-    cat("\n\n")
-    print(x$confusion_matrix)
-  }
-  cat("\n")
 }
 
 

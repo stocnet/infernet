@@ -65,6 +65,7 @@
 #' @seealso [terms_mrqap] for what each term measures, and [specify] for
 #'   what each model makes of a formula.
 #' @name specify_terms
+#' @order 1
 #' @family models
 #' @examples
 #' # Every term for a network, and a formula of some of them
@@ -75,6 +76,7 @@
 NULL
 
 #' @rdname specify_terms
+#' @order 2
 #' @export
 formula.specify_terms <- function(x, lhs = NULL, ...) {
   lhs <- substitute(lhs)
@@ -90,26 +92,6 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
   environment(f) <- globalenv()
   specify <- switch(attr(x, "model"), mrqap = specify_mrqap, ergm = specify_ergm)
   specify(f, attr(x, "data"), input = "mrqap")
-}
-
-#' @rdname specify_terms
-#' @export
-tidy.specify_terms <- function(x, ...) {
-  out <- as.data.frame(x)
-  attr(out, "outcome") <- NULL
-  attr(out, "model") <- NULL
-  attr(out, "data") <- NULL
-  tibble::as_tibble(out)
-}
-
-#' @export
-print.specify_terms <- function(x, ...) {
-  outcome <- .deparsed(attr(x, "outcome"))
-  cat(nrow(x), " terms for ", .model_label(attr(x, "model")),
-      if (outcome != ".") paste0(" of ", outcome), "\n", sep = "")
-  print(tidy(x), n = Inf, ...)
-  cat("Choose rows, and `formula()` of them gives their formula.\n")
-  invisible(x)
 }
 
 # Whether a `specify_*()` call asks for the table: no formula, but a network,

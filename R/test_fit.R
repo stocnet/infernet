@@ -174,13 +174,17 @@ test_gof.diffs_model <- function(object, observed, ...) {
     })
   }
   curves <- .align_curves(.adoption_curve(observed), .adoption_curves(object))
-  .fit_test(curves$observed, curves$simulated, test = "Goodness-of-fit")
+  out <- .fit_test(curves$observed, curves$simulated, test = "Goodness-of-fit")
+  out$statistic <- "the adoption curve"
+  out$model <- "the simulated diffusions"
+  out
 }
 
 #' @rdname test_fit
 #' @export
 test_gof.netreg <- function(object, observed, FUN, ...,
                             times = 1000, control = list()) {
+  statistic <- .fun_name(substitute(FUN))
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
   args <- test$args
@@ -204,6 +208,9 @@ test_gof.netreg <- function(object, observed, FUN, ...,
   out <- .fit_test(obsd, do.call(rbind, simd), test = "Goodness-of-fit")
   out$directed <- object$directed
   out$loops <- object$loops
+  out$statistic <- statistic
+  out$model <- paste(.fit_label(object), "MRQAP")
+  out$control <- ctrl
   out
 }
 
@@ -256,7 +263,11 @@ test_distributions.diffs_model <- function(object1, object2,
     idx <- sample.int(nrow(pooled), n1)
     distance(pooled[idx, , drop = FALSE], pooled[-idx, , drop = FALSE], ridge)
   }, numeric(1), future.seed = TRUE)
-  .distance_test("Two-sample", obsd, simd, times = times)
+  out <- .distance_test("Two-sample", obsd, simd, times = times)
+  out$statistic <- "the adoption curves"
+  out$model <- "the simulated diffusions"
+  out$control <- ctrl
+  out
 }
 
 # The p-value of an observed vector of statistics against simulated ones.

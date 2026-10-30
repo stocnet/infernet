@@ -246,7 +246,7 @@ test_that("a fixed tie is left out of the model and counted apart", {
   expect_equal(fit$missing$fixed_ties, 6)
   expect_equal(fit$missing$possible, 15 * 14 - 6)
   expect_equal(fit$missing$unobserved[[fit$dep]], 0L)
-  expect_output(print(fit), "6 fixed ties were left out")
+  expect_output(print(fit), "6 fixed ties left out")
 })
 
 test_that("missing = \"fail\" does not stop on a fixed tie", {

@@ -58,7 +58,7 @@ test_that("test_configuration() gives the observed statistic and its draws", {
 })
 
 test_that("print.network_test prints and returns its input invisibly", {
-  expect_output(print(cugtest), "CUG Test Results")
+  expect_output(print(cugtest), "CUG test of")
   expect_output(shown <- withVisible(print(cugtest)))
   expect_false(shown$visible)
   expect_identical(shown$value, cugtest)

@@ -6,10 +6,20 @@
 #'   These methods report a `netreg`, the result of [estimate_mrqap()],
 #'   whether its class is `netreg_lm`, `netreg_glm`, or `netreg_css`.
 #'
-#'   - `print()` shows the result as a report: how the null distribution was
-#'     made, the estimates, and the permutation p-values.
+#'   - `print()` shows the result in three parts: a title that says what
+#'     was fitted, `tidy()` of the estimates with significance marks, and a
+#'     footer that says how the null distribution was made and the controls
+#'     that differ from the default.
+#'     At `options(snet_verbosity = "debug")`, the footer also names the
+#'     methods that give more.
 #'   - `summary()` gives the full table of the coefficients: the columns of
-#'     `tidy()` and the parts of each term.
+#'     `tidy()`, the lower and upper permutation p-values, a plain `title`
+#'     of each effect, and the parts of each term. Its print leaves out
+#'     `title` and the parts, which are too wide to read there, and adds the
+#'     random intercepts of a mixed model, `glance()`, the unobserved dyads of
+#'     each variable, and the terms that the formula dropped or changed, each
+#'     after a blank line. `glance()` gives the permutations and the number of
+#'     dyads, so the footer does not say them again.
 #'   - `tidy()` and `glance()` give the results as a tibble, after `{broom}`:
 #'     one row for each coefficient, and one row for the whole model.
 #'     So an MRQAP result can sit in one table beside an ERGM or a SIENA
@@ -31,7 +41,10 @@
 #'   A permutation test gives a p-value but no standard error,
 #'   so `tidy()` and `summary()` have no `std.error` column.
 #'   `p.value` is read from the permutations of the test statistic,
-#'   as `print()` shows it.
+#'   as `print()` shows it. Where no permutation reached the observed
+#'   statistic, `print()` shows the p-value as below `1/times`, the smallest
+#'   that the permutations can give, and marks it as that bound.
+#'   For the confusion matrix of a binary outcome, see [diagnose_confusion()].
 #'   When the predictors are permuted, the intercept has no test,
 #'   and its `p.value` is `NA`.
 #'
@@ -54,9 +67,10 @@
 #'   `fitted()` gives the observed values less the residuals, not the
 #'   demeaned fitted values.
 #' @param x,object A `netreg`, from [estimate_mrqap()].
-#' @param print_b Logical; also print coefficient-based (not t-based)
-#'   permutation p-values.
-#' @param print_random Logical; print random intercepts when present.
+#' @param print_b,print_random Deprecated. `print_b = TRUE` also prints the
+#'   p-values of the coefficients, rather than of their test statistics, and
+#'   `print_random = TRUE` the random intercepts. Use `summary()`, which gives
+#'   both.
 #' @param exponentiate Logical, whether to exponentiate the estimates,
 #'   e.g. to give odds ratios for a logistic model.
 #' @param alternative Which permutation p-value to report:
@@ -67,10 +81,12 @@
 #'   For `summary()`, passed to `tidy()`, such as `alternative = "greater"`.
 #'   Otherwise not used.
 #' @return `print()` returns `x`, invisibly.
-#'   `tidy()`, `summary()`, and `glance()` return a tibble.
+#'   `tidy()`, `summary()`, and `glance()` return a tibble; the tibble of
+#'   `summary()` has the class `summary_netreg` too, for its print.
 #'   `tidy()` gives the columns `term`, `estimate`, `statistic`, and
 #'   `p.value`.
-#'   `summary()` gives these columns and the columns of the
+#'   `summary()` gives these columns, `p.lower` and `p.upper`, a `title` that
+#'   defines each effect, and the columns of the
 #'   fit's term table, `fit$terms`: the `effect` (the formula term) each
 #'   coefficient comes from, its `layer`, `attribute`, `category`, and
 #'   `reference` category, and for an interaction its `operands`.
@@ -83,7 +99,7 @@
 #' @examples
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)
-#' print(css_model, print_b = TRUE)
+#' css_model
 #' summary(css_model)
 #' tidy(css_model)
 #' glance(css_model)
@@ -128,11 +144,324 @@ tidy.netreg <- function(x, exponentiate = FALSE,
 #' @export
 summary.netreg <- function(object, ...) {
   out <- tidy.netreg(object, ...)
+  out$p.lower <- as.numeric(object$lower[2, ])
+  out$p.upper <- as.numeric(object$larger[2, ])
+  out <- out[c("term", "estimate", "statistic", "p.lower", "p.upper", "p.value")]
   # A fit made before the term table was kept has none to join.
-  if (is.null(object$terms)) return(out)
-  parts <- object$terms[match(out$term, object$terms$term),
-                        setdiff(names(object$terms), "term")]
-  tibble::as_tibble(c(out, parts))
+  if (!is.null(object$terms)) {
+    parts <- object$terms[match(out$term, object$terms$term),
+                          setdiff(names(object$terms), "term")]
+    out <- tibble::as_tibble(c(out, list(title = .term_titles(parts)), parts))
+  }
+  structure(out,
+            class = c("summary_netreg", class(out)),
+            header = .netreg_header(object),
+            footer = .netreg_footer(object, null = FALSE),
+            times = object$times,
+            glance = tryCatch(glance(object), error = function(e) NULL),
+            random = tryCatch(.random_intercepts(object), error = function(e) NULL),
+            unobserved = object$missing$unobserved,
+            record = object$record,
+            extra = .summary_extra(object),
+            fit_note = if (length(object$fixed_effects) > 0 && !is.null(object$r.squared))
+              "R-squared measures only the variance within the fixed effects.",
+            control = object$control)
+}
+
+# A plain definition of each coefficient's effect, from the term registry.
+#' @keywords internal
+#' @noRd
+.term_titles <- function(parts) {
+  registry <- .formula_terms()
+  titles <- vapply(registry, function(t) t$title %||% NA_character_, character(1))
+  effect <- parts$effect
+  out <- unname(titles[match(effect, names(titles))])
+  out[effect %in% "intercept"] <- "the intercept"
+  inter <- effect %in% "interaction"
+  if (any(inter) && !is.null(parts$operands)) {
+    out[inter] <- vapply(parts$operands[inter], function(o)
+      paste("the product of", paste(o, collapse = " and ")), character(1))
+  }
+  out
+}
+
+# What a family adds to its estimates: the dispersion of a negative binomial
+# model, and the zero-inflation coefficients of a zero-inflated one.
+#' @keywords internal
+#' @noRd
+.summary_extra <- function(x) {
+  out <- character(0)
+  if (!is.null(x$theta)) {
+    out <- c(out, paste("Negative binomial dispersion (theta):",
+                        format(signif(x$theta, 4))))
+  }
+  if (!is.null(x$zi_coefficients)) {
+    out <- c(out, paste("Zero-inflation coefficients:",
+                        paste(names(x$zi_coefficients),
+                              format(signif(x$zi_coefficients, 4)),
+                              sep = " = ", collapse = ", ")))
+  }
+  out
+}
+
+#' @rdname netreg_results
+#' @export
+print.summary_netreg <- function(x, ...) {
+  times <- attr(x, "times")
+  # A summary that lost its attributes, such as by `[`, prints as a tibble.
+  if (is.null(times)) return(NextMethod())
+  .print_title(attr(x, "header"))
+  tab <- tibble::as_tibble(unclass(x)[intersect(
+    c("term", "estimate", "statistic", "p.lower", "p.upper", "p.value"),
+    names(x))])
+  # An intercept that a fixed effect absorbs has no estimate to show.
+  tab <- tab[!(tab$term == "(Intercept)" & is.na(tab$estimate)), , drop = FALSE]
+  marks <- .print_tidy(tab, times)
+  extra <- attr(x, "extra")
+  if (length(extra)) .print_header(extra)
+  random <- attr(x, "random")
+  if (!is.null(random)) {
+    .print_section("Random intercepts")
+    print(random$variance)
+    print(random$intercepts)
+  }
+  if (!is.null(attr(x, "glance"))) {
+    .print_section("Fit of the observed model")
+    .print_glance(attr(x, "glance"))
+    if (length(attr(x, "fit_note"))) .print_header(attr(x, "fit_note"))
+  }
+  unobserved <- attr(x, "unobserved")
+  if (any(unobserved > 0)) {
+    .print_section("Unobserved dyads of each variable, left out of the model")
+    print(tibble::tibble(variable = names(unobserved),
+                         unobserved = as.integer(unobserved)))
+  }
+  record <- attr(x, "record")
+  if (!is.null(record)) record <- record[record$status != "fits", , drop = FALSE]
+  if (!is.null(record) && nrow(record) > 0) {
+    .print_section("Terms that the formula changed")
+    print(tibble::tibble(term = record$term, status = record$status,
+                         as = ifelse(nzchar(record$as), record$as, NA_character_),
+                         reason = ifelse(nzchar(record$reason), record$reason,
+                                         NA_character_)))
+  }
+  .print_footer(c(attr(x, "footer"), .signif_legend(marks)),
+                .methods_hint("tidy() and glance() for tibbles",
+                              "diagnose_confusion() for a binary outcome",
+                              "and plot() from {autograph} for a figure"))
+  invisible(x)
+}
+
+# ---- print ------------------------------------------------------------------
+
+# S3 dispatches on the most specific class, so each kind of result has its own
+# method. All of them print the same three parts (see `R/report_print.R`):
+# what was fitted, `tidy()` of the estimates, and how the null
+# distribution was made. `print.netreg()` is the fallback for a `netreg` with
+# no more specific class, such as one built by hand.
+
+#' @rdname netreg_results
+#' @order 1
+#' @export
+print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_netreg(x, print_b = print_b, print_random = print_random)
+}
+
+#' @rdname netreg_results
+#' @order 2
+#' @export
+print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_netreg(x, print_b = print_b, print_random = print_random)
+}
+
+#' @rdname netreg_results
+#' @order 4
+#' @export
+print.netreg <- function(x, ...) {
+  cat("<netreg>\n")
+  utils::str(unclass(x), max.level = 1)
+  invisible(x)
+}
+
+#' @keywords internal
+#' @noRd
+.print_netreg <- function(x, print_b = FALSE, print_random = FALSE) {
+  .print_title(.netreg_header(x))
+  marks <- .print_tidy(.netreg_tidy(x), x$times)
+  .print_footer(c(.netreg_footer(x), .signif_legend(marks)),
+                .methods_hint("summary() for the fit and every p-value"))
+  if (print_b) {
+    manynet::snet_warn(
+      c("{.arg print_b} is deprecated.",
+        i = "{.fn summary} gives the p-values of the coefficients."))
+    .print_b_table(x)
+  }
+  if (print_random) {
+    manynet::snet_warn(
+      c("{.arg print_random} is deprecated.",
+        i = "{.fn summary} gives the random intercepts."))
+    .print_random_intercepts(x)
+  }
+  invisible(x)
+}
+
+# `tidy()` of a fit as a print shows it: the intercept that a fixed effect
+# absorbs has no estimate, and is left out.
+#' @keywords internal
+#' @noRd
+.netreg_tidy <- function(x) {
+  tab <- tidy.netreg(x)
+  absorbed <- tab$term == "(Intercept)" & is.na(tab$estimate)
+  tab[!absorbed, , drop = FALSE]
+}
+
+#' @keywords internal
+#' @noRd
+.fit_label <- function(x) {
+  model <- switch(x$family %||% "",
+                  gaussian = "Linear", binomial = "Logistic",
+                  poisson = "Poisson", negbin = "Negative binomial",
+                  zip = "Zero-inflated Poisson", x$family)
+  if (any(unlist(x$random))) model <- paste(model, "mixed")
+  model
+}
+
+# What was fitted.
+#' @keywords internal
+#' @noRd
+.netreg_header <- function(x) {
+  what <- paste0(.fit_label(x), " MRQAP of ", x$dep %||% "the outcome")
+  parts <- character(0)
+  if (length(x$fixed_effects) > 0) {
+    parts <- c(parts, paste(paste(x$fixed_effects, collapse = " and "),
+                            "fixed effects"))
+  }
+  random <- names(x$random)[unlist(x$random)]
+  if (length(random) > 0) {
+    random[random == "nets"] <- "network"
+    parts <- c(parts, paste(paste(random, collapse = " and "),
+                            "random intercepts"))
+  }
+  if (length(parts) > 0) what <- paste0(what, ", with ", paste(parts, collapse = " and "))
+  what
+}
+
+# How the null distribution was made, from what, and with what controls.
+#' @keywords internal
+#' @noRd
+.netreg_footer <- function(x, null = TRUE) {
+  null <- if (!null) {
+    NULL
+  } else if (identical(x$permute, "outcome")) {
+    paste0("Null: ", format(x$times), " permutations of the outcome.")
+  } else {
+    paste0("Null: ", format(x$times),
+           " permutations of each predictor, by double semi-partialling.")
+  }
+  who <- if (inherits(x, "netreg_css")) {
+    "senders, receivers, and reporters alike"
+  } else if (isTRUE(x$panel)) {
+    "the nodes of every wave alike"
+  }
+  if (!is.null(x$groups)) who <- paste(c(who %||% "the nodes", "within groups"),
+                                       collapse = ", ")
+  relabel <- if (!is.null(who)) paste0("Permutations relabel ", who, ".")
+  said <- c("family", "permute", "directed", "loops", "groups",
+            grep("^random_intercept_", names(x$control), value = TRUE))
+  c(.sample_lines(x),
+    null,
+    relabel,
+    if (isTRUE(x$robust_se)) "The t values use robust standard errors.",
+    .controls_line(x$control, said))
+}
+
+# What a result was fitted on: the dyads that reached the model, after
+# unobserved dyads, fixed ties, and loops were left out, and the waves of a
+# panel. A reader needs both to interpret the estimates.
+#' @keywords internal
+#' @noRd
+.sample_lines <- function(x) {
+  m <- x$missing
+  out <- NULL
+  if (isTRUE(x$loops)) out <- "The model includes loops."
+  if (isTRUE(m$fixed_ties > 0)) {
+    out <- c(out, paste(format(m$fixed_ties),
+                        "fixed ties left out, and kept in place under permutation."))
+  }
+  if (isTRUE(x$panel)) {
+    waves <- length(unique(x$pred$nv))
+    out <- c(out, paste0("Panel: ", waves,
+                         " waves, each fitted against the wave before."))
+  }
+  out
+}
+
+# The p-values of the coefficients themselves, rather than of their test
+# statistics, which `print_b = TRUE` printed before `summary()` gave them.
+#' @keywords internal
+#' @noRd
+.print_b_table <- function(x) {
+  tab <- tibble::tibble(term = names(x$coefficients),
+                        estimate = as.numeric(x$coefficients),
+                        p.lower = as.numeric(x$lower[1, ]),
+                        p.upper = as.numeric(x$larger[1, ]),
+                        p.value = as.numeric(x$abs[1, ]))
+  .print_section("p-values of the coefficients, rather than of their test statistics")
+  .print_tidy(tab, x$times)
+  invisible()
+}
+
+# The names of the nodes, kept on a fit when it is made, so that its random
+# intercepts can be named without the network. A list of networks keeps the
+# names of its first.
+#' @keywords internal
+#' @noRd
+.node_names <- function(.data) {
+  if (.is_list_of_graphs(.data)) return(.node_names(.data[[1]]))
+  tryCatch(manynet::node_names(manynet::as_tidygraph(.data)),
+           error = function(e) NULL)
+}
+
+# The random intercepts of a mixed model, as `lme4::ranef()` gives them: one
+# deviation from the fixed intercept for each sender, receiver, network, or
+# reporter, named for the node or network.
+#' @keywords internal
+#' @noRd
+.random_intercepts <- function(x) {
+  bm <- x$base$base_model
+  if (is.null(bm) || !inherits(bm, "merMod")) return(NULL)
+  re <- lme4::ranef(bm)
+  vc <- as.data.frame(lme4::VarCorr(bm))
+  slots <- c(sv = "sender", rv = "receiver", nv = "network", bv = "reporter")
+  names_of <- x$node_names
+  out <- lapply(names(re), function(nm) {
+    idx <- rownames(re[[nm]])
+    who <- if (nm %in% names(slots)) slots[[nm]] else nm
+    label <- idx
+    if (nm != "nv" && !is.null(names_of)) {
+      at <- suppressWarnings(as.integer(idx))
+      ok <- !is.na(at) & at >= 1 & at <= length(names_of)
+      label[ok] <- names_of[at[ok]]
+    }
+    tibble::tibble(group = who, level = label,
+                   intercept = as.numeric(re[[nm]][, 1]))
+  })
+  vc <- vc[vc$grp != "Residual", c("grp", "vcov", "sdcor")]
+  grp <- ifelse(vc$grp %in% names(slots), slots[vc$grp], vc$grp)
+  list(intercepts = do.call(rbind, out),
+       variance = tibble::tibble(group = unname(grp), variance = vc$vcov,
+                                 sd = vc$sdcor))
+}
+
+#' @keywords internal
+#' @noRd
+.print_random_intercepts <- function(x) {
+  re <- .random_intercepts(x)
+  if (is.null(re)) return(invisible())
+  .print_section("Random intercepts")
+  print(re$variance)
+  print(re$intercepts)
+  invisible()
 }
 
 #' @rdname netreg_results
@@ -512,69 +841,49 @@ glance.sienaFit <- function(x, ...) {
   data
 }
 
-# A CSS result prints its own way, whatever its family: it says how many
-# reporters it was fitted on, which a reader needs to interpret it.
+# A CSS result prints as any other result, and its header and footer say how
+# many reporters it was fitted on, which a reader needs to interpret it.
 #' @rdname netreg_results
 #' @order 3
 #' @export
-print.netreg_css <- function(x, ...) {
-  
-  if (!any(x$random)) {
-    cat("\nGeneralized Linear Network Model for a cognitive social structure\n\n")
-  } else {
-    cat("\nGeneralized Linear Mixed Network Model for a cognitive social structure\n\n")
-  }
-  
-  # A result should say what it was fitted on: how many reporters, and how many
-  # of their reports reached the model after missing ones were dropped.
-  if (!is.null(x$pred$bv)) {
-    reporters <- length(unique(x$pred$bv))
-    cat("Fitted on", format(nrow(x$pred)), "reported dyads from",
-        reporters, if (reporters == 1) "reporter.\n" else "reporters.\n")
-  }
-  if (isTRUE(x$random[["reporter"]]))
-    cat("Each reporter has a random intercept.\n")
-  cat(.fixed_label(x))
-  
-  if (!is.null(x$theta))
-    cat("Negative binomial dispersion (theta):", format(round(x$theta, 4)), "\n")
-  if (!is.null(x$zi_coefficients)) {
-    cat("Zero-inflation coefficients:\n")
-    cat("  ", paste(names(x$zi_coefficients),
-                    format(round(x$zi_coefficients, 4)),
-                    sep = " = ", collapse = ", "), "\n")
-  }
-  
-  if (!is.null(x$groups))
-    cat("Permutations were performed within groups only.\n")
-  
-  if (x$permute == "outcome")
-    cat("The outcome array Y was permuted", format(x$times), "times.\n")
-  if (x$permute == "predictor") {
-    cat("Significance was estimated using Dekker's\n")
-    cat("  'semi-partialling plus' procedure with",
-        format(x$times), "permutations.\n")
-  }
-  
-  if (x$robust_se)
-    cat("T-values are based on robust standard errors.\n")
-  
-  if (x$loops) {
-    cat("Diagonal values (loops) were used in the estimation.\n",
-        "  Results may be biased because of that.\n")
-  } else {
-    cat("Diagonal values (loops) were ignored.\n")
-  }
-  cat("The outcome was treated as",
-      format(paste0(.directed_label(x$directed), ".")), "\n")
-  
-  glm_tab(x)
-  
-  if (!is.null(x$confusion_matrix)) {
-    cat("\n")
-    print(x$confusion_matrix)
-  }
-  
-  cat("\n")
+print.netreg_css <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_netreg(x, print_b = print_b, print_random = print_random)
+}
+
+# ---- diffusion models ---------------------------------------------------------
+
+#' @details
+#'   `print()` shows a title that says how many diffusions were simulated,
+#'   the report of each step, and a footer with the steps until
+#'   every node adopted. `summary()` gives those steps for each simulation.
+#' @rdname play_diffusions
+#' @param object,x A `diffs_model`.
+#' @export
+summary.diffs_model <- function(object, ...) {
+  fin <- (object$I != object$n) * 1
+  toa <- tapply(fin, object$sim, sum) + 1
+  tibble::tibble(sim = as.integer(names(toa)), toa = as.numeric(toa))
+}
+
+#' @rdname play_diffusions
+#' @export
+print.diffs_model <- function(x, ...) {
+  y <- as.data.frame(x)
+  y <- y[, colSums(abs(y), na.rm = TRUE) != 0 | names(y) %in% c("sim", "time"),
+         drop = FALSE]
+  y$I_new <- NULL
+  sims <- length(unique(x$sim))
+  states <- intersect(c("S", "E", "I", "R"), names(y))
+  .print_title(paste0(sims, " simulated ", paste(states, collapse = ""),
+                     " diffusion", if (sims != 1) "s"))
+  print(tibble::as_tibble(y), ...)
+  toa <- summary.diffs_model(x)$toa
+  .print_footer(c(paste0("Steps until every node adopted: median ",
+                         stats::median(toa), ", from ", min(toa), " to ",
+                         max(toa), "."),
+                  .controls_line(attr(x, "control"))),
+                .methods_hint("summary() for the steps of each simulation",
+                              "test_gof() and test_distributions() to compare",
+                              "and plot() from {autograph} for the curves"))
   invisible(x)
 }

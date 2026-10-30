@@ -69,7 +69,9 @@ play_diffusions <- function(.data, ..., times = 5, control = list()) {
     manynet::snet_warn(
       "Dropped {empty} of {times} diffusion runs that returned an empty report.")
   }
-  .make_diffs_model(.bind_reports(out), .data)
+  out <- .make_diffs_model(.bind_reports(out), .data)
+  attr(out, "control") <- ctrl
+  out
 }
 
 # The runs may report different columns, such as `S_new` on one network and
@@ -94,24 +96,4 @@ play_diffusions <- function(.data, ..., times = 5, control = list()) {
   class(report) <- c("diffs_model", class(report))
   attr(report, "mode") <- manynet::node_is_mode(.data)
   report
-}
-
-#' @rdname play_diffusions
-#' @param object,x A `diffs_model`.
-#' @export
-summary.diffs_model <- function(object, ...) {
-  fin <- (object$I != object$n) * 1
-  toa <- tapply(fin, object$sim, sum) + 1
-  tibble::tibble(sim = as.integer(names(toa)), toa = as.numeric(toa))
-}
-
-#' @rdname play_diffusions
-#' @export
-print.diffs_model <- function(x, ...) {
-  y <- as.data.frame(x)
-  y <- y[, colSums(abs(y), na.rm = TRUE) != 0 | names(y) %in% c("sim", "time"),
-         drop = FALSE]
-  y$I_new <- NULL
-  print(tibble::as_tibble(y), ...)
-  invisible(x)
 }

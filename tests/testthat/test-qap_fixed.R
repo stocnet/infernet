@@ -140,7 +140,7 @@ test_that("a cognitive social structure absorbs a reporter fixed effect", {
                         control = list(seed = 1, family = "gaussian"))
   expect_s3_class(fit, "netreg_css")
   expect_equal(fit$fixed_effects, "reporter")
-  expect_output(print(fit), "Fixed effects were absorbed for each reporter")
+  expect_output(print(fit), "with reporter fixed effects")
 })
 
 # ---- interactions ----------------------------------------------------------------
@@ -234,8 +234,10 @@ test_that("a printed result says which fixed effects it absorbed", {
   fit <- estimate_mrqap(weight ~ diff(Age) | sender + receiver,
                         qap_net_gaussian(), times = 5, control = list(seed = 1))
   out <- capture.output(print(fit))
-  expect_true(any(grepl("Fixed effects were absorbed for each sender and receiver", out)))
-  expect_true(any(grepl("Within R-squared", out)))
+  expect_true(any(grepl("with sender and receiver fixed effects", out)))
+  # The intercept that the fixed effects absorb has no row.
+  expect_false(any(grepl("(Intercept)", out, fixed = TRUE)))
+  expect_output(print(summary(fit)), "within the fixed effects")
 })
 
 test_that("a panel keeps each node's group across the waves", {

@@ -66,6 +66,7 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link[=diagnose_confusion]{diagnose_confusion()}},
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
@@ -74,7 +75,6 @@ Other models:
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},
-\code{\link[=test_parameter]{test_parameter()}},
-\code{\link{test_results}}
+\code{\link[=test_parameter]{test_parameter()}}
 }
 \concept{models}

@@ -164,31 +164,6 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
   structure(ctrl, class = "mrqap_control")
 }
 
-#' @rdname control_mrqap
-#' @export
-print.mrqap_control <- function(x, ...) {
-  defaults <- unclass(control_mrqap())
-  show <- vapply(names(x), function(nm) {
-    v <- x[[nm]]
-    if (is.null(v)) {
-      return(switch(nm, seed = "NULL, not set", groups = "NULL, all nodes together",
-                    ncores = "NULL, as strategy says",
-                    strategy = "NULL, the plan set with future::plan()",
-                    "NULL, read from the data"))
-    }
-    if (nm == "groups") return(paste(length(v), "nodes in", length(unique(v)), "groups"))
-    paste(format(v), collapse = ", ")
-  }, character(1))
-  changed <- !mapply(identical, unclass(x)[names(x)], defaults[names(x)])
-  cat("Controls for an MRQAP\n\n")
-  width <- max(nchar(names(x)))
-  for (i in seq_along(show)) {
-    cat(sprintf("  %-*s  %s%s\n", width, names(x)[i], show[i],
-                if (changed[i]) "  (set)" else ""))
-  }
-  invisible(x)
-}
-
 # A list given as `control` is read by `control_mrqap()`, with the same checks
 # and conversions. An unnamed entry cannot be matched to a control, so it
 # aborts rather than being matched by position.

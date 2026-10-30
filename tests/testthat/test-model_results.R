@@ -392,13 +392,18 @@ test_that("tidy() gives the generics columns, and summary() adds the term table"
   expect_named(tidy(fit), c("term", "estimate", "statistic", "p.value"))
   out <- summary(fit)
   expect_s3_class(out, "tbl_df")
-  expect_named(out, c("term", "estimate", "statistic", "p.value", "effect",
-                      "layer", "attribute", "category", "reference", "operands"))
+  expect_s3_class(out, "summary_netreg")
+  expect_named(out, c("term", "estimate", "statistic", "p.lower", "p.upper",
+                      "p.value", "title", "effect", "layer", "attribute",
+                      "category", "reference", "operands"))
+  expect_equal(out$title[1:2], c("the intercept", "the sender's value of the attribute"))
+  expect_equal(out$p.lower, unname(fit$lower[2, ]))
   expect_equal(out$effect, c("intercept", "ego", "same", "same"))
   expect_equal(out$category, c(NA, NA, "p", "q"))
   expect_equal(summary(fit, alternative = "greater")$p.value,
                unname(fit$larger[2, ]))
   # A fit made before the table was kept is summarised without it.
   fit$terms <- NULL
-  expect_named(summary(fit), c("term", "estimate", "statistic", "p.value"))
+  expect_named(summary(fit), c("term", "estimate", "statistic", "p.lower",
+                               "p.upper", "p.value"))
 })

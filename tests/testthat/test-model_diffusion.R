@@ -29,7 +29,8 @@ test_that("play_diffusions() reads its old arguments as controls", {
                            control = list(seed = 4)),
     "control")
   new <- play_diffusions(g, times = 3, control = list(seed = 4))
-  expect_equal(old, new)
+  # The controls differ only in the strategy that the old argument set.
+  expect_equal(old, new, ignore_attr = "control")
   expect_warning(play_diffusions(g, times = 2, verbose = TRUE),
                  "snet_verbosity")
 })

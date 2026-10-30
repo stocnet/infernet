@@ -300,38 +300,45 @@ NULL
 .formula_terms <- function() {
   c(list(
     ego = list(
+      title = "the sender's value of the attribute",
       formals = alist(x = , levels = NULL), kind = "attribute", build = .build_ego,
       mrqap = "fits", dynam = "ego", saom = "egoX",
       ergm = "nodeocov, or nodeofactor for a categorical attribute",
       to_ergm = .ergm_ego),
     alter = list(
+      title = "the receiver's value of the attribute",
       formals = alist(x = , levels = NULL), kind = "attribute", build = .build_alter,
       mrqap = "fits", dynam = "alter", saom = "altX",
       ergm = "nodeicov, or nodeifactor for a categorical attribute",
       to_ergm = .ergm_alter),
     same = list(
+      title = "whether the sender and the receiver share a category",
       formals = alist(x = , diff = FALSE, levels = NULL), kind = "attribute",
       build = .build_same, mrqap = "fits",
       dynam = "same, without diff = TRUE", saom = "sameX, without diff = TRUE",
       ergm = "nodematch, with the same diff",
       to_ergm = .ergm_same),
     diff = list(
+      title = "the difference between the sender's and the receiver's values",
       formals = alist(x = , transformer_fn = abs), kind = "attribute",
       build = .build_diff, mrqap = "fits", dynam = "diff",
       saom = "absDiffX, or diffX with transformer_fn = identity",
       ergm = "absdiff, or diff with transformer_fn = identity",
       to_ergm = .ergm_diff),
     dist = list(
+      title = "the difference between the sender's and the receiver's values",
       formals = alist(x = ), kind = "attribute", build = .build_dist,
       mrqap = "warns", reason = "is a deprecated alias of diff()",
       dynam = "diff", saom = "absDiffX", ergm = "absdiff",
       to_ergm = .ergm_dist),
     sim = list(
+      title = "the similarity of the sender's and the receiver's values",
       formals = alist(x = ), kind = "attribute", build = .build_sim,
       mrqap = "fits", dynam = "sim, as a negative difference",
       saom = "simX, centred", ergm = "edgecov",
       to_ergm = .ergm_built),
     match = list(
+      title = "whether the sender and the receiver share each category",
       formals = alist(x = ), kind = "attribute", build = .build_match,
       twomode = FALSE, hint = "Use {.fn mix} for a two-mode network.",
       mrqap = "warns", reason = "is a deprecated alias of same(x, diff = TRUE)",
@@ -339,16 +346,19 @@ NULL
       ergm = "nodematch with diff = TRUE",
       to_ergm = .ergm_match),
     mix = list(
+      title = "the pair of the sender's and the receiver's categories",
       formals = alist(x = , levels = NULL), kind = "attribute", build = .build_mix,
       mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = "nodemix",
       to_ergm = .ergm_mix),
     tie = list(
+      title = "the tie in another layer",
       formals = alist(layer = , weighted = FALSE), kind = "layer",
       build = .build_tie, outcome = "refuse",
       mrqap = "fits", dynam = "tie", saom = "X", ergm = "edgecov",
       to_ergm = .ergm_built),
     recip = list(
+      title = "the reverse tie",
       formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
       twomode = FALSE, bare = TRUE, panel = TRUE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
@@ -357,6 +367,7 @@ NULL
       ergm = "mutual, or edgecov of the transpose",
       to_ergm = .ergm_recip),
     exchange = list(
+      title = "the reverse tie in another layer",
       formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
       twomode = FALSE,
       hint = "A two-mode tie has no reverse tie of the same shape.",
@@ -364,51 +375,60 @@ NULL
       saom = NA_character_, ergm = "edgecov of the transpose",
       to_ergm = .ergm_recip),
     indeg = list(
+      title = "the number of incoming ties in a layer",
       formals = alist(layer = , node = "alter", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_indeg, outcome = "refuse", bare = TRUE,
       mrqap = "fits", dynam = "indeg", saom = NA_character_,
       ergm = "edgecov, or nodeicov of the degree",
       to_ergm = .ergm_built),
     outdeg = list(
+      title = "the number of outgoing ties in a layer",
       formals = alist(layer = , node = "ego", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_outdeg, outcome = "refuse", bare = TRUE,
       mrqap = "fits", dynam = "outdeg", saom = NA_character_,
       ergm = "edgecov, or nodeocov of the degree",
       to_ergm = .ergm_built),
     tertius = list(
+      title = "the attribute of the receiver's other in-neighbours",
       formals = alist(layer = , x = , summarizer_fn = "mean"),
       kind = "tertius", build = .build_tertius, outcome = "warn",
       mrqap = "fits", dynam = "tertius, with ego", saom = NA_character_,
       ergm = "edgecov",
       to_ergm = .ergm_built),
     tertius_diff = list(
+      title = "the difference from the receiver's other in-neighbours",
       formals = alist(layer = , x = , summarizer_fn = "mean"),
       kind = "tertius", build = .build_tertius_diff, outcome = "warn",
       mrqap = "fits", dynam = "tertius_diff, with ego", saom = NA_character_,
       ergm = "edgecov",
       to_ergm = .ergm_built),
     global = list(
+      title = "a value of the whole network",
       formals = alist(x = ), kind = "global", build = .build_global,
       mrqap = "fits", dynam = "global", saom = NA_character_,
       ergm = NA_character_),
     # A cognitive social structure's terms, named for its reporter. No other
     # model has a reporter, so `css` marks them for the other models' readers.
     reporter = list(
+      title = "the reporter's value of the attribute",
       formals = alist(x = , levels = NULL), kind = "attribute",
       build = .build_reporter, css = TRUE,
       mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = NA_character_),
     reporter_ego = list(
+      title = "whether the reporter is the sender",
       formals = alist(), kind = "reporter", build = .build_reporter_ego,
       bare = TRUE, css = TRUE,
       mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = NA_character_),
     reporter_alter = list(
+      title = "whether the reporter is the receiver",
       formals = alist(), kind = "reporter", build = .build_reporter_alter,
       bare = TRUE, css = TRUE,
       mrqap = "fits", dynam = NA_character_, saom = NA_character_,
       ergm = NA_character_),
     reporter_same = list(
+      title = "whether the reporter shares the category",
       formals = alist(x = , node = "ego"), kind = "attribute",
       build = .build_reporter_same, css = TRUE, twomode = FALSE,
       hint = "Use {.fn reporter} with {.fn ego} or {.fn alter} on the attribute instead.",
@@ -484,6 +504,8 @@ NULL
     dyadXego  = groups(), size     = groups(), sizeXdiff = groups(),
     sizeXego  = groups(), intercept = groups()
   )
+  terms$inertia$title <- "the tie in the previous wave"
+  terms$trans$title <- "the two-paths in the previous wave"
   for (nm in names(terms)) terms[[nm]]$dynam <- nm
   terms
 }

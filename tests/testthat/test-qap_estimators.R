@@ -172,5 +172,5 @@ test_that("a gaussian model of a binary outcome keeps a confusion matrix", {
                         control = list(family = "gaussian"))
   expect_equal(fit$family, "gaussian")
   expect_s3_class(fit, "netreg_lm")
-  expect_s3_class(fit$confusion_matrix, "QAPConfusionMatrix")
+  expect_s3_class(fit$confusion_matrix, "diagnose_confusion")
 })

@@ -98,11 +98,12 @@ test_that("a list and control_mrqap() are read the same way", {
   expect_equal(a$lower, b$lower)
 })
 
-test_that("a control prints with the ones that were set marked", {
+test_that("a control prints the ones that were set, and counts the defaults", {
   out <- capture.output(print(control_mrqap(family = "poisson")))
-  expect_match(out, "family +poisson  \\(set\\)", all = FALSE)
-  expect_match(out, "directed +NULL, read from the data$", all = FALSE)
-  expect_false(any(grepl("permute.*\\(set\\)", out)))
+  expect_match(out, "1 set, 14 at their defaults", all = FALSE)
+  expect_match(out, '^  family +"poisson"$', all = FALSE)
+  # `?control_mrqap` lists the defaults, so the print does not.
+  expect_false(any(grepl("permute", out)))
 })
 
 test_that("diag is now called loops, with a warning", {
