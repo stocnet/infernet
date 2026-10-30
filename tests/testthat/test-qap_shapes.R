@@ -53,7 +53,7 @@ test_that("make_qap_data() counts a wide predictor's cells, not the mask's", {
   expect_false(anyNA(pred$a))
 })
 
-test_that("RMPerm() permutes a rectangular matrix without erroring", {
+test_that("RMPerm() keeps the shape and the values of a rectangular matrix", {
   m <- matrix(seq_len(18 * 14), 18, 14)
   p <- RMPerm(m)
   expect_equal(dim(p), c(18L, 14L))
@@ -151,4 +151,24 @@ test_that("a two-mode network keeps its sender and receiver random intercepts", 
   expect_true(fit$random[["receiver"]])
   expect_equal(unname(fit$coefficients), unname(lme4::fixef(mixed)),
                tolerance = 1e-6)
+})
+
+# The engine's own checks, for a matrix list built by hand rather than by the
+# formula front end.
+test_that("the engine refuses an outcome or a predictor it cannot find", {
+  m <- matrix(stats::rnorm(25), 5, 5)
+  expect_error(QAPengine(y ~ x, list(x = m), times = 2), "Dependent variable")
+  expect_error(QAPengine(y ~ x + z, list(y = m, x = m), times = 2), "Predictor")
+  expect_error(QAPengine(y ~ x, list(y = 1:5, x = m), times = 2), "must be a matrix")
+  expect_error(QAPengine(y ~ x, list(y = list(m, 1:5), x = list(m, m)), times = 2),
+               "Network 2")
+  expect_error(QAPengine(y ~ x, list(y = list(m), x = list(m)), css = TRUE, times = 2),
+               "Network 1")
+})
+
+test_that("a predictor that combines the others is refused by name", {
+  net <- manynet::mutate_nodes(qap_net_gaussian(n = 12), Age2 = 2 * Age)
+  expect_error(suppressMessages(
+    estimate_mrqap(. ~ ego(Age) + ego(Age2), net, times = 5)),
+    "\"ego_Age2\" is a combination of the other predictors")
 })

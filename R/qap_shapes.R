@@ -33,6 +33,10 @@
       list(pred = pred, valid = NULL)
     },
     permute = function(m, groups) RMPerm(m, groups),
+    # The orders of one draw, which `.draw_values()` applies to the cells. They
+    # are the orders `permute()` applies to the matrix, so a seed gives the
+    # same draw either way.
+    orders = function(d, groups) .perm_orders(d, groups),
     unresidualise = function(xR, original, pred, large, valid, valid_list,
                              directed) {
       residuals_to_matrix(xR, original, pred, large, directed)
@@ -59,6 +63,7 @@
       make_css_data(y = y, x = x, nets = net, loops = loops, directed = directed)
     },
     permute = function(m, groups) RMPerm(m, groups, CSS = TRUE),
+    orders = function(d, groups) .perm_orders(d, groups, css = TRUE),
     unresidualise = function(xR, original, pred, large, valid, valid_list,
                              directed) {
       residuals_to_array(xR, original, valid, pred, large, valid_list,

@@ -32,6 +32,8 @@ navbar:
       menu:
       - text: Diversity and Regression
         href: articles/diversity-and-regression.html
+      - text: Diffusion and Learning
+        href: articles/diffusion-and-learning.html
     news:
       text: News
       href: news/index.html
@@ -47,25 +49,57 @@ articles:
   - title: Tutorials
     desc: |
       Static, read-only versions of the interactive `learnr` tutorials
-      bundled with the package. Install the package and run `run_tute()`
-      for the full interactive experience.
+      bundled with the package. 
+      To run them, install `{migraph}` and run `migraph::run_tute("diversity")` 
+      or `migraph::run_tute("diffusion")` for the full interactive experience.
     contents:
       - "`articles/diversity-and-regression`"
+      - "`articles/diffusion-and-learning`"
 reference:
-  - title: "Tests"
-    desc: "Functions for testing network statistics against a null distribution:"
+  - title: "Testing"
+    desc: >
+      Functions for testing a network statistic against random networks,
+      networks with the same degrees, or permutations of the network,
+      and for testing the parameters and the fit of a model:
     contents:
-      - starts_with("test")
-  - title: "Formulas"
-    desc: "Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:"
+      - starts_with("test_")
+  - title: "Specifying"
+    desc: >
+      The terms of an MRQAP formula and what each measures,
+      the terms that suit a network,
+      and functions for reading one formula for an MRQAP or an ERGM,
+      and for seeing what each model makes of each term:
     contents:
+      - terms_mrqap
+      - specify_terms
       - specify
-  - title: "Regression"
-    desc: "Functions for regressing networks on nodal and dyadic covariates:"
+  - title: "Regressing"
+    desc: >
+      Functions for regressing a network on nodal and dyadic covariates
+      by multiple regression quadratic assignment procedure (MRQAP),
+      with random or fixed effects, missing data, panels, and cognitive social structures:
     contents:
-      - regression
-      - control_mrqap
-  - title: "Results"
-    desc: "Functions for reporting the results of tests and regressions:"
+      - starts_with("control_")
+      - starts_with("estimate_")
+  - title: "Diffusing"
+    desc: >
+      Functions for simulating many diffusions on a network,
+      to test a model of diffusion against:
     contents:
-      - results
+      - play_diffusions
+  - title: "Diagnosing"
+    desc: >
+      Functions for diagnosing model results:
+    contents:
+      - starts_with("diagnose_")
+      - starts_with("predict")
+  - title: "Reporting"
+    desc: >
+      Functions for reporting and reading the results of regressions and tests,
+      for tidying the results of other network models beside them,
+      for predicting from a regression,
+      and for diagnosing how well it classifies ties:
+    contents:
+      - netreg_results
+      - report_tests
+      - other_results

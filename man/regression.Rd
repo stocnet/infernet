@@ -3,73 +3,34 @@
 \name{regression}
 \alias{regression}
 \alias{estimate_mrqap}
-\alias{net_regression}
 \title{Regression for network data}
 \usage{
 estimate_mrqap(formula, .data, times = 1000, control = list())
-
-net_regression(formula, .data, times = 1000, control = list())
 }
 \arguments{
 \item{formula}{A formula describing the model.  The left-hand side is the
 dependent network: a layer, a tie attribute such as \code{weight}, or \code{.} for
 the network's focal layer or the whole network.
 The right-hand side accepts these terms, whose arguments can be given by
-position or by name:
+position or by name. \link{terms_mrqap} says what each one measures, with its
+equation, and \link{specify_terms} lists those that suit a network.
 \itemize{
-\item \code{ego(attr, levels = NULL)}, \code{alter(attr, levels = NULL)} — the sender's
-or the receiver's value of a node attribute; a categorical attribute is
-dummy-coded, with the first category as the reference,
-\item \code{same(attr, diff = FALSE, levels = NULL)} — 1 where sender and receiver
-share an attribute value; with \code{diff = TRUE}, as in ergm's
-\code{nodematch()}, one 0/1 column for each category, 1 where sender and
-receiver both hold it.
-\code{match(attr)} is a deprecated alias of \code{same(attr, diff = TRUE)},
-\item \code{diff(attr, transformer_fn = abs)} — the transformed difference between
-the sender's and the receiver's values: absolute by default, and signed
-with \code{transformer_fn = identity}. \code{dist(attr)} is a deprecated alias,
-\item \code{sim(attr)} — proportional similarity in a numeric attribute,
-1 - |d| / range,
-\item \code{mix(attr, levels = NULL)} — one 0/1 column for each pair of a
-sender's and a receiver's category, less the first pair as the
-reference. The pairs are in ergm's order for \code{nodemix()}, the sender's
-category changing fastest,
-\item \code{tie(layer, weighted = FALSE)} — another layer as a dyadic covariate,
-0/1 unless \code{weighted = TRUE}; a layer or tie attribute named on its own
-enters with its values as stored,
-\item \code{exchange(layer)} — the reverse tie, j to i, in another layer;
-\code{recip(layer)} is the same, and \code{recip()}, or \code{recip} on its own,
-reads the outcome's own reverse tie, and warns,
-\item \code{indeg(layer, type = "alter", weighted = FALSE)} and
-\code{outdeg(layer, type = "alter", weighted = FALSE)} — a node's number of
-incoming or outgoing ties in another layer, for the receiver
-(\code{"alter"}) or the sender (\code{"ego"}),
-\item \code{tertius(layer, attr, summarizer_fn = "mean")} — the mean (or the
-tie-weighted sum, with \code{"sum"}) of an attribute over the receiver's
-in-neighbours in a layer, other than the sender. A receiver with no
-other in-neighbour takes the mean of the defined cells. The older
-\code{tertius(attr)} reads the outcome's own ties, and warns,
-\item \code{tertius_diff(layer, attr, summarizer_fn = "mean")} — how far the
-sender's value lies from that mean, as an absolute difference,
-\item \code{global(var)} — a network-level variable from the network's \code{globals},
-in a list of networks; on one network it is the intercept.
+\item of node attributes: \code{ego(x)}, \code{alter(x)}, \code{same(x)}, \code{mix(x)},
+\code{diff(x)}, and \code{sim(x)};
+\item of other layers: \code{tie(layer)}, or the layer named on its own,
+\code{exchange(layer)}, \code{indeg(layer)}, and \code{outdeg(layer)};
+\item of others' attributes: \code{tertius(layer, x)} and \code{tertius_diff(layer, x)};
+\item of the outcome's previous wave, on a longitudinal network: \code{inertia},
+\code{recip}, and \code{trans};
+\item of a list of networks: \code{global(x)};
+\item of the reporter of a cognitive social structure: \code{reporter(x)},
+\code{reporter_ego}, \code{reporter_alter}, and \code{reporter_same(x)}, for which
+see the section on cognitive social structures.
 }
 
 \code{:} and \code{*} give interactions of any order, as the product of the terms.
-
-\verb{levels =} chooses the categories that get a column in \code{ego()},
-\code{alter()}, and \code{same()}, or the pairs in \code{mix()}, as in ergm. Give the
-names, such as \code{levels = c("sales", "hr")} or, for \code{mix()},
-\code{levels = "sales -> hr"}, written as in \code{fit$terms} (\verb{--} for an
-undirected network). Or give positions in the order of the columns,
-where a negative position leaves that one out: \code{levels = -1} is the
-default of \code{ego()}, \code{alter()}, and \code{mix()}. In \code{ego()}, \code{alter()}, and
-\code{mix()}, the categories left out are the reference together; where every
-one is chosen, the first chosen is the reference. In \code{same()}, a dyad
-that shares a category left out is not counted. An unknown name aborts
-and lists the categories. A term with more than ten categories and no
-\verb{levels =} warns, since under \code{permute = "predictor"} each column is
-permuted on its own.
+\code{match(x)} and \code{dist(x)} are deprecated aliases of \code{same(x, diff = TRUE)}
+and \code{diff(x)}.
 
 A formula written for \code{{goldfish}} or \code{{ergm}} can be used as it is.
 It is first read by \code{\link[=specify_mrqap]{specify_mrqap()}}, which rewrites each term that has
@@ -100,8 +61,10 @@ dropped with a warning.}
 \item{control}{The controls of the model, as the result of
 \code{\link[=control_mrqap]{control_mrqap()}} or a named list of its arguments, such as
 \code{list(family = "poisson", seed = 1)}. A control that is not named keeps
-its default. See \code{\link[=control_mrqap]{control_mrqap()}} for each control, its default, and the
-names it converts from other models and earlier versions.}
+its default, or the value set with \code{control_mrqap(..., persist = TRUE)}.
+See \code{\link[=control_mrqap]{control_mrqap()}} for each control, its default, and the
+names it converts from other models and earlier versions.
+The result records the controls that it used as \code{control}.}
 }
 \value{
 An object of class \code{netreg}, with a more specific class in front:
@@ -137,13 +100,27 @@ term it comes from, such as \code{"ego"} or \code{"same"}, or \code{"intercept"}
 \code{"interaction"}; its \code{layer} and \code{attribute}; its \code{category} and the
 \code{reference} category it is compared with, where the term is
 categorical; and for an interaction, its \code{operands}, the names of the
-columns it multiplies. \code{tidy()} adds these columns to the estimates.
+columns it multiplies. \code{summary()} adds these columns to the estimates.
+\item \code{call}, \code{formula}, and \code{model_formula}: the call, the formula as
+\code{\link[=specify_mrqap]{specify_mrqap()}} read it, and the formula of the columns that were
+fitted. \code{update()}, \code{formula()}, and \code{terms()} read them
+(see \link{netreg_results}).
+\item \code{fixed_df}, the number of parameters that a gaussian model absorbed by
+demeaning, or \code{NULL}.
 }
 
 When the outcome is binary -- either \code{family = "binomial"} or
 \code{"gaussian"} with a 0/1 dependent -- a probabilistic confusion matrix is
 attached as \verb{$confusion_matrix}; for the gaussian-binary case the linear
 probability fitted values are clamped to 0/1 before sampling.
+\code{\link[=diagnose_confusion]{diagnose_confusion()}} gives it again with another threshold or number
+of draws.
+\itemize{
+\item \code{node_names}, the names of the nodes, which name the random
+intercepts; \code{control}, the controls as the fit resolved them; and
+\code{record}, what \code{\link[=specify_mrqap]{specify_mrqap()}} made of each term. \code{print()} and
+\code{summary()} read them.
+}
 }
 \description{
 Fits a regression model to one (or a list of) manynet-compatible network(s)
@@ -167,12 +144,6 @@ dropped with a warning and the remaining networks are pooled;
 \item cognitive social structures, detected rather than declared (see below).
 }
 }
-\section{Functions}{
-\itemize{
-\item \code{net_regression()}: The name this function had in \code{{migraph}}, and in
-infernet before 0.4.0. It still works, and warns once that it is deprecated.
-
-}}
 \section{Cognitive social structures}{
 
 A cognitive social structure (CSS) records each person's report of the
@@ -191,9 +162,32 @@ as one matrix that every report shares.
 computed within each report, since each reporter sees different ties.
 }
 
+The \code{reporter} terms describe the reporter of each report, since a
+report about one's own ties can differ from a report about the ties of
+others (Krackhardt 1987):
+\itemize{
+\item \code{reporter(age)} is the reporter's age, the same over their whole report;
+\item \code{reporter_ego} is 1 in a report about the reporter's own outgoing tie,
+and \code{reporter_alter} in a report about a tie to the reporter;
+\item \code{reporter_same(dept, node = "alter")} is 1 where the reporter is of the
+receiver's department.
+}
+
+\code{reporter_ego}, \code{reporter_alter}, and \code{reporter_same()} need a directed or
+a two-mode network, since an undirected tie has no sender or receiver.
+In a two-mode CSS the column nodes report after the row nodes, and
+\code{reporter_same()} is not yet available. An attribute that only one mode
+holds gives \code{reporter()} an \code{NA} for every report of the other mode,
+so those reports are dropped.
+On a network that is not a CSS, a \code{reporter} term aborts.
+ergm has no reporter, so \code{\link[=specify_ergm]{specify_ergm()}} drops these terms, and so does
+goldfish's \code{specify_dynam()}.
+
 A permutation relabels the nodes, and a reporter is a node, so the senders,
 receivers, and reporters are relabelled together.
 \code{(1 | reporter)} in the formula adds a random intercept for each reporter.
+A \verb{| reporter} fixed effect absorbs \code{reporter()}, which is then refused,
+but not \code{reporter_ego} or \code{reporter_alter}, which vary within a report.
 
 A person who was not asked has a report of zeros unless the network marks
 them as missing, for example with
@@ -248,7 +242,9 @@ each node keeps its own trajectory under the null hypothesis.
 Three of goldfish's effects then read the outcome's previous wave, as
 goldfish and RSiena read the state of the network before each change:
 \itemize{
-\item \code{inertia}, the tie from i to j in the previous wave;
+\item \code{inertia}, the tie from i to j in the previous wave, as 0/1, or its
+value with \code{inertia(weighted = TRUE)}, as on a complete ranking, where
+every dyad holds a tie;
 \item \code{recip}, the tie from j to i in the previous wave;
 \item \code{trans}, the number of two-paths i -> k -> j in the previous wave,
 counting only observed ties.
@@ -312,18 +308,21 @@ outcome, and warn.
 }
 
 \examples{
-\dontrun{
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 model1 <- estimate_mrqap(
   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
   networkers, times = 20)
 print(model1)
-}
 # A cognitive social structure: each of 21 managers' report of who goes to
 # whom for advice, against the formal reporting structure that all share.
 css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
+# Whether a manager reports their own advice ties differently, and whether
+# senior managers report more advice.
+css_reporter <- estimate_mrqap(
+  advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
+  manynet::ison_hightech, times = 5)
 }
 \references{
 Krackhardt, David. 1987.
@@ -352,8 +351,15 @@ conditions."
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link[=diagnose_confusion]{diagnose_confusion()}},
+\code{\link{other_results}},
+\code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{specify}},
-\code{\link{tests}}
+\code{\link{specify_terms}},
+\code{\link{terms_mrqap}},
+\code{\link{test_fit}},
+\code{\link{test_measures}},
+\code{\link[=test_parameter]{test_parameter()}}
 }
 \concept{models}

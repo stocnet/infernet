@@ -142,17 +142,35 @@ test_that("crossed sender and receiver intercepts do not abort the run", {
   expect_qap_shape(fit, COEFS3)
 })
 
-test_that("binomial and poisson random intercepts run", {
+test_that("binomial and poisson random intercepts meet the shape contract", {
   skip_if_not_installed("lme4")
   bin <- suppressMessages(suppressWarnings(
-    estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
+    estimate_mrqap(FORM_B, qap_net_binary(n = 15), times = 5,
                    control = list(seed = 1, family = "binomial",
                                   random_intercept_sender = TRUE))))
   expect_qap_shape(bin, COEFS3)
   pois <- suppressMessages(suppressWarnings(
-    estimate_mrqap(FORM, qap_net_count(), times = 10,
+    estimate_mrqap(FORM, qap_net_count(n = 15), times = 5,
                    control = list(seed = 1, family = "poisson",
                                   random_intercept_sender = TRUE))))
   expect_qap_shape(pois, COEFS3)
 })
 
+
+# ---- the family read from the outcome ---------------------------------------------
+
+test_that("family = 'auto' picks gaussian for a weighted outcome", {
+  g <- qap_net_gaussian(n = 10)
+  fit <- estimate_mrqap(weight ~ sim(Age), g, times = 10)
+  expect_equal(fit$family, "gaussian")
+  expect_s3_class(fit, "netreg_lm")
+})
+
+test_that("a gaussian model of a binary outcome keeps a confusion matrix", {
+  g <- qap_net_binary(n = 10)
+  fit <- estimate_mrqap(. ~ sim(Age), g, times = 10,
+                        control = list(family = "gaussian"))
+  expect_equal(fit$family, "gaussian")
+  expect_s3_class(fit, "netreg_lm")
+  expect_s3_class(fit$confusion_matrix, "diagnose_confusion")
+})

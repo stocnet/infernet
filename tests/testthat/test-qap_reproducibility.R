@@ -36,24 +36,8 @@ test_that("an outer set.seed() reproduces a run with no seed control", {
   expect_equal(a$lower, b$lower)
 })
 
-test_that("a parallel plan gives the same answer as a sequential one", {
-  skip_on_cran()
-  g <- qap_net_gaussian()
-  seq <- estimate_mrqap(FORM, g, times = 30, control = list(seed = 99))
-  par <- estimate_mrqap(FORM, g, times = 30,
-                        control = list(seed = 99, strategy = "multisession"))
-  # `future.seed = TRUE` is what makes this true; without it the plan would
-  # change the result.
-  expect_equal(par$lower, seq$lower)
-  expect_equal(par$coefficients, seq$coefficients)
-})
-
-test_that("the future plan is restored after a run", {
-  before <- class(future::plan())
-  estimate_mrqap(FORM, qap_net_gaussian(), times = 10,
-                 control = list(seed = 1, strategy = "multisession"))
-  expect_equal(class(future::plan()), before)
-})
+# That a seed gives the same answer on two workers, and that a run restores the
+# plan, is in test-parallel.R, which starts its workers once.
 
 test_that("the test family reproduces under an outer seed", {
   g <- qap_net_gaussian(n = 18)

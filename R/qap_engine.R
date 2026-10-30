@@ -21,7 +21,7 @@ QAPengine <- function(formula,
                       times     = 1000,
                       seed      = NULL,
                       groups    = NULL,
-                      strategy  = "sequential",
+                      strategy  = NULL,
                       ncores    = NULL,
                       random_intercept_nets      = FALSE,
                       random_intercept_sender    = FALSE,
@@ -201,6 +201,7 @@ QAPengine <- function(formula,
                             has_random   = has_random,
                             fixed_effects = fit_fixed,
                             fixed_df     = fixed_df)
+  .check_estimable(fit$base$coefficients, pred)
   if (!is.null(fit_fixed)) {
     removed <- nrow(pred) - stats::nobs(fit$base$base_model)
     if (removed > 0)
@@ -222,10 +223,7 @@ QAPengine <- function(formula,
   # ---- permute --------------------------------------------------------------
 
   old_plan <- setup_future_plan(strategy, ncores)
-  on.exit({
-    future::plan(old_plan)
-    options(future.globals.maxSize = attr(old_plan, "old_maxSize"))
-  }, add = TRUE)
+  on.exit(restore_future_plan(old_plan), add = TRUE)
 
   perm_args <- list(shape. = shape, directed. = directed, loops. = loops,
                     mod. = mod, groups. = groups, fit. = fit$base,
@@ -245,11 +243,20 @@ QAPengine <- function(formula,
     blocks
   }
 
+  # The data and, for a linear model, the design that every draw of a set
+  # shares, built once for the set rather than once for each draw.
+  .plan_for <- function(ml, target) {
+    .draw_plan(shape, ml, target, dep, data_vars, groups, loops, directed,
+               large, exclude, panel, used, mod, family, has_random,
+               fit_fixed, use_robust_errors, main)
+  }
+
   if (permute == "outcome") {
     res <- do.call(run_permutations,
                    c(list(times, QAPPermEst, matlist. = matlist,
                           perm_var. = NULL,
-                          perm_groups. = .blocks_for(matlist[[dep]], dep)),
+                          perm_groups. = .blocks_for(matlist[[dep]], dep),
+                          plan. = .plan_for(matlist, dep)),
                      perm_args))
     agg <- aggregate_perm_results(res, times)
     fit$lower    <- agg$lower
@@ -290,7 +297,8 @@ QAPengine <- function(formula,
       res <- do.call(run_permutations,
                      c(list(times, QAPPermEst, matlist. = matlist_resid,
                             perm_var. = xi,
-                            perm_groups. = .blocks_for(matlist_resid[[xi]], xi)),
+                            perm_groups. = .blocks_for(matlist_resid[[xi]], xi),
+                            plan. = .plan_for(matlist_resid, xi)),
                        perm_args))
       agg <- aggregate_perm_results(res, times)
       fit$lower[, xi]  <- agg$lower
@@ -347,6 +355,9 @@ QAPengine <- function(formula,
   fit$robust_se <- use_robust_errors
   fit$random    <- requested[names(slots)]
   fit$fixed_effects <- fixed_effects
+  # The parameters that a gaussian model absorbed by demeaning, which its
+  # baseline fit does not count, so that `logLik()` can.
+  fit$fixed_df  <- fixed_df
   fit$pred      <- pred_observed
   fit$dep       <- dep
   fit$missing   <- list(treatment   = missing,
@@ -371,6 +382,8 @@ QAPengine <- function(formula,
 
 # One permutation: draw, vectorise, refit, and compare against the baseline.
 # Returns NULL where the fit fails, which `aggregate_perm_results()` counts.
+# With a plan from `.draw_plan()`, a draw permutes the cells the model reads
+# rather than the matrix, and a linear model solves its stored design.
 #' @keywords internal
 #' @noRd
 QAPPermEst <- function(i,
@@ -393,11 +406,16 @@ QAPPermEst <- function(i,
                        panel. = FALSE,
                        exclude. = NULL,
                        fixed_effects. = NULL,
-                       fixed_df. = NULL) {
+                       fixed_df. = NULL,
+                       plan. = NULL) {
 
   dep    <- parsed.$dependent
   large  <- is.list(matlist.[[dep]])
   target <- if (is.null(perm_var.)) dep else perm_var.
+  if (!is.null(plan.))
+    return(.perm_est_planned(plan., shape., perm_groups., mod., family.,
+                             use_robust_errors., has_random., main_vars.,
+                             fixed_effects., fixed_df., fit., perm_var.))
 
   trial <- 0L
   repeat {
@@ -463,6 +481,59 @@ QAPPermEst <- function(i,
 }
 
 
+# One permutation from a plan. It redraws and refits as `QAPPermEst()` does,
+# and draws the same random numbers, so a seed gives the same draws.
+#' @keywords internal
+#' @noRd
+.perm_est_planned <- function(plan, shape, perm_groups, mod, family,
+                              use_robust_errors, has_random, main_vars,
+                              fixed_effects, fixed_df, fit, perm_var) {
+  trial <- 0L
+  repeat {
+    trial <- trial + 1L
+    v <- .draw_values(plan, shape, perm_groups)
+    # The blocks keep the missing cells in place, so a missing value in a cell
+    # the model reads is a fault in the engine, not in the data.
+    if (anyNA(v))
+      manynet::snet_abort(
+        c("A permutation moved a missing value into a dyad the observed model used.",
+          i = "This is a bug in {.pkg infernet}. Please report it."))
+    if (.draw_varies(plan, v)) break
+    if (trial >= shape$max_trials) {
+      if (shape$max_trials == 1L) break
+      manynet::snet_abort(
+        c("Cannot find a valid permutation after {trial} trials.",
+          i = "The network may be too sparse, or too many cells may be missing."))
+    }
+  }
+
+  perm_fit <- tryCatch(
+    suppressWarnings({
+      solved <- if (!is.null(plan$solve)) plan$solve(v)
+      if (!is.null(solved)) {
+        .finish_fit(solved, fixed_df = fixed_df)
+      } else {
+        pred <- plan$pred
+        pred[[plan$target]] <- v
+        fit_qap_model(mod          = mod,
+                      pred         = pred,
+                      family       = family,
+                      use_robust_errors = use_robust_errors,
+                      main_vars    = main_vars,
+                      has_random   = has_random,
+                      fixed_effects = fixed_effects,
+                      fixed_df     = fixed_df)
+      }
+    }),
+    error = function(e) NULL
+  )
+  if (is.null(perm_fit)) return(NULL)
+
+  compare_perm_to_baseline(perm_fit$coefficients, perm_fit$t, fit,
+                           xi = perm_var)
+}
+
+
 # The permuted test statistics as a matrix of one row per permutation and one
 # column per coefficient, named as the coefficients are. The test family keeps
 # its null distribution as `testdist` too, so the word means one thing across
@@ -478,4 +549,29 @@ QAPPermEst <- function(i,
     out[seq_len(nrow(draws)), ] <- draws
   }
   out
+}
+
+# A predictor that is constant in the dyads of the model, or a combination of
+# the others, has no coefficient: `lm()` and `glm()` give it NA. Every
+# permutation would then return one coefficient fewer than the baseline, and
+# the result could not be read, so the model stops here and names the term.
+# The intercept of a model with fixed effects is NA by design.
+#' @keywords internal
+#' @noRd
+.check_estimable <- function(coefs, pred) {
+  aliased <- setdiff(names(coefs)[is.na(coefs)], "(Intercept)")
+  if (length(aliased) == 0) return(invisible(NULL))
+  constant <- aliased[aliased %in% names(pred)]
+  constant <- constant[vapply(constant, function(v) {
+    length(unique(pred[[v]])) == 1
+  }, logical(1))]
+  if (length(constant) > 0) {
+    manynet::snet_abort(
+      c("{.val {constant}} {?has/have} one value in every dyad of the model, so {?it has/they have} no coefficient.",
+        i = "A 0/1 term of the ties, such as {.code inertia}, is 1 in every dyad where every dyad holds a tie, as in a complete ranking.",
+        i = "Remove such a term from the formula, or read the value of the tie, for example with {.code inertia(weighted = TRUE)}."))
+  }
+  manynet::snet_abort(
+    c("{.val {aliased}} {?is a combination/are combinations} of the other predictors, so {?it has/they have} no coefficient.",
+      i = "Remove one of the terms that it combines from the formula."))
 }

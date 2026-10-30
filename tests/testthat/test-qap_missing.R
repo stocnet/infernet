@@ -7,29 +7,6 @@
 # These assert that the missing cells map onto themselves under that
 # permutation, for each shape of network, and that the engine uses it.
 
-# A 20-node network with four nodes unobserved on the outcome and five other
-# nodes unobserved on a predictor, as in the roadmap's demonstration.
-holed_matlist <- function(n = 20, seed = 11) {
-  set.seed(seed)
-  age <- stats::runif(n, 20, 60)
-  y <- outer(age, age, function(a, b) 0.05 * a - 0.03 * b) +
-    matrix(stats::rnorm(n^2, sd = 0.5), n, n)
-  diag(y) <- 0
-  y[1:4, ] <- NA
-  y[, 1:4] <- NA
-  ego <- matrix(age, n, n)
-  ego[5:9, ] <- NA
-  alter <- matrix(stats::runif(n), n, n, byrow = TRUE)
-  list(y = y, ego = ego, alter = alter)
-}
-
-expect_missing_fixed <- function(m, blocks, draws = 50, CSS = FALSE) {
-  for (i in seq_len(draws)) {
-    p <- RMPerm(m, blocks, CSS = CSS)
-    expect_identical(is.na(p), is.na(m))
-  }
-}
-
 test_that("a free permutation changes the dyads that reach the model", {
   ml <- holed_matlist()
   observed <- nrow(make_qap_data(ml$y, ml[c("ego", "alter")]))
@@ -260,17 +237,6 @@ test_that("missing takes only the treatments that exist", {
                "must be one of")
 })
 
-# A tie that `{manynet}` marks as fixed was set by the design, not chosen, so it
-# is no observation of the process: it leaves the model, is counted apart from
-# the unobserved dyads, and stays in place under permutation.
-fixed_net <- function(n = 15, seed = 31) {
-  g <- qap_net_binary(n = n, seed = seed)
-  ties <- manynet::as_edgelist(g)
-  set.seed(seed)
-  fixed <- seq_len(nrow(ties)) %in% sample(nrow(ties), 6)
-  manynet::mutate_ties(g, fixed = fixed)
-}
-
 test_that("a fixed tie is left out of the model and counted apart", {
   g <- fixed_net()
   expect_equal(sum(.fixed_ties(g)), 6)
@@ -280,7 +246,7 @@ test_that("a fixed tie is left out of the model and counted apart", {
   expect_equal(fit$missing$fixed_ties, 6)
   expect_equal(fit$missing$possible, 15 * 14 - 6)
   expect_equal(fit$missing$unobserved[[fit$dep]], 0L)
-  expect_output(print(fit), "6 fixed ties were left out")
+  expect_output(print(fit), "6 fixed ties left out")
 })
 
 test_that("missing = \"fail\" does not stop on a fixed tie", {

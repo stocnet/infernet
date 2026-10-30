@@ -32,10 +32,6 @@ test_that("each model's formula says what it makes of a fixed effect", {
   expect_equal(deparse(f[[3]]), "same(dept) | sender + receiver")
   expect_equal(tidy(f)$status, c("fits", "fits", "fits"))
 
-  d <- suppressWarnings(specify_dynam(advice ~ same(dept) | sender))
-  expect_false(grepl("|", deparse(d), fixed = TRUE))
-  expect_equal(tidy(d)$status[tidy(d)$term == "| sender"], "drops")
-
   e <- specify_ergm(advice ~ same(dept) | sender + receiver)
   expect_true(all(c("sender", "receiver") %in% all.vars(e)))
   expect_equal(tidy(e)$as[tidy(e)$term == "| sender"], "sender")
@@ -144,7 +140,59 @@ test_that("a cognitive social structure absorbs a reporter fixed effect", {
                         control = list(seed = 1, family = "gaussian"))
   expect_s3_class(fit, "netreg_css")
   expect_equal(fit$fixed_effects, "reporter")
-  expect_output(print(fit), "Fixed effects were absorbed for each reporter")
+  expect_output(print(fit), "with reporter fixed effects")
+})
+
+# ---- interactions ----------------------------------------------------------------
+
+# {fixest} reads the `:` of an interaction column as `*`, so these fits need
+# the column under a syntactic name.
+FE_FORM_X <- "weight ~ diff(Age) + same(Grp) + diff(Age):same(Grp) |"
+FE_COEFS_X <- c(FE_COEFS, "diff_Age:same_Grp")
+
+test_that("a gaussian interaction fits with sender or receiver fixed effects", {
+  g <- qap_net_gaussian()
+  ref <- qap_reference_data(FE_FORM, g)$pred
+  ref$x <- ref$diff_Age * ref$same_Grp
+  for (fe in c("sender", "receiver")) {
+    dummies <- stats::lm(stats::as.formula(paste(
+      "weight ~ diff_Age + same_Grp + x + factor(",
+      c(sender = "sv", receiver = "rv")[[fe]], ")")), data = ref)
+    fit <- estimate_mrqap(stats::as.formula(paste(FE_FORM_X, fe)), g,
+                          times = 5, control = list(seed = 1))
+    expect_qap_shape(fit, FE_COEFS_X)
+    expect_equal(unname(fit$coefficients[-1]),
+                 unname(stats::coef(dummies)[2:4]))
+  }
+})
+
+test_that("a binomial interaction with fixed effects matches fixest::feglm()", {
+  skip_if_not_installed("fixest")
+  b <- qap_net_binary()
+  ref <- qap_reference_data(FE_FORM, b)$pred
+  ref$x <- ref$diff_Age * ref$same_Grp
+  fe <- fixest::feglm(weight ~ diff_Age + same_Grp + x | sv + rv, data = ref,
+                      family = stats::binomial(), notes = FALSE)
+  fit <- estimate_mrqap(stats::as.formula(paste(FE_FORM_X, "sender + receiver")),
+                        b, times = 5, control = list(seed = 1))
+  expect_qap_shape(fit, FE_COEFS_X)
+  expect_equal(unname(fit$coefficients[-1]), unname(stats::coef(fe)))
+  expect_equal(unname(fit$obs[-1]),
+               unname(fixest::coeftable(fe, vcov = "iid")[, 3]))
+})
+
+test_that("an interaction fits with a reporter fixed effect on a CSS", {
+  skip_if_not_installed("fixest")
+  for (family in c("gaussian", "binomial")) {
+    fit <- estimate_mrqap(
+      advice ~ friends + ego(level) + friends:ego(level) | reporter,
+      manynet::ison_hightech, times = 5,
+      control = list(seed = 1, family = family))
+    expect_s3_class(fit, "netreg_css")
+    expect_equal(names(fit$coefficients),
+                 c("(Intercept)", "friends", "ego_level", "friends:ego_level"))
+    expect_false(anyNA(fit$coefficients[-1]))
+  }
 })
 
 # ---- what cannot be fitted ------------------------------------------------------
@@ -186,8 +234,10 @@ test_that("a printed result says which fixed effects it absorbed", {
   fit <- estimate_mrqap(weight ~ diff(Age) | sender + receiver,
                         qap_net_gaussian(), times = 5, control = list(seed = 1))
   out <- capture.output(print(fit))
-  expect_true(any(grepl("Fixed effects were absorbed for each sender and receiver", out)))
-  expect_true(any(grepl("Within R-squared", out)))
+  expect_true(any(grepl("with sender and receiver fixed effects", out)))
+  # The intercept that the fixed effects absorb has no row.
+  expect_false(any(grepl("(Intercept)", out, fixed = TRUE)))
+  expect_output(print(summary(fit)), "within the fixed effects")
 })
 
 test_that("a panel keeps each node's group across the waves", {

@@ -4,7 +4,7 @@
 # The test asks only whether the code runs, so it caps the number of
 # permutations or simulations each call makes.
 
-TUTORIAL_TIMES <- 20
+TUTORIAL_TIMES <- 40
 
 run_tutorial_code <- function(path) {
   tmp <- tempfile(fileext = ".R")
@@ -41,8 +41,8 @@ run_tutorial_code <- function(path) {
   expr
 }
 
-# {autograph} cannot plot a netreg result yet (stocnet/autograph#68), so such a
-# call is set aside until it can.
+# {autograph} plots a netreg result from 1.2.8 (stocnet/autograph#68). Where an
+# older {autograph} is installed, as from CRAN, such a call is set aside.
 .plots_a_netreg <- function(expr, env) {
   if (!is.call(expr) || !identical(expr[[1]], as.name("plot"))) return(FALSE)
   obj <- tryCatch(eval(expr[[2]], envir = env), error = function(e) NULL)
@@ -50,17 +50,28 @@ run_tutorial_code <- function(path) {
     is.null(utils::getS3method("plot", "netreg", optional = TRUE))
 }
 
-test_that("the tutorials run without error", {
-  skip_on_cran()
-  skip_if_not_installed("knitr")
-  skip_if_not_installed("autograph")
-  tutes <- list.files(system.file("tutorials", package = "infernet"),
-                      pattern = "\\.Rmd$", recursive = TRUE, full.names = TRUE)
-  expect_gt(length(tutes), 0)
-  old <- options(knitr.purl.inline = FALSE)
-  on.exit(options(old), add = TRUE)
-  waiting <- unlist(lapply(tutes, run_tutorial_code))
-  if (length(waiting) > 0)
-    skip(paste("autograph cannot plot a netreg yet (autograph#68):",
-               paste(waiting, collapse = "; ")))
+# One block for each tutorial, named for it, so that a failure names the
+# tutorial.
+tutorials <- list.files(system.file("tutorials", package = "infernet"),
+                        pattern = "\\.Rmd$", recursive = TRUE, full.names = TRUE)
+
+test_that("the package has tutorials to run", {
+  expect_gt(length(tutorials), 0)
 })
+
+for (tute in tutorials) {
+  test_that(paste("the", sub("\\.Rmd$", "", basename(tute)),
+                  "tutorial runs without error"), {
+    skip_on_cran()
+    skip_unless_slow("a tutorial")
+    skip_if_not_installed("knitr")
+    # plot.stocnet(), which plots a diffusion, is new in autograph 1.2.7
+    skip_if_not_installed("autograph", "1.2.7")
+    old <- options(knitr.purl.inline = FALSE)
+    on.exit(options(old), add = TRUE)
+    waiting <- run_tutorial_code(tute)
+    if (length(waiting) > 0)
+      skip(paste("autograph before 1.2.8 cannot plot a netreg (autograph#68):",
+                 paste(waiting, collapse = "; ")))
+  })
+}

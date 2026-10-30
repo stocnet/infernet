@@ -114,20 +114,31 @@ validate_qap_input <- function(matlist, parsed, css = FALSE) {
 
 #' @keywords internal
 #' @noRd
-setup_future_plan <- function(strategy = "sequential", ncores = NULL) {
+setup_future_plan <- function(strategy = NULL, ncores = NULL) {
   old_plan <- future::plan()
   old_maxSize <- getOption("future.globals.maxSize")
   options(future.globals.maxSize = +Inf)
-  # A number of cores says the plan itself, whatever `strategy` says.
+  # A number of cores says the plan itself, whatever `strategy` says. With
+  # neither, the plan the user set with `future::plan()` stays, so that its
+  # workers start once in a session rather than once in each call.
   if (is.null(ncores)) {
-    future::plan(strategy)
+    if (!is.null(strategy)) future::plan(strategy)
   } else if (ncores > 1) {
     future::plan(future::multisession, workers = ncores)
   } else {
     future::plan(future::sequential)
   }
-  attr(old_plan, "old_maxSize") <- old_maxSize
-  invisible(old_plan)
+  invisible(list(plan = old_plan, maxSize = old_maxSize))
+}
+
+# Puts back what `setup_future_plan()` changed. The plan is set again only where
+# it was changed, so the user's plan stays the same object, with the same
+# workers.
+#' @keywords internal
+#' @noRd
+restore_future_plan <- function(old) {
+  if (!identical(future::plan(), old$plan)) future::plan(old$plan)
+  options(future.globals.maxSize = old$maxSize)
 }
 
 
@@ -225,14 +236,16 @@ run_permutations <- function(times, FUN, ...) {
   scattered <- na & !explained
   fix_row <- apply(scattered, 1, any)
   fix_col <- apply(scattered, 2, any)
+  near <- .near_whole(na, use, scattered, dimnames(m))
 
   if (!css) {
     if (nr == nc) {
       rows <- .block_labels(paste(row_na, col_na), fix_row | fix_col, groups)
-      return(list(rows = rows, cols = rows))
+      return(structure(list(rows = rows, cols = rows), near = near))
     }
-    return(list(rows = .block_labels(paste(row_na), fix_row, groups),
-                cols = .block_labels(paste(col_na), fix_col, groups)))
+    return(structure(list(rows = .block_labels(paste(row_na), fix_row, groups),
+                          cols = .block_labels(paste(col_na), fix_col, groups)),
+                     near = near))
   }
 
   # The slices of a CSS are its nodes, in the order `.perm_css()` reads them.
@@ -241,14 +254,34 @@ run_permutations <- function(times, FUN, ...) {
   if (nr == nc && nc == np) {
     rows <- .block_labels(paste(row_na, col_na, slice_na),
                           fix_row | fix_col | fix_slice, groups)
-    return(list(rows = rows, cols = rows))
+    return(structure(list(rows = rows, cols = rows), near = near))
   }
   if (np != nr + nc) return(NULL)
   ci <- nr + seq_len(nc)
-  list(rows = .block_labels(paste(row_na, slice_na[seq_len(nr)]),
-                            fix_row | fix_slice[seq_len(nr)], groups),
-       cols = .block_labels(paste(col_na, slice_na[ci]),
-                            fix_col | fix_slice[ci], groups))
+  structure(list(rows = .block_labels(paste(row_na, slice_na[seq_len(nr)]),
+                                      fix_row | fix_slice[seq_len(nr)], groups),
+                 cols = .block_labels(paste(col_na, slice_na[ci]),
+                                      fix_col | fix_slice[ci], groups)),
+            near = near)
+}
+
+# The rows and columns that are mostly unobserved, but not wholly. Their
+# missing cells are scattered, so each fixes the node at its other end, and a
+# few such lines can fix nearly every node. A node that did not report, but
+# whose line keeps an observed cell, is the usual cause. Each line is named,
+# with its number of observed cells.
+#' @keywords internal
+#' @noRd
+.near_whole <- function(na, use, scattered, labels = NULL) {
+  lines <- function(margin) {
+    n_na  <- apply(na, margin, sum)
+    n_use <- apply(use, margin, sum)
+    hit <- apply(scattered, margin, any) & n_na > n_use / 2
+    nm <- labels[[margin]]
+    if (is.null(nm)) nm <- as.character(seq_along(hit))
+    stats::setNames(n_use[hit] - n_na[hit], nm[hit])
+  }
+  list(rows = lines(1), cols = lines(2))
 }
 
 # Combines a mode's missing-data signature with the user's blocking factor,
@@ -307,10 +340,21 @@ run_permutations <- function(times, FUN, ...) {
   }, numeric(1)))
 
   if (log_perms == 0) {
+    near <- .combine_near(lapply(parts, attr, "near"))
+    rows <- names(near$rows)
+    cols <- names(near$cols)
+    seen <- sum(near$rows, near$cols)
     manynet::snet_abort(
       c("No permutation of {.val {label}} keeps its missing cells in place.",
         i = "Every node is fixed, or alone in its block.",
-        i = "Remove the scattered missing cells, for example with {.fn manynet::to_no_missing}."))
+        if (length(rows) > 0)
+          c(i = "{.val {rows}} {?is a row/are rows} that the data leave unobserved except in {seen} cell{?s}."),
+        if (length(cols) > 0 && length(rows) == 0)
+          c(i = "{.val {cols}} {?is a column/are columns} that the data leave unobserved except in {seen} cell{?s}."),
+        if (length(rows) + length(cols) > 0)
+          c(i = "Those missing cells are scattered, not whole lines, so each fixes the node that it points to.",
+            i = "If a node did not report, mark every cell of its line as missing."),
+        i = "Or remove the scattered missing cells, for example with {.fn manynet::to_no_missing}."))
   }
   if (log_perms < log(times)) {
     distinct <- round(exp(log_perms))
@@ -327,15 +371,9 @@ run_permutations <- function(times, FUN, ...) {
 #' @keywords internal
 #' @noRd
 .permute_panel <- function(mats, groups = NULL) {
-  d <- dim(mats[[1]])
-  if (d[1] == d[2]) {
-    or <- oc <- .perm_order(d[1], .mode_groups(groups, "rows"))
-  } else {
-    or <- .perm_order(d[1], .mode_groups(groups, "rows"))
-    oc <- .perm_order(d[2], .mode_groups(groups, "cols"))
-  }
+  o <- .perm_orders(dim(mats[[1]]), groups)
   lapply(mats, function(m) {
-    p <- m[or, oc, drop = FALSE]
+    p <- m[o$rows, o$cols, drop = FALSE]
     dimnames(p) <- dimnames(m)
     p
   })
@@ -361,9 +399,24 @@ run_permutations <- function(times, FUN, ...) {
     fixed <- rowSums(matrix(startsWith(labs, "fixed"), nrow = n)) > 0
     .block_labels(apply(labs, 1, paste, collapse = "/"), fixed, groups)
   }
+  near <- .combine_near(lapply(per_wave, attr, "near"))
   rows <- mode_labels("rows", d[1])
-  if (d[1] == d[2]) return(list(rows = rows, cols = rows))
-  list(rows = rows, cols = mode_labels("cols", d[2]))
+  if (d[1] == d[2]) return(structure(list(rows = rows, cols = rows), near = near))
+  structure(list(rows = rows, cols = mode_labels("cols", d[2])), near = near)
+}
+
+# The mostly unobserved lines of several matrices, such as the waves of a
+# panel, with their observed cells summed over the matrices.
+#' @keywords internal
+#' @noRd
+.combine_near <- function(nears) {
+  nears <- Filter(Negate(is.null), nears)
+  side <- function(which) {
+    x <- unlist(lapply(nears, `[[`, which))
+    if (length(x) == 0) return(x)
+    tapply(x, factor(names(x), unique(names(x))), sum)
+  }
+  list(rows = side("rows"), cols = side("cols"))
 }
 
 # The cells a model could use, and how many of them are unobserved on each
@@ -418,31 +471,46 @@ run_permutations <- function(times, FUN, ...) {
 # the report of the node now called j is the report node j made, re-read under
 # the new labels. Permuting the senders and receivers but not the reporters
 # would break the tie between a reporter and their own position in the network.
-#
-# A one-mode CSS has one nodeset on all three axes, so one order serves all of
-# them. A two-mode CSS from `{manynet}` has the first mode on its rows, the
-# second on its columns, and every node of both modes on its slices, so the
-# slice order is the row order followed by the column order, offset by the
-# number of rows.
 #' @keywords internal
 #' @noRd
 .perm_css <- function(m, groups = NULL) {
-  d <- dim(m)
-  nr <- d[1]; nc <- d[2]; np <- d[3]
-  if (nr == nc && nc == np) {
-    o <- .perm_order(nr, .mode_groups(groups, "rows"))
-    out <- m[o, o, o, drop = FALSE]
-  } else if (np == nr + nc) {
-    or <- .perm_order(nr, .mode_groups(groups, "rows"))
-    oc <- .perm_order(nc, .mode_groups(groups, "cols"))
-    out <- m[or, oc, c(or, nr + oc), drop = FALSE]
-  } else {
+  o <- .perm_orders(dim(m), groups, css = TRUE)
+  out <- m[o$rows, o$cols, o$slices, drop = FALSE]
+  dimnames(out) <- dimnames(m)
+  out
+}
+
+# The orders of one permutation: for each axis of a matrix or a CSS array, the
+# node whose row, column, or report each position now holds. `RMPerm()`
+# applies them to a matrix, and `.draw_cells()` to the cells a model reads.
+# Both draw them here, so a seed gives the same draws on either path.
+#
+# A one-mode network has one nodeset, so one order serves its rows and its
+# columns. A two-mode incidence matrix has two, and they permute independently.
+# A one-mode CSS has one nodeset on all three axes. A two-mode CSS from
+# `{manynet}` has the first mode on its rows, the second on its columns, and
+# every node of both modes on its slices, so the slice order is the row order
+# followed by the column order, offset by the number of rows.
+#' @keywords internal
+#' @noRd
+.perm_orders <- function(d, groups = NULL, css = FALSE) {
+  nr <- d[1]; nc <- d[2]
+  # A CSS says by its slices whether it has one nodeset: a two-mode CSS whose
+  # modes are the same size is square, but has twice as many slices as rows.
+  onemode <- nr == nc && (!css || d[3] == nr)
+  if (css && !onemode && d[3] != nr + nc) {
     manynet::snet_abort(
       c("Cannot permute a CSS array of dimensions {d}.",
         i = "Its reporters must be its nodes: as many as its rows, or as its rows and columns together."))
   }
-  dimnames(out) <- dimnames(m)
-  out
+  if (onemode) {
+    or <- oc <- .perm_order(nr, .mode_groups(groups, "rows"))
+  } else {
+    or <- .perm_order(nr, .mode_groups(groups, "rows"))
+    oc <- .perm_order(nc, .mode_groups(groups, "cols"))
+  }
+  if (!css) return(list(rows = or, cols = oc))
+  list(rows = or, cols = oc, slices = if (onemode) or else c(or, nr + oc))
 }
 
 #' @keywords internal
@@ -454,19 +522,10 @@ RMPerm <- function(m, groups = NULL, CSS = FALSE) {
   }
 
   if (length(dim(m)) == 2) {
-    nr <- dim(m)[1]
-    nc <- dim(m)[2]
-    if (nr == nc) {
-      o <- .perm_order(nr, .mode_groups(groups, "rows"))
-      p <- matrix(data = m[o, o], nrow = nr, ncol = nc)
-    } else {
-      # A two-mode incidence matrix has two nodesets, so the rows and the
-      # columns permute independently. Permuting both by one order, as the
-      # square case does, indexes past the shorter side and errors.
-      or <- .perm_order(nr, .mode_groups(groups, "rows"))
-      oc <- .perm_order(nc, .mode_groups(groups, "cols"))
-      p <- matrix(data = m[or, oc], nrow = nr, ncol = nc)
-    }
+    # Indexing makes the permuted matrix. Passing it to `matrix()` as well, as
+    # this used to, copied every draw a second time.
+    o <- .perm_orders(dim(m), groups)
+    p <- m[o$rows, o$cols, drop = FALSE]
     dimnames(p) <- dimnames(m)
   } else if (CSS) {
     p <- .perm_css(m, groups)
@@ -559,19 +618,33 @@ make_qap_data <- function(y, x, g = NULL, loops = FALSE, directed = TRUE,
 #' @keywords internal
 #' @noRd
 HC3 <- function(X, e) {
+  .hc3_se(.hc3_design(X), e)
+}
+
+# The part of HC3 that depends on the design only. A permutation of the outcome
+# leaves the design unchanged, so `.lm_solver()` computes this once per set.
+#' @keywords internal
+#' @noRd
+.hc3_design <- function(X) {
   XO <- cbind(matrix(1, dim(X)[1], 1), X)
   XTXINV <- solve(t(XO) %*% XO)
-  om <- c()
 
   hf <- function(z, XTXINV = XTXINV) {
     h <- z %*% XTXINV %*% z
     return(h)
   }
   h  <- apply(XO, 1, hf, XTXINV = XTXINV)
-  om <- e^2 / (1 - h)^2
+  list(XO = XO, XTXINV = XTXINV, h = h)
+}
+
+#' @keywords internal
+#' @noRd
+.hc3_se <- function(design, e) {
+  om <- e^2 / (1 - design$h)^2
   # No gc() here: this runs once per permutation, and forcing a collection
   # thousands of times costs far more than the memory it returns.
-  sqrt(diag(t(t(XTXINV %*% t(XO)) * om) %*% XO %*% XTXINV))
+  sqrt(diag(t(t(design$XTXINV %*% t(design$XO)) * om) %*%
+              design$XO %*% design$XTXINV))
 }
 
 
@@ -598,20 +671,31 @@ HC3 <- function(X, e) {
 #' @noRd
 fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
   fit <- .fit_qap_model(..., fixed_effects = fixed_effects)
+  .finish_fit(fit, fixed_effects, fixed_df)
+}
+
+# What every fit passes through on its way out, whether `.fit_qap_model()` or
+# a draw's solve in `.lm_solver()` made it. A solve has no model object, so it
+# gives its own number of observations and residual degrees of freedom.
+#' @keywords internal
+#' @noRd
+.finish_fit <- function(fit, fixed_effects = NULL, fixed_df = NULL) {
   for (el in c("coefficients", "t", "zi_coefficients")) {
     if (!is.null(fit[[el]]) && !is.null(names(fit[[el]]))) {
       names(fit[[el]]) <- gsub("`", "", names(fit[[el]]), fixed = TRUE)
     }
   }
   if (!is.null(fixed_df)) {
-    n  <- stats::nobs(fit$base_model)
+    n  <- if (is.null(fit$nobs)) stats::nobs(fit$base_model) else fit$nobs
     p  <- length(fit$coefficients)
-    df <- fit$base_model$df.residual
+    df <- if (is.null(fit$df.residual)) fit$base_model$df.residual
+          else fit$df.residual
     fit$t <- fit$t * sqrt((df - fixed_df) / df)
     # The R-squared of the demeaned variables is the within R-squared, since
     # their means are zero.
-    fit$adj.r.squared <- 1 - (1 - fit$r.squared) * (n - fixed_df) /
-      (n - fixed_df - p)
+    if (!is.null(fit$r.squared))
+      fit$adj.r.squared <- 1 - (1 - fit$r.squared) * (n - fixed_df) /
+        (n - fixed_df - p)
   }
   if (!is.null(fixed_effects) || !is.null(fixed_df)) {
     fit$coefficients <- c("(Intercept)" = NA_real_, fit$coefficients)
@@ -632,6 +716,16 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
   nx  <- length(main_vars)
 
   if (!is.null(fixed_effects)) {
+    # {fixest} reads a `:` inside a backticked name as `*`, so it looks for
+    # `friends*ego_level` and not the interaction column `friends:ego_level`.
+    # Fit on syntactic stand-ins and give the coefficients their names back.
+    colon <- grep(":", all.vars(mod), fixed = TRUE, value = TRUE)
+    stand_in <- stats::setNames(sprintf(".fe_x%d", seq_along(colon)), colon)
+    if (length(colon) > 0) {
+      mod <- stats::as.formula(do.call(substitute, list(
+        mod, lapply(stand_in, as.name))), env = environment(mod))
+      names(pred)[match(colon, names(pred))] <- stand_in
+    }
     # One thread: the permutations are already spread over the workers.
     fe_mod <- stats::as.formula(paste(
       paste(deparse(mod, width.cutoff = 500), collapse = " "), "|",
@@ -645,6 +739,9 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
     }
     fit$coefficients <- stats::coef(base_model)
     fit$t <- fixest::coeftable(base_model, vcov = "iid")[names(fit$coefficients), 3]
+    back <- match(names(fit$coefficients), stand_in)
+    names(fit$coefficients)[!is.na(back)] <- colon[back[!is.na(back)]]
+    names(fit$t) <- names(fit$coefficients)
     if (family == "negbin") fit$theta <- base_model$theta
     fit$base_model <- base_model
     return(fit)
@@ -898,4 +995,18 @@ residuals_to_array <- function(xR, original_array, valid, pred,
   if (directed || nrow(m) != ncol(m)) return(m)
   m[upper.tri(m)] <- t(m)[upper.tri(m)]
   m
+}
+
+# Miscellaneous QAP helpers --------------------------------------------------
+#
+# Building a CSS array from long data is `{manynet}`'s job: `as_matrix()` on a
+# network whose ties carry a `by` column.
+
+# The fit records directedness as a logical, because that is what
+# `manynet::is_directed()` returns and what the engine branches on. Users read
+# the word, so the print methods render it here rather than each spelling it.
+#' @keywords internal
+#' @noRd
+.directed_label <- function(directed) {
+  if (isTRUE(directed)) "directed" else "undirected"
 }

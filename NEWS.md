@@ -1,3 +1,172 @@
+# infernet 0.6.0
+
+## Package
+
+- Updated CONTRIBUTING
+  - Added the help page `terms_mrqap` to the steps for adding a term
+  - Renamed `type =` of `indeg()` and `outdeg()` to `node =` in the formula dictionary and rule 7
+  - Added the `reporter` terms to the formula dictionary
+  - Added how a permutation set draws from a plan, and how to time it
+  - Added goldfish's bare `indeg`, offsets, and node tables to the formula dictionary
+  - Added `test_fit.R` and `model_diffusion.R`, and how `test_gof()` reasons
+- Added benchmarks of `estimate_mrqap()` in `benchmarks/`, outside the package
+- Updated the README with an example of each family and infernet's place in stocnet
+- Improved the tests, which now take ~22 s on two processes, from ~52 s
+  - Moved the shared fixtures to `helper-fixtures.R` and `helper-expectations.R`
+  - Added `test-parallel.R`, which starts two workers once for every family
+  - Added a functional audit of every term on six shapes of network
+  - Moved the calibrations and the tutorials behind `INFERNET_SLOW_TESTS=true`
+- Removed the unused `combine_qap_estimates()`
+- Updated DESCRIPTION and `cran-comments.md` for the first submission to CRAN
+- Added `inst/WORDLIST`, and corrected some spelling in the tutorials
+
+## Diffusing
+
+- Moved `play_diffusions()` from `{migraph}`, with `control =` and `{future.apply}`
+  - A seed gives the same diffusions sequentially and in parallel
+  - `strategy` is read as a control; `verbose` warns and is dropped
+  - Names the step `time` on every network, as `{autograph}` reads it
+
+## Testing
+
+- Added `test_gof()`, which replaces `migraph::test_fit()`, 
+  as a generic with a simulated p-value
+  - Has the name and the signature, `test_gof(object, ...)`
+  - Takes the model first; the observed diffusion first still works but warns
+  - Compares the observed distance with those of held-out simulations
+  - Replaces the chi-squared p-value, which assumed normal curves
+  - Added a method for a `diffs_model`, on the curve of infected nodes
+  - Added a method for a `netreg`, which simulates outcomes from the model
+    - Refuses a gaussian `netreg`, whose draws would hold a tie in every dyad
+- Fixed the `test_*()` family passing the arguments of `FUN` as one vector
+- Fixed `test_permutation()` dropping the changes of a diffusion from each draw
+- Added `test_distributions()`, which replaces `migraph::test_distribution()`, 
+  as a generic with a permutation test over simulated models
+  - Has a method for two `diffs_model` objects
+  - Compares two `diffs_model` objects rather than two single diffusions
+  - Replaces the Kolmogorov-Smirnov test, which took each step as independent
+- Added `test_parameter()` and `test_time()` as generics with the signature `(x, ...)`
+- Added `test_parameter.netreg()`, which tests that one or more coefficients together equal a value
+  - Uses a joint double semi-partialling, with the deviance as its statistic
+  - Tests the levels of a categorical attribute together, from the stem of their names
+  - Tests a value other than 0 only in a gaussian model
+- Added `test_time.netreg()`, which tests that coefficients are constant over the waves of a panel
+  - Tests the interactions of each term with each later wave, with an intercept for each wave
+  - Refuses a list of networks, since nothing says that its networks are in time order
+
+## Specifying
+
+- Improved `specify_mrqap(.data = net)`, or `advice ~ .`, to tabulate all terms 
+  that suit `net` like `RSiena::getEffects()` (closes #16)
+  - Each row has available terms, their effects, and related layers/attributes
+- Added `formula()` method to this output
+  - By default, composes a maximal formula, skipping the more complex of jointly redundant terms
+  - Terms can also be chosen by grep
+- Added the help page `terms_mrqap`, which says what each MRQAP term measures
+  - Gives each term's equation
+  - Gives each term's equivalent in ergm, goldfish, and RSiena, with references
+- Removed `specify_dynam()`, which moves to `{goldfish}` (stocnet/goldfish#124)
+- Renamed `type =` of `indeg()`/`outdeg()` to `node =`, as stocnet/goldfish#122 proposes (thanks @auzaheta)
+  - `type =` still works, and warns once that it is deprecated
+  - `outdeg()` reads the sender's outdegree by default, `node = "ego"`
+  - `specify_mrqap()` and `specify_ergm()` read a goldfish formula's with `type =` as `node =`
+- Added terms for the reporter of a CSS
+  - Added `reporter(x, levels = NULL)` for the reporter's value of a node attribute
+  - Added `reporter_ego` where the reporter is the sender
+  - Added `reporter_alter` where the reporter is the receiver
+  - Added `reporter_same(x, node =)` where the reporter shares a value with the `"ego"`/`"alter"`
+  - These terms abort on a network that is not a CSS, the last 3 for undirected networks,
+    and the last for a two-mode network 
+  - `specify_ergm()` drops these terms
+  - A `| reporter` fixed effect absorbs `reporter()`, and names it
+- Accelerated `same()` on a two-mode network, with the same values
+- Improved `specify_mrqap()` on the formulas in goldfish's documentation
+  - Fixed a bare `indeg` or `outdeg` read as a layer; it is dropped, as goldfish's outcome degree
+  - Fixed `recip(calls, weighted = TRUE)` aborting
+  - Fixed `offset()` aborting; an MRQAP drops it, and goldfish and ergm keep their own
+  - Fixed `ego(actors$floor)` failing when its matrix is built; it is read as `ego(floor)`
+- Added `weighted =` to `recip()` and `exchange()`, as goldfish's `recip()` has
+  - `weighted = FALSE` gives 0/1, and `TRUE` the values; without it, the values as stored
+- Added `weighted =` to `inertia`, as goldfish's `inertia()` has
+- Fixed `specify_ergm()` without a network giving `inertia` the reason "needs .data"
+  - Gives the same reasons as with a network, e.g. "has no ergm term"
+  - Records a term rewritten on reading once, as written
+- Fixed `same()` on a multiplex two-mode network, which read every layer as its ties
+- Fixed `global()` on a panel to abort, as on one network, since it is the intercept
+- Fixed homophily advice suggesting `ego()` or `alter()` absorbed by fixed effects
+
+## Regressing
+
+- Removed `net_regression()`; `migraph::net_regression()` now calls `estimate_mrqap()`
+- Fixed `estimate_mrqap()` failing on an interaction with `{fixest}` fixed effects
+- Improved the speed of the permutations of `estimate_mrqap()`
+  - Permutes only the cells the model reads, and builds the data once
+  - Builds the design matrix of a gaussian, binomial, or Poisson model once
+  - Solves each permuted outcome of a gaussian model from one decomposition
+  - ~3.5-4x faster on a gaussian model of 60 or 200 nodes
+  - ~1.5-1.8x faster on a binomial model, and on `ison_hightech`
+  - ~7.5x faster for 100 draws on the 448 by 12489 network of #4
+- Improved `strategy` control; `NULL`, default, keeps plan set with `future::plan()`
+  - Workers started once in a session now serve every call
+  - A run leaves the user's plan as the same object, with the same workers
+  - Added advice on when to run in parallel to `control_mrqap()` and CONTRIBUTING
+- Fixed `print()` of a mixed model with `print_random = TRUE`, which errored
+- Fixed `estimate_mrqap()` permuting a predictor that has no coefficient
+- Improved the message of a panel whose missing cells fix every node
+- Added `persist =` to `control_mrqap()`, for controls that later calls use
+  - `persist = TRUE` writes the given controls to `options(infernet.control)`
+  - A control given in a call wins; `persist = FALSE` clears them all
+- Fixed `control_mrqap()` dropping `strategy` where it was `NULL`
+
+## Diagnosing
+
+- Added `diagnose_confusion.netreg()` for a binary outcome
+  - Adds the ROC curve, as `tidy()`, and the AUC, in `glance()`
+
+## Reporting
+
+- Improved `print()` for every infernet object to a shared layout and syntax
+  - A title says what was fitted or tested, then a blank line
+  - A body is `tidy()`, with significance marks, then a blank line
+  - A footer gives the null, any changed controls, other methods if `options(snet_verbosity = "debug")`
+  - `netreg`: one print for every family, panel, CSS, and effect
+  - `network_test`: names the statistic and the null
+  - `diffs_model`: names the model, and the steps to adoption
+  - `mrqap_formula` and `ergm_formula`: name the model the formula was read from
+  - `mrqap_control`: lists the controls that were set, and counts the defaults
+- Added methods for `netreg` fitted models
+  - `nobs()`, `logLik()`, `deviance()`, `fitted()`, and `residuals()`
+  - `formula()`, `terms()`, and `update()`, from the call and formula it keeps
+  - `AIC()` and `BIC()` count the fixed effects that a gaussian model absorbs
+- Improved `tidy.netreg()` to give only the columns of `generics::tidy()`
+- Improved `summary.netreg()` to give the full report
+  - Adds `p.lower`, `p.upper` to the results table
+  - Prints random intercepts, `glance()`, unobserved dyads, and dropped terms
+- Fixed `glance.netreg()` of a gaussian model with fixed effects
+  - `AIC`, `BIC`, `sigma`, and `df.residual` now count the absorbed parameters
+- Moved `predict()` for `netlm` and `netlogit` from `{migraph}`
+- Added `predict()` for a `netreg`, on the `"link"` or the `"response"` scale
+  - Without `newdata`, the fitted values, with random intercepts and fixed effects
+  - With `newdata`, the values from the coefficients, read by column name
+- Fixed `tidy()` of an `ergm` fit, which warned on every `exponentiate = TRUE`
+- Added the controls that a result used, as `control`, to every result
+
+## Tutorials
+
+- Added the "Diffusion and Learning" tutorial from `{migraph}`, as `infernet2`
+  - Uses `play_diffusions()` with `control =`, rather than `strategy =`/`verbose =`
+  - Added a section on testing diffusions with `test_distributions()` and `test_gof()`
+  - Fixed the descriptions of `generate_scalefree()` and `generate_smallworld()`
+  - Fixed the Grey's Anatomy exercise, which failed when the diffusion died out early
+- Updated the "Diversity and Regression" tutorial to the current formula
+  - Uses `diff()` rather than `sim()`, and says that `dist()` is deprecated
+  - Added sections on categories, with `same(diff = TRUE)`, `mix()`, and `levels =`
+  - Added sections on fixed effects, random intercepts, and `control_mrqap()`
+  - Added a section on layers and a cognitive social structure, on `ison_hightech`
+  - Added a section on moving a formula with `specify_ergm()`
+  - Plots the regression result, with `{autograph}` 1.2.8
+  - Runs the CUG and QAP tests with 500 simulations, so each exercise takes seconds
+
 # infernet 0.5.0
 
 ## Package
@@ -12,7 +181,7 @@
 - Improved the tutorial test to cap each `times =` at 20, since it checks only that the code runs
 - Added the diversity tutorial to the website, as a static article under "Tutorials"
 
-## Tests
+## Testing
 
 - Changed `test_random()`, `test_configuration()`, and `test_permutation()` to take `control =`
   - Reads `ncores`, `strategy`, and `seed` from a list or from `control_mrqap()`, and leaves the other controls alone
@@ -92,7 +261,7 @@
   - Warns where few distinct permutations remain
   - Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks
   - Fixed a blocking group of one node, which `sample()` read as a range
-- Added `control = list(missing = )` with `"available"` (the default) and `"fail"`
+- Added `control = list(missing = )` with `"available"` (the default) and `"fail"` (closes #6)
   - Leaves out the ties that `{manynet}` marks as `fixed`, and keeps them in place under permutation
   - Reports the dyads dropped on each variable, and stores them as `fit$missing`
   - Documented a structural zero as a limitation
@@ -161,7 +330,7 @@
   - A name needs no backticks in `coef(fit)[...]` or in `tidy()` output
   - Code that looked up a coefficient by its old name must use the new one
 
-## Results
+## Reporting
 
 - Moved `print.netlm()` and `print.netlogit()` from `{migraph}`
 - Added `tidy()` and `glance()` methods for `netreg` and `network_test` results
