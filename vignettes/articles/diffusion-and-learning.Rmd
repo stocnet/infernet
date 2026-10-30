@@ -92,7 +92,7 @@ each person can touch the person next to them.
 That's why this structure is often used to stand in for spatial structure.
 Remember, to create a lattice network, all you need to do is run `create_lattice()`,
 together with the number of nodes (of each mode) and 
-the maximum number of neighbors (width) as the arguments.
+the maximum number of neighbours (width) as the arguments.
 Let's create a one-mode lattice with 32 nodes, maximum width 4, and graph it using `graphr()`:
 
 ```{r clattice, fig.width=9}

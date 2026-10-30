@@ -39,7 +39,7 @@ The package has five families of functions:
   `test_random()`, `test_configuration()`, `test_permutation()`,
   `test_parameter()`, `test_time()`, `test_gof()`, and `test_distributions()`.
 - **Specification** of a formula that one model can read and another can fit:
-  `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`.
+  `specify_mrqap()` and `specify_ergm()`.
 - **Regression** of a network on nodal and dyadic covariates,
   by multiple regression quadratic assignment procedure (MRQAP):
   `estimate_mrqap()` and `control_mrqap()`.
@@ -64,7 +64,7 @@ one-mode or two-mode, directed or undirected, cross-sectional or longitudinal.
   `plot()` of a test or a diffusion.
 - [`{goldfish}`](https://stocnet.github.io/goldfish/) and
   [`{ergm}`](https://statnet.org) fit the models that a formula
-  can move to, with `specify_dynam()` and `specify_ergm()`.
+  can move to, with `specify_ergm()` here and `specify_dynam()` in `{goldfish}`.
 - [`{migraph}`](https://stocnet.github.io/migraph/) holds the book
   and the teaching material that uses all of these.
 
@@ -115,7 +115,8 @@ The terms on the right-hand side construct a matrix each:
 | `tertius(attr)` | an aggregate of an attribute over a node's other ties |
 | `inertia`, `recip`, `trans` | the outcome's own ties, in the previous wave of a panel |
 
-The same formula can be read for an MRQAP, a goldfish DyNAM, or an ERGM.
+The same formula can be read for an MRQAP or an ERGM,
+and a formula written for a goldfish DyNAM can be read for either.
 A `specify_*()` function reads a formula written for any of the three models,
 rewrites each term with its equivalent in its own model,
 and drops, with a warning, each term that its model cannot fit:
@@ -123,8 +124,6 @@ and drops, with a warning, each term that its model cannot fit:
 ```{r specify}
 # An ergm formula, read for an MRQAP
 specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
-# An MRQAP formula, written for goldfish
-specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
 # A goldfish formula, written for ergm
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 ```

@@ -32,7 +32,7 @@ The package has five families of functions:
   `test_permutation()`, `test_parameter()`, `test_time()`, `test_gof()`,
   and `test_distributions()`.
 - **Specification** of a formula that one model can read and another can
-  fit: `specify_mrqap()`, `specify_dynam()`, and `specify_ergm()`.
+  fit: `specify_mrqap()` and `specify_ergm()`.
 - **Regression** of a network on nodal and dyadic covariates, by
   multiple regression quadratic assignment procedure (MRQAP):
   `estimate_mrqap()` and `control_mrqap()`.
@@ -59,7 +59,7 @@ or two-mode, directed or undirected, cross-sectional or longitudinal.
   results: `plot()` of a test or a diffusion.
 - [`{goldfish}`](https://stocnet.github.io/goldfish/) and
   [`{ergm}`](https://statnet.org) fit the models that a formula can move
-  to, with `specify_dynam()` and `specify_ergm()`.
+  to, with `specify_ergm()` here and `specify_dynam()` in `{goldfish}`.
 - [`{migraph}`](https://stocnet.github.io/migraph/) holds the book and
   the teaching material that uses all of these.
 
@@ -110,38 +110,34 @@ construct a matrix each:
 | `tertius(attr)` | an aggregate of an attribute over a node’s other ties |
 | `inertia`, `recip`, `trans` | the outcome’s own ties, in the previous wave of a panel |
 
-The same formula can be read for an MRQAP, a goldfish DyNAM, or an ERGM.
-A `specify_*()` function reads a formula written for any of the three
-models, rewrites each term with its equivalent in its own model, and
-drops, with a warning, each term that its model cannot fit:
+The same formula can be read for an MRQAP or an ERGM, and a formula
+written for a goldfish DyNAM can be read for either. A `specify_*()`
+function reads a formula written for any of the three models, rewrites
+each term with its equivalent in its own model, and drops, with a
+warning, each term that its model cannot fit:
 
 ``` r
 # An ergm formula, read for an MRQAP
 specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
+#> # An MRQAP formula read from a formula for ergm
+#> 
 #> advice ~ recip + same(dept) + friends
-#> Read from a formula for ergm 
-#>   adapted edges: is the intercept that the model always has
-#>   adapted mutual -> recip
-#>   adapted nodematch("dept") -> same(dept)
-#>   adapted edgecov("friends") -> friends
-# An MRQAP formula, written for goldfish
-specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
-#> advice ~ ego(age) + same(dept) + tie(friends, weighted = TRUE) + 
-#>     recip(friends)
-#> Read from a formula for mrqap 
-#>   fits ego(age)
-#>   fits same(dept)
-#>   adapted friends -> tie(friends, weighted = TRUE)
-#>   adapted exchange(friends) -> recip(friends)
+#> 
+#> # adapted edges: is the intercept that the model always has
+#> # adapted mutual -> recip
+#> # adapted nodematch("dept") -> same(dept)
+#> # adapted edgecov("friends") -> friends
 # A goldfish formula, written for ergm
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
+#> # An ergm formula read from a formula for goldfish
+#> 
 #> advice ~ edges + nodeocov("age") + nodematch("dept") + mutual + 
 #>     ttriple
-#> Read from a formula for dynam 
-#>   adapted ego(age) -> nodeocov("age")
-#>   adapted same(dept) -> nodematch("dept")
-#>   adapted recip -> mutual
-#>   adapted trans -> ttriple
+#> 
+#> # adapted ego(age) -> nodeocov("age")
+#> # adapted same(dept) -> nodematch("dept")
+#> # adapted recip -> mutual
+#> # adapted trans -> ttriple
 ```
 
 `tidy()` of a specification gives one row for each term, with what the
@@ -151,13 +147,13 @@ model makes of it on a network:
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
 tidy(spec, ison_hightech)[, c("term", "status", "reason")]
-#> # A tibble: 4 × 3
+#> # A tibble: 4 x 3
 #>   term           status reason                                                  
 #>   <chr>          <chr>  <chr>                                                   
 #> 1 ego(age)       fits   <NA>                                                    
 #> 2 same(dept)     fits   <NA>                                                    
 #> 3 recip(friends) fits   <NA>                                                    
-#> 4 inertia        drops  needs a longitudinal network, where it reads the outcom…
+#> 4 inertia        drops  needs a longitudinal network, where it reads the outcom~
 ```
 
 With a network as `.data`, `specify_ergm()` also gives the matrices of
@@ -176,27 +172,19 @@ networkers <- ison_networkers |> to_subgraph(Discipline == "Sociology")
 model <- estimate_mrqap(weight ~ ego(Citations) + alter(Citations) + sim(Citations),
                         networkers, times = 200, control = list(seed = 1))
 model
+#> # Linear MRQAP of weight
 #> 
-#> OLS Network Model
+#> # A tibble: 4 x 5
+#>   term            estimate statistic p.value signif   
+#>   <chr>              <dbl>     <dbl> <chr>   <noquote>
+#> 1 (Intercept)        2.93      0.242 <NA>             
+#> 2 ego_Citations     -0.269    -1.69  0.48             
+#> 3 alter_Citations   -0.158    -0.997 0.51             
+#> 4 sim_Citations     39.4       3.13  0.04    *        
 #> 
-#> Significance was estimated using Dekker's
-#>   'semi-partialling plus' procedure with 200 permutations.
-#> Diagonal values (loops) were ignored.
-#> The outcome was treated as directed. 
-#> 
-#> R-squared:     0.0674
-#> Adj R-squared: 0.057 
-#> 
-#> Coefficients:
-#>                 Estimate   Pr(<=t) Pr(>=t) Pr(>=|t|)
-#> (Intercept)      2.9285238 *       *       *        
-#> ego_Citations   -0.2690674 0.260   0.740   0.48     
-#> alter_Citations -0.1584963 0.260   0.740   0.51     
-#> sim_Citations   39.4165316 0.985   0.015   0.04     
-#> 
-#> * The intercept has no significance test when predictors are permuted.
-#> 
-#> --------------
+#> # Null: 200 permutations of each predictor, by double semi-partialling.
+#> # Controls: seed = 1
+#> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1
 ```
 
 `control_mrqap()` holds the other choices of the model: the family, what
@@ -206,23 +194,11 @@ data, and the cores to run on. The family is read from the outcome when
 
 ``` r
 control_mrqap(family = "poisson", permute = "outcome", seed = 1)
-#> Controls for an MRQAP
+#> # Controls for an MRQAP: 3 set, 12 at their defaults
 #> 
-#>   permute                    outcome  (set)
-#>   family                     poisson  (set)
-#>   directed                   NULL, read from the data
-#>   loops                      NULL, read from the data
-#>   seed                       1  (set)
-#>   groups                     NULL, all nodes together
-#>   ncores                     NULL, as strategy says
-#>   strategy                   sequential
-#>   use_robust_errors          FALSE
-#>   random_intercept_nets      FALSE
-#>   random_intercept_sender    FALSE
-#>   random_intercept_receiver  FALSE
-#>   random_intercept_reporter  FALSE
-#>   missing                    available
-#>   less_mem                   FALSE
+#>   permute  "outcome"
+#>   family   "poisson"
+#>   seed     1
 ```
 
 A formula adds random intercepts as `{lme4}` does, and absorbs fixed
@@ -300,7 +276,7 @@ tibble that other tools can read:
 
 ``` r
 tidy(model)[, c("term", "estimate", "statistic", "p.value")]
-#> # A tibble: 4 × 4
+#> # A tibble: 4 x 4
 #>   term            estimate statistic p.value
 #>   <chr>              <dbl>     <dbl>   <dbl>
 #> 1 (Intercept)        2.93      0.242   NA   
@@ -308,7 +284,7 @@ tidy(model)[, c("term", "estimate", "statistic", "p.value")]
 #> 3 alter_Citations   -0.158    -0.997    0.51
 #> 4 sim_Citations     39.4       3.13     0.04
 glance(model)[, c("r.squared", "nobs", "permute", "times")]
-#> # A tibble: 1 × 4
+#> # A tibble: 1 x 4
 #>   r.squared  nobs permute   times
 #>       <dbl> <int> <chr>     <dbl>
 #> 1    0.0674   272 predictor   200

@@ -313,7 +313,7 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `model_diffusion.R` | `play_diffusions()`, which simulates the diffusions of a `diffs_model` |
 | `model_regression.R` | `estimate_mrqap()` and the list path |
 | `model_predict.R` | `predict()` for a `netreg`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0 |
-| `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`) |
+| `model_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`); and the persistent controls in `options(infernet.control)` (`.persisted_controls()`) |
 | `report_models.R` | two help pages: `netreg_results`, with the `print()` of each `netreg` class, `summary()` and its print, `tidy()`, `glance()`, and the accessors of a `netreg` (`nobs()`, `logLik()`, `deviance()`, `fitted()`, `residuals()`, `formula()`, `terms()`), each read from the observed model; and `other_results`, for the `{migraph}`, `{ergm}`, and `{RSiena}` results; and the `print()` and `summary()` of a `diffs_model` |
 | `report_tests.R` | the `report_tests` help page, with `print()`, `tidy()`, and `glance()` of a `network_test` |
 | `report_diagnose.R` | `print()`, `tidy()`, and `glance()` of the result of `diagnose_confusion()` |
@@ -667,6 +667,11 @@ Every simulation-heavy function takes `times`, the number of simulations
 Keep the signature to what the function needs: data, a formula or statistic, `times`, and `control`.
 A user sets the controls once, with `control_mrqap()`, and gives the same object to every model and test;
 each function reads the controls it uses and leaves the others alone, without a message.
+With `control_mrqap(..., persist = TRUE)`, a user sets them once for the session instead:
+they go to `options(infernet.control)`, one named list, and are checked there.
+A control given in a call wins over a persistent one, and `control_mrqap(persist = FALSE)` clears them.
+A `seed` can persist, so that every call draws the same numbers and each result can be reproduced.
+`control_mrqap()` reads the options when it is called, so its result does not change with them later.
 The controls of parallelism are:
 
 - `ncores` — a number of cores (default `NULL`).
@@ -679,6 +684,12 @@ The controls of parallelism are:
 - `seed` — a number to set the random seed with before the simulations.
 
 Read `control` with `.resolve_control()`, so that a list and `control_mrqap()` are checked the same way.
+Never read `options(infernet.control)` in a function: `.resolve_control()` fills the controls
+that a call does not name from the persistent controls, and reports them with `snet_info()`.
+Record the controls on the result, as `out$control <- ctrl`
+(as an attribute of a result that is not a list, such as a `diffs_model`),
+so that a result can be reproduced without the options of the session,
+and give the controls that differ from the defaults, such as the seed, in its print with `.controls_line()`.
 Set the plan with `old <- setup_future_plan(strategy, ncores)`, and restore it with
 `on.exit(restore_future_plan(old), add = TRUE)`.
 `restore_future_plan()` sets the plan again only where it was changed,
@@ -1091,7 +1102,7 @@ not "two-mode works".
 | `test-model_diffusion.R` | `play_diffusions()` and its old arguments |
 | `test-model_regression.R` | what `estimate_mrqap()` returns: the classes of a result, and what each print method reports |
 | `test-model_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
-| `test-model_control.R` | `control_mrqap()`, the choice of null hypothesis, and the messages that report what the model resolved |
+| `test-model_control.R` | `control_mrqap()`, the persistent controls, the choice of null hypothesis, and the messages that report what the model resolved |
 | `test-model_results.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; the stored null distribution, `testdist`; and the methods of a `netreg`, against the values of the equivalent `lm()` or `glm()`, with fixed effects, fixed ties, and `less_mem` |
 | `test-report_print.R` | the print of every result and of `summary()`, as snapshots |
 | `test-diagnose_confusion.R` | `diagnose_confusion()`: the metrics and the AUC against a hand count, the models it refuses, and its print |

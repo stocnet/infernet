@@ -101,8 +101,8 @@ using `graphr()`.
 These variables seem to be distributed unevenly across the network.
 There seems to be some `r gloss("homophily")` -- or like choosing like --
 operating here, but it is difficult to say conclusively because there are
-clearly more male than female superheros,
-as well as clearly more superheros of mutant origin than others.
+clearly more male than female superheroes,
+as well as clearly more superheroes of mutant origin than others.
 So what might seem like homophily could just be a result of there being
 many more opportunities for ties between nodes of some categories.
 We therefore need to establish how diverse this network really is.

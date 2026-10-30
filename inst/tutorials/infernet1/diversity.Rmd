@@ -142,7 +142,7 @@ using `graphr()`.
 # Since both Gender and PowerOrigin are categorical variables
 # you will need to use two different aesthetic dimensions to
 # represent them together.
-# Which will you present as shapes and which as colors?
+# Which will you present as shapes and which as colours?
 graphr(____, 
        node_shape = ____,
        node_color = ____)
@@ -157,8 +157,8 @@ graphr(marvel_friends,
 These variables seem to be distributed unevenly across the network.
 There seems to be some `r gloss("homophily")` -- or like choosing like --
 operating here, but it is difficult to say conclusively because there are
-clearly more male than female superheros,
-as well as clearly more superheros of mutant origin than others.
+clearly more male than female superheroes,
+as well as clearly more superheroes of mutant origin than others.
 So what might seem like homophily could just be a result of there being
 many more opportunities for ties between nodes of some categories.
 We therefore need to establish how diverse this network really is.
@@ -412,7 +412,7 @@ all the random networks generated returned larger EI scores, between .1 and .4.
 
 ```{r cuginterp-qn, echo=FALSE, purl = FALSE}
 question("Which of the following is true?",
-  answer("Attractive superheros only hang out with other attractive superheros.",
+  answer("Attractive superheroes only hang out with other attractive superheroes.",
          message = paste(learnr::random_encouragement(), '<img src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExeW9jbXg5dDBndjRpcWc2enhyOTZvbjloeGFpbmJndXNrMm05MHdtZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ziLadIVnOGCKk/giphy.gif" alt="gif of thor frustration"/>')),
   answer("There is significantly less power origin heterophily than expected.",
          correct = TRUE,
