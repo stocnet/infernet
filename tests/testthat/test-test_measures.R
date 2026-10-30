@@ -44,6 +44,24 @@ test_that("test_permutation() gives the observed statistic, its draws, and both 
   expect_s3_class(qaptest, "network_test")
 })
 
+test_that("test_permutation() keeps the changes of a diffusion on each draw", {
+  set.seed(1)
+  diffusion <- manynet::play_diffusion(manynet::as_tidygraph(manynet::ison_adolescents),
+                                       seeds = 1, steps = 4)
+  observed <- nrow(manynet::as_changelist(diffusion))
+  adoptions <- function(g) nrow(manynet::as_changelist(g))
+  result <- test_permutation(diffusion, adoptions, times = 5,
+                             control = list(seed = 1))
+  expect_equal(result$testval, observed)
+  expect_equal(result$testdist, rep(observed, 5))
+})
+
+test_that("test_permutation() of a network without changes needs no record", {
+  result <- test_permutation(manynet::ison_adolescents, netrics::net_by_density,
+                             times = 3, control = list(seed = 1))
+  expect_length(result$testdist, 3)
+})
+
 test_that("test_configuration() gives the observed statistic and its draws", {
   testthat::skip_on_os("linux")
   configtest <- test_configuration(marvel_friends,

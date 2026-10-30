@@ -140,7 +140,8 @@
 #'   `c("ergm_formula", "formula")`.
 #'   Its `input` attribute names the model it was read from, and its `record`
 #'   attribute holds what the model makes of each term.
-#'   Printing the formula lists the terms that do not fit as written, and
+#'   Printing the formula lists the terms that do not fit as written and
+#'   returns the formula, invisibly.
 #'   `tidy()` returns every term as a tibble,
 #'   with the columns `term`, `status`, `as`, and `reason`, and for an MRQAP
 #'   also `columns`.

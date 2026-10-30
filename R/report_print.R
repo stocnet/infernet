@@ -120,7 +120,7 @@
 #' @noRd
 .changed_controls <- function(ctrl, said = character(0)) {
   if (is.null(ctrl)) return(character(0))
-  defaults <- unclass(control_mrqap())
+  defaults <- .control_defaults()
   ctrl <- unclass(ctrl)
   keep <- setdiff(names(ctrl), said)
   keep <- keep[!vapply(keep, function(nm) identical(ctrl[[nm]], defaults[[nm]]),

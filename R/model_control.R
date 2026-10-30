@@ -7,6 +7,12 @@
 # (`.control_renames()`), the options of other models that an MRQAP has no use
 # for (`.control_foreign()`), and otherwise it aborts with the nearest name.
 # Renaming a control is then a row in `.control_renames()`.
+#
+# `persist = TRUE` writes the given controls to `options(infernet.control)`,
+# and each later `control_mrqap()` fills the controls that it is not given from
+# there. The attribute `source` says where each control came from, so that a
+# print and `.report_persisted()` can say so, and a result records the
+# controls whole, so that it can be fitted again without the option.
 
 #' Controls for an MRQAP
 #'
@@ -89,11 +95,45 @@
 #'   variable. See the section on missing data in [estimate_mrqap()].
 #' @param less_mem Logical, whether to leave the observed model object out of
 #'   the result, to save memory on a large network. `FALSE` by default.
+#' @param persist Logical, whether the controls given in this call become the
+#'   defaults of the session. See the section on persistent controls.
+#'   `FALSE` by default, which changes nothing. Given as `persist = FALSE`,
+#'   it clears the persistent controls.
 #' @param ... Controls by another name: a name that infernet used before, or an
 #'   option of another model. See the description.
 #' @param x An object of class `mrqap_control`.
+#' @section Persistent controls:
+#'   `control_mrqap(ncores = 2, missing = "fail", persist = TRUE)` writes the
+#'   controls that it is given to `options(infernet.control)`, after it checks
+#'   them. Each later call of [estimate_mrqap()], [test_random()],
+#'   [test_configuration()], [test_permutation()], [test_gof()],
+#'   [test_distributions()], [test_parameter()], [test_time()], and
+#'   [play_diffusions()] then uses them as defaults, and says so with
+#'   `options(snet_verbosity = "verbose")`.
+#'
+#'   - A control given in a call takes priority over a persistent one.
+#'     Give `strategy = NULL` in a call to use the plan of `future::plan()`
+#'     where a `strategy` or `ncores` persists.
+#'   - A second call with `persist = TRUE` adds to the persistent controls, and
+#'     replaces a control that it gives again. A control given as `NULL`, such
+#'     as `control_mrqap(ncores = NULL, persist = TRUE)`, is removed.
+#'   - `control_mrqap(persist = FALSE)` clears all of them.
+#'   - `control_mrqap()` shows the controls in force, and marks each one that
+#'     comes from the persistent controls with `(option)`.
+#'   - `control_mrqap()` reads the persistent controls when it is called, so
+#'     its result keeps the same controls if the options change later.
+#'
+#'   A `seed` can persist. Each call then sets the same seed, and so draws the
+#'   same random numbers, which reproduces each result. The print of a result
+#'   gives the seed that it used.
+#'
+#'   Every result records the controls that it used, as `control` (an
+#'   attribute of a `diffs_model`). Give that record as `control` to fit the
+#'   same model again without the options of the session.
 #' @return An object of class `mrqap_control`: a list with one element for
-#'   each control.
+#'   each control. Its attribute `source` says whether each control was
+#'   `"given"`, comes from an `"option"`, or keeps its `"default"`.
+#'   `print()` returns `x`, invisibly.
 #' @references
 #'   Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
 #'   "Sensitivity of MRQAP tests to collinearity and autocorrelation conditions."
@@ -104,6 +144,10 @@
 #' control_mrqap(family = "poisson", seed = 1)
 #' # A name that infernet used before is converted, with a warning
 #' control_mrqap(nullhyp = "qapy")
+#' # Controls that later calls use as defaults
+#' control_mrqap(missing = "fail", seed = 1, persist = TRUE)
+#' control_mrqap()
+#' control_mrqap(persist = FALSE)
 #' @export
 control_mrqap <- function(permute = c("predictor", "outcome"),
                           family = c("auto", "gaussian", "binomial", "poisson",
@@ -121,7 +165,12 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           random_intercept_reporter = FALSE,
                           missing = "available",
                           less_mem = FALSE,
+                          persist = FALSE,
                           ...) {
+  .check_flag(persist, "persist")
+  # `persist = FALSE`, given, clears the persistent controls before they are
+  # read, where the default leaves them alone.
+  if (!missing(persist) && !persist) options(infernet.control = NULL)
   ctrl <- list(permute = permute, family = family, directed = directed,
                loops = loops, seed = seed, groups = groups, ncores = ncores,
                strategy = strategy, use_robust_errors = use_robust_errors,
@@ -130,6 +179,9 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                random_intercept_receiver = random_intercept_receiver,
                random_intercept_reporter = random_intercept_reporter,
                missing = missing, less_mem = less_mem)
+  # A control named in the call, even as NULL, is given, and takes priority
+  # over a persistent one.
+  given <- intersect(names(match.call())[-1], names(ctrl))
   # A NULL in `list()` keeps its name, as a NULL default must.
   others <- list(...)
   if (length(others) > 0) {
@@ -137,16 +189,39 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
       manynet::snet_abort("Every entry of {.arg control} must be named.")
     }
     renamed <- .convert_controls(others, names(ctrl))
-    clash <- intersect(names(renamed), names(match.call())[-1])
+    clash <- intersect(names(renamed), given)
     if (length(clash) > 0) {
       manynet::snet_abort(
         "{.val {clash}} is given both by its current name and by an old one.")
     }
     ctrl[names(renamed)] <- renamed
+    given <- c(given, names(renamed))
   }
+  ctrl <- .check_controls(ctrl)
+  stored <- .persisted_controls()
+  from_option <- setdiff(names(stored), given)
+  for (nm in from_option) ctrl[nm] <- list(stored[[nm]])
+  if (persist) {
+    for (nm in given) stored[nm] <- list(ctrl[[nm]])
+    stored <- stored[!vapply(stored, is.null, logical(1))]
+    options(infernet.control = if (length(stored) > 0) stored)
+  }
+  source <- stats::setNames(rep("default", length(ctrl)), names(ctrl))
+  source[given] <- "given"
+  source[from_option] <- "option"
+  structure(ctrl, class = "mrqap_control", source = source)
+}
+
+# Each check of a control, so that the controls of a call and the persistent
+# ones are checked alike. A vector default, such as `permute`'s, becomes its
+# first value.
+#' @keywords internal
+#' @noRd
+.check_controls <- function(ctrl) {
   ctrl$permute <- .check_choice(ctrl$permute, .permute_schemes(), "permute")
   ctrl$family  <- .check_choice(ctrl$family, .control_families(), "family")
-  ctrl$strategy <- .check_strategy(ctrl$strategy)
+  # `$<-` with NULL would drop the control, so it is set as a list.
+  ctrl["strategy"] <- list(.check_strategy(ctrl$strategy))
   .check_missing_control(ctrl$missing)
   for (nm in c("directed", "loops")) .check_flag(ctrl[[nm]], nm, null = TRUE)
   for (nm in c("use_robust_errors", "less_mem",
@@ -161,15 +236,93 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
   if (!is.null(ctrl$groups) && !is.atomic(ctrl$groups)) {
     manynet::snet_abort("{.arg groups} must be a vector with a group for each node.")
   }
-  structure(ctrl, class = "mrqap_control")
+  ctrl
+}
+
+# ---- persistent controls -----------------------------------------------------
+
+# The controls in `options(infernet.control)`, checked, since a user can set
+# the option by hand as well as with `persist = TRUE`.
+#' @keywords internal
+#' @noRd
+.persisted_controls <- function() {
+  stored <- getOption("infernet.control")
+  if (is.null(stored)) return(list())
+  how <- "Set it with {.code control_mrqap(..., persist = TRUE)}, or clear it with {.code control_mrqap(persist = FALSE)}."
+  if (!is.list(stored) ||
+      (length(stored) > 0 && (is.null(names(stored)) || any(!nzchar(names(stored)))))) {
+    manynet::snet_abort(
+      c("{.code options(infernet.control)} must be a named list of controls.",
+        i = how))
+  }
+  defaults <- .control_defaults()
+  unknown <- setdiff(names(stored), names(defaults))
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("{.code options(infernet.control)} holds {.val {unknown}}, which {?is not a control/are not controls}.",
+        i = how))
+  }
+  for (nm in names(stored)) defaults[nm] <- list(stored[[nm]])
+  checked <- tryCatch(.check_controls(defaults), error = function(e) {
+    problem <- gsub("\\}", "}}", gsub("\\{", "{{", conditionMessage(e)))
+    manynet::snet_abort(
+      c("{.code options(infernet.control)} holds a control that cannot be used.",
+        i = problem, i = how))
+  })
+  checked[names(stored)]
+}
+
+# The default of each control, from the signature of `control_mrqap()`.
+#' @keywords internal
+#' @noRd
+.control_defaults <- function() {
+  args <- formals(control_mrqap)
+  args <- args[setdiff(names(args), c("persist", "..."))]
+  .check_controls(lapply(args, eval))
+}
+
+# One line that names the persistent controls that a call uses.
+#' @keywords internal
+#' @noRd
+.report_persisted <- function(ctrl) {
+  source <- attr(ctrl, "source")
+  from_option <- names(source)[source == "option"]
+  if (length(from_option) == 0) return(invisible(ctrl))
+  shown <- vapply(from_option, function(nm) {
+    paste(nm, "=", .control_label(nm, ctrl[[nm]]))
+  }, character(1))
+  manynet::snet_info(
+    "Using {length(shown)} persistent control{?s}: {.code {shown}}.")
+  invisible(ctrl)
+}
+
+# A short value of a control, for a message or a print.
+#' @keywords internal
+#' @noRd
+.control_label <- function(nm, v) {
+  if (is.null(v)) return("NULL")
+  if (nm == "groups") {
+    return(paste(length(v), "nodes in", length(unique(v)), "groups"))
+  }
+  if (is.function(v)) return("a plan function")
+  if (is.character(v)) return(paste0("\"", v, "\"", collapse = ", "))
+  paste(format(v), collapse = ", ")
 }
 
 # A list given as `control` is read by `control_mrqap()`, with the same checks
-# and conversions. An unnamed entry cannot be matched to a control, so it
-# aborts rather than being matched by position.
+# and conversions, and the persistent controls fill what it does not name. An
+# unnamed entry cannot be matched to a control, so it aborts rather than being
+# matched by position. The result of `control_mrqap()` already holds the
+# persistent controls of the time it was made, so it is used as it is.
 #' @keywords internal
 #' @noRd
 .resolve_control <- function(control = list()) {
+  .report_persisted(.read_control(control))
+}
+
+#' @keywords internal
+#' @noRd
+.read_control <- function(control) {
   if (inherits(control, "mrqap_control")) return(control)
   if (inherits(control, c("estimation_opt.goldfish", "goldfishAlgo"))) {
     manynet::snet_info("Reading {.arg control} as goldfish's estimation options.")
@@ -188,10 +341,6 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
   }
   do.call(control_mrqap, control)
 }
-
-#' @keywords internal
-#' @noRd
-.default_control <- function() unclass(control_mrqap())
 
 #' @keywords internal
 #' @noRd

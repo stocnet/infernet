@@ -27,7 +27,9 @@ By default 5, but 1,000-10,000 simulations are recommended for a test.}
 \code{list(ncores = 4, seed = 1)}.
 It reads \code{ncores}, \code{strategy}, and \code{seed}, and leaves the other controls
 alone. The same seed gives the same diffusions sequentially and in
-parallel.}
+parallel. A control that is not named keeps its default, or the value
+set with \code{control_mrqap(..., persist = TRUE)}. The result records the
+controls that it used in its attribute \code{control}.}
 
 \item{object, x}{A \code{diffs_model}.}
 }
@@ -37,6 +39,7 @@ the run in \code{sim}, the step in \code{time}, and the counts of
 \code{manynet::as_diffusion()}.
 \code{summary()} gives the time of adoption, the number of steps until every
 node is infected, for each run.
+\code{print()} returns \code{x}, invisibly.
 }
 \description{
 \code{play_diffusions()} runs \code{manynet::play_diffusion()} \code{times} times on the

@@ -57,6 +57,9 @@ A test reads \code{ncores}, \code{strategy}, and \code{seed}, and leaves the oth
 controls alone, so that the controls of a model can be given to a test
 whole.
 \code{ncores} is generally useful only when \code{times} > 1000.
+A control that is not named keeps its default, or the value set with
+\code{control_mrqap(..., persist = TRUE)}, and the result records the controls
+that it used as \code{control}.
 See \code{\link[=control_mrqap]{control_mrqap()}} for each control and its default.}
 
 \item{object1, object2}{Two \code{diffs_model} objects, from \code{play_diffusions()}.}

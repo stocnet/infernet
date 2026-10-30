@@ -15,6 +15,9 @@
 #'   - `test_permutation()` performs a quadratic assignment procedure (QAP) test 
 #'   of a measure against a distribution of measures on permutations 
 #'   of the original network.
+#'   Each permutation keeps the node attributes and the changes of a diffusion,
+#'   so a measure can read the times of adoption.
+#'   For a null that rewires the network, see `netdiffuseR::struct_test()`.
 #'   
 #' @inheritParams regression
 #' @param control The controls of the simulations, as the result of
@@ -24,11 +27,20 @@
 #'   controls alone, so that the controls of a model can be given to a test
 #'   whole.
 #'   `ncores` is generally useful only when `times` > 1000.
+#'   A control that is not named keeps its default, or the value set with
+#'   `control_mrqap(..., persist = TRUE)`, and the result records the controls
+#'   that it used as `control`.
 #'   See [control_mrqap()] for each control and its default.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
 #'   e.g. the name of the attribute.
+#' @return A `network_test`, which `print()`, `tidy()`, and `glance()` report.
+#'   It holds the observed statistic in `testval`, the statistics of the
+#'   simulations in `testdist`, and the share of these at or below the
+#'   observed statistic in `plteobs` and at or above it in `pgteobs`.
+#'   It also holds the number of simulations as `times`, the name of the
+#'   statistic as `statistic`, and the controls that the test used as `control`.
 NULL
 
 #' @rdname test_measures
@@ -110,7 +122,7 @@ test_permutation <- function(.data, FUN, ...,
   args <- test$args
   obsd <- do.call(FUN, c(list(.data), args))
   simd <- .simulate_statistic(.data, FUN, args, times, ctrl,
-                              draw = manynet::to_permuted, bind = FALSE)
+                              draw = .permuted_with_changes(.data), bind = FALSE)
   out <- list(test = "QAP",
               testval = obsd,
               testdist = simd,
@@ -143,6 +155,10 @@ test_permutation <- function(.data, FUN, ...,
     manynet::snet_abort(
       "{.val {clash}} is given both as an argument and in {.arg control}.")
   }
+  # Only the controls that an object did not default, so that the persistent
+  # controls still fill the rest.
+  source <- attr(control, "source")
+  if (!is.null(source)) control <- unclass(control)[names(source)[source != "default"]]
   control <- utils::modifyList(unclass(control), old)
   list(ctrl = .resolve_control(control), args = dots[!is_old])
 }
@@ -150,6 +166,17 @@ test_permutation <- function(.data, FUN, ...,
 #' @keywords internal
 #' @noRd
 .test_formals <- function() c("strategy", "ncores")
+
+# `to_permuted()` keeps the node attributes in their places, but drops the changes
+# of a diffusion or a dynamic network, which name those places. A statistic that
+# reads the changes needs them on each draw, as on the observed network.
+#' @keywords internal
+#' @noRd
+.permuted_with_changes <- function(.data) {
+  changes <- tryCatch(manynet::as_changelist(.data), error = function(e) NULL)
+  if (is.null(changes) || nrow(changes) == 0) return(manynet::to_permuted)
+  function(g) manynet::bind_changes(manynet::to_permuted(g), changes)
+}
 
 # The statistic on each of `times` simulated networks. Each draw gets its own
 # stream of random numbers, so a `seed` control, or a seed set before the call,

@@ -61,8 +61,10 @@ dropped with a warning.}
 \item{control}{The controls of the model, as the result of
 \code{\link[=control_mrqap]{control_mrqap()}} or a named list of its arguments, such as
 \code{list(family = "poisson", seed = 1)}. A control that is not named keeps
-its default. See \code{\link[=control_mrqap]{control_mrqap()}} for each control, its default, and the
-names it converts from other models and earlier versions.}
+its default, or the value set with \code{control_mrqap(..., persist = TRUE)}.
+See \code{\link[=control_mrqap]{control_mrqap()}} for each control, its default, and the
+names it converts from other models and earlier versions.
+The result records the controls that it used as \code{control}.}
 }
 \value{
 An object of class \code{netreg}, with a more specific class in front:
@@ -306,14 +308,12 @@ outcome, and warn.
 }
 
 \examples{
-\dontrun{
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 model1 <- estimate_mrqap(
   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
   networkers, times = 20)
 print(model1)
-}
 # A cognitive social structure: each of 21 managers' report of who goes to
 # whom for advice, against the formal reporting structure that all share.
 css_model <- estimate_mrqap(advice ~ same(dept) + reports,

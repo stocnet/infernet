@@ -39,7 +39,9 @@ one number for all of them, or one for each.}
 \item{times}{The number of permutations.}
 
 \item{control}{A list of controls, or the result of \code{control_mrqap()}.
-The tests read \code{seed}, \code{strategy}, \code{ncores}, and \code{groups}.}
+The tests read \code{seed}, \code{strategy}, \code{ncores}, and \code{groups}, and the
+controls set with \code{control_mrqap(..., persist = TRUE)} where these are
+not named.}
 }
 \value{
 For a \code{netreg}, a \code{network_test}, with the statistic, the

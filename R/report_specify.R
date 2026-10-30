@@ -110,11 +110,12 @@ print.specify_terms <- function(x, ...) {
 #' @rdname control_mrqap
 #' @export
 print.mrqap_control <- function(x, ...) {
-  defaults <- unclass(control_mrqap())
+  defaults <- .control_defaults()
   ctrl <- unclass(x)
+  source <- attr(x, "source")
   # `[[<-` with `NULL` drops an element, so a control at a default of `NULL`
   # may be absent from either list.
-  every <- union(setdiff(names(formals(control_mrqap)), "..."), names(ctrl))
+  every <- union(names(defaults), setdiff(names(ctrl), "persist"))
   changed <- every[!vapply(every, function(nm) identical(ctrl[[nm]], defaults[[nm]]),
                            logical(1))]
   same <- setdiff(every, changed)
@@ -123,10 +124,13 @@ print.mrqap_control <- function(x, ...) {
   if (length(changed) > 0) {
     width <- max(nchar(changed))
     for (nm in changed) {
-      cat(sprintf("  %-*s  %s\n", width, nm, .control_value(ctrl[[nm]])))
+      mark <- if (identical(source[nm][[1]], "option")) "  (option)" else ""
+      cat(sprintf("  %-*s  %s%s\n", width, nm, .control_value(ctrl[[nm]]), mark))
     }
   }
-  .print_footer(character(0),
+  persisted <- if (any(source == "option"))
+    "(option) persists from control_mrqap(..., persist = TRUE); control_mrqap(persist = FALSE) clears it."
+  .print_footer(persisted,
                 .methods_hint("?control_mrqap for each control and its default"))
   invisible(x)
 }

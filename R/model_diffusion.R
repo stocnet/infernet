@@ -21,12 +21,15 @@
 #'   `list(ncores = 4, seed = 1)`.
 #'   It reads `ncores`, `strategy`, and `seed`, and leaves the other controls
 #'   alone. The same seed gives the same diffusions sequentially and in
-#'   parallel.
+#'   parallel. A control that is not named keeps its default, or the value
+#'   set with `control_mrqap(..., persist = TRUE)`. The result records the
+#'   controls that it used in its attribute `control`.
 #' @return A `diffs_model`: a tibble with one row for each step of each run,
 #'   the run in `sim`, the step in `time`, and the counts of
 #'   `manynet::as_diffusion()`.
 #'   `summary()` gives the time of adoption, the number of steps until every
 #'   node is infected, for each run.
+#'   `print()` returns `x`, invisibly.
 #' @family models
 #' @examples
 #' play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,

@@ -325,3 +325,127 @@ test_that("dropped dyads and fixed nodes are reported", {
 test_that("control_mrqap() refuses groups that are not a vector", {
   expect_error(control_mrqap(groups = list(1, 2)), "vector with a group")
 })
+
+# ---- persistent controls -------------------------------------------------------
+
+# Each test sets `options(infernet.control)` and restores it on exit, since the
+# test files run in the same process one after another.
+persisting <- function(expr, value = NULL) {
+  old <- options(infernet.control = value)
+  on.exit(options(old), add = TRUE)
+  force(expr)
+}
+
+test_that("persist = TRUE writes the given controls, checked, to the options", {
+  persisting({
+    ctrl <- control_mrqap(ncores = 1, missing = "fail", persist = TRUE)
+    stored <- getOption("infernet.control")
+    expect_identical(stored[c("missing", "ncores")],
+                     list(missing = "fail", ncores = 1))
+    expect_equal(attr(ctrl, "source")[["ncores"]], "given")
+    # A control is checked before it persists, so nothing is written.
+    options(infernet.control = NULL)
+    expect_error(control_mrqap(ncores = 0, persist = TRUE), "ncores")
+    expect_null(getOption("infernet.control"))
+    expect_error(control_mrqap(persist = NA), "persist")
+  })
+})
+
+test_that("a later call uses a persistent control, and a given one wins", {
+  persisting({
+    ctrl <- control_mrqap()
+    expect_equal(ctrl$missing, "fail")
+    expect_equal(ctrl$seed, 3)
+    expect_equal(attr(ctrl, "source")[["seed"]], "option")
+    expect_equal(control_mrqap(seed = 4)$seed, 4)
+    expect_equal(.resolve_control(list(missing = "available"))$missing,
+                 "available")
+    # A control given as NULL is given too.
+    expect_null(.resolve_control(list(seed = NULL))$seed)
+  }, value = list(missing = "fail", seed = 3))
+})
+
+test_that("persist = TRUE adds to the persistent controls, and NULL removes one", {
+  persisting({
+    control_mrqap(ncores = 1, persist = TRUE)
+    control_mrqap(seed = 2, persist = TRUE)
+    expect_identical(getOption("infernet.control"), list(ncores = 1, seed = 2))
+    control_mrqap(ncores = NULL, persist = TRUE)
+    expect_identical(getOption("infernet.control"), list(seed = 2))
+  })
+})
+
+test_that("persist = FALSE, given, clears the persistent controls", {
+  persisting({
+    ctrl <- control_mrqap(persist = FALSE)
+    expect_null(getOption("infernet.control"))
+    expect_null(ctrl$seed)
+    # The default leaves them as they are.
+    options(infernet.control = list(seed = 2))
+    control_mrqap(family = "poisson")
+    expect_identical(getOption("infernet.control"), list(seed = 2))
+  }, value = list(seed = 2, ncores = 1))
+})
+
+test_that("an option set by hand is checked when it is read", {
+  persisting(expect_error(control_mrqap(), "ncores"),
+             value = list(ncores = 0))
+  persisting(expect_error(control_mrqap(), "not a control"),
+             value = list(foo = 1))
+  persisting(expect_error(control_mrqap(), "named list"),
+             value = list(1))
+})
+
+test_that("a strategy persists, and strategy = NULL in a call keeps the plan", {
+  persisting({
+    expect_equal(control_mrqap()$strategy, "sequential")
+    ctrl <- .resolve_control(list(strategy = NULL))
+    expect_true("strategy" %in% names(ctrl))
+    expect_null(ctrl$strategy)
+  }, value = list(strategy = "sequential"))
+  expect_true("strategy" %in% names(control_mrqap()))
+})
+
+test_that("a print marks the controls that come from the options", {
+  persisting({
+    out <- capture.output(print(control_mrqap(family = "poisson")))
+    expect_match(out, "seed +5  \\(option\\)", all = FALSE)
+    expect_match(out, 'family +"poisson"$', all = FALSE)
+    expect_match(out, "persist = FALSE", all = FALSE)
+  }, value = list(seed = 5))
+  out <- capture.output(print(control_mrqap()))
+  expect_false(any(grepl("\\(option\\)", out)))
+})
+
+test_that("a fit uses the persistent controls, reports them, and records them", {
+  g <- qap_net_gaussian(n = 15)
+  persisting({
+    msgs <- testthat::capture_messages(
+      verbosely(fit <- estimate_mrqap(FORM, g, times = 5)))
+    msgs <- paste(msgs, collapse = "")
+    expect_match(msgs, "2 persistent controls")
+    expect_match(msgs, "permute")
+    expect_equal(fit$permute, "outcome")
+    expect_s3_class(fit$control, "mrqap_control")
+    expect_equal(fit$control$seed, 7)
+    expect_match(capture.output(print(fit)), "seed = 7", all = FALSE)
+    # The record fits the same model again without the options.
+    options(infernet.control = NULL)
+    again <- estimate_mrqap(FORM, g, times = 5, control = fit$control)
+    expect_equal(again$lower, fit$lower)
+    expect_equal(again$permute, "outcome")
+  }, value = list(seed = 7, permute = "outcome"))
+})
+
+test_that("the tests and the diffusions use and record a persistent seed", {
+  g <- qap_net_gaussian(n = 10)
+  persisting({
+    a <- test_permutation(g, netrics::net_by_density, times = 5)
+    b <- test_permutation(g, netrics::net_by_density, times = 5)
+    expect_identical(a$testdist, b$testdist)
+    expect_equal(a$control$seed, 11)
+    expect_match(capture.output(print(a)), "seed = 11", all = FALSE)
+    d <- play_diffusions(manynet::ison_adolescents, times = 3)
+    expect_equal(attr(d, "control")$seed, 11)
+  }, value = list(seed = 11))
+})

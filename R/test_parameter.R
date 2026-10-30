@@ -80,7 +80,9 @@
 #'   one number for all of them, or one for each.
 #' @param times The number of permutations.
 #' @param control A list of controls, or the result of `control_mrqap()`.
-#'   The tests read `seed`, `strategy`, `ncores`, and `groups`.
+#'   The tests read `seed`, `strategy`, `ncores`, and `groups`, and the
+#'   controls set with `control_mrqap(..., persist = TRUE)` where these are
+#'   not named.
 #' @param ... Arguments for a method. Not used by the methods for a `netreg`.
 #' @return For a `netreg`, a `network_test`, with the statistic, the
 #'   permutation distribution, and the p-value as `pgteobs`.

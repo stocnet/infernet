@@ -73,6 +73,14 @@ For a \code{{migraph}} result, \code{conf.int = TRUE} adds the quantiles of the
 permuted test statistics. These describe the null distribution,
 not an interval around the estimate.
 }
+\examples{
+\dontshow{if (requireNamespace("ergm", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+fit <- suppressMessages(
+  ergm::ergm(manynet::as_network(manynet::ison_adolescents) ~ edges))
+tidy(fit)
+glance(fit)
+\dontshow{\}) # examplesIf}
+}
 \seealso{
 Other models:
 \code{\link[=control_mrqap]{control_mrqap()}},

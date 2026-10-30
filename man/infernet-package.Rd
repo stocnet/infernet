@@ -8,27 +8,28 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-A set of tools for testing networks. It includes functions for univariate and multivariate conditional uniform graph and quadratic assignment procedure testing, and multiple regression quadratic assignment procedure (MRQAP) models for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the 'manynet' package, all functions operate with matrices, edge lists, and 'igraph', 'network', and 'tidygraph' objects, and on one-mode and two-mode (bipartite) networks.
+Tools for testing and modelling network data. Provides conditional uniform graph and quadratic assignment procedure tests of network statistics, and multiple regression quadratic assignment procedure (MRQAP) models (Krackhardt 1988 \doi{10.1016/0378-8733(88)90004-4}; Dekker, Krackhardt, and Snijders 2007 \doi{10.1007/s11336-007-9016-1}) for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the 'manynet' package, all functions operate with matrices, edge lists, and 'igraph', 'network', and 'tidygraph' objects, and on one-mode and two-mode (bipartite) networks.
 }
 \seealso{
 Useful links:
 \itemize{
   \item \url{https://stocnet.github.io/infernet/}
+  \item \url{https://github.com/stocnet/infernet}
   \item Report bugs at \url{https://github.com/stocnet/infernet/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [contributor]
+\strong{Maintainer}: James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [copyright holder]
 
 Authors:
 \itemize{
-  \item James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [contributor]
+  \item James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [copyright holder]
 }
 
 Other contributors:
 \itemize{
-  \item Robert Krause (\href{https://orcid.org/0000-0003-4288-4732}{ORCID}) [contributor]
+  \item Robert Krause (\href{https://orcid.org/0000-0003-4288-4732}{ORCID}) [contributor, copyright holder]
 }
 
 }

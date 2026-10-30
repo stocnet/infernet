@@ -35,7 +35,18 @@ A test reads \code{ncores}, \code{strategy}, and \code{seed}, and leaves the oth
 controls alone, so that the controls of a model can be given to a test
 whole.
 \code{ncores} is generally useful only when \code{times} > 1000.
+A control that is not named keeps its default, or the value set with
+\code{control_mrqap(..., persist = TRUE)}, and the result records the controls
+that it used as \code{control}.
 See \code{\link[=control_mrqap]{control_mrqap()}} for each control and its default.}
+}
+\value{
+A \code{network_test}, which \code{print()}, \code{tidy()}, and \code{glance()} report.
+It holds the observed statistic in \code{testval}, the statistics of the
+simulations in \code{testdist}, and the share of these at or below the
+observed statistic in \code{plteobs} and at or above it in \code{pgteobs}.
+It also holds the number of simulations as \code{times}, the name of the
+statistic as \code{statistic}, and the controls that the test used as \code{control}.
 }
 \description{
 These functions conduct tests of any network-level statistic:
@@ -49,6 +60,9 @@ of the original network.
 \item \code{test_permutation()} performs a quadratic assignment procedure (QAP) test
 of a measure against a distribution of measures on permutations
 of the original network.
+Each permutation keeps the node attributes and the changes of a diffusion,
+so a measure can read the times of adoption.
+For a null that rewires the network, see \code{netdiffuseR::struct_test()}.
 }
 }
 \examples{

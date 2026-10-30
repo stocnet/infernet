@@ -219,8 +219,10 @@
 #' @param control The controls of the model, as the result of
 #'   [control_mrqap()] or a named list of its arguments, such as
 #'   `list(family = "poisson", seed = 1)`. A control that is not named keeps
-#'   its default. See [control_mrqap()] for each control, its default, and the
+#'   its default, or the value set with `control_mrqap(..., persist = TRUE)`.
+#'   See [control_mrqap()] for each control, its default, and the
 #'   names it converts from other models and earlier versions.
+#'   The result records the controls that it used as `control`.
 #' @return An object of class `netreg`, with a more specific class in front:
 #'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
 #'   A cognitive social structure also puts `netreg_css` first, so
@@ -297,14 +299,12 @@
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}.
 #' @examples
-#' \dontrun{
 #' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")
 #' model1 <- estimate_mrqap(
 #'   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
 #'   networkers, times = 20)
 #' print(model1)
-#' }
 #' # A cognitive social structure: each of 21 managers' report of who goes to
 #' # whom for advice, against the formal reporting structure that all share.
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,

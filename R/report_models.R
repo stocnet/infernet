@@ -653,6 +653,11 @@ terms.netreg <- function(x, ...) {
 #' @return `tidy()` and `glance()` return a tibble, and `print()` returns
 #'   `x`, invisibly.
 #' @family models
+#' @examplesIf requireNamespace("ergm", quietly = TRUE)
+#' fit <- suppressMessages(
+#'   ergm::ergm(manynet::as_network(manynet::ison_adolescents) ~ edges))
+#' tidy(fit)
+#' glance(fit)
 #' @name other_results
 NULL
 #' @rdname other_results

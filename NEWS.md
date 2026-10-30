@@ -17,6 +17,8 @@
   - Added a functional audit of every term on six shapes of network
   - Moved the calibrations and the tutorials behind `INFERNET_SLOW_TESTS=true`
 - Removed the unused `combine_qap_estimates()`
+- Updated DESCRIPTION and `cran-comments.md` for the first submission to CRAN
+- Added `inst/WORDLIST`, and corrected some spelling in the tutorials
 
 ## Diffusing
 
@@ -37,6 +39,7 @@
   - Added a method for a `netreg`, which simulates outcomes from the model
     - Refuses a gaussian `netreg`, whose draws would hold a tie in every dyad
 - Fixed the `test_*()` family passing the arguments of `FUN` as one vector
+- Fixed `test_permutation()` dropping the changes of a diffusion from each draw
 - Added `test_distributions()`, which replaces `migraph::test_distribution()`, 
   as a generic with a permutation test over simulated models
   - Has a method for two `diffs_model` objects
@@ -110,6 +113,10 @@
 - Fixed `print()` of a mixed model with `print_random = TRUE`, which errored
 - Fixed `estimate_mrqap()` permuting a predictor that has no coefficient
 - Improved the message of a panel whose missing cells fix every node
+- Added `persist =` to `control_mrqap()`, for controls that later calls use
+  - `persist = TRUE` writes the given controls to `options(infernet.control)`
+  - A control given in a call wins; `persist = FALSE` clears them all
+- Fixed `control_mrqap()` dropping `strategy` where it was `NULL`
 
 ## Diagnosing
 
@@ -142,6 +149,7 @@
   - Without `newdata`, the fitted values, with random intercepts and fixed effects
   - With `newdata`, the values from the coefficients, read by column name
 - Fixed `tidy()` of an `ergm` fit, which warned on every `exponentiate = TRUE`
+- Added the controls that a result used, as `control`, to every result
 
 ## Tutorials
 

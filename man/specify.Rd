@@ -41,7 +41,8 @@ A formula of class \code{c("mrqap_formula", "formula")} or
 \code{c("ergm_formula", "formula")}.
 Its \code{input} attribute names the model it was read from, and its \code{record}
 attribute holds what the model makes of each term.
-Printing the formula lists the terms that do not fit as written, and
+Printing the formula lists the terms that do not fit as written and
+returns the formula, invisibly.
 \code{tidy()} returns every term as a tibble,
 with the columns \code{term}, \code{status}, \code{as}, and \code{reason}, and for an MRQAP
 also \code{columns}.
