@@ -87,13 +87,19 @@ reference:
       to test a model of diffusion against:
     contents:
       - play_diffusions
-  - title: "Results"
+  - title: "Diagnosing"
+    desc: >
+      Functions for diagnosing model results:
+    contents:
+      - starts_with("diagnose_")
+      - starts_with("predict")
+  - title: "Reporting"
     desc: >
       Functions for reporting and reading the results of regressions and tests,
       for tidying the results of other network models beside them,
-      and for predicting from a regression:
+      for predicting from a regression,
+      and for diagnosing how well it classifies ties:
     contents:
       - netreg_results
-      - test_results
+      - report_tests
       - other_results
-      - predict

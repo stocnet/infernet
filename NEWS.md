@@ -18,14 +18,14 @@
   - Moved the calibrations and the tutorials behind `INFERNET_SLOW_TESTS=true`
 - Removed the unused `combine_qap_estimates()`
 
-## Diffusion
+## Diffusing
 
 - Moved `play_diffusions()` from `{migraph}`, with `control =` and `{future.apply}`
   - A seed gives the same diffusions sequentially and in parallel
   - `strategy` is read as a control; `verbose` warns and is dropped
   - Names the step `time` on every network, as `{autograph}` reads it
 
-## Tests
+## Testing
 
 - Added `test_gof()`, which replaces `migraph::test_fit()`, 
   as a generic with a simulated p-value
@@ -51,7 +51,7 @@
   - Tests the interactions of each term with each later wave, with an intercept for each wave
   - Refuses a list of networks, since nothing says that its networks are in time order
 
-## Specification
+## Specifying
 
 - Improved `specify_mrqap(.data = net)`, or `advice ~ .`, to tabulate all terms 
   that suit `net` like `RSiena::getEffects()`
@@ -92,7 +92,7 @@
 - Fixed `global()` on a panel to abort, as on one network, since it is the intercept
 - Fixed homophily advice suggesting `ego()` or `alter()` absorbed by fixed effects
 
-## Regression
+## Regressing
 
 - Removed `net_regression()`; `migraph::net_regression()` now calls `estimate_mrqap()`
 - Fixed `estimate_mrqap()` failing on an interaction with `{fixest}` fixed effects
@@ -111,7 +111,12 @@
 - Fixed `estimate_mrqap()` permuting a predictor that has no coefficient
 - Improved the message of a panel whose missing cells fix every node
 
-## Results
+## Diagnosing
+
+- Added `diagnose_confusion.netreg()` for a binary outcome
+  - Adds the ROC curve, as `tidy()`, and the AUC, in `glance()`
+
+## Reporting
 
 - Added methods for `netreg` fitted models
   - `nobs()`, `logLik()`, `deviance()`, `fitted()`, and `residuals()`
@@ -158,7 +163,7 @@
 - Improved the tutorial test to cap each `times =` at 20, since it checks only that the code runs
 - Added the diversity tutorial to the website, as a static article under "Tutorials"
 
-## Tests
+## Testing
 
 - Changed `test_random()`, `test_configuration()`, and `test_permutation()` to take `control =`
   - Reads `ncores`, `strategy`, and `seed` from a list or from `control_mrqap()`, and leaves the other controls alone
@@ -307,7 +312,7 @@
   - A name needs no backticks in `coef(fit)[...]` or in `tidy()` output
   - Code that looked up a coefficient by its old name must use the new one
 
-## Results
+## Reporting
 
 - Moved `print.netlm()` and `print.netlogit()` from `{migraph}`
 - Added `tidy()` and `glance()` methods for `netreg` and `network_test` results
