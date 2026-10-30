@@ -57,7 +57,7 @@
 ## Specifying
 
 - Improved `specify_mrqap(.data = net)`, or `advice ~ .`, to tabulate all terms 
-  that suit `net` like `RSiena::getEffects()`
+  that suit `net` like `RSiena::getEffects()` (closes #16)
   - Each row has available terms, their effects, and related layers/attributes
 - Added `formula()` method to this output
   - By default, composes a maximal formula, skipping the more complex of jointly redundant terms
@@ -261,7 +261,7 @@
   - Warns where few distinct permutations remain
   - Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks
   - Fixed a blocking group of one node, which `sample()` read as a range
-- Added `control = list(missing = )` with `"available"` (the default) and `"fail"`
+- Added `control = list(missing = )` with `"available"` (the default) and `"fail"` (closes #6)
   - Leaves out the ties that `{manynet}` marks as `fixed`, and keeps them in place under permutation
   - Reports the dyads dropped on each variable, and stores them as `fit$missing`
   - Documented a structural zero as a limitation
