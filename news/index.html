@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,6 +20,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -37,6 +38,241 @@
       <small>Source: <a href="https://github.com/stocnet/infernet/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.0" id="infernet-060">infernet 0.6.0<a class="anchor" aria-label="anchor" href="#infernet-060"></a></h2>
+<div class="section level3">
+<h3 id="package-0-6-0">Package<a class="anchor" aria-label="anchor" href="#package-0-6-0"></a></h3>
+<ul><li>Updated CONTRIBUTING
+<ul><li>Added the help page <code>terms_mrqap</code> to the steps for adding a term</li>
+<li>Renamed <code>type =</code> of <code>indeg()</code> and <code>outdeg()</code> to <code>node =</code> in the formula dictionary and rule 7</li>
+<li>Added the <code>reporter</code> terms to the formula dictionary</li>
+<li>Added how a permutation set draws from a plan, and how to time it</li>
+<li>Added goldfish’s bare <code>indeg</code>, offsets, and node tables to the formula dictionary</li>
+<li>Added <code>test_fit.R</code> and <code>model_diffusion.R</code>, and how <code><a href="../reference/test_fit.html">test_gof()</a></code> reasons</li>
+</ul></li>
+<li>Added benchmarks of <code><a href="../reference/regression.html">estimate_mrqap()</a></code> in <code>benchmarks/</code>, outside the package</li>
+<li>Updated the README with an example of each family and infernet’s place in stocnet</li>
+<li>Improved the tests, which now take ~22 s on two processes, from ~52 s
+<ul><li>Moved the shared fixtures to <code>helper-fixtures.R</code> and <code>helper-expectations.R</code>
+</li>
+<li>Added <code>test-parallel.R</code>, which starts two workers once for every family</li>
+<li>Added a functional audit of every term on six shapes of network</li>
+<li>Moved the calibrations and the tutorials behind <code>INFERNET_SLOW_TESTS=true</code>
+</li>
+</ul></li>
+<li>Removed the unused <code>combine_qap_estimates()</code>
+</li>
+<li>Updated DESCRIPTION and <code>cran-comments.md</code> for the first submission to CRAN</li>
+<li>Added <code>inst/WORDLIST</code>, and corrected some spelling in the tutorials</li>
+</ul></div>
+<div class="section level3">
+<h3 id="diffusing-0-6-0">Diffusing<a class="anchor" aria-label="anchor" href="#diffusing-0-6-0"></a></h3>
+<ul><li>Moved <code><a href="../reference/play_diffusions.html">play_diffusions()</a></code> from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>, with <code>control =</code> and <a href="https://future.apply.futureverse.org" class="external-link">future.apply</a>
+<ul><li>A seed gives the same diffusions sequentially and in parallel</li>
+<li>
+<code>strategy</code> is read as a control; <code>verbose</code> warns and is dropped</li>
+<li>Names the step <code>time</code> on every network, as <a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a> reads it</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="testing-0-6-0">Testing<a class="anchor" aria-label="anchor" href="#testing-0-6-0"></a></h3>
+<ul><li>Added <code><a href="../reference/test_fit.html">test_gof()</a></code>, which replaces <code>migraph::test_fit()</code>, as a generic with a simulated p-value
+<ul><li>Has the name and the signature, <code>test_gof(object, ...)</code>
+</li>
+<li>Takes the model first; the observed diffusion first still works but warns</li>
+<li>Compares the observed distance with those of held-out simulations</li>
+<li>Replaces the chi-squared p-value, which assumed normal curves</li>
+<li>Added a method for a <code>diffs_model</code>, on the curve of infected nodes</li>
+<li>Added a method for a <code>netreg</code>, which simulates outcomes from the model
+<ul><li>Refuses a gaussian <code>netreg</code>, whose draws would hold a tie in every dyad</li>
+</ul></li>
+</ul></li>
+<li>Fixed the <code>test_*()</code> family passing the arguments of <code>FUN</code> as one vector</li>
+<li>Fixed <code><a href="../reference/test_measures.html">test_permutation()</a></code> dropping the changes of a diffusion from each draw</li>
+<li>Added <code><a href="../reference/test_fit.html">test_distributions()</a></code>, which replaces <code>migraph::test_distribution()</code>, as a generic with a permutation test over simulated models
+<ul><li>Has a method for two <code>diffs_model</code> objects</li>
+<li>Compares two <code>diffs_model</code> objects rather than two single diffusions</li>
+<li>Replaces the Kolmogorov-Smirnov test, which took each step as independent</li>
+</ul></li>
+<li>Added <code><a href="../reference/test_parameter.html">test_parameter()</a></code> and <code><a href="../reference/test_parameter.html">test_time()</a></code> as generics with the signature <code>(x, ...)</code>
+</li>
+<li>Added <code><a href="../reference/test_parameter.html">test_parameter.netreg()</a></code>, which tests that one or more coefficients together equal a value
+<ul><li>Uses a joint double semi-partialling, with the deviance as its statistic</li>
+<li>Tests the levels of a categorical attribute together, from the stem of their names</li>
+<li>Tests a value other than 0 only in a gaussian model</li>
+</ul></li>
+<li>Added <code><a href="../reference/test_parameter.html">test_time.netreg()</a></code>, which tests that coefficients are constant over the waves of a panel
+<ul><li>Tests the interactions of each term with each later wave, with an intercept for each wave</li>
+<li>Refuses a list of networks, since nothing says that its networks are in time order</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="specifying-0-6-0">Specifying<a class="anchor" aria-label="anchor" href="#specifying-0-6-0"></a></h3>
+<ul><li>Improved <code>specify_mrqap(.data = net)</code>, or <code>advice ~ .</code>, to tabulate all terms that suit <code>net</code> like <code>RSiena::getEffects()</code> (closes <a href="https://github.com/stocnet/infernet/issues/16" class="external-link">#16</a>)
+<ul><li>Each row has available terms, their effects, and related layers/attributes</li>
+</ul></li>
+<li>Added <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula()</a></code> method to this output
+<ul><li>By default, composes a maximal formula, skipping the more complex of jointly redundant terms</li>
+<li>Terms can also be chosen by grep</li>
+</ul></li>
+<li>Added the help page <code>terms_mrqap</code>, which says what each MRQAP term measures
+<ul><li>Gives each term’s equation</li>
+<li>Gives each term’s equivalent in ergm, goldfish, and RSiena, with references</li>
+</ul></li>
+<li>Removed <code>specify_dynam()</code>, which moves to <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a> (stocnet/goldfish#124)</li>
+<li>Renamed <code>type =</code> of <code>indeg()</code>/<code>outdeg()</code> to <code>node =</code>, as stocnet/goldfish#122 proposes (thanks <a href="https://github.com/auzaheta" class="external-link">@auzaheta</a>)
+<ul><li>
+<code>type =</code> still works, and warns once that it is deprecated</li>
+<li>
+<code>outdeg()</code> reads the sender’s outdegree by default, <code>node = "ego"</code>
+</li>
+<li>
+<code><a href="../reference/specify.html">specify_mrqap()</a></code> and <code><a href="../reference/specify.html">specify_ergm()</a></code> read a goldfish formula’s with <code>type =</code> as <code>node =</code>
+</li>
+</ul></li>
+<li>Added terms for the reporter of a CSS
+<ul><li>Added <code>reporter(x, levels = NULL)</code> for the reporter’s value of a node attribute</li>
+<li>Added <code>reporter_ego</code> where the reporter is the sender</li>
+<li>Added <code>reporter_alter</code> where the reporter is the receiver</li>
+<li>Added <code>reporter_same(x, node =)</code> where the reporter shares a value with the <code>"ego"</code>/<code>"alter"</code>
+</li>
+<li>These terms abort on a network that is not a CSS, the last 3 for undirected networks, and the last for a two-mode network</li>
+<li>
+<code><a href="../reference/specify.html">specify_ergm()</a></code> drops these terms</li>
+<li>A <code>| reporter</code> fixed effect absorbs <code>reporter()</code>, and names it</li>
+</ul></li>
+<li>Accelerated <code>same()</code> on a two-mode network, with the same values</li>
+<li>Improved <code><a href="../reference/specify.html">specify_mrqap()</a></code> on the formulas in goldfish’s documentation
+<ul><li>Fixed a bare <code>indeg</code> or <code>outdeg</code> read as a layer; it is dropped, as goldfish’s outcome degree</li>
+<li>Fixed <code>recip(calls, weighted = TRUE)</code> aborting</li>
+<li>Fixed <code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> aborting; an MRQAP drops it, and goldfish and ergm keep their own</li>
+<li>Fixed <code>ego(actors$floor)</code> failing when its matrix is built; it is read as <code>ego(floor)</code>
+</li>
+</ul></li>
+<li>Added <code>weighted =</code> to <code>recip()</code> and <code>exchange()</code>, as goldfish’s <code>recip()</code> has
+<ul><li>
+<code>weighted = FALSE</code> gives 0/1, and <code>TRUE</code> the values; without it, the values as stored</li>
+</ul></li>
+<li>Added <code>weighted =</code> to <code>inertia</code>, as goldfish’s <code>inertia()</code> has</li>
+<li>Fixed <code><a href="../reference/specify.html">specify_ergm()</a></code> without a network giving <code>inertia</code> the reason “needs .data”
+<ul><li>Gives the same reasons as with a network, e.g. “has no ergm term”</li>
+<li>Records a term rewritten on reading once, as written</li>
+</ul></li>
+<li>Fixed <code>same()</code> on a multiplex two-mode network, which read every layer as its ties</li>
+<li>Fixed <code>global()</code> on a panel to abort, as on one network, since it is the intercept</li>
+<li>Fixed homophily advice suggesting <code>ego()</code> or <code>alter()</code> absorbed by fixed effects</li>
+</ul></div>
+<div class="section level3">
+<h3 id="regressing-0-6-0">Regressing<a class="anchor" aria-label="anchor" href="#regressing-0-6-0"></a></h3>
+<ul><li>Removed <code>net_regression()</code>; <code>migraph::net_regression()</code> now calls <code><a href="../reference/regression.html">estimate_mrqap()</a></code>
+</li>
+<li>Fixed <code><a href="../reference/regression.html">estimate_mrqap()</a></code> failing on an interaction with <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> fixed effects</li>
+<li>Improved the speed of the permutations of <code><a href="../reference/regression.html">estimate_mrqap()</a></code>
+<ul><li>Permutes only the cells the model reads, and builds the data once</li>
+<li>Builds the design matrix of a gaussian, binomial, or Poisson model once</li>
+<li>Solves each permuted outcome of a gaussian model from one decomposition</li>
+<li>~3.5-4x faster on a gaussian model of 60 or 200 nodes</li>
+<li>~1.5-1.8x faster on a binomial model, and on <code>ison_hightech</code>
+</li>
+<li>~7.5x faster for 100 draws on the 448 by 12489 network of <a href="https://github.com/stocnet/infernet/issues/4" class="external-link">#4</a></li>
+</ul></li>
+<li>Improved <code>strategy</code> control; <code>NULL</code>, default, keeps plan set with <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code>
+<ul><li>Workers started once in a session now serve every call</li>
+<li>A run leaves the user’s plan as the same object, with the same workers</li>
+<li>Added advice on when to run in parallel to <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code> and CONTRIBUTING</li>
+</ul></li>
+<li>Fixed <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> of a mixed model with <code>print_random = TRUE</code>, which errored</li>
+<li>Fixed <code><a href="../reference/regression.html">estimate_mrqap()</a></code> permuting a predictor that has no coefficient</li>
+<li>Improved the message of a panel whose missing cells fix every node</li>
+<li>Added <code>persist =</code> to <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>, for controls that later calls use
+<ul><li>
+<code>persist = TRUE</code> writes the given controls to <code>options(infernet.control)</code>
+</li>
+<li>A control given in a call wins; <code>persist = FALSE</code> clears them all</li>
+</ul></li>
+<li>Fixed <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code> dropping <code>strategy</code> where it was <code>NULL</code>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="diagnosing-0-6-0">Diagnosing<a class="anchor" aria-label="anchor" href="#diagnosing-0-6-0"></a></h3>
+<ul><li>Added <code>diagnose_confusion.netreg()</code> for a binary outcome
+<ul><li>Adds the ROC curve, as <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and the AUC, in <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>
+</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="reporting-0-6-0">Reporting<a class="anchor" aria-label="anchor" href="#reporting-0-6-0"></a></h3>
+<ul><li>Improved <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> for every infernet object to a shared layout and syntax
+<ul><li>A title says what was fitted or tested, then a blank line</li>
+<li>A body is <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, with significance marks, then a blank line</li>
+<li>A footer gives the null, any changed controls, other methods if <code>options(snet_verbosity = "debug")</code>
+</li>
+<li>
+<code>netreg</code>: one print for every family, panel, CSS, and effect</li>
+<li>
+<code>network_test</code>: names the statistic and the null</li>
+<li>
+<code>diffs_model</code>: names the model, and the steps to adoption</li>
+<li>
+<code>mrqap_formula</code> and <code>ergm_formula</code>: name the model the formula was read from</li>
+<li>
+<code>mrqap_control</code>: lists the controls that were set, and counts the defaults</li>
+</ul></li>
+<li>Added methods for <code>netreg</code> fitted models
+<ul><li>
+<code><a href="https://rdrr.io/r/stats/nobs.html" class="external-link">nobs()</a></code>, <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>, <code><a href="https://rdrr.io/r/stats/deviance.html" class="external-link">deviance()</a></code>, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>, and <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>
+</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula()</a></code>, <code><a href="https://rdrr.io/r/stats/terms.html" class="external-link">terms()</a></code>, and <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code>, from the call and formula it keeps</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code> and <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code> count the fixed effects that a gaussian model absorbs</li>
+</ul></li>
+<li>Improved <code><a href="../reference/netreg_results.html">tidy.netreg()</a></code> to give only the columns of <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">generics::tidy()</a></code>
+</li>
+<li>Improved <code><a href="../reference/netreg_results.html">summary.netreg()</a></code> to give the full report
+<ul><li>Adds <code>p.lower</code>, <code>p.upper</code> to the results table</li>
+<li>Prints random intercepts, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, unobserved dyads, and dropped terms</li>
+</ul></li>
+<li>Fixed <code><a href="../reference/netreg_results.html">glance.netreg()</a></code> of a gaussian model with fixed effects
+<ul><li>
+<code>AIC</code>, <code>BIC</code>, <code>sigma</code>, and <code>df.residual</code> now count the absorbed parameters</li>
+</ul></li>
+<li>Moved <code><a href="../reference/predict.html">predict()</a></code> for <code>netlm</code> and <code>netlogit</code> from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>
+</li>
+<li>Added <code><a href="../reference/predict.html">predict()</a></code> for a <code>netreg</code>, on the <code>"link"</code> or the <code>"response"</code> scale
+<ul><li>Without <code>newdata</code>, the fitted values, with random intercepts and fixed effects</li>
+<li>With <code>newdata</code>, the values from the coefficients, read by column name</li>
+</ul></li>
+<li>Fixed <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of an <code>ergm</code> fit, which warned on every <code>exponentiate = TRUE</code>
+</li>
+<li>Added the controls that a result used, as <code>control</code>, to every result</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tutorials-0-6-0">Tutorials<a class="anchor" aria-label="anchor" href="#tutorials-0-6-0"></a></h3>
+<ul><li>Added the “Diffusion and Learning” tutorial from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>, as <code>infernet2</code>
+<ul><li>Uses <code><a href="../reference/play_diffusions.html">play_diffusions()</a></code> with <code>control =</code>, rather than <code>strategy =</code>/<code>verbose =</code>
+</li>
+<li>Added a section on testing diffusions with <code><a href="../reference/test_fit.html">test_distributions()</a></code> and <code><a href="../reference/test_fit.html">test_gof()</a></code>
+</li>
+<li>Fixed the descriptions of <code><a href="https://stocnet.github.io/manynet/reference/make_growth.html" class="external-link">generate_scalefree()</a></code> and <code><a href="https://stocnet.github.io/manynet/reference/make_groups.html" class="external-link">generate_smallworld()</a></code>
+</li>
+<li>Fixed the Grey’s Anatomy exercise, which failed when the diffusion died out early</li>
+</ul></li>
+<li>Updated the “Diversity and Regression” tutorial to the current formula
+<ul><li>Uses <code><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff()</a></code> rather than <code>sim()</code>, and says that <code><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist()</a></code> is deprecated</li>
+<li>Added sections on categories, with <code>same(diff = TRUE)</code>, <code>mix()</code>, and <code>levels =</code>
+</li>
+<li>Added sections on fixed effects, random intercepts, and <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>
+</li>
+<li>Added a section on layers and a cognitive social structure, on <code>ison_hightech</code>
+</li>
+<li>Added a section on moving a formula with <code><a href="../reference/specify.html">specify_ergm()</a></code>
+</li>
+<li>Plots the regression result, with <a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a> 1.2.8</li>
+<li>Runs the CUG and QAP tests with 500 simulations, so each exercise takes seconds</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="infernet-050">infernet 0.5.0<a class="anchor" aria-label="anchor" href="#infernet-050"></a></h2>
 <div class="section level3">
@@ -56,8 +292,8 @@
 <li>Added the diversity tutorial to the website, as a static article under “Tutorials”</li>
 </ul></div>
 <div class="section level3">
-<h3 id="tests-0-5-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-5-0"></a></h3>
-<ul><li>Changed <code><a href="../reference/tests.html">test_random()</a></code>, <code><a href="../reference/tests.html">test_configuration()</a></code>, and <code><a href="../reference/tests.html">test_permutation()</a></code> to take <code>control =</code>
+<h3 id="testing-0-5-0">Testing<a class="anchor" aria-label="anchor" href="#testing-0-5-0"></a></h3>
+<ul><li>Changed <code><a href="../reference/test_measures.html">test_random()</a></code>, <code><a href="../reference/test_measures.html">test_configuration()</a></code>, and <code><a href="../reference/test_measures.html">test_permutation()</a></code> to take <code>control =</code>
 <ul><li>Reads <code>ncores</code>, <code>strategy</code>, and <code>seed</code> from a list or from <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code>, and leaves the other controls alone</li>
 <li>Takes the controls of a model whole, e.g. <code>ctrl &lt;- control_mrqap(ncores = 4, seed = 1)</code> for both a model and a test</li>
 <li>
@@ -69,7 +305,7 @@
 </ul></li>
 <li>Renamed the <code>diag</code> element of a test’s result to <code>loops</code>
 </li>
-<li>Improved the speed of <code><a href="../reference/tests.html">test_permutation()</a></code> ~5x and <code><a href="../reference/tests.html">test_random()</a></code> ~3x on a stocnet
+<li>Improved the speed of <code><a href="../reference/test_measures.html">test_permutation()</a></code> ~5x and <code><a href="../reference/test_measures.html">test_random()</a></code> ~3x on a stocnet
 <ul><li>Draws from a <code>tbl_graph</code> made once, where the statistic gives the same value on it</li>
 </ul></li>
 </ul></div>
@@ -81,7 +317,7 @@
 <li>Added each term’s MRQAP status, and its goldfish, RSiena, and ergm names</li>
 <li>Added the nearest term to the error for an unknown term</li>
 </ul></li>
-<li>Added <code><a href="../reference/specify.html">specify_mrqap()</a></code>, <code><a href="../reference/specify.html">specify_dynam()</a></code>, and <code><a href="../reference/specify.html">specify_ergm()</a></code> to move a formula between models
+<li>Added <code><a href="../reference/specify.html">specify_mrqap()</a></code>, <code>specify_dynam()</code>, and <code><a href="../reference/specify.html">specify_ergm()</a></code> to move a formula between models
 <ul><li>Reads the model a formula is for from <code>input =</code>, the formula’s class, or its names</li>
 <li>Rewrites each term with an equivalent, e.g. <code>nodematch("dept")</code> as <code>same(dept)</code>
 </li>
@@ -124,7 +360,7 @@
 <li>
 <code><a href="../reference/specify.html">specify_mrqap()</a></code> reads ergm’s <code>levels =</code>, and <code>levels2 =</code> of <code>nodemix()</code>; <code><a href="../reference/specify.html">specify_ergm()</a></code> writes them</li>
 <li>
-<code><a href="../reference/specify.html">specify_dynam()</a></code> drops a term with <code>levels =</code>, which goldfish does not have yet</li>
+<code>specify_dynam()</code> drops a term with <code>levels =</code>, which goldfish does not have yet</li>
 </ul></li>
 <li>Changed the order of the columns of <code>mix()</code> to ergm’s, the sender’s category changing fastest, so that a position in <code>levels =</code> is one in ergm’s <code>levels2 =</code>
 </li>
@@ -133,7 +369,7 @@
 <code><a href="../reference/specify.html">specify_ergm()</a></code> writes <code>| sender + receiver</code> as ergm’s <code>sender</code> and <code>receiver</code>
 </li>
 <li>
-<code><a href="../reference/specify.html">specify_dynam()</a></code> drops them</li>
+<code>specify_dynam()</code> drops them</li>
 </ul></li>
 </ul></div>
 <div class="section level3">
@@ -179,7 +415,7 @@
 <li>Fixed residualised predictors to hold no raw values outside the model, and to be symmetric for undirected networks</li>
 <li>Fixed a blocking group of one node, which <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> read as a range</li>
 </ul></li>
-<li>Added <code>control = list(missing = )</code> with <code>"available"</code> (the default) and <code>"fail"</code>
+<li>Added <code>control = list(missing = )</code> with <code>"available"</code> (the default) and <code>"fail"</code> (closes <a href="https://github.com/stocnet/infernet/issues/6" class="external-link">#6</a>)
 <ul><li>Leaves out the ties that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> marks as <code>fixed</code>, and keeps them in place under permutation</li>
 <li>Reports the dyads dropped on each variable, and stores them as <code>fit$missing</code>
 </li>
@@ -190,9 +426,9 @@
 <li>Permutes the nodes the same way in every wave</li>
 <li>Fits <code>inertia</code>, <code>recip</code>, and <code>trans</code> on the previous wave</li>
 </ul></li>
-<li>Renamed <code><a href="../reference/regression.html">net_regression()</a></code> to <code><a href="../reference/regression.html">estimate_mrqap()</a></code> to match other stocnet packages
+<li>Renamed <code>net_regression()</code> to <code><a href="../reference/regression.html">estimate_mrqap()</a></code> to match other stocnet packages
 <ul><li>
-<code><a href="../reference/regression.html">net_regression()</a></code> still works, and warns once that it is deprecated</li>
+<code>net_regression()</code> still works, and warns once that it is deprecated</li>
 <li>Result classes stay <code>netreg</code>, <code>netreg_lm</code>, <code>netreg_glm</code>, and <code>netreg_css</code>
 </li>
 </ul></li>
@@ -219,7 +455,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="regression-0-4-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-4-0"></a></h3>
-<ul><li>Improved the formula of <code><a href="../reference/regression.html">net_regression()</a></code>, which is now parsed into a specification
+<ul><li>Improved the formula of <code>net_regression()</code>, which is now parsed into a specification
 <ul><li>Added named arguments to formula terms, e.g. <code>indeg(friends, type = "ego")</code>
 </li>
 <li>Added interactions of any order, e.g. <code>ego(age) * alter(age) * ego(tenure)</code>
@@ -268,8 +504,8 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="results-0-4-0">Results<a class="anchor" aria-label="anchor" href="#results-0-4-0"></a></h3>
-<ul><li>Moved <code><a href="../reference/results.html">print.netlm()</a></code> and <code><a href="../reference/results.html">print.netlogit()</a></code> from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>
+<h3 id="reporting-0-4-0">Reporting<a class="anchor" aria-label="anchor" href="#reporting-0-4-0"></a></h3>
+<ul><li>Moved <code><a href="../reference/other_results.html">print.netlm()</a></code> and <code><a href="../reference/other_results.html">print.netlogit()</a></code> from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>
 </li>
 <li>Added <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> methods for <code>netreg</code> and <code>network_test</code> results
 <ul><li>
@@ -278,7 +514,7 @@
 </li>
 <li>Fixed <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> on an <code>ergm</code> adding the MCMC columns when it says they are omitted</li>
 </ul></li>
-<li>Moved <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> to one help page, <code><a href="../reference/results.html">?results</a></code>
+<li>Moved <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> to one help page, <code>?results</code>
 </li>
 <li>Renamed the observed test statistics of a <code>netreg</code> from <code>t</code> to <code>obs</code>
 </li>
@@ -300,7 +536,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="regression-0-3-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-3-0"></a></h3>
-<ul><li>Added cognitive social structures to <code><a href="../reference/regression.html">net_regression()</a></code>
+<ul><li>Added cognitive social structures to <code>net_regression()</code>
 <ul><li>A CSS is detected from the <code>by</code> column of its ties, not declared</li>
 <li>Each reported dyad is one observation: sender, receiver, and reporter</li>
 <li>A permutation relabels senders, receivers, and reporters together</li>
@@ -319,7 +555,7 @@
 <li>Fixed a list of <code>stocnet</code> networks being read as one network</li>
 <li>Fixed the CSS shape assuming one reporter per node and a square array</li>
 <li>Improved the CSS print method to say how many reporters it was fitted on</li>
-<li>Renamed the classes of a <code><a href="../reference/regression.html">net_regression()</a></code> result to a hierarchy under <code>netreg</code>
+<li>Renamed the classes of a <code>net_regression()</code> result to a hierarchy under <code>netreg</code>
 <ul><li>
 <code>c("netreg_lm", "netreg")</code> for a gaussian model, <code>c("netreg_glm", "netreg")</code> for any other family, and <code>"netreg_css"</code> in front for a CSS</li>
 <li>Replaces <code>net_regression</code>, <code>QAPRegression</code>, <code>QAPGLM</code>, and <code>QAPCSS</code>
@@ -341,7 +577,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="regression-0-2-0">Regression<a class="anchor" aria-label="anchor" href="#regression-0-2-0"></a></h3>
-<ul><li>Fixed <code><a href="../reference/regression.html">net_regression()</a></code> failing on a two-mode network with more columns than rows (closes <a href="https://github.com/stocnet/infernet/issues/4" class="external-link">#4</a>)
+<ul><li>Fixed <code>net_regression()</code> failing on a two-mode network with more columns than rows (closes <a href="https://github.com/stocnet/infernet/issues/4" class="external-link">#4</a>)
 <ul><li>Validity was built rows-by-rows, so wider predictor extended it with <code>NA</code> and the dyad count came back as <code>NA</code>
 </li>
 <li>Reported 448 by 12489 network now fits on all 5,595,072 dyads</li>
@@ -436,8 +672,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="tests-0-1-1">Tests<a class="anchor" aria-label="anchor" href="#tests-0-1-1"></a></h3>
-<ul><li>Improved <code><a href="../reference/tests.html">test_permutation()</a></code> by dropping two unused computations</li>
-<li>Updated the <code>tests</code> documentation to describe <code><a href="../reference/tests.html">test_configuration()</a></code>
+<ul><li>Improved <code><a href="../reference/test_measures.html">test_permutation()</a></code> by dropping two unused computations</li>
+<li>Updated the <code>tests</code> documentation to describe <code><a href="../reference/test_measures.html">test_configuration()</a></code>
 </li>
 <li>Updated the examples to use the native pipe <code>|&gt;</code>
 </li>
@@ -507,7 +743,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

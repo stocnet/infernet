@@ -41,7 +41,7 @@ Any other name aborts, and the nearest control is suggested."><meta property="og
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,6 +54,7 @@ Any other name aborts, and the nearest control is suggested."><meta property="og
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -68,7 +69,7 @@ Any other name aborts, and the nearest control is suggested."><meta property="og
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Controls for an MRQAP</h1>
-      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/model_control.R" class="external-link"><code>R/model_control.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/model_control.R" class="external-link"><code>R/model_control.R</code></a>, <a href="https://github.com/stocnet/infernet/blob/main/R/report_specify.R" class="external-link"><code>R/report_specify.R</code></a></small>
       <div class="d-none name"><code>control_mrqap.Rd</code></div>
     </div>
 
@@ -80,7 +81,7 @@ so <code>control = list(family = "poisson")</code> and
 <code>control = control_mrqap(family = "poisson")</code> fit the same model.
 Calling <code>control_mrqap()</code> first shows the full set of controls, and finds
 a mistake before a long run starts.
-The tests, such as <code><a href="tests.html">test_permutation()</a></code>, read <code>ncores</code>, <code>strategy</code>, and
+The tests, such as <code><a href="test_measures.html">test_permutation()</a></code>, read <code>ncores</code>, <code>strategy</code>, and
 <code>seed</code> from the same object, so one set of controls serves a model and
 a test alike.</p>
 <p>A control that is not named keeps its default.
@@ -103,7 +104,7 @@ Any other name aborts, and the nearest control is suggested.</p>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ncores <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  strategy <span class="op">=</span> <span class="st">"sequential"</span>,</span>
+<span>  strategy <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  use_robust_errors <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  random_intercept_nets <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  random_intercept_sender <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -111,6 +112,7 @@ Any other name aborts, and the nearest control is suggested.</p>
 <span>  random_intercept_reporter <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  missing <span class="op">=</span> <span class="st">"available"</span>,</span>
 <span>  less_mem <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  persist <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -168,14 +170,24 @@ On a two-mode network, its length says which mode it groups.
 <dd><p>A number of cores to run the permutations on.
 More than one runs them on that many <code>"multisession"</code> workers, and one runs
 them sequentially, whatever <code>strategy</code> says.
-<code>NULL</code> (the default) leaves the choice to <code>strategy</code>.</p></dd>
+<code>NULL</code> (the default) leaves the choice to <code>strategy</code>.
+A parallel run helps only where each permutation is costly: a family
+other than <code>"gaussian"</code>, random intercepts, or a cognitive social
+structure, on a network of more than about 50 nodes, with 1,000 or more
+<code>times</code>. Elsewhere the start of the workers costs more than it saves:
+a gaussian model solves its design once, so each permutation is cheap.
+Give <code>ncores</code> rather than <code>strategy = "multisession"</code>, which starts a
+worker on every core.</p></dd>
 
 
 <dt id="arg-strategy">strategy<a class="anchor" aria-label="anchor" href="#arg-strategy"></a></dt>
 <dd><p>The <code>{future}</code> plan that the permutations run on where
-<code>ncores</code> is <code>NULL</code>: <code>"sequential"</code> (the default), <code>"multisession"</code>,
-<code>"multicore"</code>, or <code>"cluster"</code>. The plan that was set before is restored
-after the fit.</p></dd>
+<code>ncores</code> is <code>NULL</code>: <code>"sequential"</code>, <code>"multisession"</code>, <code>"multicore"</code>, or
+<code>"cluster"</code>. The plan that was set before is restored after the fit.
+<code>NULL</code> (the default) uses the plan that was set with <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code>,
+which is sequential unless it was changed. Set a plan once in a session,
+with <code>future::plan(future::multisession, workers = 2)</code>, and its workers
+start once, not once in each call.</p></dd>
 
 
 <dt id="arg-use-robust-errors">use_robust_errors<a class="anchor" aria-label="anchor" href="#arg-use-robust-errors"></a></dt>
@@ -206,6 +218,13 @@ variable. See the section on missing data in <code><a href="regression.html">est
 the result, to save memory on a large network. <code>FALSE</code> by default.</p></dd>
 
 
+<dt id="arg-persist">persist<a class="anchor" aria-label="anchor" href="#arg-persist"></a></dt>
+<dd><p>Logical, whether the controls given in this call become the
+defaults of the session. See the section on persistent controls.
+<code>FALSE</code> by default, which changes nothing. Given as <code>persist = FALSE</code>,
+it clears the persistent controls.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Controls by another name: a name that infernet used before, or an
 option of another model. See the description.</p></dd>
@@ -218,7 +237,37 @@ option of another model. See the description.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>mrqap_control</code>: a list with one element for
-each control.</p>
+each control. Its attribute <code>source</code> says whether each control was
+<code>"given"</code>, comes from an <code>"option"</code>, or keeps its <code>"default"</code>.
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> returns <code>x</code>, invisibly.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="persistent-controls">Persistent controls<a class="anchor" aria-label="anchor" href="#persistent-controls"></a></h2>
+
+
+<p><code>control_mrqap(ncores = 2, missing = "fail", persist = TRUE)</code> writes the
+controls that it is given to <code>options(infernet.control)</code>, after it checks
+them. Each later call of <code><a href="regression.html">estimate_mrqap()</a></code>, <code><a href="test_measures.html">test_random()</a></code>,
+<code><a href="test_measures.html">test_configuration()</a></code>, <code><a href="test_measures.html">test_permutation()</a></code>, <code><a href="test_fit.html">test_gof()</a></code>,
+<code><a href="test_fit.html">test_distributions()</a></code>, <code><a href="test_parameter.html">test_parameter()</a></code>, <code><a href="test_parameter.html">test_time()</a></code>, and
+<code><a href="play_diffusions.html">play_diffusions()</a></code> then uses them as defaults, and says so with
+<code>options(snet_verbosity = "verbose")</code>.</p><ul><li><p>A control given in a call takes priority over a persistent one.
+Give <code>strategy = NULL</code> in a call to use the plan of <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code>
+where a <code>strategy</code> or <code>ncores</code> persists.</p></li>
+<li><p>A second call with <code>persist = TRUE</code> adds to the persistent controls, and
+replaces a control that it gives again. A control given as <code>NULL</code>, such
+as <code>control_mrqap(ncores = NULL, persist = TRUE)</code>, is removed.</p></li>
+<li><p><code>control_mrqap(persist = FALSE)</code> clears all of them.</p></li>
+<li><p><code>control_mrqap()</code> shows the controls in force, and marks each one that
+comes from the persistent controls with <code>(option)</code>.</p></li>
+<li><p><code>control_mrqap()</code> reads the persistent controls when it is called, so
+its result keeps the same controls if the options change later.</p></li>
+</ul><p>A <code>seed</code> can persist. Each call then sets the same seed, and so draws the
+same random numbers, which reproduces each result. The print of a result
+gives the seed that it used.</p>
+<p>Every result records the controls that it used, as <code>control</code> (an
+attribute of a <code>diffs_model</code>). Give that record as <code>control</code> to fit the
+same model again without the options of the session.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -230,53 +279,50 @@ each control.</p>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other models:
-<code><a href="results.html">print.netreg_lm()</a></code>,
+<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
+<code><a href="other_results.html">other_results</a></code>,
+<code><a href="play_diffusions.html">play_diffusions()</a></code>,
+<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
 <code><a href="regression.html">regression</a></code>,
 <code><a href="specify.html">specify</a></code>,
-<code><a href="tests.html">tests</a></code></p></div>
+<code><a href="specify_terms.html">specify_terms</a></code>,
+<code><a href="terms_mrqap.html">terms_mrqap</a></code>,
+<code><a href="test_fit.html">test_fit</a></code>,
+<code><a href="test_measures.html">test_measures</a></code>,
+<code><a href="test_parameter.html">test_parameter()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">control_mrqap</span><span class="op">(</span>family <span class="op">=</span> <span class="st">"poisson"</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Controls for an MRQAP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Controls for an MRQAP: 2 set, 13 at their defaults</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   permute                    predictor</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   family                     poisson  (set)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   directed                   NULL, read from the data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   loops                      NULL, read from the data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   seed                       1  (set)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   groups                     NULL, all nodes together</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ncores                     NULL, as strategy says</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   strategy                   sequential</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   use_robust_errors          FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_nets      FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_sender    FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_receiver  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_reporter  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   missing                    available</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   less_mem                   FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   family  "poisson"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   seed    1</span>
 <span class="r-in"><span><span class="co"># A name that infernet used before is converted, with a warning</span></span></span>
 <span class="r-in"><span><span class="fu">control_mrqap</span><span class="op">(</span>nullhyp <span class="op">=</span> <span class="st">"qapy"</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>`nullhyp = "qapy"` is now `permute = "outcome"`.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The control was renamed in infernet 0.2.0.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Controls for an MRQAP</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Controls for an MRQAP: 1 set, 14 at their defaults</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   permute                    outcome  (set)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   family                     auto</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   directed                   NULL, read from the data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   loops                      NULL, read from the data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   seed                       NULL, not set</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   groups                     NULL, all nodes together</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ncores                     NULL, as strategy says</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   strategy                   sequential</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   use_robust_errors          FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_nets      FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_sender    FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_receiver  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   random_intercept_reporter  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   missing                    available</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   less_mem                   FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   permute  "outcome"</span>
+<span class="r-in"><span><span class="co"># Controls that later calls use as defaults</span></span></span>
+<span class="r-in"><span><span class="fu">control_mrqap</span><span class="op">(</span>missing <span class="op">=</span> <span class="st">"fail"</span>, seed <span class="op">=</span> <span class="fl">1</span>, persist <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Controls for an MRQAP: 2 set, 13 at their defaults</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   seed     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   missing  "fail"</span>
+<span class="r-in"><span><span class="fu">control_mrqap</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Controls for an MRQAP: 2 set, 13 at their defaults</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   seed     1  (option)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   missing  "fail"  (option)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # (option) persists from control_mrqap(..., persist = TRUE);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> #   control_mrqap(persist = FALSE) clears it.</span>
+<span class="r-in"><span><span class="fu">control_mrqap</span><span class="op">(</span>persist <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Controls for an MRQAP: 0 set, 15 at their defaults</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -284,7 +330,7 @@ each control.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

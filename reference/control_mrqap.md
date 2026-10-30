@@ -9,7 +9,7 @@ passes its `control` argument through this function, so
 `control = control_mrqap(family = "poisson")` fit the same model.
 Calling `control_mrqap()` first shows the full set of controls, and
 finds a mistake before a long run starts. The tests, such as
-[`test_permutation()`](https://stocnet.github.io/infernet/reference/tests.md),
+[`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md),
 read `ncores`, `strategy`, and `seed` from the same object, so one set
 of controls serves a model and a test alike.
 
@@ -32,7 +32,7 @@ control_mrqap(
   seed = NULL,
   groups = NULL,
   ncores = NULL,
-  strategy = "sequential",
+  strategy = NULL,
   use_robust_errors = FALSE,
   random_intercept_nets = FALSE,
   random_intercept_sender = FALSE,
@@ -40,6 +40,7 @@ control_mrqap(
   random_intercept_reporter = FALSE,
   missing = "available",
   less_mem = FALSE,
+  persist = FALSE,
   ...
 )
 
@@ -95,14 +96,24 @@ print(x, ...)
   A number of cores to run the permutations on. More than one runs them
   on that many `"multisession"` workers, and one runs them sequentially,
   whatever `strategy` says. `NULL` (the default) leaves the choice to
-  `strategy`.
+  `strategy`. A parallel run helps only where each permutation is
+  costly: a family other than `"gaussian"`, random intercepts, or a
+  cognitive social structure, on a network of more than about 50 nodes,
+  with 1,000 or more `times`. Elsewhere the start of the workers costs
+  more than it saves: a gaussian model solves its design once, so each
+  permutation is cheap. Give `ncores` rather than
+  `strategy = "multisession"`, which starts a worker on every core.
 
 - strategy:
 
   The `{future}` plan that the permutations run on where `ncores` is
-  `NULL`: `"sequential"` (the default), `"multisession"`, `"multicore"`,
-  or `"cluster"`. The plan that was set before is restored after the
-  fit.
+  `NULL`: `"sequential"`, `"multisession"`, `"multicore"`, or
+  `"cluster"`. The plan that was set before is restored after the fit.
+  `NULL` (the default) uses the plan that was set with
+  [`future::plan()`](https://future.futureverse.org/reference/plan.html),
+  which is sequential unless it was changed. Set a plan once in a
+  session, with `future::plan(future::multisession, workers = 2)`, and
+  its workers start once, not once in each call.
 
 - use_robust_errors:
 
@@ -133,6 +144,13 @@ print(x, ...)
   Logical, whether to leave the observed model object out of the result,
   to save memory on a large network. `FALSE` by default.
 
+- persist:
+
+  Logical, whether the controls given in this call become the defaults
+  of the session. See the section on persistent controls. `FALSE` by
+  default, which changes nothing. Given as `persist = FALSE`, it clears
+  the persistent controls.
+
 - ...:
 
   Controls by another name: a name that infernet used before, or an
@@ -145,7 +163,52 @@ print(x, ...)
 ## Value
 
 An object of class `mrqap_control`: a list with one element for each
-control.
+control. Its attribute `source` says whether each control was `"given"`,
+comes from an `"option"`, or keeps its `"default"`.
+[`print()`](https://rdrr.io/r/base/print.html) returns `x`, invisibly.
+
+## Persistent controls
+
+`control_mrqap(ncores = 2, missing = "fail", persist = TRUE)` writes the
+controls that it is given to `options(infernet.control)`, after it
+checks them. Each later call of
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+[`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
+[`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
+and
+[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
+then uses them as defaults, and says so with
+`options(snet_verbosity = "verbose")`.
+
+- A control given in a call takes priority over a persistent one. Give
+  `strategy = NULL` in a call to use the plan of
+  [`future::plan()`](https://future.futureverse.org/reference/plan.html)
+  where a `strategy` or `ncores` persists.
+
+- A second call with `persist = TRUE` adds to the persistent controls,
+  and replaces a control that it gives again. A control given as `NULL`,
+  such as `control_mrqap(ncores = NULL, persist = TRUE)`, is removed.
+
+- `control_mrqap(persist = FALSE)` clears all of them.
+
+- `control_mrqap()` shows the controls in force, and marks each one that
+  comes from the persistent controls with `(option)`.
+
+- `control_mrqap()` reads the persistent controls when it is called, so
+  its result keeps the same controls if the options change later.
+
+A `seed` can persist. Each call then sets the same seed, and so draws
+the same random numbers, which reproduces each result. The print of a
+result gives the seed that it used.
+
+Every result records the controls that it used, as `control` (an
+attribute of a `diffs_model`). Give that record as `control` to fit the
+same model again without the options of the session.
 
 ## References
 
@@ -157,51 +220,48 @@ conditions." *Psychometrika* 72(4): 563-581.
 ## See also
 
 Other models:
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/results.md),
+[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
+[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
+[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
+[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
 [`regression`](https://stocnet.github.io/infernet/reference/regression.md),
 [`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`tests`](https://stocnet.github.io/infernet/reference/tests.md)
+[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
+[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
+[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 
 ## Examples
 
 ``` r
 control_mrqap(family = "poisson", seed = 1)
-#> Controls for an MRQAP
+#> # Controls for an MRQAP: 2 set, 13 at their defaults
 #> 
-#>   permute                    predictor
-#>   family                     poisson  (set)
-#>   directed                   NULL, read from the data
-#>   loops                      NULL, read from the data
-#>   seed                       1  (set)
-#>   groups                     NULL, all nodes together
-#>   ncores                     NULL, as strategy says
-#>   strategy                   sequential
-#>   use_robust_errors          FALSE
-#>   random_intercept_nets      FALSE
-#>   random_intercept_sender    FALSE
-#>   random_intercept_receiver  FALSE
-#>   random_intercept_reporter  FALSE
-#>   missing                    available
-#>   less_mem                   FALSE
+#>   family  "poisson"
+#>   seed    1
 # A name that infernet used before is converted, with a warning
 control_mrqap(nullhyp = "qapy")
 #> Warning: `nullhyp = "qapy"` is now `permute = "outcome"`.
 #> The control was renamed in infernet 0.2.0.
-#> Controls for an MRQAP
+#> # Controls for an MRQAP: 1 set, 14 at their defaults
 #> 
-#>   permute                    outcome  (set)
-#>   family                     auto
-#>   directed                   NULL, read from the data
-#>   loops                      NULL, read from the data
-#>   seed                       NULL, not set
-#>   groups                     NULL, all nodes together
-#>   ncores                     NULL, as strategy says
-#>   strategy                   sequential
-#>   use_robust_errors          FALSE
-#>   random_intercept_nets      FALSE
-#>   random_intercept_sender    FALSE
-#>   random_intercept_receiver  FALSE
-#>   random_intercept_reporter  FALSE
-#>   missing                    available
-#>   less_mem                   FALSE
+#>   permute  "outcome"
+# Controls that later calls use as defaults
+control_mrqap(missing = "fail", seed = 1, persist = TRUE)
+#> # Controls for an MRQAP: 2 set, 13 at their defaults
+#> 
+#>   seed     1
+#>   missing  "fail"
+control_mrqap()
+#> # Controls for an MRQAP: 2 set, 13 at their defaults
+#> 
+#>   seed     1  (option)
+#>   missing  "fail"  (option)
+#> 
+#> # (option) persists from control_mrqap(..., persist = TRUE);
+#> #   control_mrqap(persist = FALSE) clears it.
+control_mrqap(persist = FALSE)
+#> # Controls for an MRQAP: 0 set, 15 at their defaults
+#> 
 ```

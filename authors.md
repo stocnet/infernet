@@ -3,10 +3,10 @@
 ## Authors
 
 - **[James Hollway](https://jameshollway.com)**. Maintainer, author,
-  contributor. [](https://orcid.org/0000-0002-8361-9647)  
+  copyright holder. [](https://orcid.org/0000-0002-8361-9647)  
   IHEID
 
-- **Robert Krause**. Contributor.
+- **Robert Krause**. Author, copyright holder.
   [](https://orcid.org/0000-0003-4288-4732)
 
 ## Citation
@@ -14,14 +14,14 @@
 Source:
 [`DESCRIPTION`](https://github.com/stocnet/infernet/blob/main/DESCRIPTION)
 
-Hollway J (2026). *infernet: Inferential Models for Many Different Types
-of Networks*. R package version 0.5.0,
+Hollway J, Krause R (2026). *infernet: Inferential Models for Many
+Different Types of Networks*. R package version 0.6.0,
 <https://stocnet.github.io/infernet/>.
 
     @Manual{,
       title = {infernet: Inferential Models for Many Different Types of Networks},
-      author = {James Hollway},
+      author = {James Hollway and Robert Krause},
       year = {2026},
-      note = {R package version 0.5.0},
+      note = {R package version 0.6.0},
       url = {https://stocnet.github.io/infernet/},
     }

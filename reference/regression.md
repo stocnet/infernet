@@ -33,8 +33,6 @@ from MrQAP) that supports:
 
 ``` r
 estimate_mrqap(formula, .data, times = 1000, control = list())
-
-net_regression(formula, .data, times = 1000, control = list())
 ```
 
 ## Arguments
@@ -45,73 +43,33 @@ net_regression(formula, .data, times = 1000, control = list())
   network: a layer, a tie attribute such as `weight`, or `.` for the
   network's focal layer or the whole network. The right-hand side
   accepts these terms, whose arguments can be given by position or by
-  name:
+  name.
+  [terms_mrqap](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
+  says what each one measures, with its equation, and
+  [specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)
+  lists those that suit a network.
 
-  - `ego(attr, levels = NULL)`, `alter(attr, levels = NULL)` — the
-    sender's or the receiver's value of a node attribute; a categorical
-    attribute is dummy-coded, with the first category as the reference,
+  - of node attributes: `ego(x)`, `alter(x)`, `same(x)`, `mix(x)`,
+    `diff(x)`, and `sim(x)`;
 
-  - `same(attr, diff = FALSE, levels = NULL)` — 1 where sender and
-    receiver share an attribute value; with `diff = TRUE`, as in ergm's
-    `nodematch()`, one 0/1 column for each category, 1 where sender and
-    receiver both hold it. `match(attr)` is a deprecated alias of
-    `same(attr, diff = TRUE)`,
+  - of other layers: `tie(layer)`, or the layer named on its own,
+    `exchange(layer)`, `indeg(layer)`, and `outdeg(layer)`;
 
-  - `diff(attr, transformer_fn = abs)` — the transformed difference
-    between the sender's and the receiver's values: absolute by default,
-    and signed with `transformer_fn = identity`. `dist(attr)` is a
-    deprecated alias,
+  - of others' attributes: `tertius(layer, x)` and
+    `tertius_diff(layer, x)`;
 
-  - `sim(attr)` — proportional similarity in a numeric attribute, 1 -
-    \|d\| / range,
+  - of the outcome's previous wave, on a longitudinal network:
+    `inertia`, `recip`, and `trans`;
 
-  - `mix(attr, levels = NULL)` — one 0/1 column for each pair of a
-    sender's and a receiver's category, less the first pair as the
-    reference. The pairs are in ergm's order for `nodemix()`, the
-    sender's category changing fastest,
+  - of a list of networks: `global(x)`;
 
-  - `tie(layer, weighted = FALSE)` — another layer as a dyadic
-    covariate, 0/1 unless `weighted = TRUE`; a layer or tie attribute
-    named on its own enters with its values as stored,
-
-  - `exchange(layer)` — the reverse tie, j to i, in another layer;
-    `recip(layer)` is the same, and `recip()`, or `recip` on its own,
-    reads the outcome's own reverse tie, and warns,
-
-  - `indeg(layer, type = "alter", weighted = FALSE)` and
-    `outdeg(layer, type = "alter", weighted = FALSE)` — a node's number
-    of incoming or outgoing ties in another layer, for the receiver
-    (`"alter"`) or the sender (`"ego"`),
-
-  - `tertius(layer, attr, summarizer_fn = "mean")` — the mean (or the
-    tie-weighted sum, with `"sum"`) of an attribute over the receiver's
-    in-neighbours in a layer, other than the sender. A receiver with no
-    other in-neighbour takes the mean of the defined cells. The older
-    `tertius(attr)` reads the outcome's own ties, and warns,
-
-  - `tertius_diff(layer, attr, summarizer_fn = "mean")` — how far the
-    sender's value lies from that mean, as an absolute difference,
-
-  - `global(var)` — a network-level variable from the network's
-    `globals`, in a list of networks; on one network it is the
-    intercept.
+  - of the reporter of a cognitive social structure: `reporter(x)`,
+    `reporter_ego`, `reporter_alter`, and `reporter_same(x)`, for which
+    see the section on cognitive social structures.
 
   `:` and `*` give interactions of any order, as the product of the
-  terms.
-
-  `levels =` chooses the categories that get a column in `ego()`,
-  `alter()`, and `same()`, or the pairs in `mix()`, as in ergm. Give the
-  names, such as `levels = c("sales", "hr")` or, for `mix()`,
-  `levels = "sales -> hr"`, written as in `fit$terms` (`--` for an
-  undirected network). Or give positions in the order of the columns,
-  where a negative position leaves that one out: `levels = -1` is the
-  default of `ego()`, `alter()`, and `mix()`. In `ego()`, `alter()`, and
-  `mix()`, the categories left out are the reference together; where
-  every one is chosen, the first chosen is the reference. In `same()`, a
-  dyad that shares a category left out is not counted. An unknown name
-  aborts and lists the categories. A term with more than ten categories
-  and no `levels =` warns, since under `permute = "predictor"` each
-  column is permuted on its own.
+  terms. `match(x)` and `dist(x)` are deprecated aliases of
+  `same(x, diff = TRUE)` and `diff(x)`.
 
   A formula written for `{goldfish}` or `{ergm}` can be used as it is.
   It is first read by
@@ -150,10 +108,12 @@ net_regression(formula, .data, times = 1000, control = list())
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
   or a named list of its arguments, such as
   `list(family = "poisson", seed = 1)`. A control that is not named
-  keeps its default. See
+  keeps its default, or the value set with
+  `control_mrqap(..., persist = TRUE)`. See
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
   for each control, its default, and the names it converts from other
-  models and earlier versions.
+  models and earlier versions. The result records the controls that it
+  used as `control`.
 
 ## Value
 
@@ -198,19 +158,33 @@ Among its elements:
   `reference` category it is compared with, where the term is
   categorical; and for an interaction, its `operands`, the names of the
   columns it multiplies.
-  [`tidy()`](https://generics.r-lib.org/reference/tidy.html) adds these
-  columns to the estimates.
+  [`summary()`](https://rdrr.io/r/base/summary.html) adds these columns
+  to the estimates.
+
+- `call`, `formula`, and `model_formula`: the call, the formula as
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  read it, and the formula of the columns that were fitted.
+  [`update()`](https://rdrr.io/r/stats/update.html),
+  [`formula()`](https://rdrr.io/r/stats/formula.html), and
+  [`terms()`](https://rdrr.io/r/stats/terms.html) read them (see
+  [netreg_results](https://stocnet.github.io/infernet/reference/netreg_results.md)).
+
+- `fixed_df`, the number of parameters that a gaussian model absorbed by
+  demeaning, or `NULL`.
 
 When the outcome is binary – either `family = "binomial"` or
 `"gaussian"` with a 0/1 dependent – a probabilistic confusion matrix is
 attached as `$confusion_matrix`; for the gaussian-binary case the linear
 probability fitted values are clamped to 0/1 before sampling.
+[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+gives it again with another threshold or number of draws.
 
-## Functions
-
-- `net_regression()`: The name this function had in `{migraph}`, and in
-  infernet before 0.4.0. It still works, and warns once that it is
-  deprecated.
+- `node_names`, the names of the nodes, which name the random
+  intercepts; `control`, the controls as the fit resolved them; and
+  `record`, what
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  made of each term. [`print()`](https://rdrr.io/r/base/print.html) and
+  [`summary()`](https://rdrr.io/r/base/summary.html) read them.
 
 ## Cognitive social structures
 
@@ -233,10 +207,35 @@ receiver, and reporter, rather than for each sender and receiver.
 - `tertius()`, `recip()`, `indeg()`, and `outdeg()` on a CSS layer are
   computed within each report, since each reporter sees different ties.
 
+The `reporter` terms describe the reporter of each report, since a
+report about one's own ties can differ from a report about the ties of
+others (Krackhardt 1987):
+
+- `reporter(age)` is the reporter's age, the same over their whole
+  report;
+
+- `reporter_ego` is 1 in a report about the reporter's own outgoing tie,
+  and `reporter_alter` in a report about a tie to the reporter;
+
+- `reporter_same(dept, node = "alter")` is 1 where the reporter is of
+  the receiver's department.
+
+`reporter_ego`, `reporter_alter`, and `reporter_same()` need a directed
+or a two-mode network, since an undirected tie has no sender or
+receiver. In a two-mode CSS the column nodes report after the row nodes,
+and `reporter_same()` is not yet available. An attribute that only one
+mode holds gives `reporter()` an `NA` for every report of the other
+mode, so those reports are dropped. On a network that is not a CSS, a
+`reporter` term aborts. ergm has no reporter, so
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+drops these terms, and so does goldfish's `specify_dynam()`.
+
 A permutation relabels the nodes, and a reporter is a node, so the
 senders, receivers, and reporters are relabelled together.
 `(1 | reporter)` in the formula adds a random intercept for each
-reporter.
+reporter. A `| reporter` fixed effect absorbs `reporter()`, which is
+then refused, but not `reporter_ego` or `reporter_alter`, which vary
+within a report.
 
 A person who was not asked has a report of zeros unless the network
 marks them as missing, for example with
@@ -292,7 +291,9 @@ so that each node keeps its own trajectory under the null hypothesis.
 Three of goldfish's effects then read the outcome's previous wave, as
 goldfish and RSiena read the state of the network before each change:
 
-- `inertia`, the tie from i to j in the previous wave;
+- `inertia`, the tie from i to j in the previous wave, as 0/1, or its
+  value with `inertia(weighted = TRUE)`, as on a complete ranking, where
+  every dyad holds a tie;
 
 - `recip`, the tie from j to i in the previous wave;
 
@@ -385,23 +386,45 @@ conditions." *Psychometrika* 72(4): 563-581.
 
 Other models:
 [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/results.md),
+[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
+[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
+[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
+[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
 [`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`tests`](https://stocnet.github.io/infernet/reference/tests.md)
+[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
+[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
+[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
 model1 <- estimate_mrqap(
   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
   networkers, times = 20)
 print(model1)
-} # }
+#> # Linear MRQAP of weight
+#> 
+#> # A tibble: 4 × 5
+#>   term            estimate statistic p.value signif   
+#>   <chr>              <dbl>     <dbl> <chr>   <noquote>
+#> 1 (Intercept)        2.93      0.242 NA               
+#> 2 ego_Citations     -0.269    -1.69  0.3              
+#> 3 alter_Citations   -0.158    -0.997 0.6              
+#> 4 sim_Citations     39.4       3.13  < 0.05  *        
+#> 
+#> # Null: 20 permutations of each predictor, by double semi-partialling.
+#> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1
 # A cognitive social structure: each of 21 managers' report of who goes to
 # whom for advice, against the formal reporting structure that all share.
 css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
+# Whether a manager reports their own advice ties differently, and whether
+# senior managers report more advice.
+css_reporter <- estimate_mrqap(
+  advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
+  manynet::ison_hightech, times = 5)
 ```

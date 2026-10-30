@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,6 +20,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -37,9 +38,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a></h2>
+      <h2 id="testing">Testing<a class="anchor" aria-label="anchor" href="#testing"></a></h2>
 
-      <div class="section-desc"><p>Functions for testing network statistics against a null distribution:</p></div>
+      <div class="section-desc"><p>Functions for testing a network statistic against random networks, networks with the same degrees, or permutations of the network, and for testing the parameters and the fit of a model:</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -48,14 +49,28 @@
 
       <dl><dt>
 
-          <code><a href="tests.html">test_random()</a></code> <code><a href="tests.html">test_configuration()</a></code> <code><a href="tests.html">test_permutation()</a></code>
+          <code><a href="test_fit.html">test_gof()</a></code> <code><a href="test_fit.html">test_distributions()</a></code>
+
+        </dt>
+        <dd>Tests of model fit</dd>
+
+        <dt>
+
+          <code><a href="test_measures.html">test_random()</a></code> <code><a href="test_measures.html">test_configuration()</a></code> <code><a href="test_measures.html">test_permutation()</a></code>
 
         </dt>
         <dd>Tests of network measures</dd>
-      </dl></div><div class="section level2">
-      <h2 id="formulas">Formulas<a class="anchor" aria-label="anchor" href="#formulas"></a></h2>
 
-      <div class="section-desc"><p>Functions for reading one formula for an MRQAP, goldfish, or ergm, and for seeing what each model makes of each term:</p></div>
+        <dt>
+
+          <code><a href="test_parameter.html">test_parameter()</a></code> <code><a href="test_parameter.html">test_time()</a></code>
+
+        </dt>
+        <dd>Tests of a model's parameters</dd>
+      </dl></div><div class="section level2">
+      <h2 id="specifying">Specifying<a class="anchor" aria-label="anchor" href="#specifying"></a></h2>
+
+      <div class="section-desc"><p>The terms of an MRQAP formula and what each measures, the terms that suit a network, and functions for reading one formula for an MRQAP or an ERGM, and for seeing what each model makes of each term:</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -64,14 +79,28 @@
 
       <dl><dt>
 
-          <code><a href="specify.html">specify_mrqap()</a></code> <code><a href="specify.html">specify_dynam()</a></code> <code><a href="specify.html">specify_ergm()</a></code> <code><a href="specify.html">tidy(<i>&lt;mrqap_formula&gt;</i>)</a></code> <code><a href="specify.html">tidy(<i>&lt;dynam_formula&gt;</i>)</a></code> <code><a href="specify.html">tidy(<i>&lt;ergm_formula&gt;</i>)</a></code>
+          <code><a href="terms_mrqap.html">terms_mrqap</a></code>
+
+        </dt>
+        <dd>Terms of an MRQAP formula</dd>
+
+        <dt>
+
+          <code><a href="specify_terms.html">formula(<i>&lt;specify_terms&gt;</i>)</a></code> <code><a href="specify_terms.html">tidy(<i>&lt;specify_terms&gt;</i>)</a></code>
+
+        </dt>
+        <dd>The terms that suit a network</dd>
+
+        <dt>
+
+          <code><a href="specify.html">specify_mrqap()</a></code> <code><a href="specify.html">specify_ergm()</a></code> <code><a href="specify.html">tidy(<i>&lt;mrqap_formula&gt;</i>)</a></code> <code><a href="specify.html">tidy(<i>&lt;ergm_formula&gt;</i>)</a></code>
 
         </dt>
         <dd>Specify a model from a formula written for many models</dd>
       </dl></div><div class="section level2">
-      <h2 id="regression">Regression<a class="anchor" aria-label="anchor" href="#regression"></a></h2>
+      <h2 id="regressing">Regressing<a class="anchor" aria-label="anchor" href="#regressing"></a></h2>
 
-      <div class="section-desc"><p>Functions for regressing networks on nodal and dyadic covariates:</p></div>
+      <div class="section-desc"><p>Functions for regressing a network on nodal and dyadic covariates by multiple regression quadratic assignment procedure (MRQAP), with random or fixed effects, missing data, panels, and cognitive social structures:</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -79,22 +108,22 @@
 
 
       <dl><dt>
-
-          <code><a href="regression.html">estimate_mrqap()</a></code> <code><a href="regression.html">net_regression()</a></code>
-
-        </dt>
-        <dd>Regression for network data</dd>
-
-        <dt>
 
           <code><a href="control_mrqap.html">control_mrqap()</a></code> <code><a href="control_mrqap.html">print(<i>&lt;mrqap_control&gt;</i>)</a></code>
 
         </dt>
         <dd>Controls for an MRQAP</dd>
-      </dl></div><div class="section level2">
-      <h2 id="results">Results<a class="anchor" aria-label="anchor" href="#results"></a></h2>
 
-      <div class="section-desc"><p>Functions for reporting the results of tests and regressions:</p></div>
+        <dt>
+
+          <code><a href="regression.html">estimate_mrqap()</a></code>
+
+        </dt>
+        <dd>Regression for network data</dd>
+      </dl></div><div class="section level2">
+      <h2 id="diffusing">Diffusing<a class="anchor" aria-label="anchor" href="#diffusing"></a></h2>
+
+      <div class="section-desc"><p>Functions for simulating many diffusions on a network, to test a model of diffusion against:</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -103,17 +132,70 @@
 
       <dl><dt>
 
-          <code><a href="results.html">print(<i>&lt;netreg_lm&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;netreg_glm&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netreg_lm&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netreg_glm&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netreg_css&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;network_test&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;network_test&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;ergm&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;ergm&gt;</i>)</a></code> <code><a href="results.html">tidy(<i>&lt;sienaFit&gt;</i>)</a></code> <code><a href="results.html">glance(<i>&lt;sienaFit&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;network_test&gt;</i>)</a></code> <code><a href="results.html">print(<i>&lt;netreg_css&gt;</i>)</a></code>
+          <code><a href="play_diffusions.html">play_diffusions()</a></code> <code><a href="play_diffusions.html">summary(<i>&lt;diffs_model&gt;</i>)</a></code> <code><a href="play_diffusions.html">print(<i>&lt;diffs_model&gt;</i>)</a></code>
 
         </dt>
-        <dd>Reporting network regression and test results</dd>
+        <dd>Simulating many diffusions</dd>
+      </dl></div><div class="section level2">
+      <h2 id="diagnosing">Diagnosing<a class="anchor" aria-label="anchor" href="#diagnosing"></a></h2>
+
+      <div class="section-desc"><p>Functions for diagnosing model results:</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="diagnose_confusion.html">diagnose_confusion()</a></code> <code><a href="diagnose_confusion.html">print(<i>&lt;diagnose_confusion&gt;</i>)</a></code> <code><a href="diagnose_confusion.html">tidy(<i>&lt;diagnose_confusion&gt;</i>)</a></code> <code><a href="diagnose_confusion.html">glance(<i>&lt;diagnose_confusion&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Diagnosing how well a model classifies ties</dd>
+
+        <dt>
+
+          <code><a href="predict.html">predict(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="predict.html">predict(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="predict.html">predict(<i>&lt;netlogit&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Predicting from a network regression</dd>
+      </dl></div><div class="section level2">
+      <h2 id="reporting">Reporting<a class="anchor" aria-label="anchor" href="#reporting"></a></h2>
+
+      <div class="section-desc"><p>Functions for reporting and reading the results of regressions and tests, for tidying the results of other network models beside them, for predicting from a regression, and for diagnosing how well it classifies ties:</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="netreg_results.html">print(<i>&lt;netreg_lm&gt;</i>)</a></code> <code><a href="netreg_results.html">print(<i>&lt;netreg_glm&gt;</i>)</a></code> <code><a href="netreg_results.html">print(<i>&lt;netreg_css&gt;</i>)</a></code> <code><a href="netreg_results.html">print(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">tidy(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">summary(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">print(<i>&lt;summary_netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">glance(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">glance(<i>&lt;netreg_lm&gt;</i>)</a></code> <code><a href="netreg_results.html">glance(<i>&lt;netreg_glm&gt;</i>)</a></code> <code><a href="netreg_results.html">glance(<i>&lt;netreg_css&gt;</i>)</a></code> <code><a href="netreg_results.html">nobs(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">logLik(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">deviance(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">fitted(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">residuals(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">formula(<i>&lt;netreg&gt;</i>)</a></code> <code><a href="netreg_results.html">terms(<i>&lt;netreg&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Reporting network regression results</dd>
+
+        <dt>
+
+          <code><a href="report_tests.html">tidy(<i>&lt;network_test&gt;</i>)</a></code> <code><a href="report_tests.html">glance(<i>&lt;network_test&gt;</i>)</a></code> <code><a href="report_tests.html">print(<i>&lt;network_test&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Reporting network test results</dd>
+
+        <dt>
+
+          <code><a href="other_results.html">tidy(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="other_results.html">tidy(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="other_results.html">glance(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="other_results.html">glance(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="other_results.html">print(<i>&lt;netlm&gt;</i>)</a></code> <code><a href="other_results.html">print(<i>&lt;netlogit&gt;</i>)</a></code> <code><a href="other_results.html">tidy(<i>&lt;ergm&gt;</i>)</a></code> <code><a href="other_results.html">glance(<i>&lt;ergm&gt;</i>)</a></code> <code><a href="other_results.html">tidy(<i>&lt;sienaFit&gt;</i>)</a></code> <code><a href="other_results.html">glance(<i>&lt;sienaFit&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Tidying the results of other network models</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

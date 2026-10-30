@@ -7,10 +7,11 @@ return the formula that another model fits from it:
   [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
   which calls it on every formula;
 
-- `specify_dynam()` for a DyNAM or REM in `{goldfish}`;
-
 - `specify_ergm()` for
   [`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html).
+
+`{goldfish}`'s own `specify_dynam()` writes a formula for a DyNAM or
+REM, and reads the same terms.
 
 A term with an equivalent in the model is rewritten as that term. A term
 that means something different in the model is kept and named. A term
@@ -28,15 +29,10 @@ fitting function, which then aborts and suggests the nearest name.
 ``` r
 specify_mrqap(formula, .data = NULL, input = NULL)
 
-specify_dynam(formula, .data = NULL, input = NULL)
-
 specify_ergm(formula, .data = NULL, input = NULL)
 
 # S3 method for class 'mrqap_formula'
 tidy(x, .data = NULL, ...)
-
-# S3 method for class 'dynam_formula'
-tidy(x, ...)
 
 # S3 method for class 'ergm_formula'
 tidy(x, ...)
@@ -46,7 +42,10 @@ tidy(x, ...)
 
 - formula:
 
-  A formula written for an MRQAP, goldfish, or ergm.
+  A formula written for an MRQAP, goldfish, or ergm. Without it, or with
+  `.` as its right-hand side, the table of every term for `.data`, as
+  [specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)
+  describes.
 
 - .data:
 
@@ -61,7 +60,8 @@ tidy(x, ...)
 
   The model the formula was written for: `"mrqap"`, `"dynam"`, `"rem"`,
   or `"ergm"`. `NULL`, the default, reads it from the class of the
-  formula, or else from the names in the formula.
+  formula, such as goldfish's `"goldfishFormula"`, or else from the
+  names in the formula.
 
 - x:
 
@@ -73,14 +73,17 @@ tidy(x, ...)
 
 ## Value
 
-A formula of class `c("mrqap_formula", "formula")`,
-`c("dynam_formula", "formula")`, or `c("ergm_formula", "formula")`. Its
-`input` attribute names the model it was read from, and its `record`
-attribute holds what the model makes of each term. Printing the formula
-lists them, and
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) returns them
-as a tibble, with the columns `term`, `status`, `as`, and `reason`, and
-for an MRQAP also `columns`.
+A formula of class `c("mrqap_formula", "formula")` or
+`c("ergm_formula", "formula")`. Its `input` attribute names the model it
+was read from, and its `record` attribute holds what the model makes of
+each term. Printing the formula lists the terms that do not fit as
+written and returns the formula, invisibly.
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) returns every
+term as a tibble, with the columns `term`, `status`, `as`, and `reason`,
+and for an MRQAP also `columns`. Without a formula, the table of every
+term for `.data`, as
+[specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)
+describes.
 
 ## What each model makes of each term
 
@@ -106,9 +109,10 @@ is what the model makes of the term:
 
 An MRQAP warns for a term that reads the outcome's own ties, such as
 `recip`, and refuses `tie()`, `indeg()`, and `outdeg()` of the outcome
-layer. For an MRQAP,
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) with `.data`
-also builds each term and names its `columns`, as
+layer. It drops an offset, such as goldfish's `offset(recip, coef = 0)`,
+since it estimates every coefficient; ergm keeps an ergm one. For an
+MRQAP, [`tidy()`](https://generics.r-lib.org/reference/tidy.html) with
+`.data` also builds each term and names its `columns`, as
 [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
 names them.
 
@@ -139,22 +143,8 @@ Both read `levels =` as names or positions. infernet does not read
 ergm's functions for `levels =`, such as `LARGEST`, or `nodemix()`'s
 `levels =`, which changes the positions of `levels2 =`: such a term is
 left to ergm, and an MRQAP drops it.
-
-|  |  |
-|----|----|
-| infernet | ergm |
-| `ego(x)` | `nodeocov("x")`, `nodeofactor("x")`; `b1cov("x")` in a two-mode network; `nodecov("x")` in an undirected one |
-| `alter(x)` | `nodeicov("x")`, `nodeifactor("x")`; `b2cov("x")` in a two-mode network |
-| `same(x)` | `nodematch("x")` |
-| `same(x, diff = TRUE)` | `nodematch("x", diff = TRUE)` |
-| `mix(x)` | `nodemix("x")` |
-| `ego(x, levels = )`, `same(x, levels = )` | `nodeofactor("x", levels = )`, `nodematch("x", levels = )` |
-| `mix(x, levels = )` | `nodemix("x", levels2 = )` |
-| `diff(x)` | `absdiff("x")` |
-| `diff(x, transformer_fn = identity)` | `diff("x")` |
-| a layer, or `tie(layer)` | `edgecov()` |
-| `recip` | `mutual` |
-| `trans`, `cycle`, `four`, `triangle` | `ttriple`, `ctriple`, `cycle(4)`, `triangle` |
+[terms_mrqap](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
+gives each term's ergm equivalent.
 
 Read from ergm, `nodecov("x")` becomes `ego(x) + alter(x)`, and `edges`
 and `density` are the intercept, which an MRQAP always has. ergm's terms
@@ -179,11 +169,12 @@ fits one report of one network.
 
 ## goldfish and infernet
 
-goldfish's terms are infernet's where the two packages share them.
-`sim()` is 1 - \|d\| / range in infernet and -\|d\| in goldfish, which
-changes the scale of its coefficient but not its test, and `tertius()`
-and `tertius_diff()` leave out the sender in infernet and include it in
-goldfish. Both are kept and named.
+goldfish's terms are infernet's where the two packages share them, as
+[terms_mrqap](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
+lists. `sim()` is 1 - \|d\| / range in infernet and -\|d\| in goldfish,
+which changes the scale of its coefficient but not its test, and
+`tertius()` and `tertius_diff()` leave out the sender in infernet and
+include it in goldfish. Both are kept and named.
 
 For an MRQAP, goldfish's endogenous effects, such as `cycle`,
 `common_sender`, `common_receiver`, and `four`, read the outcome's own
@@ -194,59 +185,74 @@ outcome's previous wave where `.data` is a longitudinal network, and fit
 there; on a cross-sectional network, `inertia` and `trans` are dropped
 too.
 
-For goldfish, a layer named on its own becomes
-`tie(layer, weighted = TRUE)`, `exchange(layer)` becomes `recip(layer)`,
-and `dist(x)` becomes `diff(x)`. `same(x, diff = TRUE)`,
-[`match()`](https://rdrr.io/r/base/match.html), `mix()`, random
-intercepts, and fixed effects have no goldfish term, and are dropped.
+goldfish names the side of `indeg()` and `outdeg()` with `type =`, and
+reads the receiver for both by default, where infernet's `outdeg()`
+reads the sender. A goldfish formula is read as goldfish reads it:
+`outdeg(friends)` becomes `outdeg(friends, node = "alter")`, with a
+warning, and `type =` becomes `node =`. `indeg` or `outdeg` on its own
+reads the outcome's own degree in goldfish, and is dropped for an MRQAP
+and for ergm. goldfish's older formulas name a node attribute with its
+table of nodes, as in `ego(actors$floor)`, which is read as
+`ego(floor)`, since the network holds its nodes' attributes.
 
 ## See also
 
+[terms_mrqap](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
+for what each term measures, and
+[specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)
+for the terms that suit a network.
+
 Other models:
 [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/results.md),
+[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
+[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
+[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
+[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
 [`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`tests`](https://stocnet.github.io/infernet/reference/tests.md)
+[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
+[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
+[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 
 ## Examples
 
 ``` r
 # An ergm formula, read for an MRQAP
 specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
+#> # An MRQAP formula read from a formula for ergm
+#> 
 #> advice ~ recip + same(dept) + friends
-#> Read from a formula for ergm 
-#>   adapted edges: is the intercept that the model always has
-#>   adapted mutual -> recip
-#>   adapted nodematch("dept") -> same(dept)
-#>   adapted edgecov("friends") -> friends
+#> 
+#> # adapted edges: is the intercept that the model always has
+#> # adapted mutual -> recip
+#> # adapted nodematch("dept") -> same(dept)
+#> # adapted edgecov("friends") -> friends
 # A goldfish formula, read for an MRQAP
 f <- suppressWarnings(
   specify_mrqap(advice ~ inertia + recip + trans + ego(age)))
 f
+#> # An MRQAP formula read from a formula for goldfish
+#> 
 #> advice ~ recip + ego(age)
-#> Read from a formula for dynam 
-#>   drops inertia: needs a longitudinal network, where it reads the outcome's previous wave
-#>   warns recip: reads the outcome's own ties, which permuting the outcome does not permute with it
-#>   drops trans: needs a longitudinal network, where it reads the outcome's previous wave
-#>   fits ego(age)
-# An MRQAP formula, written for goldfish
-specify_dynam(advice ~ ego(age) + same(dept) + friends + exchange(friends))
-#> advice ~ ego(age) + same(dept) + tie(friends, weighted = TRUE) + 
-#>     recip(friends)
-#> Read from a formula for mrqap 
-#>   fits ego(age)
-#>   fits same(dept)
-#>   adapted friends -> tie(friends, weighted = TRUE)
-#>   adapted exchange(friends) -> recip(friends)
+#> 
+#> # drops inertia: needs a longitudinal network, where it reads the outcome's
+#> #   previous wave
+#> # warns recip: reads the outcome's own ties, which permuting the outcome does
+#> #   not permute with it
+#> # drops trans: needs a longitudinal network, where it reads the outcome's
+#> #   previous wave
 # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
+#> # An ergm formula read from a formula for goldfish
+#> 
 #> advice ~ edges + nodeocov("age") + nodematch("dept") + mutual + 
 #>     ttriple
-#> Read from a formula for dynam 
-#>   adapted ego(age) -> nodeocov("age")
-#>   adapted same(dept) -> nodematch("dept")
-#>   adapted recip -> mutual
-#>   adapted trans -> ttriple
+#> 
+#> # adapted ego(age) -> nodeocov("age")
+#> # adapted same(dept) -> nodematch("dept")
+#> # adapted recip -> mutual
+#> # adapted trans -> ttriple
 # Each term, and what the model makes of it
 tidy(f)
 #> # A tibble: 4 × 5

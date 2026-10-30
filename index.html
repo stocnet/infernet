@@ -16,8 +16,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Inferential Models for Many Different Types of Networks">
-<meta name="description" content="A set of tools for testing networks. It includes functions for univariate and multivariate conditional uniform graph and quadratic assignment procedure testing, and multiple regression quadratic assignment procedure (MRQAP) models for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the manynet package, all functions operate with matrices, edge lists, and igraph, network, and tidygraph objects, and on one-mode and two-mode (bipartite) networks.">
-<meta property="og:description" content="A set of tools for testing networks. It includes functions for univariate and multivariate conditional uniform graph and quadratic assignment procedure testing, and multiple regression quadratic assignment procedure (MRQAP) models for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the manynet package, all functions operate with matrices, edge lists, and igraph, network, and tidygraph objects, and on one-mode and two-mode (bipartite) networks.">
+<meta name="description" content="Tools for testing and modelling network data. Provides conditional uniform graph and quadratic assignment procedure tests of network statistics, and multiple regression quadratic assignment procedure (MRQAP) models (Krackhardt 1988 &lt;doi:10.1016/0378-8733(88)90004-4&gt;; Dekker, Krackhardt, and Snijders 2007 &lt;doi:10.1007/s11336-007-9016-1&gt;) for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the manynet package, all functions operate with matrices, edge lists, and igraph, network, and tidygraph objects, and on one-mode and two-mode (bipartite) networks.">
+<meta property="og:description" content="Tools for testing and modelling network data. Provides conditional uniform graph and quadratic assignment procedure tests of network statistics, and multiple regression quadratic assignment procedure (MRQAP) models (Krackhardt 1988 &lt;doi:10.1016/0378-8733(88)90004-4&gt;; Dekker, Krackhardt, and Snijders 2007 &lt;doi:10.1007/s11336-007-9016-1&gt;) for a range of families, with random and fixed effects, missing data, and cognitive social structures. Built on the manynet package, all functions operate with matrices, edge lists, and igraph, network, and tidygraph objects, and on one-mode and two-mode (bipartite) networks.">
 <meta property="og:image" content="https://stocnet.github.io/infernet/logo.png">
 </head>
 <body>
@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
 <li><a class="dropdown-item" href="articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">News</a></li>
@@ -70,46 +71,65 @@
 <div class="section level2">
 <h2 id="about-the-package">About the package<a class="anchor" aria-label="anchor" href="#about-the-package"></a>
 </h2>
-<p><a href="https://stocnet.github.io/infernet/">infernet</a> is the inferential layer of the <a href="https://github.com/stocnet" class="external-link">stocnet</a> ecosystem. It offers two things:</p>
+<p><a href="https://stocnet.github.io/infernet/">infernet</a> is the inferential layer of the <a href="https://github.com/stocnet" class="external-link">stocnet</a> ecosystem. It asks whether what we see in a network could have come about by chance. Each of its answers compares an observed value with a distribution of values from networks that a null hypothesis allows: random networks, networks with the same degrees, or the same network with its nodes relabelled.</p>
+<p>The package has five families of functions:</p>
 <ul>
 <li>
-<strong>Tests of network statistics.</strong> <code><a href="reference/tests.html">test_random()</a></code> runs a conditional uniform graph (CUG) test, <code><a href="reference/tests.html">test_configuration()</a></code> conditions on the degree sequence, and <code><a href="reference/tests.html">test_permutation()</a></code> runs a quadratic assignment procedure (QAP) test. Each takes any graph-level statistic and compares it against a simulated null distribution.</li>
+<strong>Tests</strong> of a network statistic, of a model’s parameters, or of a model’s fit: <code><a href="reference/test_measures.html">test_random()</a></code>, <code><a href="reference/test_measures.html">test_configuration()</a></code>, <code><a href="reference/test_measures.html">test_permutation()</a></code>, <code><a href="reference/test_parameter.html">test_parameter()</a></code>, <code><a href="reference/test_parameter.html">test_time()</a></code>, <code><a href="reference/test_fit.html">test_gof()</a></code>, and <code><a href="reference/test_fit.html">test_distributions()</a></code>.</li>
 <li>
-<strong>Network regression.</strong> <code><a href="reference/regression.html">estimate_mrqap()</a></code> fits a multiple regression quadratic assignment procedure (MRQAP) model, using either Dekker et al’s double semi-partialling or a permutation of the dependent network alone.</li>
+<strong>Specification</strong> of a formula that one model can read and another can fit: <code><a href="reference/specify.html">specify_mrqap()</a></code> and <code><a href="reference/specify.html">specify_ergm()</a></code>.</li>
+<li>
+<strong>Regression</strong> of a network on nodal and dyadic covariates, by multiple regression quadratic assignment procedure (MRQAP): <code><a href="reference/regression.html">estimate_mrqap()</a></code> and <code><a href="reference/control_mrqap.html">control_mrqap()</a></code>.</li>
+<li>
+<strong>Diffusion</strong>, simulated many times, to test a model of diffusion against: <code><a href="reference/play_diffusions.html">play_diffusions()</a></code>.</li>
+<li>
+<strong>Results</strong>, as tidy data frames: <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, and <code><a href="reference/predict.html">predict()</a></code>.</li>
 </ul>
-<p>The package combines the formula interface of <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> with the estimators, missing-data handling, and cognitive social structure treatment of Robert Krause’s <code>MrQAP</code>.</p>
+<p>Every function accepts the networks that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> reads: matrices, edgelists, <a href="https://r.igraph.org/" class="external-link">igraph</a>, <a href="https://statnet.org/" class="external-link">network</a>, and <a href="https://tidygraph.data-imaginist.com" class="external-link">tidygraph</a> objects, one-mode or two-mode, directed or undirected, cross-sectional or longitudinal.</p>
 </div>
 <div class="section level2">
-<h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
+<h2 id="where-infernet-sits-in-stocnet">Where infernet sits in stocnet<a class="anchor" aria-label="anchor" href="#where-infernet-sits-in-stocnet"></a>
 </h2>
-<p><a href="https://stocnet.github.io/infernet/">infernet</a> and the other <a href="https://github.com/stocnet" class="external-link">stocnet</a> packages aim for three things:</p>
+<p><a href="https://stocnet.github.io/infernet/">infernet</a> does one job, and leaves the other jobs to its neighbours:</p>
 <ul>
 <li>
-<strong>Declarative simplicity</strong>: functions do one clearly named thing with few arguments. For example, <code><a href="reference/tests.html">test_permutation()</a></code> is named for the null distribution it draws, and <code><a href="reference/regression.html">estimate_mrqap()</a></code> follows the <code>estimate_*()</code> verb of <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>.</li>
+<a href="https://stocnet.github.io/manynet/" class="external-link"><code>{manynet}</code></a> holds the data: the network classes, the conversions between them, and the networks that the examples below use.</li>
 <li>
-<strong>Pleasant predictability</strong>: users can guess a function’s behaviour from its family. For example, the <code>test_*()</code> functions all take a network, a statistic, and a number of <code>times</code>.</li>
+<a href="https://stocnet.github.io/netrics/" class="external-link"><code>{netrics}</code></a> holds the measures, such as <code><a href="https://stocnet.github.io/netrics/reference/measure_assort_net.html" class="external-link">net_by_heterophily()</a></code>, that the tests take as their statistic.</li>
 <li>
-<strong>Graceful inclusivity</strong>: functions accept whatever network users bring and return something they can use. For example, <code><a href="reference/regression.html">estimate_mrqap()</a></code> works on any network that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> can convert, one-mode or two-mode, and keeps missing data missing.</li>
+<a href="https://stocnet.github.io/autograph/" class="external-link"><code>{autograph}</code></a> draws the results: <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> of a test or a diffusion.</li>
+<li>
+<a href="https://stocnet.github.io/goldfish/" class="external-link"><code>{goldfish}</code></a> and <a href="https://statnet.org" class="external-link"><code>{ergm}</code></a> fit the models that a formula can move to, with <code><a href="reference/specify.html">specify_ergm()</a></code> here and <code>specify_dynam()</code> in <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>.</li>
+<li>
+<a href="https://stocnet.github.io/migraph/" class="external-link"><code>{migraph}</code></a> holds the book and the teaching material that uses all of these.</li>
 </ul>
-<p>See the <a href="https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style" class="external-link">contributing guide</a> for how these principles translate into rules for the package.</p>
-</div>
-<div class="section level2">
-<h2 id="reuseable-formulas">Reuseable formulas<a class="anchor" aria-label="anchor" href="#reuseable-formulas"></a>
-</h2>
-<p>Models are specified with a formula, so the same specification can be moved between networks and between model types:</p>
+<p><a href="https://stocnet.github.io/infernet/">infernet</a> loads <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> and <a href="https://stocnet.github.io/netrics/" class="external-link">netrics</a>, so their networks and measures are available after <code><a href="https://stocnet.github.io/infernet/">library(infernet)</a></code>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stocnet.github.io/infernet/">infernet</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_networkers.html" class="external-link">ison_networkers</a></span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">manynet</span><span class="fu">::</span><span class="fu">to_subgraph</span><span class="op">(</span><span class="va">Discipline</span> <span class="op">==</span> <span class="st">"Sociology"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span>
-<span>               <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span></code></pre></div>
-<p>Alongside plain references to other networks, which enter as dyadic covariates, the right-hand side accepts:</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stocnet.github.io/infernet/">infernet</a></span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a>
+</h2>
+<p>A conditional uniform graph (CUG) test compares a statistic with its values on random networks of the same size and density. A configuration test keeps the degree of each node too. A quadratic assignment procedure (QAP) test relabels the nodes of the observed network, so that the ties stay as they are and only the attributes move. Each test takes a network, a statistic from <a href="https://stocnet.github.io/netrics/" class="external-link">netrics</a>, any arguments of that statistic, and a number of simulations as <code>times</code>:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">marvel</span> <span class="op">&lt;-</span> <span class="va">fict_marvel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_plexity.html" class="external-link">to_uniplex</a></span><span class="op">(</span><span class="st">"relationship"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_weight.html" class="external-link">to_unsigned</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_scope.html" class="external-link">to_giant</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/test_measures.html">test_random</a></span><span class="op">(</span><span class="va">marvel</span>, <span class="va">net_by_heterophily</span>, attribute <span class="op">=</span> <span class="st">"Gender"</span>,</span>
+<span>            times <span class="op">=</span> <span class="fl">200</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/test_measures.html">test_configuration</a></span><span class="op">(</span><span class="va">marvel</span>, <span class="va">net_by_heterophily</span>, attribute <span class="op">=</span> <span class="st">"Gender"</span>,</span>
+<span>                   times <span class="op">=</span> <span class="fl">200</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/test_measures.html">test_permutation</a></span><span class="op">(</span><span class="va">marvel</span>, <span class="va">net_by_heterophily</span>, attribute <span class="op">=</span> <span class="st">"Gender"</span>,</span>
+<span>                 times <span class="op">=</span> <span class="fl">200</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code>control</code> takes a seed, and a number of cores to run the simulations on. The same seed gives the same result, sequentially or in parallel.</p>
+</div>
+<div class="section level2">
+<h2 id="specification">Specification<a class="anchor" aria-label="anchor" href="#specification"></a>
+</h2>
+<p>A model is written as a formula. The terms on the right-hand side construct a matrix each:</p>
 <table class="table">
 <colgroup>
-<col width="27%">
-<col width="72%">
+<col width="50%">
+<col width="50%">
 </colgroup>
 <thead><tr>
 <th>Term</th>
@@ -117,32 +137,203 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><code>ego(attr)</code></td>
-<td>the sender’s value of a nodal attribute</td>
-</tr>
-<tr>
-<td><code>alter(attr)</code></td>
-<td>the receiver’s value</td>
+<td>
+<code>ego(attr)</code>, <code>alter(attr)</code>
+</td>
+<td>the sender’s or the receiver’s value of a nodal attribute</td>
 </tr>
 <tr>
 <td><code>same(attr)</code></td>
-<td>1 where sender and receiver share an attribute value</td>
+<td>1 where sender and receiver share a value</td>
 </tr>
 <tr>
-<td><code>dist(attr)</code></td>
-<td>the absolute difference in a numeric attribute</td>
+<td>
+<code>diff(attr)</code>, <code>sim(attr)</code>
+</td>
+<td>the difference, or the similarity, of a numeric attribute</td>
 </tr>
 <tr>
-<td><code>sim(attr)</code></td>
-<td>the proportional similarity in a numeric attribute</td>
+<td>
+<code>tie(layer)</code>, or the name of a layer</td>
+<td>the ties of another layer of the network</td>
 </tr>
 <tr>
-<td><code>tertius(attr, fn)</code></td>
+<td>
+<code>recip(layer)</code>, <code>exchange(layer)</code>
+</td>
+<td>the reverse tie, in this or another layer</td>
+</tr>
+<tr>
+<td>
+<code>indeg(layer)</code>, <code>outdeg(layer)</code>
+</td>
+<td>the degree of the sender or the receiver</td>
+</tr>
+<tr>
+<td><code>tertius(attr)</code></td>
 <td>an aggregate of an attribute over a node’s other ties</td>
+</tr>
+<tr>
+<td>
+<code>inertia</code>, <code>recip</code>, <code>trans</code>
+</td>
+<td>the outcome’s own ties, in the previous wave of a panel</td>
 </tr>
 </tbody>
 </table>
-<p>Further options are passed through a <code>control</code> list: the model family, the null hypothesis, random or fixed effects, robust standard errors, the parallel strategy, and an optional <a href="https://torch.mlverse.org/docs" class="external-link">torch</a> path for running permutations on a GPU.</p>
+<p>The same formula can be read for an MRQAP or an ERGM, and a formula written for a goldfish DyNAM can be read for either. A <code>specify_*()</code> function reads a formula written for any of the three models, rewrites each term with its equivalent in its own model, and drops, with a warning, each term that its model cannot fit:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># An ergm formula, read for an MRQAP</span></span>
+<span><span class="fu"><a href="reference/specify.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="va">mutual</span> <span class="op">+</span> <span class="fu">nodematch</span><span class="op">(</span><span class="st">"dept"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">edgecov</span><span class="op">(</span><span class="st">"friends"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # An MRQAP formula read from a formula for ergm</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; advice ~ recip + same(dept) + friends</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; # adapted edges: is the intercept that the model always has</span></span>
+<span><span class="co">#&gt; # adapted mutual -&gt; recip</span></span>
+<span><span class="co">#&gt; # adapted nodematch("dept") -&gt; same(dept)</span></span>
+<span><span class="co">#&gt; # adapted edgecov("friends") -&gt; friends</span></span>
+<span><span class="co"># A goldfish formula, written for ergm</span></span>
+<span><span class="fu"><a href="reference/specify.html">specify_ergm</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">age</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="va">recip</span> <span class="op">+</span> <span class="va">trans</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # An ergm formula read from a formula for goldfish</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; advice ~ edges + nodeocov("age") + nodematch("dept") + mutual + </span></span>
+<span><span class="co">#&gt;     ttriple</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; # adapted ego(age) -&gt; nodeocov("age")</span></span>
+<span><span class="co">#&gt; # adapted same(dept) -&gt; nodematch("dept")</span></span>
+<span><span class="co">#&gt; # adapted recip -&gt; mutual</span></span>
+<span><span class="co">#&gt; # adapted trans -&gt; ttriple</span></span></code></pre></div>
+<p><code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of a specification gives one row for each term, with what the model makes of it on a network:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/specify.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">age</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="fu">recip</span><span class="op">(</span><span class="va">friends</span><span class="op">)</span> <span class="op">+</span> <span class="va">inertia</span>,</span>
+<span>                      <span class="va">ison_hightech</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">spec</span>, <span class="va">ison_hightech</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"term"</span>, <span class="st">"status"</span>, <span class="st">"reason"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 4 x 3</span></span>
+<span><span class="co">#&gt;   term           status reason                                                  </span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;          &lt;chr&gt;  &lt;chr&gt;                                                   </span></span>
+<span><span class="co">#&gt; 1 ego(age)       fits   &lt;NA&gt;                                                    </span></span>
+<span><span class="co">#&gt; 2 same(dept)     fits   &lt;NA&gt;                                                    </span></span>
+<span><span class="co">#&gt; 3 recip(friends) fits   &lt;NA&gt;                                                    </span></span>
+<span><span class="co">#&gt; 4 inertia        drops  needs a longitudinal network, where it reads the outcom~</span></span></code></pre></div>
+<p>With a network as <code>.data</code>, <code><a href="reference/specify.html">specify_ergm()</a></code> also gives the matrices of the terms that ergm has no name for, so that <code><a href="https://rdrr.io/pkg/ergm/man/ergm.html" class="external-link">ergm::ergm()</a></code> can fit the formula that it returns.</p>
+</div>
+<div class="section level2">
+<h2 id="regression">Regression<a class="anchor" aria-label="anchor" href="#regression"></a>
+</h2>
+<p><code><a href="reference/regression.html">estimate_mrqap()</a></code> fits a regression to a network, and permutes the nodes to find the p-value of each coefficient. By default it uses Dekker, Krackhardt, and Snijders’ (2007) double semi-partialling, which permutes the residuals of each predictor:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="va">ison_networkers</span> <span class="op">|&gt;</span> <span class="fu">to_subgraph</span><span class="op">(</span><span class="va">Discipline</span> <span class="op">==</span> <span class="st">"Sociology"</span><span class="op">)</span></span>
+<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span>
+<span>                        <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">200</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">model</span></span>
+<span><span class="co">#&gt; # Linear MRQAP of weight</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; # A tibble: 4 x 5</span></span>
+<span><span class="co">#&gt;   term            estimate statistic p.value signif   </span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;              &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;   &lt;noquote&gt;</span></span>
+<span><span class="co">#&gt; 1 (Intercept)        2.93      0.242 &lt;NA&gt;             </span></span>
+<span><span class="co">#&gt; 2 ego_Citations     -0.269    -1.69  0.48             </span></span>
+<span><span class="co">#&gt; 3 alter_Citations   -0.158    -0.997 0.51             </span></span>
+<span><span class="co">#&gt; 4 sim_Citations     39.4       3.13  0.04    *        </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; # Null: 200 permutations of each predictor, by double semi-partialling.</span></span>
+<span><span class="co">#&gt; # Controls: seed = 1</span></span>
+<span><span class="co">#&gt; # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1</span></span></code></pre></div>
+<p><code><a href="reference/control_mrqap.html">control_mrqap()</a></code> holds the other choices of the model: the family, what the permutations permute, robust standard errors, how to treat missing data, and the cores to run on. The family is read from the outcome when <code>control</code> does not give one.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/control_mrqap.html">control_mrqap</a></span><span class="op">(</span>family <span class="op">=</span> <span class="st">"poisson"</span>, permute <span class="op">=</span> <span class="st">"outcome"</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # Controls for an MRQAP: 3 set, 12 at their defaults</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   permute  "outcome"</span></span>
+<span><span class="co">#&gt;   family   "poisson"</span></span>
+<span><span class="co">#&gt;   seed     1</span></span></code></pre></div>
+<p>A formula adds random intercepts as <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a> does, and absorbs fixed effects after a bar, as <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a> does:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">sender</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">receiver</span><span class="op">)</span>,</span>
+<span>               <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">50</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">weight</span> <span class="op">~</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">|</span> <span class="va">sender</span> <span class="op">+</span> <span class="va">receiver</span>,</span>
+<span>               <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">50</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>A cognitive social structure (CSS) records each person’s report of the whole network. <code><a href="reference/regression.html">estimate_mrqap()</a></code> reads a CSS from the network itself, and fits one observation for each sender, receiver, and reporter. The <code>reporter</code> terms describe the person who made the report:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">css</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="va">reports</span> <span class="op">+</span> <span class="va">reporter_ego</span>,</span>
+<span>                      <span class="va">ison_hightech</span>, times <span class="op">=</span> <span class="fl">50</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">css</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"term"</span>, <span class="st">"estimate"</span>, <span class="st">"p.value"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>A longitudinal network is fitted as a panel. Each wave after the first is an outcome, and one permutation relabels the nodes in the same way in every wave. <code>inertia</code>, <code>recip</code>, and <code>trans</code> then read the previous wave:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">like</span> <span class="op">~</span> <span class="va">inertia</span> <span class="op">+</span> <span class="va">recip</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">groups</span><span class="op">)</span>,</span>
+<span>                        <span class="va">ison_monks</span>, times <span class="op">=</span> <span class="fl">50</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"term"</span>, <span class="st">"estimate"</span>, <span class="st">"p.value"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>An unobserved tie is missing, not absent. By default, the model drops each unobserved dyad, and permutes the nodes only among nodes with the same unobserved cells, so that every permutation uses the same dyads as the observed model. <code>control_mrqap(missing = "fail")</code> stops instead. One student in the second wave of Knecht’s classmates did not report:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">classmates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_scope.html" class="external-link">to_wave</a></span><span class="op">(</span><span class="va">ison_classmates</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">friends</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">sex</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">sex</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">sex</span><span class="op">)</span>,</span>
+<span>                          <span class="va">classmates</span>, times <span class="op">=</span> <span class="fl">50</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">missing</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nobs"</span>, <span class="st">"permute"</span>, <span class="st">"times"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p><code><a href="reference/test_parameter.html">test_parameter()</a></code> tests one or more coefficients together, such as the levels of a categorical attribute. <code><a href="reference/test_parameter.html">test_time()</a></code> tests whether coefficients are the same in each wave of a panel.</p>
+</div>
+<div class="section level2">
+<h2 id="diffusion">Diffusion<a class="anchor" aria-label="anchor" href="#diffusion"></a>
+</h2>
+<p><code><a href="reference/play_diffusions.html">play_diffusions()</a></code> simulates a diffusion on a network many times. <code><a href="reference/test_fit.html">test_distributions()</a></code> tests whether two models of diffusion differ, and <code><a href="reference/test_fit.html">test_gof()</a></code> tests whether a model fits an observed diffusion:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fast</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/play_diffusions.html">play_diffusions</a></span><span class="op">(</span><span class="va">ison_adolescents</span>, transmissibility <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>                        times <span class="op">=</span> <span class="fl">40</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">slow</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/play_diffusions.html">play_diffusions</a></span><span class="op">(</span><span class="va">ison_adolescents</span>, transmissibility <span class="op">=</span> <span class="fl">0.2</span>,</span>
+<span>                        times <span class="op">=</span> <span class="fl">40</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/test_fit.html">test_distributions</a></span><span class="op">(</span><span class="va">fast</span>, <span class="va">slow</span>, times <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">as_diffusion</a></span><span class="op">(</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">play_diffusion</a></span><span class="op">(</span><span class="va">ison_adolescents</span>, transmissibility <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/test_fit.html">test_gof</a></span><span class="op">(</span><span class="va">slow</span>, <span class="va">observed</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/test_fit.html">test_gof()</a></code> also tests the fit of a network regression to a statistic of the observed network, from the outcomes that the model simulates.</p>
+</div>
+<div class="section level2">
+<h2 id="results">Results<a class="anchor" aria-label="anchor" href="#results"></a>
+</h2>
+<p><code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> gives one row for each coefficient, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> one row for the model. Both work on a regression and on a test, and both give a tibble that other tools can read:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"term"</span>, <span class="st">"estimate"</span>, <span class="st">"statistic"</span>, <span class="st">"p.value"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 4 x 4</span></span>
+<span><span class="co">#&gt;   term            estimate statistic p.value</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;              &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 (Intercept)        2.93      0.242   NA   </span></span>
+<span><span class="co">#&gt; 2 ego_Citations     -0.269    -1.69     0.48</span></span>
+<span><span class="co">#&gt; 3 alter_Citations   -0.158    -0.997    0.51</span></span>
+<span><span class="co">#&gt; 4 sim_Citations     39.4       3.13     0.04</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"r.squared"</span>, <span class="st">"nobs"</span>, <span class="st">"permute"</span>, <span class="st">"times"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; # A tibble: 1 x 4</span></span>
+<span><span class="co">#&gt;   r.squared  nobs permute   times</span></span>
+<span><span class="co">#&gt;       &lt;dbl&gt; &lt;int&gt; &lt;chr&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1    0.0674   272 predictor   200</span></span></code></pre></div>
+<p><code><a href="reference/predict.html">predict()</a></code> gives the fitted value of each dyad, or of new data:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/predict.html">predict</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ego_Citations <span class="op">=</span> <span class="fl">10</span>, alter_Citations <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>                          sim_Citations <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 12.0213</span></span></code></pre></div>
+<p><a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a> draws a test or a diffusion with <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
+</h2>
+<p>The <a href="https://stocnet.github.io/infernet/">website</a> has a page for every function, and two tutorials:</p>
+<ul>
+<li>“Diversity and Regression” moves from univariate tests to network regression.</li>
+<li>“Diffusion and Learning” simulates diffusions and tests their fit.</li>
+</ul>
+<p>To run them interactively, install <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> and run <code>migraph::run_tute("diversity")</code> or <code>migraph::run_tute("diffusion")</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
+</h2>
+<p><a href="https://stocnet.github.io/infernet/">infernet</a> and the other <a href="https://github.com/stocnet" class="external-link">stocnet</a> packages aim for three things:</p>
+<ul>
+<li>
+<strong>Declarative simplicity</strong>: functions do one clearly named thing with few arguments. For example, <code><a href="reference/test_measures.html">test_permutation()</a></code> is named for the null distribution it draws, and <code><a href="reference/regression.html">estimate_mrqap()</a></code> follows the <code>estimate_*()</code> verb of <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>.</li>
+<li>
+<strong>Pleasant predictability</strong>: users can guess a function’s behaviour from its family. For example, the <code>test_*()</code> functions all take a network, a statistic, and a number of <code>times</code>.</li>
+<li>
+<strong>Graceful inclusivity</strong>: functions accept whatever network users bring and return something they can use. For example, <code><a href="reference/regression.html">estimate_mrqap()</a></code> works on any network that <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> can convert, one-mode or two-mode, and keeps missing data missing.</li>
+</ul>
+<p>See the <a href="https://github.com/stocnet/infernet/blob/main/.github/CONTRIBUTING.md#style" class="external-link">contributing guide</a> for how these principles translate into rules for the package.</p>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -186,7 +377,7 @@
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>
-<li><small><a href="https://opensource.org/licenses/mit-license.php" class="external-link">MIT</a> + file <a href="LICENSE-text.html">LICENSE</a></small></li>
+<li><small>GPL (&gt;= 3)</small></li>
 </ul>
 </div>
 
@@ -209,7 +400,8 @@
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
 <li>
-<a href="https://jameshollway.com" class="external-link">James Hollway</a> <br><small class="roles"> Maintainer, author, contributor </small> <a href="https://orcid.org/0000-0002-8361-9647" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<a href="https://jameshollway.com" class="external-link">James Hollway</a> <br><small class="roles"> Maintainer, author, copyright holder </small> <a href="https://orcid.org/0000-0002-8361-9647" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>Robert Krause <br><small class="roles"> Author, copyright holder </small> <a href="https://orcid.org/0000-0003-4288-4732" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 <li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
@@ -221,7 +413,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

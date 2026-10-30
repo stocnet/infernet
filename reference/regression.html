@@ -43,7 +43,7 @@ cognitive social structures, detected rather than declared (see below).
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,6 +56,7 @@ cognitive social structures, detected rather than declared (see below).
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -95,9 +96,7 @@ dropped with a warning and the remaining networks are pooled;</p></li>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">estimate_mrqap</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">net_regression</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">estimate_mrqap</span><span class="op">(</span><span class="va">formula</span>, <span class="va">.data</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -109,56 +108,21 @@ dropped with a warning and the remaining networks are pooled;</p></li>
 dependent network: a layer, a tie attribute such as <code>weight</code>, or <code>.</code> for
 the network's focal layer or the whole network.
 The right-hand side accepts these terms, whose arguments can be given by
-position or by name:</p><ul><li><p><code>ego(attr, levels = NULL)</code>, <code>alter(attr, levels = NULL)</code> — the sender's
-or the receiver's value of a node attribute; a categorical attribute is
-dummy-coded, with the first category as the reference,</p></li>
-<li><p><code>same(attr, diff = FALSE, levels = NULL)</code> — 1 where sender and receiver
-share an attribute value; with <code>diff = TRUE</code>, as in ergm's
-<code>nodematch()</code>, one 0/1 column for each category, 1 where sender and
-receiver both hold it.
-<code>match(attr)</code> is a deprecated alias of <code>same(attr, diff = TRUE)</code>,</p></li>
-<li><p><code>diff(attr, transformer_fn = abs)</code> — the transformed difference between
-the sender's and the receiver's values: absolute by default, and signed
-with <code>transformer_fn = identity</code>. <code>dist(attr)</code> is a deprecated alias,</p></li>
-<li><p><code>sim(attr)</code> — proportional similarity in a numeric attribute,
-1 - |d| / range,</p></li>
-<li><p><code>mix(attr, levels = NULL)</code> — one 0/1 column for each pair of a
-sender's and a receiver's category, less the first pair as the
-reference. The pairs are in ergm's order for <code>nodemix()</code>, the sender's
-category changing fastest,</p></li>
-<li><p><code>tie(layer, weighted = FALSE)</code> — another layer as a dyadic covariate,
-0/1 unless <code>weighted = TRUE</code>; a layer or tie attribute named on its own
-enters with its values as stored,</p></li>
-<li><p><code>exchange(layer)</code> — the reverse tie, j to i, in another layer;
-<code>recip(layer)</code> is the same, and <code>recip()</code>, or <code>recip</code> on its own,
-reads the outcome's own reverse tie, and warns,</p></li>
-<li><p><code>indeg(layer, type = "alter", weighted = FALSE)</code> and
-<code>outdeg(layer, type = "alter", weighted = FALSE)</code> — a node's number of
-incoming or outgoing ties in another layer, for the receiver
-(<code>"alter"</code>) or the sender (<code>"ego"</code>),</p></li>
-<li><p><code>tertius(layer, attr, summarizer_fn = "mean")</code> — the mean (or the
-tie-weighted sum, with <code>"sum"</code>) of an attribute over the receiver's
-in-neighbours in a layer, other than the sender. A receiver with no
-other in-neighbour takes the mean of the defined cells. The older
-<code>tertius(attr)</code> reads the outcome's own ties, and warns,</p></li>
-<li><p><code>tertius_diff(layer, attr, summarizer_fn = "mean")</code> — how far the
-sender's value lies from that mean, as an absolute difference,</p></li>
-<li><p><code>global(var)</code> — a network-level variable from the network's <code>globals</code>,
-in a list of networks; on one network it is the intercept.</p></li>
-</ul><p><code>:</code> and <code>*</code> give interactions of any order, as the product of the terms.</p>
-<p><code>levels =</code> chooses the categories that get a column in <code>ego()</code>,
-<code>alter()</code>, and <code>same()</code>, or the pairs in <code>mix()</code>, as in ergm. Give the
-names, such as <code>levels = c("sales", "hr")</code> or, for <code>mix()</code>,
-<code>levels = "sales -&gt; hr"</code>, written as in <code>fit$terms</code> (<code>--</code> for an
-undirected network). Or give positions in the order of the columns,
-where a negative position leaves that one out: <code>levels = -1</code> is the
-default of <code>ego()</code>, <code>alter()</code>, and <code>mix()</code>. In <code>ego()</code>, <code>alter()</code>, and
-<code>mix()</code>, the categories left out are the reference together; where every
-one is chosen, the first chosen is the reference. In <code>same()</code>, a dyad
-that shares a category left out is not counted. An unknown name aborts
-and lists the categories. A term with more than ten categories and no
-<code>levels =</code> warns, since under <code>permute = "predictor"</code> each column is
-permuted on its own.</p>
+position or by name. <a href="terms_mrqap.html">terms_mrqap</a> says what each one measures, with its
+equation, and <a href="specify_terms.html">specify_terms</a> lists those that suit a network.</p><ul><li><p>of node attributes: <code>ego(x)</code>, <code>alter(x)</code>, <code>same(x)</code>, <code>mix(x)</code>,
+<code>diff(x)</code>, and <code>sim(x)</code>;</p></li>
+<li><p>of other layers: <code>tie(layer)</code>, or the layer named on its own,
+<code>exchange(layer)</code>, <code>indeg(layer)</code>, and <code>outdeg(layer)</code>;</p></li>
+<li><p>of others' attributes: <code>tertius(layer, x)</code> and <code>tertius_diff(layer, x)</code>;</p></li>
+<li><p>of the outcome's previous wave, on a longitudinal network: <code>inertia</code>,
+<code>recip</code>, and <code>trans</code>;</p></li>
+<li><p>of a list of networks: <code>global(x)</code>;</p></li>
+<li><p>of the reporter of a cognitive social structure: <code>reporter(x)</code>,
+<code>reporter_ego</code>, <code>reporter_alter</code>, and <code>reporter_same(x)</code>, for which
+see the section on cognitive social structures.</p></li>
+</ul><p><code>:</code> and <code>*</code> give interactions of any order, as the product of the terms.
+<code>match(x)</code> and <code>dist(x)</code> are deprecated aliases of <code>same(x, diff = TRUE)</code>
+and <code>diff(x)</code>.</p>
 <p>A formula written for <code>{goldfish}</code> or <code>{ergm}</code> can be used as it is.
 It is first read by <code><a href="specify.html">specify_mrqap()</a></code>, which rewrites each term that has
 an MRQAP equivalent, such as ergm's <code>nodematch("dept")</code> as <code>same(dept)</code>,
@@ -192,8 +156,10 @@ dropped with a warning.</p></dd>
 <dd><p>The controls of the model, as the result of
 <code><a href="control_mrqap.html">control_mrqap()</a></code> or a named list of its arguments, such as
 <code>list(family = "poisson", seed = 1)</code>. A control that is not named keeps
-its default. See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each control, its default, and the
-names it converts from other models and earlier versions.</p></dd>
+its default, or the value set with <code>control_mrqap(..., persist = TRUE)</code>.
+See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each control, its default, and the
+names it converts from other models and earlier versions.
+The result records the controls that it used as <code>control</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -229,17 +195,22 @@ term it comes from, such as <code>"ego"</code> or <code>"same"</code>, or <code>
 <code>"interaction"</code>; its <code>layer</code> and <code>attribute</code>; its <code>category</code> and the
 <code>reference</code> category it is compared with, where the term is
 categorical; and for an interaction, its <code>operands</code>, the names of the
-columns it multiplies. <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> adds these columns to the estimates.</p></li>
+columns it multiplies. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> adds these columns to the estimates.</p></li>
+<li><p><code>call</code>, <code>formula</code>, and <code>model_formula</code>: the call, the formula as
+<code><a href="specify.html">specify_mrqap()</a></code> read it, and the formula of the columns that were
+fitted. <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code>, <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula()</a></code>, and <code><a href="https://rdrr.io/r/stats/terms.html" class="external-link">terms()</a></code> read them
+(see <a href="netreg_results.html">netreg_results</a>).</p></li>
+<li><p><code>fixed_df</code>, the number of parameters that a gaussian model absorbed by
+demeaning, or <code>NULL</code>.</p></li>
 </ul><p>When the outcome is binary – either <code>family = "binomial"</code> or
 <code>"gaussian"</code> with a 0/1 dependent – a probabilistic confusion matrix is
 attached as <code>$confusion_matrix</code>; for the gaussian-binary case the linear
-probability fitted values are clamped to 0/1 before sampling.</p>
-    </div>
-    <div class="section level2">
-    <h2 id="functions">Functions<a class="anchor" aria-label="anchor" href="#functions"></a></h2>
-
-<ul><li><p><code>net_regression()</code>: The name this function had in <code>{migraph}</code>, and in
-infernet before 0.4.0. It still works, and warns once that it is deprecated.</p></li>
+probability fitted values are clamped to 0/1 before sampling.
+<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code> gives it again with another threshold or number
+of draws.</p><ul><li><p><code>node_names</code>, the names of the nodes, which name the random
+intercepts; <code>control</code>, the controls as the fit resolved them; and
+<code>record</code>, what <code><a href="specify.html">specify_mrqap()</a></code> made of each term. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> read them.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="cognitive-social-structures">Cognitive social structures<a class="anchor" aria-label="anchor" href="#cognitive-social-structures"></a></h2>
@@ -257,9 +228,27 @@ reporter described, enters as each reporter's own report of it.</p></li>
 as one matrix that every report shares.</p></li>
 <li><p><code>tertius()</code>, <code>recip()</code>, <code>indeg()</code>, and <code>outdeg()</code> on a CSS layer are
 computed within each report, since each reporter sees different ties.</p></li>
-</ul><p>A permutation relabels the nodes, and a reporter is a node, so the senders,
+</ul><p>The <code>reporter</code> terms describe the reporter of each report, since a
+report about one's own ties can differ from a report about the ties of
+others (Krackhardt 1987):</p><ul><li><p><code>reporter(age)</code> is the reporter's age, the same over their whole report;</p></li>
+<li><p><code>reporter_ego</code> is 1 in a report about the reporter's own outgoing tie,
+and <code>reporter_alter</code> in a report about a tie to the reporter;</p></li>
+<li><p><code>reporter_same(dept, node = "alter")</code> is 1 where the reporter is of the
+receiver's department.</p></li>
+</ul><p><code>reporter_ego</code>, <code>reporter_alter</code>, and <code>reporter_same()</code> need a directed or
+a two-mode network, since an undirected tie has no sender or receiver.
+In a two-mode CSS the column nodes report after the row nodes, and
+<code>reporter_same()</code> is not yet available. An attribute that only one mode
+holds gives <code>reporter()</code> an <code>NA</code> for every report of the other mode,
+so those reports are dropped.
+On a network that is not a CSS, a <code>reporter</code> term aborts.
+ergm has no reporter, so <code><a href="specify.html">specify_ergm()</a></code> drops these terms, and so does
+goldfish's <code>specify_dynam()</code>.</p>
+<p>A permutation relabels the nodes, and a reporter is a node, so the senders,
 receivers, and reporters are relabelled together.
-<code>(1 | reporter)</code> in the formula adds a random intercept for each reporter.</p>
+<code>(1 | reporter)</code> in the formula adds a random intercept for each reporter.
+A <code>| reporter</code> fixed effect absorbs <code>reporter()</code>, which is then refused,
+but not <code>reporter_ego</code> or <code>reporter_alter</code>, which vary within a report.</p>
 <p>A person who was not asked has a report of zeros unless the network marks
 them as missing, for example with
 <code>manynet::mutate_nodes(net, na = label %in% c(...))</code>.
@@ -308,7 +297,9 @@ outcome, and the waves are pooled, so the network index is the wave.
 One permutation relabels the nodes the same way in every wave, so that
 each node keeps its own trajectory under the null hypothesis.</p>
 <p>Three of goldfish's effects then read the outcome's previous wave, as
-goldfish and RSiena read the state of the network before each change:</p><ul><li><p><code>inertia</code>, the tie from i to j in the previous wave;</p></li>
+goldfish and RSiena read the state of the network before each change:</p><ul><li><p><code>inertia</code>, the tie from i to j in the previous wave, as 0/1, or its
+value with <code>inertia(weighted = TRUE)</code>, as on a complete ranking, where
+every dyad holds a tie;</p></li>
 <li><p><code>recip</code>, the tie from j to i in the previous wave;</p></li>
 <li><p><code>trans</code>, the number of two-paths i -&gt; k -&gt; j in the previous wave,
 counting only observed ties.</p></li>
@@ -397,25 +388,47 @@ conditions."
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Other models:
 <code><a href="control_mrqap.html">control_mrqap()</a></code>,
-<code><a href="results.html">print.netreg_lm()</a></code>,
+<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
+<code><a href="other_results.html">other_results</a></code>,
+<code><a href="play_diffusions.html">play_diffusions()</a></code>,
+<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
 <code><a href="specify.html">specify</a></code>,
-<code><a href="tests.html">tests</a></code></p></div>
+<code><a href="specify_terms.html">specify_terms</a></code>,
+<code><a href="terms_mrqap.html">terms_mrqap</a></code>,
+<code><a href="test_fit.html">test_fit</a></code>,
+<code><a href="test_measures.html">test_measures</a></code>,
+<code><a href="test_parameter.html">test_parameter()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_networkers.html" class="external-link">ison_networkers</a></span> <span class="op">|&gt;</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">networkers</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_networkers.html" class="external-link">ison_networkers</a></span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">manynet</span><span class="fu">::</span><span class="fu">to_subgraph</span><span class="op">(</span><span class="va">Discipline</span> <span class="op">==</span> <span class="st">"Sociology"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">model1</span> <span class="op">&lt;-</span> <span class="fu">estimate_mrqap</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">weight</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">alter</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">Citations</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  <span class="va">networkers</span>, times <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">model1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Linear MRQAP of weight</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   term            estimate statistic p.value signif   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;noquote&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> (Intercept)        2.93      0.242 <span style="color: #BB0000;">NA</span>               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> ego_Citations     -<span style="color: #BB0000;">0.269</span>    -<span style="color: #BB0000;">1.69</span>  0.3              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> alter_Citations   -<span style="color: #BB0000;">0.158</span>    -<span style="color: #BB0000;">0.997</span> 0.6              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> sim_Citations     39.4       3.13  &lt; 0.05  *        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 20 permutations of each predictor, by double semi-partialling.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1</span>
 <span class="r-in"><span><span class="co"># A cognitive social structure: each of 21 managers' report of who goes to</span></span></span>
 <span class="r-in"><span><span class="co"># whom for advice, against the formal reporting structure that all share.</span></span></span>
 <span class="r-in"><span><span class="va">css_model</span> <span class="op">&lt;-</span> <span class="fu">estimate_mrqap</span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="va">reports</span>,</span></span>
 <span class="r-in"><span>                            <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_hightech.html" class="external-link">ison_hightech</a></span>, times <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Whether a manager reports their own advice ties differently, and whether</span></span></span>
+<span class="r-in"><span><span class="co"># senior managers report more advice.</span></span></span>
+<span class="r-in"><span><span class="va">css_reporter</span> <span class="op">&lt;-</span> <span class="fu">estimate_mrqap</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">advice</span> <span class="op">~</span> <span class="fu">reporter</span><span class="op">(</span><span class="va">tenure</span><span class="op">)</span> <span class="op">+</span> <span class="va">reporter_ego</span> <span class="op">+</span> <span class="va">reporter_alter</span> <span class="op">+</span> <span class="va">friends</span>,</span></span>
+<span class="r-in"><span>  <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_hightech.html" class="external-link">ison_hightech</a></span>, times <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -423,7 +436,7 @@ conditions."
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

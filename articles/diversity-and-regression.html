@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
 <li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
@@ -104,8 +105,17 @@ a network are compared to random networks</label></li>
 <li><label><input type="checkbox">  test how heterophilous the ties in
 a network are compared to permutations of the original
 network</label></li>
-<li><label><input type="checkbox">  regress a network’s ties on other
-ties and/or nodal or dyadic attributes</label></li>
+<li><label><input type="checkbox">  regress a network’s ties on nodal
+and dyadic attributes</label></li>
+<li><label><input type="checkbox">  choose which categories of an
+attribute enter a regression</label></li>
+<li><label><input type="checkbox">  account for differences among
+senders and receivers with fixed effects or random
+intercepts</label></li>
+<li><label><input type="checkbox">  regress one layer of a network on
+other layers, including in a cognitive social structure</label></li>
+<li><label><input type="checkbox">  move a regression’s formula to
+another model, and check what it keeps</label></li>
 </ul>
 </div>
 <div class="section level2">
@@ -139,7 +149,7 @@ There seems to be some
 <abbr><dfn title="A tendency for nodes to connect to similar nodes.">
 homophily </dfn></abbr> – or like choosing like – operating here, but it
 is difficult to say conclusively because there are clearly more male
-than female superheros, as well as clearly more superheros of mutant
+than female superheroes, as well as clearly more superheroes of mutant
 origin than others. So what might seem like homophily could just be a
 result of there being many more opportunities for ties between nodes of
 some categories. We therefore need to establish how diverse this network
@@ -259,11 +269,11 @@ chance.</p>
 <abbr><dfn title="A conditional uniform graph (CUG) is a random graph generated under constraints defined by some property of the observed network.">
 conditional uniform graph </dfn></abbr> or CUG test, but
 <a href="https://stocnet.github.io/infernet/">infernet</a> uses more descriptive function names, such as
-<code><a href="../reference/tests.html">test_random()</a></code>. Plot the results of running this function
+<code><a href="../reference/test_measures.html">test_random()</a></code>. Plot the results of running this function
 with respect to the EI index on each of the three variables. These plots
 can be made if you have <a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a> installed and loaded.
-You can specify that one thousand simulations should be used using
-<code>times = 1000</code>.</p>
+You can specify that five hundred simulations should be used using
+<code>times = 500</code>.</p>
 <p>The plots of these results use a dotted vertical line for 0 where
 this is in bounds, a red vertical line for the observed score, and a
 density plot of the scores from the randomly generated networks. The
@@ -377,15 +387,44 @@ hypothesis)</li>
 researchers send more emails to those of the same discipline
 (disciplinary homophily hypothesis)</li>
 </ul>
-<p>Let’s start with a pretty maximally specified model (note that it
-doesn’t make sense to include both
+<p><code><a href="../reference/regression.html">estimate_mrqap()</a></code> fits a
+<abbr><dfn title="A multiple regression quadratic assignment procedure (MRQAP) is a regression model for network data using a permutation test.">
+MRQAP </dfn></abbr> model from a formula. The left-hand side names the
+ties to explain, here the <code>weight</code> of each tie, and the
+right-hand side lists the terms that might explain them:</p>
+<ul>
+<li>
+<code>ego(Citations)</code> and <code>alter(Citations)</code> are
+the sender’s and the receiver’s citations. Because this network is
+<abbr><dfn title="A directed network is a network where the ties have a direction, from a sender to a receiver.">
+directed </dfn></abbr>, both
 <abbr><dfn title="An ego is a focal node in a network."> ego
 </dfn></abbr> and
 <abbr><dfn title="An alter is a node connected to a focal node (ego).">
-alter </dfn></abbr> effects because these networks are undirected). We
-are using <code>times = 200</code> here because of time-out limitations
-in the <code>learnr</code> tutorial system, but for publication quality
-results you would want to base your conclusions on 2000 simulations or
+alter </dfn></abbr> effects make sense.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mn>1</mn></msub><annotation encoding="application/x-tex">H_1</annotation></semantics></math>
+is about the alter effect.</li>
+<li>
+<code>diff(Citations)</code> is the absolute difference between the
+sender’s and the receiver’s citations.
+<code>diff(Citations, transformer_fn = identity)</code> gives the signed
+difference instead.</li>
+<li>
+<code>ego(Discipline)</code> and <code>alter(Discipline)</code> are
+the sender’s and the receiver’s discipline. A categorical attribute gets
+one 0/1 column for each category, less the first category (here
+Anthropology), which is the <em>reference</em>.</li>
+<li>
+<code>same(Discipline)</code> is 1 where the sender and the receiver
+share a discipline. This is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mn>2</mn></msub><annotation encoding="application/x-tex">H_2</annotation></semantics></math>.</li>
+</ul>
+<p>Let’s start with a model of all five terms for each attribute.
+Homophily is only interpretable net of the effects it contains, since
+two researchers who are both highly cited are alike, but each is also
+highly cited. We are using <code>times = 200</code> here so that the
+model runs quickly in this tutorial, but for publication quality results
+you would want to base your conclusions on 2000 permutations or
 more.</p>
 <p>By default, the printing method for this model includes the key
 information you might need. We can also use tidy methods to obtain just
@@ -395,10 +434,216 @@ summary statistics (e.g. <code><a href="https://generics.r-lib.org/reference/gl
 to facilitate the quick interpretation of these results, and as long as
 this is loaded you can simply call <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> on the model
 object.</p>
-<p>This violin plot presents the distribution of coefficients from
-permutations of the network, with the coefficient fitted from the data
-as a red dot. Lines are used to indicate 95% thresholds, but here the
-distributions are rendered so wide that they are often not visible.</p>
+<p>This violin plot presents the distribution of the test statistic for
+each coefficient across the
+<abbr><dfn title="A permuted network is one where the nodes/ties have been rearranged or resequenced.">
+permutations </dfn></abbr> of the network, with the statistic fitted
+from the data as a red dot. Lines inside each violin mark the 95%
+thresholds. A red dot outside those lines is one that the permutations
+rarely reach.</p>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="categories">Categories<a class="anchor" aria-label="anchor" href="#categories"></a>
+</h2>
+<p><code>same(Discipline)</code> gives one coefficient for all
+disciplines, so it assumes that sociologists are as homophilous as
+anthropologists. That need not be so. Two terms split a categorical
+attribute further:</p>
+<ul>
+<li>
+<code>same(Discipline, diff = TRUE)</code> gives one 0/1 column for
+each discipline, 1 where the sender and the receiver both hold it.</li>
+<li>
+<code>mix(Discipline)</code> gives one 0/1 column for each pair of a
+sender’s and a receiver’s discipline, such as sociologist to
+anthropologist, less the first pair as the reference.</li>
+</ul>
+<p>With four disciplines, <code>mix()</code> can quickly use up a small
+network. <code>levels =</code> chooses which categories (or pairs) get a
+column. Give their names, as they appear in the results, such as
+<code>levels = "Sociology"</code> or, for <code>mix()</code>,
+<code>levels = "Sociology -&gt; Anthropology"</code>. The categories
+that are left out become the reference together.</p>
+<p>Fit a model with the citation terms, discipline homophily for each
+discipline, and the two mixing terms between sociologists and
+anthropologists, in both directions.</p>
+<p>Now see how <code>levels =</code> changes the reference category of
+<code>ego()</code> and <code>alter()</code>. Fit a model that asks only
+whether sociologists send or receive more messages than everyone else,
+and whether researchers of the same discipline message each other
+more.</p>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="sender-and-receiver-effects">Sender and receiver effects<a class="anchor" aria-label="anchor" href="#sender-and-receiver-effects"></a>
+</h2>
+<p>Some researchers send many more messages than others, and some
+receive many more. The ties of one sender are then not independent of
+one another, and a model that ignores this may mistake a busy sender for
+an effect of their attributes. There are two ways to account for each
+node’s own level of activity and popularity.</p>
+<p><strong><em>Fixed effects</em></strong> absorb a separate intercept
+for each sender and each receiver. Write them after a bare bar at the
+end of the formula, as in <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>:
+<code>| sender + receiver</code>. Because these intercepts absorb
+everything about a sender or a receiver, a term that does not vary
+within them, such as <code>ego(Citations)</code> or
+<code>alter(Discipline)</code>, cannot be estimated, and the model stops
+and names it. Only the dyadic terms, which vary within each sender and
+receiver, can stay. The model then reports a ‘within’ R-squared, the
+share of the variance within senders and receivers that it explains.</p>
+<p>Fit a model of citation difference and discipline homophily with
+sender and receiver fixed effects.</p>
+<p><strong><em>Random intercepts</em></strong> instead treat each
+sender’s and each receiver’s intercept as drawn from a normal
+distribution, as in <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a>. Write each one in parentheses:
+<code>(1 | sender) + (1 | receiver)</code>. Random intercepts keep the
+nodal terms in the model, but each permutation now fits a mixed model,
+which takes longer. Here we use <code>times = 100</code>.</p>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="model-controls">Model controls<a class="anchor" aria-label="anchor" href="#model-controls"></a>
+</h2>
+<p>So far each model has used its default controls.
+<code><a href="../reference/control_mrqap.html">control_mrqap()</a></code> shows them all, and checks any that you
+change. Its result goes to the <code>control =</code> argument of
+<code><a href="../reference/regression.html">estimate_mrqap()</a></code>. The most useful controls are:</p>
+<ul>
+<li>
+<code>family</code>: <code>"auto"</code> reads it from the outcome
+(<code>"binomial"</code> for a binary outcome, otherwise
+<code>"gaussian"</code>). The message counts here might also be fitted
+as <code>"poisson"</code> or <code>"negbin"</code>.</li>
+<li>
+<code>permute</code>: <code>"predictor"</code> (Dekker’s double
+semi-partialling, the default) or <code>"outcome"</code>.</li>
+<li>
+<code>seed</code>: a number, so that the same permutations, and so
+the same p-values, come back each time.</li>
+<li>
+<code>ncores</code>: the number of cores to run the permutations
+on.</li>
+</ul>
+<p>Look at the controls, then fit a model with a seed, twice.</p>
+<p>Running in parallel only pays where each permutation is costly: a
+family other than gaussian, random intercepts, or a cognitive social
+structure (see the next section), on a network of more than about 50
+nodes, with 1,000 or more permutations. Elsewhere, starting the workers
+costs more time than it saves. For such a model, outside this tutorial,
+you would write, for example:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">tie</span><span class="op">(</span><span class="va">friends</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">reporter</span><span class="op">)</span>,</span>
+<span>               <span class="va">ison_hightech</span>, times <span class="op">=</span> <span class="fl">2000</span>,</span>
+<span>               control <span class="op">=</span> <span class="fu"><a href="../reference/control_mrqap.html">control_mrqap</a></span><span class="op">(</span>ncores <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1234</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="layers-and-perceptions">Layers and perceptions<a class="anchor" aria-label="anchor" href="#layers-and-perceptions"></a>
+</h2>
+<p>The networks so far have had one kind of tie. A
+<abbr><dfn title="A network that includes multiple types of tie.">
+multiplex </dfn></abbr> network has several, called layers, and one
+layer can explain another. <code>ison_hightech</code> holds Krackhardt’s
+(1987) data on 21 managers of a high-tech company. Every manager
+reported who goes to whom for advice, and who is friends with whom. Each
+of those layers is a <em>cognitive social structure</em> (CSS): 21
+reports of the whole network, one from each manager. The
+<code>reports</code> layer is the formal reporting structure, which is
+the same for everyone.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ison_hightech</span></span></code></pre></div>
+<p><code><a href="../reference/regression.html">estimate_mrqap()</a></code> detects a CSS and fits every reported
+<abbr><dfn title="A dyad is a pair of nodes and the ties between them.">
+dyad </dfn></abbr>, one for each sender, receiver, and reporter: 21 x 20
+x 21 = 8,820 observations. A permutation relabels senders, receivers,
+and reporters together. These terms read another layer:</p>
+<ul>
+<li>
+<code>tie(friends)</code> is whether the sender is friends with the
+receiver, in the same reporter’s report, since <code>friends</code> is a
+CSS layer too.</li>
+<li>
+<code>exchange(friends)</code> is the reverse tie, whether the
+receiver is friends with the sender.</li>
+<li>
+<code>indeg(reports, node = "ego")</code> is the sender’s indegree
+in the reporting structure, that is, how many managers report to them.
+<code>node = "alter"</code> would read the receiver’s instead.</li>
+</ul>
+<p>A term must not read the outcome’s own ties, since permuting the
+outcome would not permute such a predictor with it. So
+<code>tie(advice)</code> would stop with an error.</p>
+<p>Fit a model of advice on friendship, reciprocated friendship, the
+sender’s number of reports, and being in the same department. Advice
+ties are binary, so this is a logistic model of 8,820 observations, and
+we use <code>times = 50</code> with a seed.</p>
+<p>A report about one’s own ties can differ from a report about the ties
+of others. The <em>reporter</em> terms describe who made each
+report:</p>
+<ul>
+<li>
+<code>reporter(level)</code> is the reporter’s level in the
+hierarchy, the same over their whole report.</li>
+<li>
+<code>reporter_ego</code> is 1 where the reporter is the sender,
+that is, in a report about whom the reporter goes to for advice.</li>
+<li>
+<code>reporter_alter</code> is 1 where the reporter is the
+receiver.</li>
+</ul>
+<p>Add the reporter’s level and <code>reporter_ego</code> to the
+model.</p>
+<p>Each manager may also simply report more or fewer ties overall.
+<code>(1 | reporter)</code> adds a random intercept for each reporter,
+and <code>| reporter</code> a fixed effect, which absorbs
+<code>reporter(level)</code>. On a CSS, each permutation of such a model
+takes much longer, so try these outside the tutorial, with
+<code>ncores = 2</code> and more permutations.</p>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="moving-a-formula">Moving a formula<a class="anchor" aria-label="anchor" href="#moving-a-formula"></a>
+</h2>
+<p>The same formula can describe other models of the same network.
+<code><a href="../reference/specify.html">specify_ergm()</a></code> rewrites an MRQAP formula for
+<a href="https://statnet.org" class="external-link">ergm</a>, and <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>’s own
+<code>specify_dynam()</code> for a DyNAM. Each term that has an
+equivalent is rewritten, such as <code>diff(Citations)</code> as
+<code>absdiff("Citations")</code> and a <code>| sender</code> fixed
+effect as ergm’s <code>sender</code> term, and each term that the other
+model cannot fit is dropped and named. Give the network as well, so that
+a categorical attribute is written as a categorical term.
+<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of the result has one row for each term, with what
+the other model makes of it.</p>
+<p>Rewrite a model of <code>ison_networkers</code> for ergm, and check
+each term. Then do the same, without the network, for a model of
+<code>ison_hightech</code>.</p>
+<p>The result is an ordinary formula, so <code><a href="https://rdrr.io/pkg/ergm/man/ergm.html" class="external-link">ergm::ergm()</a></code> could
+fit it as it is. We do not fit it here, since an ERGM takes longer to
+estimate than this tutorial allows, and an ERGM of the message counts
+would need a valued ERGM.</p>
 <div class="callout">
 <p><span class="callout-label"><strong>Try it yourself</strong>:</span>
 This section includes an interactive quiz in the live tutorial — run
@@ -412,6 +657,11 @@ This section includes an interactive quiz in the live tutorial — run
 more and more interesting data at hand. How would you go about
 specifying such a model? Why is such an approach more appropriate for
 network data than linear or logistic regression?</p>
+<p>If you want another network to try, <code>ison_lawfirm</code> holds
+Lazega’s data on the advice, friendship, and cowork ties among 71
+lawyers, with their status, gender, office, practice, and seniority.
+Does advice follow friendship, office, or practice? Which terms would
+you hold fixed for each sender?</p>
 </div>
 <div class="section level2">
 <h2 id="glossary">Glossary<a class="anchor" aria-label="anchor" href="#glossary"></a>
@@ -452,6 +702,19 @@ A conditional uniform graph (CUG) is a random graph generated under
 constraints defined by some property of the observed network.
 </dd>
 <dt>
+Directed
+</dt>
+<dd>
+A directed network is a network where the ties have a direction, from a
+sender to a receiver.
+</dd>
+<dt>
+Dyad
+</dt>
+<dd>
+A dyad is a pair of nodes and the ties between them.
+</dd>
+<dt>
 Ego
 </dt>
 <dd>
@@ -481,6 +744,19 @@ Man
 <dd>
 A random network conditional on the number of mutual, asymmetric, and
 null dyads.
+</dd>
+<dt>
+Mrqap
+</dt>
+<dd>
+A multiple regression quadratic assignment procedure (MRQAP) is a
+regression model for network data using a permutation test.
+</dd>
+<dt>
+Multiplex
+</dt>
+<dd>
+A network that includes multiple types of tie.
 </dd>
 <dt>
 Permutation
@@ -526,7 +802,7 @@ undefined.
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>.</p>
+  <p>Developed by <a href="https://jameshollway.com" class="external-link">James Hollway</a>, Robert Krause.</p>
 </div>
 
 <div class="pkgdown-footer-right">

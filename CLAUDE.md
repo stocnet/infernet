@@ -30,15 +30,16 @@ branching/CI — lives in
 Read it before adding or restructuring functions, or when you need the
 exact `devtools`/testing commands for this repo.
 
-Note that [migraph](https://stocnet.github.io/migraph/) still carries
-older copies of
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
-as
-[`net_regression()`](https://stocnet.github.io/infernet/reference/regression.md),
-and the `test_*()` family, which
-[infernet](https://stocnet.github.io/infernet/) supersedes. A fix made
-in [migraph](https://stocnet.github.io/migraph/) needs porting here; a
-fix made here does not need porting back.
+Note that from [migraph](https://stocnet.github.io/migraph/) 2.0.0, its
+`net_regression()`, `test_*()` family,
+[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
+`test_distribution()`, and
+[`test_fit()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+are shims that call [infernet](https://stocnet.github.io/infernet/)
+(`net_regression()` calls
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)),
+and warn once that they are deprecated. Make a fix here;
+[migraph](https://stocnet.github.io/migraph/) needs no port.
 
 ## Where to make changes
 
