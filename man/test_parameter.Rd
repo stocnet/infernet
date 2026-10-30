@@ -136,7 +136,7 @@ test_parameter(fit, "ego_Grp", times = 100, control = list(seed = 1))
 \references{
 Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
 "Sensitivity of MRQAP Tests to Collinearity and Autocorrelation Conditions."
-\emph{Psychometrika} 72(4): 563–581.
+\emph{Psychometrika} 72(4): 563-581.
 \doi{10.1007/s11336-007-9016-1}
 }
 \seealso{
