@@ -13,7 +13,7 @@ Description: Tools for testing and modelling network data.
    and on one-mode and two-mode (bipartite) networks.
 URL: https://stocnet.github.io/infernet/
 BugReports: https://github.com/stocnet/infernet/issues
-License: MIT + file LICENSE
+License: GPL (>= 3)
 Language: en-GB
 Encoding: UTF-8
 Depends: 

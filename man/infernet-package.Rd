@@ -14,7 +14,6 @@ Tools for testing and modelling network data. Provides conditional uniform graph
 Useful links:
 \itemize{
   \item \url{https://stocnet.github.io/infernet/}
-  \item \url{https://github.com/stocnet/infernet}
   \item Report bugs at \url{https://github.com/stocnet/infernet/issues}
 }
 
@@ -25,11 +24,7 @@ Useful links:
 Authors:
 \itemize{
   \item James Hollway \email{james.hollway@graduateinstitute.ch} (\href{https://orcid.org/0000-0002-8361-9647}{ORCID}) (IHEID) [copyright holder]
-}
-
-Other contributors:
-\itemize{
-  \item Robert Krause (\href{https://orcid.org/0000-0003-4288-4732}{ORCID}) [contributor, copyright holder]
+  \item Robert Krause (\href{https://orcid.org/0000-0003-4288-4732}{ORCID}) [copyright holder]
 }
 
 }
