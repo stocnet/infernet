@@ -117,10 +117,10 @@
 #' @family models
 #' @examples
 #' fast <- play_diffusions(ison_adolescents, transmissibility = 0.5,
-#'                         times = 40, control = list(seed = 1))
+#'                         times = 20, control = list(seed = 1))
 #' slow <- play_diffusions(ison_adolescents, transmissibility = 0.2,
-#'                         times = 40, control = list(seed = 1))
-#' test_distributions(fast, slow, times = 200)
+#'                         times = 20, control = list(seed = 1))
+#' test_distributions(fast, slow, times = 50)
 #' obs <- manynet::as_diffusion(manynet::play_diffusion(ison_adolescents,
 #'                                                      transmissibility = 0.2))
 #' test_gof(slow, obs)
@@ -128,7 +128,7 @@
 #' # Does an MRQAP make as many reciprocated ties as the observed network?
 #' fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20,
 #'                       control = list(family = "poisson"))
-#' test_gof(fit, ison_algebra, net_by_reciprocity, times = 100,
+#' test_gof(fit, ison_algebra, net_by_reciprocity, times = 25,
 #'          control = list(seed = 1))
 #' @export
 test_gof <- function(object, ...) UseMethod("test_gof")

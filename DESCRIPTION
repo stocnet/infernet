@@ -1,6 +1,6 @@
 Package: infernet
 Title: Inferential Models for Many Different Types of Networks
-Version: 0.6.0
+Version: 0.6.1
 Description: Tools for testing and modelling network data.
    Provides conditional uniform graph and quadratic assignment procedure
    tests of network statistics, and multiple regression quadratic assignment
