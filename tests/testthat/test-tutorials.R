@@ -67,6 +67,7 @@ for (tute in tutorials) {
     skip_if_not_installed("knitr")
     # plot.stocnet(), which plots a diffusion, is new in autograph 1.2.7
     skip_if_not_installed("autograph", "1.2.7")
+    if (basename(tute) == "ergm.Rmd") skip_if_not_installed("ergm")
     old <- options(knitr.purl.inline = FALSE)
     on.exit(options(old), add = TRUE)
     waiting <- run_tutorial_code(tute)

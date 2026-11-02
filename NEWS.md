@@ -1,3 +1,9 @@
+# infernet 0.6.2
+
+## Tutorials
+
+- Moved the "Modelling with ERGMs" tutorial from `{migraph}`, as `infernet3`
+
 # infernet 0.6.1
 
 ## Testing

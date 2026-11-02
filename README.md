@@ -303,14 +303,17 @@ predict(model, data.frame(ego_Citations = 10, alter_Citations = 50,
 ## Learn more
 
 The [website](https://stocnet.github.io/infernet/) has a page for every
-function, and two tutorials:
+function, and there are three tutorials:
 
 - “Diversity and Regression” moves from univariate tests to network
   regression.
 - “Diffusion and Learning” simulates diffusions and tests their fit.
+- “Modelling with ERGMs” fits, interprets, and checks exponential random
+  graph models with `{ergm}`.
 
 To run them interactively, install `{migraph}` and run
-`migraph::run_tute("diversity")` or `migraph::run_tute("diffusion")`.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
+`migraph::run_tute("ERGMs")`.
 
 ## Design principles
 
