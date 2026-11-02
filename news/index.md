@@ -1,5 +1,15 @@
 # Changelog
 
+## infernet 0.6.1
+
+### Testing
+
+- Updated the examples of
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  and
+  [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  to run within the time that CRAN allows
+
 ## infernet 0.6.0
 
 ### Package

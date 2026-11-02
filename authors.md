@@ -15,13 +15,13 @@ Source:
 [`DESCRIPTION`](https://github.com/stocnet/infernet/blob/main/DESCRIPTION)
 
 Hollway J, Krause R (2026). *infernet: Inferential Models for Many
-Different Types of Networks*. R package version 0.6.0,
+Different Types of Networks*. R package version 0.6.1,
 <https://stocnet.github.io/infernet/>.
 
     @Manual{,
       title = {infernet: Inferential Models for Many Different Types of Networks},
       author = {James Hollway and Robert Krause},
       year = {2026},
-      note = {R package version 0.6.0},
+      note = {R package version 0.6.1},
       url = {https://stocnet.github.io/infernet/},
     }

@@ -297,7 +297,7 @@ AIC(css_model)
 #> [1] 9983.796
 formula(css_model)
 #> advice ~ same(dept) + reports
-#> <environment: 0xbb3c4ee08>
+#> <environment: 0xafebd44a0>
 head(fitted(css_model))
 #> [1] 0.3723726 0.2546663 0.3723726 0.2546663 0.2546663 0.2546663
 ```

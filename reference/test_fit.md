@@ -214,46 +214,50 @@ Other models:
 
 ``` r
 fast <- play_diffusions(ison_adolescents, transmissibility = 0.5,
-                        times = 40, control = list(seed = 1))
+                        times = 20, control = list(seed = 1))
 slow <- play_diffusions(ison_adolescents, transmissibility = 0.2,
-                        times = 40, control = list(seed = 1))
-test_distributions(fast, slow, times = 200)
+                        times = 20, control = list(seed = 1))
+test_distributions(fast, slow, times = 50)
 #> # Two-sample test of two sets of simulated diffusions
 #> 
 #> # A tibble: 1 × 6
 #>   statistic null.mean null.sd p.lower p.upper signif   
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-#> 1      72.0      8.81    4.35 1       0.00498 **       
+#> 1      48.0      9.56    5.44 1       0.0196  *        
 #> 
-#> # Null: 200 permutations of the pooled diffusions.
+#> # Null: 50 permutations of the pooled diffusions.
 #> # The p-value is p.upper: only a larger statistic counts against the null.
 #> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1
 obs <- manynet::as_diffusion(manynet::play_diffusion(ison_adolescents,
                                                      transmissibility = 0.2))
 test_gof(slow, obs)
+#> Warning: The reference holds 10 simulations, so no p-value can be below 0.05.
+#> Simulate at least 38 times.
 #> # Goodness-of-fit test of the adoption curve for the simulated diffusions
 #> 
 #> # A tibble: 1 × 6
 #>   statistic null.mean null.sd p.lower p.upper signif   
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-#> 1      16.4      26.0    31.1 0.571   0.476            
+#> 1      50.6      47.1    53.8 0.636   0.455            
 #> 
-#> # Null: 40 simulations of the model; 20 estimate the mean and covariance.
+#> # Null: 20 simulations of the model; 10 estimate the mean and covariance.
 #> # The p-value is p.upper: only a larger statistic counts against the null.
 
 # Does an MRQAP make as many reciprocated ties as the observed network?
 fit <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 20,
                       control = list(family = "poisson"))
-test_gof(fit, ison_algebra, net_by_reciprocity, times = 100,
+test_gof(fit, ison_algebra, net_by_reciprocity, times = 25,
          control = list(seed = 1))
+#> Warning: The reference holds 13 simulations, so no p-value can be below 0.05.
+#> Simulate at least 38 times.
 #> # Goodness-of-fit test of net_by_reciprocity() for a poisson MRQAP
 #> 
 #> # A tibble: 1 × 6
 #>   statistic null.mean null.sd p.lower p.upper signif   
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-#> 1      21.4      1.24    1.73 1       0.0196  *        
+#> 1      31.7      2.25    2.42 1       0.0714  .        
 #> 
-#> # Null: 100 simulations of the model; 50 estimate the mean and covariance.
+#> # Null: 25 simulations of the model; 12 estimate the mean and covariance.
 #> # The p-value is p.upper: only a larger statistic counts against the null.
 #> # Controls: seed = 1
 #> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1
