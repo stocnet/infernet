@@ -3,6 +3,8 @@
 ## Tutorials
 
 - Moved the "Modelling with ERGMs" tutorial from `{migraph}`, as `infernet3`
+- Added `data-raw/build_tutorial_articles.R` to make tutorial static previews
+- Added a static preview of the "Modelling with ERGMs" tutorial to the website
 
 # infernet 0.6.1
 
