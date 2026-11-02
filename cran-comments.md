@@ -1,6 +1,9 @@
-## Submission
+## Resubmission
 
-This is a first submission of `infernet` to CRAN.
+This is a resubmission of a first submission.
+The incoming checks of version 0.6.0 reported that the examples of `test_fit`
+took longer than the limit.
+This version reduces the number of simulations in those examples.
 
 ## Test environments
 
@@ -8,18 +11,22 @@ This is a first submission of `infernet` to CRAN.
 * macOS (on Github Actions), R release
 * Microsoft Windows Server 2022 (on Github Actions), R release
 * Ubuntu 24.04 (on Github Actions), R release
+* CRAN incoming checks of version 0.6.0: Windows Server 2022 and Debian, R-devel
 
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
 * New submission.
+* The incoming checks also list possibly misspelled words in DESCRIPTION.
+  Dekker, Krackhardt, and Snijders are the authors of the cited references.
+  MRQAP is the abbreviation of the method, which the Description defines.
 
 ## Notes for reviewers
 
 * The package Depends on `manynet` and `netrics`, both on CRAN.
 * The packages `ergm`, `fixest`, `lme4`, `MASS`, and `pscl` are in Suggests.
   Each code path that needs one of them checks for it with `requireNamespace()`.
-* Examples keep the number of permutations low. The slowest takes about 2 s.
-* The tests take about 26 s on the two processes that DESCRIPTION asks for.
-  Tests that take longer run only where `INFERNET_SLOW_TESTS=true`.
+* Examples keep the number of permutations low.
+* The tests took 146 s on Windows and 59 s on Debian in the incoming checks of
+  version 0.6.0. Tests that take longer run only where `INFERNET_SLOW_TESTS=true`.

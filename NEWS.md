@@ -1,3 +1,9 @@
+# infernet 0.6.1
+
+## Testing
+
+- Updated the examples of `test_gof()` and `test_distributions()` to run within the time that CRAN allows
+
 # infernet 0.6.0
 
 ## Package
