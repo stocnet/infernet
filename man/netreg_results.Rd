@@ -141,9 +141,10 @@ observed model, which the permutations do not change.
 A permutation test gives a p-value but no standard error,
 so \code{tidy()} and \code{summary()} have no \code{std.error} column.
 \code{p.value} is read from the permutations of the test statistic,
-as \code{print()} shows it. Where no permutation reached the observed
-statistic, \code{print()} shows the p-value as below \code{1/times}, the smallest
-that the permutations can give, and marks it as that bound.
+as \code{print()} shows it.
+Each p-value is \eqn{(1 + b) / (B + 1)}, where \eqn{b} of the
+\eqn{B} permutations reach the observed statistic (Phipson and Smyth 2010),
+so it is never 0, and the smallest is \eqn{1 / (B + 1)}.
 For the confusion matrix of a binary outcome, see \code{\link[=diagnose_confusion]{diagnose_confusion()}}.
 When the predictors are permuted, the intercept has no test,
 and its \code{p.value} is \code{NA}.

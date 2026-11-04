@@ -43,8 +43,13 @@ See \code{\link[=control_mrqap]{control_mrqap()}} for each control and its defau
 \value{
 A \code{network_test}, which \code{print()}, \code{tidy()}, and \code{glance()} report.
 It holds the observed statistic in \code{testval}, the statistics of the
-simulations in \code{testdist}, and the share of these at or below the
-observed statistic in \code{plteobs} and at or above it in \code{pgteobs}.
+simulations in \code{testdist}, and the p-values of the observed statistic:
+in \code{plteobs} from the simulations at or below it, and in \code{pgteobs}
+from those at or above it.
+Each p-value is \eqn{(1 + b) / (B + 1)}, where \eqn{b} of the
+\eqn{B} simulations reach the observed statistic, since under the null
+the observed network is one more draw (Phipson and Smyth 2010).
+So a p-value is never 0, and the smallest is \eqn{1 / (B + 1)}.
 It also holds the number of simulations as \code{times}, the name of the
 statistic as \code{statistic}, and the controls that the test used as \code{control}.
 }
@@ -76,6 +81,13 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 #                 net_by_heterophily, attribute = "Attractive",
 #                 times = 200))
 # plot(qaptest)
+}
+\references{
+Phipson, Belinda, and Gordon K. Smyth. 2010.
+"Permutation P-values Should Never Be Zero: Calculating Exact P-values
+When Permutations Are Randomly Drawn."
+\emph{Statistical Applications in Genetics and Molecular Biology} 9(1): 39.
+\doi{10.2202/1544-6115.1585}.
 }
 \seealso{
 Other models:

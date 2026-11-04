@@ -31,14 +31,25 @@
 #'   `control_mrqap(..., persist = TRUE)`, and the result records the controls
 #'   that it used as `control`.
 #'   See [control_mrqap()] for each control and its default.
+#' @references
+#'   Phipson, Belinda, and Gordon K. Smyth. 2010.
+#'   "Permutation P-values Should Never Be Zero: Calculating Exact P-values
+#'   When Permutations Are Randomly Drawn."
+#'   _Statistical Applications in Genetics and Molecular Biology_ 9(1): 39.
+#'   \doi{10.2202/1544-6115.1585}.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
 #' @param ... Additional arguments to be passed on to FUN,
 #'   e.g. the name of the attribute.
 #' @return A `network_test`, which `print()`, `tidy()`, and `glance()` report.
 #'   It holds the observed statistic in `testval`, the statistics of the
-#'   simulations in `testdist`, and the share of these at or below the
-#'   observed statistic in `plteobs` and at or above it in `pgteobs`.
+#'   simulations in `testdist`, and the p-values of the observed statistic:
+#'   in `plteobs` from the simulations at or below it, and in `pgteobs`
+#'   from those at or above it.
+#'   Each p-value is \eqn{(1 + b) / (B + 1)}, where \eqn{b} of the
+#'   \eqn{B} simulations reach the observed statistic, since under the null
+#'   the observed network is one more draw (Phipson and Smyth 2010).
+#'   So a p-value is never 0, and the smallest is \eqn{1 / (B + 1)}.
 #'   It also holds the number of simulations as `times`, the name of the
 #'   statistic as `statistic`, and the controls that the test used as `control`.
 NULL
@@ -69,8 +80,8 @@ test_random <- function(.data, FUN, ...,
               directed = manynet::is_directed(.data),
               loops = manynet::is_complex(.data),
               cmode = "edges",
-              plteobs = mean(simd <= obsd),
-              pgteobs = mean(simd >= obsd),
+              plteobs = .perm_p(sum(simd <= obsd), length(simd)),
+              pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
               times = times,
               statistic = statistic,
               control = ctrl)
@@ -97,8 +108,8 @@ test_configuration <- function(.data, FUN, ...,
               directed = manynet::is_directed(.data),
               loops = manynet::is_complex(.data),
               cmode = "edges",
-              plteobs = mean(simd <= obsd),
-              pgteobs = mean(simd >= obsd),
+              plteobs = .perm_p(sum(simd <= obsd), length(simd)),
+              pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
               times = times,
               statistic = statistic,
               control = ctrl)
@@ -128,8 +139,8 @@ test_permutation <- function(.data, FUN, ...,
               testdist = simd,
               directed = manynet::is_directed(.data),
               loops = manynet::is_complex(.data),
-              plteobs = mean(simd <= obsd),
-              pgteobs = mean(simd >= obsd),
+              plteobs = .perm_p(sum(simd <= obsd), length(simd)),
+              pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
               times = times,
               statistic = statistic,
               control = ctrl)

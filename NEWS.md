@@ -3,6 +3,13 @@
 ## Modelling
 
 - Renamed class of the result of `diagnose_confusion()` to `infernetConfusion`
+- Fixed `estimate_mrqap()` p-values to count the observed statistic as a draw
+  - Each is now (1 + b) / (B + 1), as Phipson and Smyth (2010) recommend
+
+## Testing
+
+- Fixed `test_random()`, `test_configuration()`, and `test_permutation()` p-values
+  to count the observed statistic as a draw, as `test_gof()` already did
 
 ## Tutorials
 
