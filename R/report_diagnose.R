@@ -5,7 +5,7 @@
 
 #' @rdname diagnose_confusion
 #' @export
-print.diagnose_confusion <- function(x, ...) {
+print.infernetConfusion <- function(x, ...) {
   .print_title(c(paste("Confusion matrix",
                        if (!is.null(x$model)) paste("of a", .lower_first(x$model))),
                  paste("From", x$n_draws,
@@ -19,7 +19,7 @@ print.diagnose_confusion <- function(x, ...) {
                 dimnames = dimnames(x$confusion_matrix))
   print(noquote(mat))
   cat("\n")
-  .print_glance(glance.diagnose_confusion(x))
+  .print_glance(glance.infernetConfusion(x))
   .print_footer(character(0),
                 .methods_hint("tidy() for the ROC curve, glance() for the metrics",
                               "and plot() from {autograph}"))
@@ -28,21 +28,21 @@ print.diagnose_confusion <- function(x, ...) {
 
 # A result made by an earlier version has the class of the engine's matrix.
 #' @exportS3Method print QAPConfusionMatrix
-print.QAPConfusionMatrix <- function(x, ...) print.diagnose_confusion(x, ...)
+print.QAPConfusionMatrix <- function(x, ...) print.infernetConfusion(x, ...)
 
 #' @rdname diagnose_confusion
-#' @method tidy diagnose_confusion
+#' @method tidy infernetConfusion
 #' @export
-tidy.diagnose_confusion <- function(x, ...) {
+tidy.infernetConfusion <- function(x, ...) {
   if (is.null(x$roc)) return(tibble::tibble(threshold = numeric(0),
                                             fpr = numeric(0), tpr = numeric(0)))
   x$roc
 }
 
 #' @rdname diagnose_confusion
-#' @method glance diagnose_confusion
+#' @method glance infernetConfusion
 #' @export
-glance.diagnose_confusion <- function(x, ...) {
+glance.infernetConfusion <- function(x, ...) {
   num <- function(v) if (is.null(v)) NA_real_ else as.numeric(v)
   tibble::tibble(accuracy = num(x$accuracy),
                  sensitivity = num(x$sensitivity),

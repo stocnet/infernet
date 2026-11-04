@@ -5,9 +5,9 @@
 \alias{diagnose_confusion.default}
 \alias{diagnose_confusion.netreg_glm}
 \alias{diagnose_confusion.netreg_lm}
-\alias{print.diagnose_confusion}
-\alias{tidy.diagnose_confusion}
-\alias{glance.diagnose_confusion}
+\alias{print.infernetConfusion}
+\alias{tidy.infernetConfusion}
+\alias{glance.infernetConfusion}
 \title{Diagnosing how well a model classifies ties}
 \usage{
 diagnose_confusion(x, ...)
@@ -18,11 +18,11 @@ diagnose_confusion(x, ...)
 
 \method{diagnose_confusion}{netreg_lm}(x, threshold = 0.5, times = 1000, control = list(), ...)
 
-\method{print}{diagnose_confusion}(x, ...)
+\method{print}{infernetConfusion}(x, ...)
 
-\method{tidy}{diagnose_confusion}(x, ...)
+\method{tidy}{infernetConfusion}(x, ...)
 
-\method{glance}{diagnose_confusion}(x, ...)
+\method{glance}{infernetConfusion}(x, ...)
 }
 \arguments{
 \item{x}{A \code{netreg} of a binary outcome, from \code{\link[=estimate_mrqap]{estimate_mrqap()}}.
@@ -41,7 +41,7 @@ the seed of the fit is used.}
 }
 \value{
 \code{diagnose_confusion()} returns an object of class
-\code{diagnose_confusion}, a list with the mean \code{confusion_matrix}, its
+\code{infernetConfusion}, a list with the mean \code{confusion_matrix}, its
 \code{confusion_matrix_sd}, \code{confusion_matrix_ci_lower}, and
 \code{confusion_matrix_ci_upper}, the metrics, the
 \code{threshold_confusion_matrix}, the \code{roc} curve, and the \code{auc}.

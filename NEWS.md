@@ -1,5 +1,9 @@
 # infernet 0.6.2
 
+## Modelling
+
+- Renamed class of the result of `diagnose_confusion()` to `infernetConfusion`
+
 ## Tutorials
 
 - Moved the "Modelling with ERGMs" tutorial from `{migraph}`, as `infernet3`

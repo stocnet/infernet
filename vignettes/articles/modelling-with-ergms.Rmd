@@ -273,7 +273,7 @@ the first derivative of our (binary) logit function depends on $X$ and \\(\hat\b
 Practically, this means that if you’re interested in the effect of a one-unit change in $X$ on $Pr(Y_i = 1)$, 
 how much change there is depends critically on “where you are on the curve”.
   
-```{r predprobplot, echo = F, fig.height=3, fig.width=8, purl = FALSE}
+```{r explain-predprob, fig.height=3, fig.width=8, purl = FALSE, echo = FALSE, eval = TRUE}
   ggplot(data.frame(x = c(-4, 4)), aes(x = x)) +
     ggplot2::stat_function(fun = plogis, colour = "blue") +
     ggplot2::geom_line(aes(x = 0, y=c(0.5,.73), colour = "+1 unit change @0")) +
@@ -385,7 +385,7 @@ We need additional modelling!
 
 ## Markov model
 
-```{r visflo2, echo=FALSE, purl = FALSE, fig.width=9, setup = "flom-gof"}
+```{r explain-bernfit, purl = FALSE, fig.width=9, setup = "flom-gof", echo = FALSE, eval = TRUE}
 p1 <- as_tidygraph(flomarriage) |> mutate_nodes(Degree = node_by_deg()) |>  
   mutate_ties(Triangles = tie_is_triangular()) |> 
   graphr(node_size = "Degree", edge_color = "Triangles") + 

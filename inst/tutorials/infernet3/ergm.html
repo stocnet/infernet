@@ -357,7 +357,7 @@ function depends on <span class="math inline">\(X\)</span> and \(\):</p>
 one-unit change in <span class="math inline">\(X\)</span> on <span
 class="math inline">\(Pr(Y_i = 1)\)</span>, how much change there is
 depends critically on “where you are on the curve”.</p>
-<p><img src="ergm_files/figure-html/predprobplot-1.png" alt="" width="768" /></p>
+<p><img src="ergm_files/figure-html/explain-predprob-1.png" alt="" width="768" /></p>
 <p>This means we need to calculate predicted probabilities of <span
 class="math inline">\(Y\)</span> at specific values of key predictors.
 In our simple Bernoulli model, we’re modelling only the number of edges,
@@ -468,7 +468,7 @@ modelling!</p>
 </div>
 <div id="section-markov-model" class="section level2">
 <h2>Markov model</h2>
-<p><img src="ergm_files/figure-html/visflo2-1.png" alt="" width="864" /></p>
+<p><img src="ergm_files/figure-html/explain-bernfit-1.png" alt="" width="864" /></p>
 <p>Let’s review what we know about the marriage network to get a better
 fit. There are some nodes with more activity (higher degree) in this
 network than others, and some triangle configurations appear. Yet our
@@ -1212,26 +1212,26 @@ learnr:::store_exercise_cache(structure(list(label = "flombee", global_setup = s
  
 <script type="application/shiny-prerendered" data-context="server">
 learnr:::question_prerendered_chunk(structure(list(type = "learnr_radio", label = "signfq", question = structure("Which statement is most detailed and correct?", html = TRUE, class = c("html", 
-"character")), answers = list(structure(list(id = "lnr_ans_13c3920", 
+"character")), answers = list(structure(list(id = "lnr_ans_b847f37", 
     option = "There is a statistically significant effect here.", 
     value = "There is a statistically significant effect here.", 
     label = structure("There is a statistically significant effect here.", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_b0b1291", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_41f8a4c", 
     option = "The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     value = "The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     label = structure("The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_742868a", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_8f609d1", 
     option = "The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     value = "The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     label = structure("The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ee41ad0", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_cc0bcb8", 
     option = "There are -1.609438 ties in this network.", value = "There are -1.609438 ties in this network.", 
     label = structure("There are -1.609438 ties in this network.", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_7f5eab9", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_6caa92", 
     option = "There is no statistically significant effect here.", 
     value = "There is no statistically significant effect here.", 
     label = structure("There is no statistically significant effect here.", html = TRUE, class = c("html", 
@@ -1243,7 +1243,7 @@ learnr:::question_prerendered_chunk(structure(list(type = "learnr_radio", label 
 "character")), incorrect = structure("Incorrect", html = TRUE, class = c("html", 
 "character")), message = NULL, post_message = NULL), ids = list(
     answer = "signfq-answer", question = "signfq"), loading = NULL, 
-    random_answer_order = TRUE, allow_retry = TRUE, seed = 1441411321.32879, 
+    random_answer_order = TRUE, allow_retry = TRUE, seed = 304061997.85841, 
     options = list()), class = c("learnr_radio", "tutorial_question"
 )), session = session)
 </script>
@@ -2520,33 +2520,33 @@ learnr:::store_exercise_cache(structure(list(label = "flobgof", global_setup = s
 
 <script type="application/shiny-prerendered" data-context="server">
 learnr:::question_prerendered_chunk(structure(list(type = "learnr_checkbox", label = "dependq", question = structure("What kind of (statistical) dependencies do network analysts often consider?", html = TRUE, class = c("html", 
-"character")), answers = list(structure(list(id = "lnr_ans_25e937f", 
+"character")), answers = list(structure(list(id = "lnr_ans_575e3e", 
     option = "Independence", value = "Independence", label = structure("Independence", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("A model with full independence across observations would be considered too simplistic for network data.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_4f2ee1a", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ffcad5e", 
     option = "Dyad independence", value = "Dyad independence", 
     label = structure("Dyad independence", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_d78823c", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_d1bb38d", 
     option = "Markov", value = "Markov", label = structure("Markov", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_d3098ce", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_a811c83", 
     option = "Social circuit", value = "Social circuit", label = structure("Social circuit", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ab92766", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_98d3004", 
     option = "Partial conditional", value = "Partial conditional", 
     label = structure("Partial conditional", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_a06ebde", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_9307503", 
     option = "Trade", value = "Trade", label = structure("Trade", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ba77ad7", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_20f8402", 
     option = "Environment", value = "Environment", label = structure("Environment", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_4fc214e", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_265f28e", 
     option = "Health", value = "Health", label = structure("Health", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
@@ -2557,7 +2557,7 @@ learnr:::question_prerendered_chunk(structure(list(type = "learnr_checkbox", lab
 "character")), incorrect = structure("Incorrect", html = TRUE, class = c("html", 
 "character")), message = NULL, post_message = NULL), ids = list(
     answer = "dependq-answer", question = "dependq"), loading = NULL, 
-    random_answer_order = TRUE, allow_retry = TRUE, seed = 192428230.410394, 
+    random_answer_order = TRUE, allow_retry = TRUE, seed = 606332864.717654, 
     options = list()), class = c("learnr_checkbox", "tutorial_question"
 )), session = session)
 </script>
