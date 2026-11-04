@@ -14,6 +14,8 @@
 ## Tutorials
 
 - Moved the "Modelling with ERGMs" tutorial from `{migraph}`, as `infernet3`
+  - Fixed three exercises that could not find the model fitted before them
+  - Fixed the reading of the edges-only model and of its odds and odds ratios
 - Added `data-raw/build_tutorial_articles.R` to make tutorial static previews
 - Added a static preview of the "Modelling with ERGMs" tutorial to the website
 

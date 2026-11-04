@@ -244,17 +244,33 @@ tidy(flom.bern, exponentiate = TRUE, conf.int = TRUE) # To return the odds ratio
 
 Odds are much more intuitive to interpret than log-odds.
 Odds range from 0 to \\(\infty\\) (but never negative).
-Essentially, if the odds ratio is 1:1, 
-then event and non-event equally likely.
-If odds ratio greater than 1, 
-then event more likely than non-event.
-If odds ratio less than 1, 
-then event less likely than non-event.
+In this edges-only model, the edges term works like an intercept,
+so its exponent, 0.2, is the _odds_ of a tie, \\(\Pr(Y=1)/\Pr(Y=0)\\).
+If the odds are 1 (1:1),
+then event and non-event are equally likely.
+If the odds are greater than 1,
+then the event is more likely than the non-event.
+If the odds are less than 1,
+then the event is less likely than the non-event.
 In other words:
 
-- OR>1: \\(\Pr(Y=1) > \Pr(Y=0)\\)
-- OR<1: \\(\Pr(Y=1) < \Pr(Y=0)\\)
-- OR=1: \\(\Pr(Y=1) = \Pr(Y=0)\\)
+- Odds>1: \\(\Pr(Y=1) > \Pr(Y=0)\\)
+- Odds<1: \\(\Pr(Y=1) < \Pr(Y=0)\\)
+- Odds=1: \\(\Pr(Y=1) = \Pr(Y=0)\\)
+
+So odds of 0.2 mean that a tie is a fifth as likely as no tie,
+a probability of 0.2/1.2, or about 1/6.
+
+The exponent of a covariate's coefficient is instead an _odds ratio_:
+it is the factor by which the odds of a tie change
+for each unit increase in that covariate.
+An odds ratio above 1 makes a tie more likely than it would otherwise be,
+but not necessarily more likely than no tie,
+since that also depends on the baseline odds.
+
+- OR>1: the odds of a tie rise as \\(X\\) increases
+- OR<1: the odds of a tie fall as \\(X\\) increases
+- OR=1: \\(X\\) makes no difference to the odds of a tie
 
 ### Predicted Probabilities
 

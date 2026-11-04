@@ -326,14 +326,28 @@ tidy(flom.bern, exponentiate = TRUE, conf.int = TRUE) # To return the odds ratio
 <script type="application/json" data-ui-opts="1">{"engine":"r","has_checker":false,"caption":"<span data-i18n=\"text.enginecap\" data-i18n-opts=\"{&quot;engine&quot;:&quot;R&quot;}\">R Code<\/span>"}</script>
 </div>
 <p>Odds are much more intuitive to interpret than log-odds. Odds range
-from 0 to \(\) (but never negative). Essentially, if the odds ratio is
-1:1, then event and non-event equally likely. If odds ratio greater than
-1, then event more likely than non-event. If odds ratio less than 1,
-then event less likely than non-event. In other words:</p>
+from 0 to \(\) (but never negative). In this edges-only model, the edges
+term works like an intercept, so its exponent, 0.2, is the <em>odds</em>
+of a tie, \((Y=1)/(Y=0)\). If the odds are 1 (1:1), then event and
+non-event are equally likely. If the odds are greater than 1, then the
+event is more likely than the non-event. If the odds are less than 1,
+then the event is less likely than the non-event. In other words:</p>
 <ul>
-<li>OR&gt;1: \((Y=1) &gt; (Y=0)\)</li>
-<li>OR&lt;1: \((Y=1) &lt; (Y=0)\)</li>
-<li>OR=1: \((Y=1) = (Y=0)\)</li>
+<li>Odds&gt;1: \((Y=1) &gt; (Y=0)\)</li>
+<li>Odds&lt;1: \((Y=1) &lt; (Y=0)\)</li>
+<li>Odds=1: \((Y=1) = (Y=0)\)</li>
+</ul>
+<p>So odds of 0.2 mean that a tie is a fifth as likely as no tie, a
+probability of 0.2/1.2, or about 1/6.</p>
+<p>The exponent of a covariate’s coefficient is instead an <em>odds
+ratio</em>: it is the factor by which the odds of a tie change for each
+unit increase in that covariate. An odds ratio above 1 makes a tie more
+likely than it would otherwise be, but not necessarily more likely than
+no tie, since that also depends on the baseline odds.</p>
+<ul>
+<li>OR&gt;1: the odds of a tie rise as \(X\) increases</li>
+<li>OR&lt;1: the odds of a tie fall as \(X\) increases</li>
+<li>OR=1: \(X\) makes no difference to the odds of a tie</li>
 </ul>
 </div>
 <div id="section-predicted-probabilities" class="section level3">
@@ -1212,26 +1226,33 @@ learnr:::store_exercise_cache(structure(list(label = "flombee", global_setup = s
  
 <script type="application/shiny-prerendered" data-context="server">
 learnr:::question_prerendered_chunk(structure(list(type = "learnr_radio", label = "signfq", question = structure("Which statement is most detailed and correct?", html = TRUE, class = c("html", 
-"character")), answers = list(structure(list(id = "lnr_ans_b847f37", 
+"character")), answers = list(structure(list(id = "lnr_ans_90ee4da", 
     option = "There is a statistically significant effect here.", 
     value = "There is a statistically significant effect here.", 
     label = structure("There is a statistically significant effect here.", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_41f8a4c", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_67783a2", 
     option = "The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     value = "The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     label = structure("The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", html = TRUE, class = c("html", 
-    "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_8f609d1", 
+    "character")), correct = FALSE, message = structure("An edges-only model has no dependence between ties, so the probability of a tie does not change with the number of other edges.", html = TRUE, class = c("html", 
+    "character")), type = "literal"), class = c("tutorial_question_answer", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_625fe17", 
     option = "The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     value = "The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", 
     label = structure("The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", html = TRUE, class = c("html", 
+    "character")), correct = FALSE, message = structure("An edges-only model has no dependence between ties, so the probability of a tie does not change with the number of other edges.", html = TRUE, class = c("html", 
+    "character")), type = "literal"), class = c("tutorial_question_answer", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_1450704", 
+    option = "The edges coefficient is negative and statistically significant, indicating that a tie between any two nodes is less likely than no tie, with the same probability (about 1/6) for every pair.", 
+    value = "The edges coefficient is negative and statistically significant, indicating that a tie between any two nodes is less likely than no tie, with the same probability (about 1/6) for every pair.", 
+    label = structure("The edges coefficient is negative and statistically significant, indicating that a tie between any two nodes is less likely than no tie, with the same probability (about 1/6) for every pair.", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_cc0bcb8", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_c41752f", 
     option = "There are -1.609438 ties in this network.", value = "There are -1.609438 ties in this network.", 
     label = structure("There are -1.609438 ties in this network.", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_6caa92", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_69b2d6c", 
     option = "There is no statistically significant effect here.", 
     value = "There is no statistically significant effect here.", 
     label = structure("There is no statistically significant effect here.", html = TRUE, class = c("html", 
@@ -1243,7 +1264,7 @@ learnr:::question_prerendered_chunk(structure(list(type = "learnr_radio", label 
 "character")), incorrect = structure("Incorrect", html = TRUE, class = c("html", 
 "character")), message = NULL, post_message = NULL), ids = list(
     answer = "signfq-answer", question = "signfq"), loading = NULL, 
-    random_answer_order = TRUE, allow_retry = TRUE, seed = 304061997.85841, 
+    random_answer_order = TRUE, allow_retry = TRUE, seed = 507448816.263701, 
     options = list()), class = c("learnr_radio", "tutorial_question"
 )), session = session)
 </script>
@@ -2296,18 +2317,21 @@ learnr:::store_exercise_cache(structure(list(label = "magnfit", global_setup = s
 "                                      \"Beau travail!\",", "                                      \"Bravo!\",", 
 "                                      \"Super!\"),", "                           encouragement = \"Bon effort\")"
 ), chunk_opts = list(label = "setup", include = FALSE, purl = FALSE, 
-    eval = TRUE)), setup = NULL, chunks = list(list(label = "magnfit", 
-    code = "magn.attr.gof <- gof(magn.attr,  GOF = ~ degree + distance + triadcensus + espartners - model)\nplot(magn.attr.gof, statistic = \"deg\")", 
-    opts = list(label = "\"magnfit\"", exercise = "TRUE", fig.width = "9"), 
-    engine = "r")), code_check = NULL, error_check = NULL, check = NULL, 
-    solution = NULL, tests = NULL, options = list(eval = FALSE, 
-        echo = TRUE, results = "markup", tidy = FALSE, tidy.opts = NULL, 
-        collapse = FALSE, prompt = FALSE, comment = NA, highlight = FALSE, 
-        size = "normalsize", background = "#F7F7F7", strip.white = TRUE, 
-        cache = 0, cache.path = "ergm_cache/html/", cache.vars = NULL, 
-        cache.lazy = TRUE, dependson = NULL, autodep = FALSE, 
-        cache.rebuild = FALSE, fig.keep = "high", fig.show = "asis", 
-        fig.align = "default", fig.path = "ergm_files/figure-html/", 
+    eval = TRUE)), setup = "magn.attr <- ergm(magnolia ~ edges + gwesp(0.25,fixed=T) + gwdegree(0.25,fixed=T) + \n                     nodematch('Grade') +\tnodematch('Race') + nodematch('Sex'))\nplot(magn.attr)", 
+    chunks = list(list(label = "magnattr", code = "magn.attr <- ergm(magnolia ~ edges + gwesp(0.25,fixed=T) + gwdegree(0.25,fixed=T) + \n                     nodematch('Grade') +\tnodematch('Race') + nodematch('Sex'))\nplot(magn.attr)", 
+        opts = list(label = "\"magnattr\"", exercise = "TRUE"), 
+        engine = "r"), list(label = "magnfit", code = "magn.attr.gof <- gof(magn.attr,  GOF = ~ degree + distance + triadcensus + espartners - model)\nplot(magn.attr.gof, statistic = \"deg\")", 
+        opts = list(label = "\"magnfit\"", exercise = "TRUE", 
+            exercise.setup = "\"magnattr\"", fig.width = "9"), 
+        engine = "r")), code_check = NULL, error_check = NULL, 
+    check = NULL, solution = NULL, tests = NULL, options = list(
+        eval = FALSE, echo = TRUE, results = "markup", tidy = FALSE, 
+        tidy.opts = NULL, collapse = FALSE, prompt = FALSE, comment = NA, 
+        highlight = FALSE, size = "normalsize", background = "#F7F7F7", 
+        strip.white = TRUE, cache = 0, cache.path = "ergm_cache/html/", 
+        cache.vars = NULL, cache.lazy = TRUE, dependson = NULL, 
+        autodep = FALSE, cache.rebuild = FALSE, fig.keep = "high", 
+        fig.show = "asis", fig.align = "default", fig.path = "ergm_files/figure-html/", 
         dev = "png", dev.args = NULL, dpi = 192, fig.ext = "png", 
         fig.width = 9, fig.height = 4, fig.env = "figure", fig.cap = NULL, 
         fig.scap = NULL, fig.note = NULL, fig.lp = "fig:", fig.subcap = NULL, 
@@ -2317,9 +2341,9 @@ learnr:::store_exercise_cache(structure(list(label = "magnfit", global_setup = s
         message = TRUE, render = NULL, ref.label = NULL, child = NULL, 
         engine = "r", split = FALSE, include = TRUE, purl = TRUE, 
         max.print = 1000, label = "magnfit", exercise = TRUE, 
-        code = c("magn.attr.gof <- gof(magn.attr,  GOF = ~ degree + distance + triadcensus + espartners - model)", 
+        exercise.setup = "magnattr", code = c("magn.attr.gof <- gof(magn.attr,  GOF = ~ degree + distance + triadcensus + espartners - model)", 
         "plot(magn.attr.gof, statistic = \"deg\")"), out.width.px = 864, 
-        out.height.px = 384, params.src = "magnfit, exercise = TRUE, fig.width=9", 
+        out.height.px = 384, params.src = "magnfit, exercise = TRUE, exercise.setup = \"magnattr\", fig.width=9", 
         fig.num = 0, exercise.df_print = "paged", exercise.checker = "NULL"), 
     engine = "r", version = "4"), class = c("r", "tutorial_exercise"
 )))
@@ -2360,18 +2384,21 @@ learnr:::store_exercise_cache(structure(list(label = "magsim", global_setup = st
 "                                      \"Beau travail!\",", "                                      \"Bravo!\",", 
 "                                      \"Super!\"),", "                           encouragement = \"Bon effort\")"
 ), chunk_opts = list(label = "setup", include = FALSE, purl = FALSE, 
-    eval = TRUE)), setup = NULL, chunks = list(list(label = "magsim", 
-    code = "magn.sim1 <- simulate(magn.attr)\ngraphr(magnolia, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + \n  ggtitle(\"Observed\") +\n  graphr(magn.sim1, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + \n  ggtitle(\"Simulated\")", 
-    opts = list(label = "\"magsim\"", exercise = "TRUE", fig.width = "9"), 
-    engine = "r")), code_check = NULL, error_check = NULL, check = NULL, 
-    solution = NULL, tests = NULL, options = list(eval = FALSE, 
-        echo = TRUE, results = "markup", tidy = FALSE, tidy.opts = NULL, 
-        collapse = FALSE, prompt = FALSE, comment = NA, highlight = FALSE, 
-        size = "normalsize", background = "#F7F7F7", strip.white = TRUE, 
-        cache = 0, cache.path = "ergm_cache/html/", cache.vars = NULL, 
-        cache.lazy = TRUE, dependson = NULL, autodep = FALSE, 
-        cache.rebuild = FALSE, fig.keep = "high", fig.show = "asis", 
-        fig.align = "default", fig.path = "ergm_files/figure-html/", 
+    eval = TRUE)), setup = "magn.attr <- ergm(magnolia ~ edges + gwesp(0.25,fixed=T) + gwdegree(0.25,fixed=T) + \n                     nodematch('Grade') +\tnodematch('Race') + nodematch('Sex'))\nplot(magn.attr)", 
+    chunks = list(list(label = "magnattr", code = "magn.attr <- ergm(magnolia ~ edges + gwesp(0.25,fixed=T) + gwdegree(0.25,fixed=T) + \n                     nodematch('Grade') +\tnodematch('Race') + nodematch('Sex'))\nplot(magn.attr)", 
+        opts = list(label = "\"magnattr\"", exercise = "TRUE"), 
+        engine = "r"), list(label = "magsim", code = "magn.sim1 <- simulate(magn.attr)\ngraphr(magnolia, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + \n  ggtitle(\"Observed\") +\n  graphr(magn.sim1, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + \n  ggtitle(\"Simulated\")", 
+        opts = list(label = "\"magsim\"", exercise = "TRUE", 
+            exercise.setup = "\"magnattr\"", fig.width = "9"), 
+        engine = "r")), code_check = NULL, error_check = NULL, 
+    check = NULL, solution = NULL, tests = NULL, options = list(
+        eval = FALSE, echo = TRUE, results = "markup", tidy = FALSE, 
+        tidy.opts = NULL, collapse = FALSE, prompt = FALSE, comment = NA, 
+        highlight = FALSE, size = "normalsize", background = "#F7F7F7", 
+        strip.white = TRUE, cache = 0, cache.path = "ergm_cache/html/", 
+        cache.vars = NULL, cache.lazy = TRUE, dependson = NULL, 
+        autodep = FALSE, cache.rebuild = FALSE, fig.keep = "high", 
+        fig.show = "asis", fig.align = "default", fig.path = "ergm_files/figure-html/", 
         dev = "png", dev.args = NULL, dpi = 192, fig.ext = "png", 
         fig.width = 9, fig.height = 4, fig.env = "figure", fig.cap = NULL, 
         fig.scap = NULL, fig.note = NULL, fig.lp = "fig:", fig.subcap = NULL, 
@@ -2381,10 +2408,11 @@ learnr:::store_exercise_cache(structure(list(label = "magsim", global_setup = st
         message = TRUE, render = NULL, ref.label = NULL, child = NULL, 
         engine = "r", split = FALSE, include = TRUE, purl = TRUE, 
         max.print = 1000, label = "magsim", exercise = TRUE, 
-        code = c("magn.sim1 <- simulate(magn.attr)", "graphr(magnolia, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + ", 
+        exercise.setup = "magnattr", code = c("magn.sim1 <- simulate(magn.attr)", 
+        "graphr(magnolia, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + ", 
         "  ggtitle(\"Observed\") +", "  graphr(magn.sim1, node_color = \"Grade\", node_size = 0.2, labels = FALSE) + ", 
         "  ggtitle(\"Simulated\")"), out.width.px = 864, out.height.px = 384, 
-        params.src = "magsim, exercise = TRUE, fig.width=9", 
+        params.src = "magsim, exercise = TRUE, exercise.setup = \"magnattr\", fig.width=9", 
         fig.num = 0, exercise.df_print = "paged", exercise.checker = "NULL"), 
     engine = "r", version = "4"), class = c("r", "tutorial_exercise"
 )))
@@ -2488,18 +2516,21 @@ learnr:::store_exercise_cache(structure(list(label = "flobgof", global_setup = s
 "                                      \"Beau travail!\",", "                                      \"Bravo!\",", 
 "                                      \"Super!\"),", "                           encouragement = \"Bon effort\")"
 ), chunk_opts = list(label = "setup", include = FALSE, purl = FALSE, 
-    eval = TRUE)), setup = NULL, chunks = list(list(label = "flobgof", 
-    code = "(flob.gof <- gof(flob,  GOF = ~ degree + triadcensus + espartners - model))\nplot(flob.gof)", 
-    opts = list(label = "\"flobgof\"", exercise = "TRUE", fig.width = "9"), 
-    engine = "r")), code_check = NULL, error_check = NULL, check = NULL, 
-    solution = NULL, tests = NULL, options = list(eval = FALSE, 
-        echo = TRUE, results = "markup", tidy = FALSE, tidy.opts = NULL, 
-        collapse = FALSE, prompt = FALSE, comment = NA, highlight = FALSE, 
-        size = "normalsize", background = "#F7F7F7", strip.white = TRUE, 
-        cache = 0, cache.path = "ergm_cache/html/", cache.vars = NULL, 
-        cache.lazy = TRUE, dependson = NULL, autodep = FALSE, 
-        cache.rebuild = FALSE, fig.keep = "high", fig.show = "asis", 
-        fig.align = "default", fig.path = "ergm_files/figure-html/", 
+    eval = TRUE)), setup = "flob <- ergm(flobusiness ~ edges + gwdegree(0.25, fixed = T) + gwesp(0.25, fixed = T) + \n       nodecov('wealth') + dyadcov(flomarriage))\ntidy(flob)\nglance(flob)", 
+    chunks = list(list(label = "flob", code = "flob <- ergm(flobusiness ~ edges + gwdegree(0.25, fixed = T) + gwesp(0.25, fixed = T) + \n       nodecov('wealth') + dyadcov(flomarriage))\ntidy(flob)\nglance(flob)", 
+        opts = list(label = "\"flob\"", exercise = "TRUE"), engine = "r"), 
+        list(label = "flobgof", code = "(flob.gof <- gof(flob,  GOF = ~ degree + triadcensus + espartners - model))\nplot(flob.gof)", 
+            opts = list(label = "\"flobgof\"", exercise = "TRUE", 
+                exercise.setup = "\"flob\"", fig.width = "9"), 
+            engine = "r")), code_check = NULL, error_check = NULL, 
+    check = NULL, solution = NULL, tests = NULL, options = list(
+        eval = FALSE, echo = TRUE, results = "markup", tidy = FALSE, 
+        tidy.opts = NULL, collapse = FALSE, prompt = FALSE, comment = NA, 
+        highlight = FALSE, size = "normalsize", background = "#F7F7F7", 
+        strip.white = TRUE, cache = 0, cache.path = "ergm_cache/html/", 
+        cache.vars = NULL, cache.lazy = TRUE, dependson = NULL, 
+        autodep = FALSE, cache.rebuild = FALSE, fig.keep = "high", 
+        fig.show = "asis", fig.align = "default", fig.path = "ergm_files/figure-html/", 
         dev = "png", dev.args = NULL, dpi = 192, fig.ext = "png", 
         fig.width = 9, fig.height = 4, fig.env = "figure", fig.cap = NULL, 
         fig.scap = NULL, fig.note = NULL, fig.lp = "fig:", fig.subcap = NULL, 
@@ -2509,9 +2540,9 @@ learnr:::store_exercise_cache(structure(list(label = "flobgof", global_setup = s
         message = TRUE, render = NULL, ref.label = NULL, child = NULL, 
         engine = "r", split = FALSE, include = TRUE, purl = TRUE, 
         max.print = 1000, label = "flobgof", exercise = TRUE, 
-        code = c("(flob.gof <- gof(flob,  GOF = ~ degree + triadcensus + espartners - model))", 
+        exercise.setup = "flob", code = c("(flob.gof <- gof(flob,  GOF = ~ degree + triadcensus + espartners - model))", 
         "plot(flob.gof)"), out.width.px = 864, out.height.px = 384, 
-        params.src = "flobgof, exercise = TRUE, fig.width=9", 
+        params.src = "flobgof, exercise = TRUE, exercise.setup = \"flob\", fig.width=9", 
         fig.num = 0, exercise.df_print = "paged", exercise.checker = "NULL"), 
     engine = "r", version = "4"), class = c("r", "tutorial_exercise"
 )))
@@ -2520,33 +2551,33 @@ learnr:::store_exercise_cache(structure(list(label = "flobgof", global_setup = s
 
 <script type="application/shiny-prerendered" data-context="server">
 learnr:::question_prerendered_chunk(structure(list(type = "learnr_checkbox", label = "dependq", question = structure("What kind of (statistical) dependencies do network analysts often consider?", html = TRUE, class = c("html", 
-"character")), answers = list(structure(list(id = "lnr_ans_575e3e", 
+"character")), answers = list(structure(list(id = "lnr_ans_68565d4", 
     option = "Independence", value = "Independence", label = structure("Independence", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("A model with full independence across observations would be considered too simplistic for network data.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ffcad5e", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_ddbe8f0", 
     option = "Dyad independence", value = "Dyad independence", 
     label = structure("Dyad independence", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_d1bb38d", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_399c1a6", 
     option = "Markov", value = "Markov", label = structure("Markov", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_a811c83", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_c07503d", 
     option = "Social circuit", value = "Social circuit", label = structure("Social circuit", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_98d3004", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_8b3b7e1", 
     option = "Partial conditional", value = "Partial conditional", 
     label = structure("Partial conditional", html = TRUE, class = c("html", 
     "character")), correct = TRUE, message = NULL, type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_9307503", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_4093de6", 
     option = "Trade", value = "Trade", label = structure("Trade", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_20f8402", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_bb629bc", 
     option = "Environment", value = "Environment", label = structure("Environment", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
-"tutorial_quiz_answer")), structure(list(id = "lnr_ans_265f28e", 
+"tutorial_quiz_answer")), structure(list(id = "lnr_ans_8615273", 
     option = "Health", value = "Health", label = structure("Health", html = TRUE, class = c("html", 
     "character")), correct = FALSE, message = structure("This is not a type of statistical dependency.", html = TRUE, class = c("html", 
     "character")), type = "literal"), class = c("tutorial_question_answer", 
@@ -2557,7 +2588,7 @@ learnr:::question_prerendered_chunk(structure(list(type = "learnr_checkbox", lab
 "character")), incorrect = structure("Incorrect", html = TRUE, class = c("html", 
 "character")), message = NULL, post_message = NULL), ids = list(
     answer = "dependq-answer", question = "dependq"), loading = NULL, 
-    random_answer_order = TRUE, allow_retry = TRUE, seed = 606332864.717654, 
+    random_answer_order = TRUE, allow_retry = TRUE, seed = 499837582.267245, 
     options = list()), class = c("learnr_checkbox", "tutorial_question"
 )), session = session)
 </script>
@@ -2631,7 +2662,7 @@ learnr:::store_exercise_cache(structure(list(label = "freeplay", global_setup = 
 <!--/html_preserve-->
 <!--html_preserve-->
 <script type="application/shiny-prerendered" data-context="execution_dependencies">
-{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages","version"]},"class":{"type":"character","attributes":{},"value":["data.frame"]},"row.names":{"type":"integer","attributes":{},"value":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97]}},"value":[{"type":"character","attributes":{},"value":["autograph","backports","base","bslib","cachem","checkmate","cli","coda","commonmark","compiler","datasets","DEoptimR","digest","dplyr","ergm","evaluate","farver","fastmap","fontawesome","generics","ggforce","ggplot2","ggraph","ggrepel","glue","graphics","graphlayouts","grDevices","grid","gridExtra","gtable","htmltools","htmlwidgets","httpuv","igraph","infernet","jquerylib","jsonlite","knitr","labeling","later","lattice","learnr","lifecycle","litedown","lpSolveAPI","magrittr","manynet","markdown","MASS","Matrix","memoise","methods","mime","netrics","network","otel","parallel","patchwork","pillar","pkgconfig","polyclip","promises","purrr","R6","rbibutils","RColorBrewer","Rcpp","Rdpack","rlang","rle","rmarkdown","robustbase","rprojroot","S7","sass","scales","shiny","statnet.common","stats","stringi","stringr","tibble","tidygraph","tidyr","tidyselect","tools","trust","tweenr","utils","vctrs","viridis","viridisLite","withr","xfun","xtable","yaml"]},{"type":"character","attributes":{},"value":["1.2.8","1.5.1","4.6.1","0.12.0","1.1.0","2.3.4","3.6.6","0.19-4.1","2.0.0","4.6.1","4.6.1","1.2-2","0.6.39","1.2.1","4.12.0","1.0.5","2.1.2","1.2.0","0.5.3","0.1.4","0.5.0","4.0.3","2.2.2","0.9.8","1.8.1","4.6.1","1.2.5","4.6.1","4.6.1","2.3.1","0.3.6","0.5.9","1.6.4","1.6.17","2.3.4","0.6.2","0.1.4","2.0.0","1.52","0.4.3","1.4.8","0.23-1","0.11.6","1.0.5","0.11","5.5.2.0-17.15","2.0.5","2.4.4","2.0","7.3-66","1.7-6","2.0.1","4.6.1","0.13","1.1.2","1.20.0","0.2.0","4.6.1","1.3.2","1.11.1","2.0.3","1.10-7","1.5.0","1.2.2","2.6.1","2.4.1","1.1-3","1.1.2","2.6.6","1.3.0","0.10.0","2.32","0.99-7","2.1.1","0.2.2","0.4.10","1.4.0","1.14.0","4.13.0","4.6.1","1.8.9","1.6.0","3.3.1","1.3.1","1.3.2","1.2.1","4.6.1","0.1-9","2.0.3","4.6.1","0.7.3","0.6.5","0.4.3","3.0.3","0.62","1.8-8","2.3.12"]}]}]}
+{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages","version"]},"class":{"type":"character","attributes":{},"value":["data.frame"]},"row.names":{"type":"integer","attributes":{},"value":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97]}},"value":[{"type":"character","attributes":{},"value":["autograph","backports","base","bslib","cachem","checkmate","cli","coda","commonmark","compiler","datasets","DEoptimR","digest","dplyr","ergm","evaluate","farver","fastmap","fontawesome","generics","ggforce","ggplot2","ggraph","ggrepel","glue","graphics","graphlayouts","grDevices","grid","gridExtra","gtable","htmltools","htmlwidgets","httpuv","igraph","infernet","jquerylib","jsonlite","knitr","labeling","later","lattice","learnr","lifecycle","litedown","lpSolveAPI","magrittr","manynet","markdown","MASS","Matrix","memoise","methods","mime","netrics","network","otel","parallel","patchwork","pillar","pkgconfig","polyclip","promises","purrr","R6","rbibutils","RColorBrewer","Rcpp","Rdpack","rlang","rle","rmarkdown","robustbase","rprojroot","S7","sass","scales","shiny","statnet.common","stats","stringi","stringr","tibble","tidygraph","tidyr","tidyselect","tools","trust","tweenr","utils","vctrs","viridis","viridisLite","withr","xfun","xtable","yaml"]},{"type":"character","attributes":{},"value":["1.2.8","1.5.1","4.6.1","0.12.0","1.1.0","2.3.4","3.6.6","0.19-4.1","2.0.0","4.6.1","4.6.1","1.2-2","0.6.39","1.2.1","4.12.0","1.0.5","2.1.2","1.2.0","0.5.3","0.1.4","0.5.0","4.0.3","2.2.2","0.9.8","1.8.1","4.6.1","1.2.5","4.6.1","4.6.1","2.3.1","0.3.6","0.5.9","1.6.4","1.6.17","2.3.4","0.6.2","0.1.4","2.0.0","1.52","0.4.3","1.4.8","0.23-1","0.11.6","1.0.5","0.11","5.5.2.0-17.15","2.0.5","2.4.5","2.0","7.3-66","1.7-6","2.0.1","4.6.1","0.13","1.1.2","1.20.0","0.2.0","4.6.1","1.3.2","1.11.1","2.0.3","1.10-7","1.5.0","1.2.2","2.6.1","2.4.1","1.1-3","1.1.2","2.6.6","1.3.0","0.10.0","2.32","0.99-7","2.1.1","0.2.2","0.4.10","1.4.0","1.14.0","4.13.0","4.6.1","1.8.9","1.6.0","3.3.1","1.3.1","1.3.2","1.2.1","4.6.1","0.1-9","2.0.3","4.6.1","0.7.3","0.6.5","0.4.3","3.0.3","0.62","1.8-8","2.3.12"]}]}]}
 </script>
 <!--/html_preserve-->
 </div>

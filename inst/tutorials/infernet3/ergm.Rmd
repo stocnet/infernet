@@ -214,8 +214,11 @@ sizes within and across models (see below).
 ```{r signfq, echo=FALSE, purl = FALSE}
 question("Which statement is most detailed and correct?",
   answer("There is a statistically significant effect here."),
-  answer("The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases."),
-  answer("The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.", correct = TRUE),
+  answer("The edges coefficient is negative, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.",
+         message = "An edges-only model has no dependence between ties, so the probability of a tie does not change with the number of other edges."),
+  answer("The edges coefficient is negative and statistically significant, indicating that as the number of edges increases, the probability of a tie forming between any two nodes decreases.",
+         message = "An edges-only model has no dependence between ties, so the probability of a tie does not change with the number of other edges."),
+  answer("The edges coefficient is negative and statistically significant, indicating that a tie between any two nodes is less likely than no tie, with the same probability (about 1/6) for every pair.", correct = TRUE),
   answer("There are -1.609438 ties in this network."),
   answer("There is no statistically significant effect here."),
   random_answer_order = TRUE,
@@ -251,17 +254,33 @@ tidy(flom.bern, exponentiate = TRUE, conf.int = TRUE) # To return the odds ratio
 
 Odds are much more intuitive to interpret than log-odds.
 Odds range from 0 to \\(\infty\\) (but never negative).
-Essentially, if the odds ratio is 1:1, 
-then event and non-event equally likely.
-If odds ratio greater than 1, 
-then event more likely than non-event.
-If odds ratio less than 1, 
-then event less likely than non-event.
+In this edges-only model, the edges term works like an intercept,
+so its exponent, 0.2, is the _odds_ of a tie, \\(\Pr(Y=1)/\Pr(Y=0)\\).
+If the odds are 1 (1:1),
+then event and non-event are equally likely.
+If the odds are greater than 1,
+then the event is more likely than the non-event.
+If the odds are less than 1,
+then the event is less likely than the non-event.
 In other words:
 
-- OR>1: \\(\Pr(Y=1) > \Pr(Y=0)\\)
-- OR<1: \\(\Pr(Y=1) < \Pr(Y=0)\\)
-- OR=1: \\(\Pr(Y=1) = \Pr(Y=0)\\)
+- Odds>1: \\(\Pr(Y=1) > \Pr(Y=0)\\)
+- Odds<1: \\(\Pr(Y=1) < \Pr(Y=0)\\)
+- Odds=1: \\(\Pr(Y=1) = \Pr(Y=0)\\)
+
+So odds of 0.2 mean that a tie is a fifth as likely as no tie,
+a probability of 0.2/1.2, or about 1/6.
+
+The exponent of a covariate's coefficient is instead an _odds ratio_:
+it is the factor by which the odds of a tie change
+for each unit increase in that covariate.
+An odds ratio above 1 makes a tie more likely than it would otherwise be,
+but not necessarily more likely than no tie,
+since that also depends on the baseline odds.
+
+- OR>1: the odds of a tie rise as \\(X\\) increases
+- OR<1: the odds of a tie fall as \\(X\\) increases
+- OR=1: \\(X\\) makes no difference to the odds of a tie
 
 ### Predicted Probabilities
 
@@ -647,7 +666,7 @@ around already popular nodes or joining two-paths operating here.
 
 Now that you have a fitted model, let's see how well it fits:  
 
-```{r magnfit, exercise = TRUE, fig.width=9}
+```{r magnfit, exercise = TRUE, exercise.setup = "magnattr", fig.width=9}
 magn.attr.gof <- gof(magn.attr,  GOF = ~ degree + distance + triadcensus + espartners - model)
 plot(magn.attr.gof, statistic = "deg")
 ```
@@ -656,7 +675,7 @@ Looks ok, though there's still some over and underestimation,
 so there's room for improvement...
 Let's also compare a simulated network with the observed network
 
-```{r magsim, exercise = TRUE, fig.width=9}
+```{r magsim, exercise = TRUE, exercise.setup = "magnattr", fig.width=9}
 magn.sim1 <- simulate(magn.attr)
 graphr(magnolia, node_color = "Grade", node_size = 0.2, labels = FALSE) + 
   ggtitle("Observed") +
@@ -686,7 +705,7 @@ connected through a marriage tie!
 
 ### Let's analyse GOF
 
-```{r flobgof, exercise = TRUE, fig.width=9}
+```{r flobgof, exercise = TRUE, exercise.setup = "flob", fig.width=9}
 (flob.gof <- gof(flob,  GOF = ~ degree + triadcensus + espartners - model))
 plot(flob.gof)
 ```
