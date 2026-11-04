@@ -856,6 +856,14 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
 }
 
 
+# A permutation p-value counts the observed statistic among the draws, since
+# under the null it is one more draw, so it is (1 + b) / (B + 1) where b of the
+# B draws reach it (Phipson and Smyth 2010). It is never 0, and the test keeps
+# its size for any number of draws. `.distance_test()` counts the same way.
+#' @keywords internal
+#' @noRd
+.perm_p <- function(count, n) (1 + count) / (n + 1)
+
 #' @keywords internal
 #' @noRd
 aggregate_perm_results <- function(results, times) {
@@ -871,12 +879,12 @@ aggregate_perm_results <- function(results, times) {
   }
   resL <- unlist(results, recursive = FALSE)
   list(
-    lower  = Reduce("+", resL[names(resL) == "lower"],  0) / n_valid,
-    larger = Reduce("+", resL[names(resL) == "larger"], 0) / n_valid,
-    abs    = Reduce("+", resL[names(resL) == "abs"],    0) / n_valid,
+    lower  = .perm_p(Reduce("+", resL[names(resL) == "lower"],  0), n_valid),
+    larger = .perm_p(Reduce("+", resL[names(resL) == "larger"], 0), n_valid),
+    abs    = .perm_p(Reduce("+", resL[names(resL) == "abs"],    0), n_valid),
     # The permuted test statistics themselves, one row per permutation that
-    # succeeded. The three shares above are summaries of this; keeping it lets a
-    # plot draw the null distribution the shares were read from.
+    # succeeded. The three p-values above are read from this; keeping it lets a
+    # plot draw the null distribution they were read from.
     testdist = do.call(rbind, lapply(results, function(r) r$t))
   )
 }

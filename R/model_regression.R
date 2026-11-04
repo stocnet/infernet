@@ -298,6 +298,12 @@
 #'   conditions."
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}.
+#'
+#'   Phipson, Belinda, and Gordon K. Smyth. 2010.
+#'   "Permutation P-values Should Never Be Zero: Calculating Exact P-values
+#'   When Permutations Are Randomly Drawn."
+#'   _Statistical Applications in Genetics and Molecular Biology_ 9(1): 39.
+#'   \doi{10.2202/1544-6115.1585}.
 #' @examples
 #' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")

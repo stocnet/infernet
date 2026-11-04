@@ -41,7 +41,7 @@
 #'   the seed of the fit is used.
 #' @param ... Not used.
 #' @return `diagnose_confusion()` returns an object of class
-#'   `diagnose_confusion`, a list with the mean `confusion_matrix`, its
+#'   `infernetConfusion`, a list with the mean `confusion_matrix`, its
 #'   `confusion_matrix_sd`, `confusion_matrix_ci_lower`, and
 #'   `confusion_matrix_ci_upper`, the metrics, the
 #'   `threshold_confusion_matrix`, the `roc` curve, and the `auc`.
@@ -213,7 +213,7 @@ probabilistic_confusion_matrix <- function(actual,
     roc            = .roc_curve(actual, predicted_prob),
     auc            = .auc(actual, predicted_prob)
   )
-  class(result) <- "diagnose_confusion"
+  class(result) <- "infernetConfusion"
   result
 }
 

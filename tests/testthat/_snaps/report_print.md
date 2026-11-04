@@ -10,8 +10,8 @@
         term        estimate statistic p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <noquote>
       1 (Intercept)  -1.10      -4.40  <NA>             
-      2 ego_Age       0.0502     7.74  < 0.05  *        
-      3 same_Grp     -0.0917    -0.768 0.25             
+      2 ego_Age       0.0502     7.74  0.0476  *        
+      3 same_Grp     -0.0917    -0.768 0.286            
       
       # Null: 20 permutations of each predictor, by double semi-partialling.
       # Controls: seed = 1
@@ -29,8 +29,8 @@
         term        estimate statistic p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <noquote>
       1 (Intercept)   0.467      0.329 <NA>             
-      2 ego_Age       0.0543     2.31  0.05    *        
-      3 alter_Age    -0.0693    -2.83  < 0.05  *        
+      2 ego_Age       0.0543     2.31  0.0952  .        
+      3 alter_Age    -0.0693    -2.83  0.0476  *        
       
       # Null: 20 permutations of each predictor, by double semi-partialling.
       # Controls: seed = 1
@@ -47,7 +47,7 @@
       # A tibble: 1 x 5
         term     estimate statistic p.value signif   
         <chr>       <dbl>     <dbl> <chr>   <noquote>
-      1 diff_Age  0.00491     0.582 0.7              
+      1 diff_Age  0.00491     0.582 0.714            
       
       # Null: 20 permutations of the outcome.
       # Controls: seed = 1
@@ -64,8 +64,8 @@
         term        estimate statistic p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <noquote>
       1 (Intercept)  -0.269     -0.928 <NA>             
-      2 ego_age      -0.0102    -1.53  0.4              
-      3 friends       2.14       7.41  < 0.2            
+      2 ego_age      -0.0102    -1.53  0.5              
+      3 friends       2.14       7.41  0.167            
       
       # Null: 5 permutations of each predictor, by double semi-partialling.
       # Permutations relabel senders, receivers, and reporters alike.
@@ -83,8 +83,8 @@
         term        estimate statistic p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <noquote>
       1 (Intercept)  -0.846      -1.41 <NA>             
-      2 inertia       3.03        9.56 < 0.2            
-      3 ego_age      -0.0158     -1.07 0.2              
+      2 inertia       3.03        9.56 0.167            
+      3 ego_age      -0.0158     -1.07 0.333            
       
       # Panel: 2 waves, each fitted against the wave before.
       # Null: 5 permutations of each predictor, by double semi-partialling.
@@ -101,8 +101,8 @@
       # A tibble: 2 x 5
         term        estimate statistic p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <noquote>
-      1 (Intercept)  -1.12       -3.63 < 0.2            
-      2 ego_Age       0.0500      6.24 < 0.2            
+      1 (Intercept)  -1.12       -3.63 0.167            
+      2 ego_Age       0.0500      6.24 0.167            
       
       # Null: 5 permutations of the outcome.
       # Controls: seed = 1
@@ -117,8 +117,8 @@
       # A tibble: 2 x 7
         term        estimate statistic p.lower p.upper p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <chr>   <chr>   <noquote>
-      1 (Intercept)  -1.12       -3.63 < 0.2   1       < 0.2            
-      2 ego_Age       0.0500      6.24 1       < 0.2   < 0.2            
+      1 (Intercept)  -1.12       -3.63 0.167   1       0.167            
+      2 ego_Age       0.0500      6.24 1       0.167   0.167            
       
       # Random intercepts
       # A tibble: 1 x 3
@@ -156,8 +156,8 @@
         term        estimate statistic p.lower p.upper p.value signif   
         <chr>          <dbl>     <dbl> <chr>   <chr>   <chr>   <noquote>
       1 (Intercept)  -1.10      -4.40  <NA>    <NA>    <NA>             
-      2 ego_Age       0.0502     7.74  1       < 0.05  < 0.05  *        
-      3 same_Grp     -0.0917    -0.768 0.1     0.9     0.25             
+      2 ego_Age       0.0502     7.74  1       0.0476  0.0476  *        
+      3 same_Grp     -0.0917    -0.768 0.143   0.905   0.286            
       
       # Fit of the observed model
        r.squared adj.r.squared sigma logLik AIC BIC df.residual nobs   permute times
@@ -199,7 +199,7 @@
       # A tibble: 1 x 5
         statistic null.mean null.sd p.lower p.upper
             <dbl>     <dbl>   <dbl> <chr>   <chr>  
-      1      0.45     0.353   0.131 0.9     0.4    
+      1      0.45     0.353   0.131 0.905   0.429  
       
       # Null: 20 random networks with the same degrees.
       # Controls: seed = 1

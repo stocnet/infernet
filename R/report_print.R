@@ -61,22 +61,20 @@
   invisible()
 }
 
-# A p-value of 0 says only that no permutation reached the observed value, so
-# it is shown as below the smallest p-value the permutations can give, and
-# its marks are those of that bound.
+# A permutation p-value is never 0, since it counts the observed value as one
+# of the draws, so the smallest it shows is 1 / (times + 1).
 #' @keywords internal
 #' @noRd
-.format_perm_p <- function(p, times) {
+.format_perm_p <- function(p) {
   out <- formatC(p, digits = 3, format = "fg")
-  out[!is.na(p) & p == 0] <- paste("<", format(1 / times, digits = 3))
   out[is.na(p)] <- NA_character_
   trimws(out)
 }
 
 #' @keywords internal
 #' @noRd
-.signif_marks <- function(p, times) {
-  out <- as.character(stats::symnum(pmax(p, 1 / times), corr = FALSE, na = FALSE,
+.signif_marks <- function(p) {
+  out <- as.character(stats::symnum(p, corr = FALSE, na = FALSE,
                                     cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                                     symbols = c("***", "**", "*", ".", "")))
   out[is.na(p)] <- ""
@@ -94,10 +92,10 @@
 # marks of `p` beside them.
 #' @keywords internal
 #' @noRd
-.print_tidy <- function(tab, times, p = "p.value") {
-  marks <- if (p %in% names(tab)) .signif_marks(tab[[p]], times) else character(0)
+.print_tidy <- function(tab, p = "p.value") {
+  marks <- if (p %in% names(tab)) .signif_marks(tab[[p]]) else character(0)
   for (col in intersect(c("p.value", "p.lower", "p.upper"), names(tab))) {
-    tab[[col]] <- .format_perm_p(tab[[col]], times)
+    tab[[col]] <- .format_perm_p(tab[[col]])
   }
   # `noquote()`, since a tibble quotes an empty string.
   if (length(marks)) tab$signif <- noquote(marks)

@@ -41,9 +41,10 @@
 #'   A permutation test gives a p-value but no standard error,
 #'   so `tidy()` and `summary()` have no `std.error` column.
 #'   `p.value` is read from the permutations of the test statistic,
-#'   as `print()` shows it. Where no permutation reached the observed
-#'   statistic, `print()` shows the p-value as below `1/times`, the smallest
-#'   that the permutations can give, and marks it as that bound.
+#'   as `print()` shows it.
+#'   Each p-value is \eqn{(1 + b) / (B + 1)}, where \eqn{b} of the
+#'   \eqn{B} permutations reach the observed statistic (Phipson and Smyth 2010),
+#'   so it is never 0, and the smallest is \eqn{1 / (B + 1)}.
 #'   For the confusion matrix of a binary outcome, see [diagnose_confusion()].
 #'   When the predictors are permuted, the intercept has no test,
 #'   and its `p.value` is `NA`.
@@ -216,7 +217,7 @@ print.summary_netreg <- function(x, ...) {
     names(x))])
   # An intercept that a fixed effect absorbs has no estimate to show.
   tab <- tab[!(tab$term == "(Intercept)" & is.na(tab$estimate)), , drop = FALSE]
-  marks <- .print_tidy(tab, times)
+  marks <- .print_tidy(tab)
   extra <- attr(x, "extra")
   if (length(extra)) .print_header(extra)
   random <- attr(x, "random")
@@ -287,7 +288,7 @@ print.netreg <- function(x, ...) {
 #' @noRd
 .print_netreg <- function(x, print_b = FALSE, print_random = FALSE) {
   .print_title(.netreg_header(x))
-  marks <- .print_tidy(.netreg_tidy(x), x$times)
+  marks <- .print_tidy(.netreg_tidy(x))
   .print_footer(c(.netreg_footer(x), .signif_legend(marks)),
                 .methods_hint("summary() for the fit and every p-value"))
   if (print_b) {
@@ -407,7 +408,7 @@ print.netreg <- function(x, ...) {
                         p.upper = as.numeric(x$larger[1, ]),
                         p.value = as.numeric(x$abs[1, ]))
   .print_section("p-values of the coefficients, rather than of their test statistics")
-  .print_tidy(tab, x$times)
+  .print_tidy(tab)
   invisible()
 }
 

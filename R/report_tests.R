@@ -68,7 +68,7 @@ print.network_test <- function(x, ...,
   tab <- tidy.network_test(x)
   tab$method <- NULL
   tab$times <- NULL
-  marks <- .print_tidy(tab, times, p = if (distance) "p.upper" else "none")
+  marks <- .print_tidy(tab, p = if (distance) "p.upper" else "none")
   .print_footer(c(.test_null(x, times),
                   if (distance) "The p-value is p.upper: only a larger statistic counts against the null.",
                   if (isTRUE(x$failed > 0))

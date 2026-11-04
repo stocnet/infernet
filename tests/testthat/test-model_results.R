@@ -119,15 +119,17 @@ test_that("tidy() and glance() read the fits of estimate_mrqap()", {
 FORM_TD <- weight ~ ego(Age) + alter(Age) + sim(Age)
 COEFS_TD <- c("(Intercept)", "ego_Age", "alter_Age", "sim_Age")
 
-# The share of permutations at or below, at or above, and beyond the observed
-# statistic, read from `testdist` rather than from the fit's own summaries.
+# The p-values at or below, at or above, and beyond the observed statistic,
+# read from `testdist` rather than from the fit's own summaries. Each counts
+# the observed statistic as one of the draws, (1 + b) / (B + 1).
 shares_from_testdist <- function(fit) {
   td <- fit$testdist
   t  <- fit$obs[colnames(td)]
+  p <- function(hits) (1 + sum(hits, na.rm = TRUE)) / (sum(!is.na(hits)) + 1)
   rbind(
-    lower  = vapply(colnames(td), function(j) mean(td[, j] <= t[[j]], na.rm = TRUE), numeric(1)),
-    larger = vapply(colnames(td), function(j) mean(td[, j] >= t[[j]], na.rm = TRUE), numeric(1)),
-    abs    = vapply(colnames(td), function(j) mean(abs(td[, j]) >= abs(t[[j]]), na.rm = TRUE), numeric(1))
+    lower  = vapply(colnames(td), function(j) p(td[, j] <= t[[j]]), numeric(1)),
+    larger = vapply(colnames(td), function(j) p(td[, j] >= t[[j]]), numeric(1)),
+    abs    = vapply(colnames(td), function(j) p(abs(td[, j]) >= abs(t[[j]])), numeric(1))
   )
 }
 

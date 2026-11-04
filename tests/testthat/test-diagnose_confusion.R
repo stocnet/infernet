@@ -5,7 +5,7 @@ test_that("the threshold matrix and the AUC match a hand count", {
   actual <- c(0, 0, 1, 1, 1, 0)
   prob <- c(0.1, 0.6, 0.7, 0.4, 0.9, 0.2)
   out <- probabilistic_confusion_matrix(actual, prob, n_draws = 50, seed = 1)
-  expect_s3_class(out, "diagnose_confusion")
+  expect_s3_class(out, "infernetConfusion")
   # At 0.5: tn = 2, fp = 1, fn = 1, tp = 2.
   expect_equal(as.vector(out$threshold_confusion_matrix), c(2, 1, 1, 2))
   expect_equal(out$threshold_accuracy, 4 / 6)
@@ -27,7 +27,7 @@ test_that("a logistic and a linear probability model are diagnosed", {
   fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), b, times = 5,
                         control = list(seed = 1))
   out <- diagnose_confusion(fit, times = 50)
-  expect_s3_class(out, "diagnose_confusion")
+  expect_s3_class(out, "infernetConfusion")
   expect_equal(out$n, nobs(fit))
   # The seed of the fit is used where none is given, so a call reproduces.
   expect_equal(diagnose_confusion(fit, times = 50)$accuracy, out$accuracy)
@@ -37,7 +37,7 @@ test_that("a logistic and a linear probability model are diagnosed", {
   expect_equal(diagnose_confusion(fit, threshold = 0.9)$threshold, 0.9)
   lpm <- estimate_mrqap(. ~ ego(Age) + alter(Age), b, times = 5,
                         control = list(seed = 1, family = "gaussian"))
-  expect_s3_class(diagnose_confusion(lpm, times = 50), "diagnose_confusion")
+  expect_s3_class(diagnose_confusion(lpm, times = 50), "infernetConfusion")
 })
 
 test_that("a model that is not of a binary outcome is refused", {

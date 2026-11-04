@@ -68,11 +68,25 @@ test_that("a print points to more methods only at the most verbose level", {
   expect_match(capture.output(print(fit)), "See summary", all = FALSE)
 })
 
-test_that("a p-value of 0 prints as below the smallest that the draws can give", {
-  expect_equal(.format_perm_p(c(0, 0.05, NA), times = 20), c("< 0.05", "0.05", NA))
-  expect_equal(.signif_marks(c(0, 0.0004, 0.2, NA), times = 1000),
-               c("***", "***", "", ""))
-  expect_equal(.signif_marks(0, times = 20), "*")
+test_that("a permutation p-value counts the observed statistic as a draw", {
+  # (1 + b) / (B + 1), so that no p-value is 0 (Phipson and Smyth 2010).
+  expect_equal(.perm_p(0, 20), 1 / 21)
+  expect_equal(.perm_p(20, 20), 1)
+  fit <- estimate_mrqap(. ~ sim(Age), qap_net_binary(n = 10), times = 10,
+                        control = list(seed = 1))
+  p <- c(fit$lower, fit$larger, fit$abs)
+  p <- p[!is.na(p)]
+  expect_true(all(p >= 1 / 11 & p <= 1))
+  # Density is fixed under the null, so every draw ties with the observed.
+  cug <- test_random(manynet::ison_adolescents, netrics::net_by_density,
+                     times = 20, control = list(seed = 1))
+  expect_equal(c(cug$plteobs, cug$pgteobs), c(1, 1))
+})
+
+test_that("a permutation p-value prints as it is, with its marks", {
+  expect_equal(.format_perm_p(c(1 / 21, 0.05, NA)), c("0.0476", "0.05", NA))
+  expect_equal(.signif_marks(c(1 / 1001, 0.002, 0.2, NA)),
+               c("***", "**", "", ""))
 })
 
 # ---- the deprecated arguments, and summary() --------------------------------------
