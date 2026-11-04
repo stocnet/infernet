@@ -382,6 +382,12 @@ conditions." *Psychometrika* 72(4): 563-581.
 [doi:10.1007/s11336-007-9016-1](https://doi.org/10.1007/s11336-007-9016-1)
 .
 
+Phipson, Belinda, and Gordon K. Smyth. 2010. "Permutation P-values
+Should Never Be Zero: Calculating Exact P-values When Permutations Are
+Randomly Drawn." *Statistical Applications in Genetics and Molecular
+Biology* 9(1): 39.
+[doi:10.2202/1544-6115.1585](https://doi.org/10.2202/1544-6115.1585) .
+
 ## See also
 
 Other models:
@@ -412,9 +418,9 @@ print(model1)
 #>   term            estimate statistic p.value signif   
 #>   <chr>              <dbl>     <dbl> <chr>   <noquote>
 #> 1 (Intercept)        2.93      0.242 NA               
-#> 2 ego_Citations     -0.269    -1.69  0.3              
-#> 3 alter_Citations   -0.158    -0.997 0.6              
-#> 4 sim_Citations     39.4       3.13  < 0.05  *        
+#> 2 ego_Citations     -0.269    -1.69  0.333            
+#> 3 alter_Citations   -0.158    -0.997 0.619            
+#> 4 sim_Citations     39.4       3.13  0.0476  *        
 #> 
 #> # Null: 20 permutations of each predictor, by double semi-partialling.
 #> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1

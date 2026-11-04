@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/diversity-and-regression.html">Diversity and Regression</a></li>
     <li><a class="dropdown-item" href="articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -231,8 +232,14 @@
 <td><code>dist</code></td>
 </tr></tbody></table><p><code>mode</code> is reserved for a nodeset, as in one-mode and two-mode, which is what it means everywhere else in the ecosystem. Do not use it for directedness. <code>permute</code> replaced <code>method</code> because “method” says nothing about what differs; <code>"predictor"</code> and <code>"outcome"</code> name the thing that is actually shuffled. <code>data</code> is retired as an identifier: it named the network in one half of <a href="../R/model_regression.R">R/model_regression.R</a> and the matrix list in the other, one letter away from <code>.data</code>. Reserve <code>data =</code> for the argument a model fitter takes.</p>
 <p>When writing documentation or NEWS items, prefer breaking lines at punctuation.</p>
-<p>Make it clear when you are referring to functions by adding backticks and parentheses, e.g. <code>a_function()</code>, and arguments by adding an equals sign, e.g. <code>argument=</code>. Argument values or variables can be in double quotation marks, e.g. “value”.</p>
-</div>
+<p>Use one notation for code in issues, reviews, documentation, and NEWS items:</p>
+<ul><li>Give a function or generic backticks and parentheses, e.g. <code>verb_function()</code>.</li>
+<li>Give methods their full name, e.g. <code>verb_function.stocnet()</code>.</li>
+<li>Give an argument an equals sign, e.g. <code>argument=</code>.</li>
+<li>Put a value that an argument takes, or a variable, in double quotation marks, e.g. “value”.</li>
+<li>Give a class a leading period where it names the class, e.g. <code>.stocnet</code>. A leading period on a name with parentheses is an internal helper instead, e.g. <code>.helper_function()</code>.</li>
+<li>Name a new class in camelCase, after the package plus a noun, e.g. <code>infernetConfusion</code>, so that a class does not look like a snake_case function. See “Class names across the stocnet ecosystem” in the <a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a> contributing guide. Older names, such as <code>network_test</code>, stay until they can be renamed with an alias.</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="package-architecture">Package architecture<a class="anchor" aria-label="anchor" href="#package-architecture"></a></h2>

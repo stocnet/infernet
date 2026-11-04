@@ -61,9 +61,9 @@ of diffusion against:
 Functions for diagnosing model results:
 
 - [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`print(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`tidy(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`glance(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`print(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`tidy(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`glance(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
   : Diagnosing how well a model classifies ties
 - [`predict(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
   [`predict(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)

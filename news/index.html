@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
     <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -38,6 +39,30 @@
       <small>Source: <a href="https://github.com/stocnet/infernet/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.2" id="infernet-062">infernet 0.6.2<a class="anchor" aria-label="anchor" href="#infernet-062"></a></h2>
+<div class="section level3">
+<h3 id="modelling-0-6-2">Modelling<a class="anchor" aria-label="anchor" href="#modelling-0-6-2"></a></h3>
+<ul><li>Renamed class of the result of <code><a href="../reference/diagnose_confusion.html">diagnose_confusion()</a></code> to <code>infernetConfusion</code>
+</li>
+<li>Fixed <code><a href="../reference/regression.html">estimate_mrqap()</a></code> p-values to count the observed statistic as a draw
+<ul><li>Each is now (1 + b) / (B + 1), as Phipson and Smyth (2010) recommend</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="testing-0-6-2">Testing<a class="anchor" aria-label="anchor" href="#testing-0-6-2"></a></h3>
+<ul><li>Fixed <code><a href="../reference/test_measures.html">test_random()</a></code>, <code><a href="../reference/test_measures.html">test_configuration()</a></code>, and <code><a href="../reference/test_measures.html">test_permutation()</a></code> p-values to count the observed statistic as a draw, as <code><a href="../reference/test_fit.html">test_gof()</a></code> already did</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tutorials-0-6-2">Tutorials<a class="anchor" aria-label="anchor" href="#tutorials-0-6-2"></a></h3>
+<ul><li>Moved the “Modelling with ERGMs” tutorial from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a>, as <code>infernet3</code>
+<ul><li>Fixed three exercises that could not find the model fitted before them</li>
+<li>Fixed the reading of the edges-only model and of its odds and odds ratios</li>
+</ul></li>
+<li>Added <code>data-raw/build_tutorial_articles.R</code> to make tutorial static previews</li>
+<li>Added a static preview of the “Modelling with ERGMs” tutorial to the website</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.1" id="infernet-061">infernet 0.6.1<a class="anchor" aria-label="anchor" href="#infernet-061"></a></h2>
 <div class="section level3">

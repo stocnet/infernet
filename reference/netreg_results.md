@@ -185,11 +185,11 @@ gives a p-value but no standard error, so
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
 [`summary()`](https://rdrr.io/r/base/summary.html) have no `std.error`
 column. `p.value` is read from the permutations of the test statistic,
-as [`print()`](https://rdrr.io/r/base/print.html) shows it. Where no
-permutation reached the observed statistic,
-[`print()`](https://rdrr.io/r/base/print.html) shows the p-value as
-below `1/times`, the smallest that the permutations can give, and marks
-it as that bound. For the confusion matrix of a binary outcome, see
+as [`print()`](https://rdrr.io/r/base/print.html) shows it. Each p-value
+is \\(1 + b) / (B + 1)\\, where \\b\\ of the \\B\\ permutations reach
+the observed statistic (Phipson and Smyth 2010), so it is never 0, and
+the smallest is \\1 / (B + 1)\\. For the confusion matrix of a binary
+outcome, see
 [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md).
 When the predictors are permuted, the intercept has no test, and its
 `p.value` is `NA`.
@@ -256,8 +256,8 @@ css_model
 #>   term        estimate statistic p.value signif   
 #>   <chr>          <dbl>     <dbl> <chr>   <noquote>
 #> 1 (Intercept)   -1.07     -38.5  NA               
-#> 2 same_dept      0.552      9.53 < 0.2            
-#> 3 reports        3.82      15.3  < 0.2            
+#> 2 same_dept      0.552      9.53 0.167            
+#> 3 reports        3.82      15.3  0.167            
 #> 
 #> # Null: 5 permutations of each predictor, by double semi-partialling.
 #> # Permutations relabel senders, receivers, and reporters alike.
@@ -268,8 +268,8 @@ summary(css_model)
 #>   term        estimate statistic p.lower p.upper p.value signif   
 #>   <chr>          <dbl>     <dbl> <chr>   <chr>   <chr>   <noquote>
 #> 1 (Intercept)   -1.07     -38.5  NA      NA      NA               
-#> 2 same_dept      0.552      9.53 1       < 0.2   < 0.2            
-#> 3 reports        3.82      15.3  1       < 0.2   < 0.2            
+#> 2 same_dept      0.552      9.53 1       0.167   0.167            
+#> 3 reports        3.82      15.3  1       0.167   0.167            
 #> 
 #> # Fit of the observed model
 #>    family logLik  AIC   BIC deviance null.deviance df.residual nobs   permute
@@ -282,9 +282,9 @@ tidy(css_model)
 #> # A tibble: 3 × 4
 #>   term        estimate statistic p.value
 #>   <chr>          <dbl>     <dbl>   <dbl>
-#> 1 (Intercept)   -1.07     -38.5       NA
-#> 2 same_dept      0.552      9.53       0
-#> 3 reports        3.82      15.3        0
+#> 1 (Intercept)   -1.07     -38.5   NA    
+#> 2 same_dept      0.552      9.53   0.167
+#> 3 reports        3.82      15.3    0.167
 glance(css_model)
 #> # A tibble: 1 × 11
 #>   family   logLik   AIC    BIC deviance null.deviance df.residual  nobs permute 
@@ -297,7 +297,7 @@ AIC(css_model)
 #> [1] 9983.796
 formula(css_model)
 #> advice ~ same(dept) + reports
-#> <environment: 0xafebd44a0>
+#> <environment: 0x8a3cb65f0>
 head(fitted(css_model))
 #> [1] 0.3723726 0.2546663 0.3723726 0.2546663 0.2546663 0.2546663
 ```

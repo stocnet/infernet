@@ -1,5 +1,41 @@
 # Changelog
 
+## infernet 0.6.2
+
+### Modelling
+
+- Renamed class of the result of
+  [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  to `infernetConfusion`
+- Fixed
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  p-values to count the observed statistic as a draw
+  - Each is now (1 + b) / (B + 1), as Phipson and Smyth (2010) recommend
+
+### Testing
+
+- Fixed
+  [`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+  [`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+  and
+  [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md)
+  p-values to count the observed statistic as a draw, as
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  already did
+
+### Tutorials
+
+- Moved the “Modelling with ERGMs” tutorial from
+  [migraph](https://stocnet.github.io/migraph/), as `infernet3`
+  - Fixed three exercises that could not find the model fitted before
+    them
+  - Fixed the reading of the edges-only model and of its odds and odds
+    ratios
+- Added `data-raw/build_tutorial_articles.R` to make tutorial static
+  previews
+- Added a static preview of the “Modelling with ERGMs” tutorial to the
+  website
+
 ## infernet 0.6.1
 
 ### Testing

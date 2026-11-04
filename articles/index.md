@@ -5,8 +5,8 @@
 Static, read-only versions of the interactive `learnr` tutorials bundled
 with the package. To run them, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")` or `migraph::run_tute("diffusion")` for
-the full interactive experience.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
+`migraph::run_tute("ERGMs")` for the full interactive experience.
 
 - [Diversity and
   Regression](https://stocnet.github.io/infernet/articles/diversity-and-regression.md):
@@ -23,3 +23,9 @@ the full interactive experience.
   and complex diffusion or contagion on empirical or generated network
   structures, including more compartmental models and learning models,
   and how to test whether a model fits an observed diffusion.
+
+- [Modelling with
+  ERGMs](https://stocnet.github.io/infernet/articles/modelling-with-ergms.md):
+
+  This tutorial aims to teach you how to model network structure using
+  exponential random graph models (ERGMs).

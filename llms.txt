@@ -344,15 +344,18 @@ diffusion with [`plot()`](https://rdrr.io/r/graphics/plot.default.html).
 ## Learn more
 
 The [website](https://stocnet.github.io/infernet/) has a page for every
-function, and two tutorials:
+function, and there are three tutorials:
 
 - “Diversity and Regression” moves from univariate tests to network
   regression.
 - “Diffusion and Learning” simulates diffusions and tests their fit.
+- “Modelling with ERGMs” fits, interprets, and checks exponential random
+  graph models with [ergm](https://statnet.org).
 
 To run them interactively, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")` or `migraph::run_tute("diffusion")`.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
+`migraph::run_tute("ERGMs")`.
 
 ## Design principles
 
@@ -476,9 +479,9 @@ of diffusion against:
 Functions for diagnosing model results:
 
 - [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`print(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`tidy(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`glance(`*`<diagnose_confusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`print(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`tidy(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`glance(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
   : Diagnosing how well a model classifies ties
 - [`predict(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
   [`predict(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
@@ -534,8 +537,8 @@ ties:
 Static, read-only versions of the interactive `learnr` tutorials bundled
 with the package. To run them, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")` or `migraph::run_tute("diffusion")` for
-the full interactive experience.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
+`migraph::run_tute("ERGMs")` for the full interactive experience.
 
 - [Diversity and
   Regression](https://stocnet.github.io/infernet/articles/diversity-and-regression.md):
@@ -552,3 +555,9 @@ the full interactive experience.
   and complex diffusion or contagion on empirical or generated network
   structures, including more compartmental models and learning models,
   and how to test whether a model fits an observed diffusion.
+
+- [Modelling with
+  ERGMs](https://stocnet.github.io/infernet/articles/modelling-with-ergms.md):
+
+  This tutorial aims to teach you how to model network structure using
+  exponential random graph models (ERGMs).

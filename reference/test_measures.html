@@ -35,7 +35,7 @@ For a null that rewires the network, see netdiffuseR::struct_test().
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,6 +49,7 @@ For a null that rewires the network, see netdiffuseR::struct_test().
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
     <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -134,10 +135,24 @@ See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each contr
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>network_test</code>, which <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> report.
 It holds the observed statistic in <code>testval</code>, the statistics of the
-simulations in <code>testdist</code>, and the share of these at or below the
-observed statistic in <code>plteobs</code> and at or above it in <code>pgteobs</code>.
+simulations in <code>testdist</code>, and the p-values of the observed statistic:
+in <code>plteobs</code> from the simulations at or below it, and in <code>pgteobs</code>
+from those at or above it.
+Each p-value is \((1 + b) / (B + 1)\), where \(b\) of the
+\(B\) simulations reach the observed statistic, since under the null
+the observed network is one more draw (Phipson and Smyth 2010).
+So a p-value is never 0, and the smallest is \(1 / (B + 1)\).
 It also holds the number of simulations as <code>times</code>, the name of the
 statistic as <code>statistic</code>, and the controls that the test used as <code>control</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Phipson, Belinda, and Gordon K. Smyth. 2010.
+"Permutation P-values Should Never Be Zero: Calculating Exact P-values
+When Permutations Are Randomly Drawn."
+<em>Statistical Applications in Genetics and Molecular Biology</em> 9(1): 39.
+<a href="https://doi.org/10.2202/1544-6115.1585" class="external-link">doi:10.2202/1544-6115.1585</a>
+.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -167,7 +182,7 @@ statistic as <code>statistic</code>, and the controls that the test used as <cod
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>    -<span style="color: #BB0000;">0.857</span>    -<span style="color: #BB0000;">0.612</span>  0.091<span style="text-decoration: underline;">6</span> 0.005   0.995  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>    -<span style="color: #BB0000;">0.857</span>    -<span style="color: #BB0000;">0.612</span>  0.091<span style="text-decoration: underline;">6</span> 0.00995 0.995  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 200 random networks with the same size and density.</span>
 <span class="r-in"><span><span class="co"># plot(cugtest)</span></span></span>

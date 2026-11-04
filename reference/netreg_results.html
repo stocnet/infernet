@@ -71,7 +71,7 @@ For the formula of chosen rows of a table of terms, see specify_terms.
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -85,6 +85,7 @@ For the formula of chosen rows of a table of terms, see specify_terms.
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
     <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -256,9 +257,10 @@ observed model, which the permutations do not change.
 A permutation test gives a p-value but no standard error,
 so <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> have no <code>std.error</code> column.
 <code>p.value</code> is read from the permutations of the test statistic,
-as <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows it. Where no permutation reached the observed
-statistic, <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows the p-value as below <code>1/times</code>, the smallest
-that the permutations can give, and marks it as that bound.
+as <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows it.
+Each p-value is \((1 + b) / (B + 1)\), where \(b\) of the
+\(B\) permutations reach the observed statistic (Phipson and Smyth 2010),
+so it is never 0, and the smallest is \(1 / (B + 1)\).
 For the confusion matrix of a binary outcome, see <code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>.
 When the predictors are permuted, the intercept has no test,
 and its <code>p.value</code> is <code>NA</code>.</p>
@@ -316,8 +318,8 @@ demeaned fitted values.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   term        estimate statistic p.value signif   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;noquote&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> (Intercept)   -<span style="color: #BB0000;">1.07</span>     -<span style="color: #BB0000;">38.5</span>  <span style="color: #BB0000;">NA</span>               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53 &lt; 0.2            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3  &lt; 0.2            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53 0.167            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3  0.167            </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 5 permutations of each predictor, by double semi-partialling.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Permutations relabel senders, receivers, and reporters alike.</span>
@@ -328,8 +330,8 @@ demeaned fitted values.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   term        estimate statistic p.lower p.upper p.value signif   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;noquote&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> (Intercept)   -<span style="color: #BB0000;">1.07</span>     -<span style="color: #BB0000;">38.5</span>  <span style="color: #BB0000;">NA</span>      <span style="color: #BB0000;">NA</span>      <span style="color: #BB0000;">NA</span>               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53 1       &lt; 0.2   &lt; 0.2            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3  1       &lt; 0.2   &lt; 0.2            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53 1       0.167   0.167            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3  1       0.167   0.167            </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Fit of the observed model</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    family logLik  AIC   BIC deviance null.deviance df.residual nobs   permute</span>
@@ -342,9 +344,9 @@ demeaned fitted values.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 4</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   term        estimate statistic p.value</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> (Intercept)   -<span style="color: #BB0000;">1.07</span>     -<span style="color: #BB0000;">38.5</span>       <span style="color: #BB0000;">NA</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53       0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> (Intercept)   -<span style="color: #BB0000;">1.07</span>     -<span style="color: #BB0000;">38.5</span>   <span style="color: #BB0000;">NA</span>    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> same_dept      0.552      9.53   0.167</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> reports        3.82      15.3    0.167</span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">css_model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 11</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   family   logLik   AIC    BIC deviance null.deviance df.residual  nobs permute </span>
@@ -357,7 +359,7 @@ demeaned fitted values.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 9983.796</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></span><span class="op">(</span><span class="va">css_model</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> advice ~ same(dept) + reports</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0xafebd44a0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x8a3cb65f0&gt;</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">css_model</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.3723726 0.2546663 0.3723726 0.2546663 0.2546663 0.2546663</span>
 </code></pre></div>

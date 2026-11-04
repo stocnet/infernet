@@ -70,10 +70,22 @@ A `network_test`, which [`print()`](https://rdrr.io/r/base/print.html),
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
 [`glance()`](https://generics.r-lib.org/reference/glance.html) report.
 It holds the observed statistic in `testval`, the statistics of the
-simulations in `testdist`, and the share of these at or below the
-observed statistic in `plteobs` and at or above it in `pgteobs`. It also
-holds the number of simulations as `times`, the name of the statistic as
+simulations in `testdist`, and the p-values of the observed statistic:
+in `plteobs` from the simulations at or below it, and in `pgteobs` from
+those at or above it. Each p-value is \\(1 + b) / (B + 1)\\, where \\b\\
+of the \\B\\ simulations reach the observed statistic, since under the
+null the observed network is one more draw (Phipson and Smyth 2010). So
+a p-value is never 0, and the smallest is \\1 / (B + 1)\\. It also holds
+the number of simulations as `times`, the name of the statistic as
 `statistic`, and the controls that the test used as `control`.
+
+## References
+
+Phipson, Belinda, and Gordon K. Smyth. 2010. "Permutation P-values
+Should Never Be Zero: Calculating Exact P-values When Permutations Are
+Randomly Drawn." *Statistical Applications in Genetics and Molecular
+Biology* 9(1): 39.
+[doi:10.2202/1544-6115.1585](https://doi.org/10.2202/1544-6115.1585) .
 
 ## See also
 
@@ -103,7 +115,7 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 #> # A tibble: 1 × 5
 #>   statistic null.mean null.sd p.lower p.upper
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>  
-#> 1    -0.857    -0.612  0.0916 0.005   0.995  
+#> 1    -0.857    -0.612  0.0916 0.00995 0.995  
 #> 
 #> # Null: 200 random networks with the same size and density.
 # plot(cugtest)

@@ -44,13 +44,13 @@ diagnose_confusion(x, threshold = 0.5, times = 1000, control = list(), ...)
 # S3 method for class 'netreg_lm'
 diagnose_confusion(x, threshold = 0.5, times = 1000, control = list(), ...)
 
-# S3 method for class 'diagnose_confusion'
+# S3 method for class 'infernetConfusion'
 print(x, ...)
 
-# S3 method for class 'diagnose_confusion'
+# S3 method for class 'infernetConfusion'
 tidy(x, ...)
 
-# S3 method for class 'diagnose_confusion'
+# S3 method for class 'infernetConfusion'
 glance(x, ...)
 ```
 
@@ -86,8 +86,8 @@ glance(x, ...)
 
 ## Value
 
-`diagnose_confusion()` returns an object of class `diagnose_confusion`,
-a list with the mean `confusion_matrix`, its `confusion_matrix_sd`,
+`diagnose_confusion()` returns an object of class `infernetConfusion`, a
+list with the mean `confusion_matrix`, its `confusion_matrix_sd`,
 `confusion_matrix_ci_lower`, and `confusion_matrix_ci_upper`, the
 metrics, the `threshold_confusion_matrix`, the `roc` curve, and the
 `auc`. [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
