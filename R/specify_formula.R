@@ -355,7 +355,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   # A panel's columns are those of its second wave, read against its first,
   # and a list's columns those of its first network, pooled with the others.
   ctx <- if (.is_panel(.data)) {
-    waves <- manynet::to_waves(.data)
+    waves <- manynet::to_times(.data)
     .spec_context(spec, waves[[2]], previous = waves[[1]])
   } else if (.is_list_of_graphs(.data)) {
     .spec_context(spec, .data[[1]], pooled = TRUE)

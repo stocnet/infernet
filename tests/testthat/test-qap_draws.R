@@ -77,7 +77,7 @@ test_that("missing and fixed cells give the same draws from a plan", {
 test_that("a panel and a list of networks give the same draws from a plan", {
   g <- qap_net_panel(n = 10, waves = 3)
   expect_same_draws(. ~ inertia + ego(age) + alter(age), g)
-  expect_same_draws(. ~ ego(age) + alter(age), manynet::to_waves(g),
+  expect_same_draws(. ~ ego(age) + alter(age), manynet::to_times(g),
                     permute = "predictor")
 })
 

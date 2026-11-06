@@ -620,7 +620,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE,
 #' @keywords internal
 #' @noRd
 .prepare_panel <- function(formula, .data) {
-  waves <- manynet::to_waves(.data)
+  waves <- manynet::to_times(.data)
   n_waves <- length(waves)
   mls <- lapply(seq(2, n_waves), function(t) {
     convertToMatrixList(formula, waves[[t]], advise = FALSE, pooled = TRUE,

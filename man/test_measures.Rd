@@ -77,6 +77,15 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
    times = 200))
 # plot(cugtest)
+# In a two-mode network with repeated ties, such as texts and the terms
+# they use, each draw keeps the number of tokens in each text and the
+# number of times each term is used, and so is a shuffled text. Project inside the statistic to test the
+# co-occurrence of the terms against such shuffled texts.
+tokens <- manynet::as_igraph(data.frame(
+  from = c("A","A","A","A","B","B","B","C","C","C","C"),
+  to = c("w","w","x","y","x","x","z","y","z","z","w")), twomode = TRUE)
+(configtest <- test_configuration(tokens,
+   function(g) net_by_transitivity(to_mode(g, 2)), times = 100))
 # (qaptest <- test_permutation(marvel_friends, 
 #                 net_by_heterophily, attribute = "Attractive",
 #                 times = 200))
