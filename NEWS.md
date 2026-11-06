@@ -1,3 +1,10 @@
+# infernet 0.7.0
+
+## Tutorials
+
+- Fixed the QAP test exercise of the "Diversity and Regression" tutorial
+- Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
+
 # infernet 0.6.2
 
 ## Modelling
