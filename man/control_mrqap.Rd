@@ -51,7 +51,8 @@ loops.}
 
 \item{seed}{A number to set the random seed with before the permutations,
 so that a fit can be reproduced. \code{NULL} (the default) leaves the seed as it
-is. The same seed gives the same result on any \code{strategy}.}
+is, unless a seed is set with \code{\link[=set_control_computation]{set_control_computation()}}.
+The same seed gives the same result on any \code{strategy}.}
 
 \item{groups}{A vector with a group for each node, so that each node is
 permuted only among the nodes of its group.
@@ -68,7 +69,8 @@ structure, on a network of more than about 50 nodes, with 1,000 or more
 \code{times}. Elsewhere the start of the workers costs more than it saves:
 a gaussian model solves its design once, so each permutation is cheap.
 Give \code{ncores} rather than \code{strategy = "multisession"}, which starts a
-worker on every core.}
+worker on every core.
+Set it for the session with \code{\link[=set_control_computation]{set_control_computation()}}.}
 
 \item{strategy}{The \code{{future}} plan that the permutations run on where
 \code{ncores} is \code{NULL}: \code{"sequential"}, \code{"multisession"}, \code{"multicore"}, or
@@ -98,10 +100,8 @@ variable. See the section on missing data in \code{\link[=estimate_mrqap]{estima
 \item{less_mem}{Logical, whether to leave the observed model object out of
 the result, to save memory on a large network. \code{FALSE} by default.}
 
-\item{persist}{Logical, whether the controls given in this call become the
-defaults of the session. See the section on persistent controls.
-\code{FALSE} by default, which changes nothing. Given as \code{persist = FALSE},
-it clears the persistent controls.}
+\item{persist}{Deprecated. Use \code{\link[=set_control_computation]{set_control_computation()}}
+instead. See the section on persistent controls.}
 
 \item{...}{Controls by another name: a name that infernet used before, or an
 option of another model. See the description.}
@@ -111,7 +111,8 @@ option of another model. See the description.}
 \value{
 An object of class \code{mrqap_control}: a list with one element for
 each control. Its attribute \code{source} says whether each control was
-\code{"given"}, comes from an \code{"option"}, or keeps its \code{"default"}.
+\code{"given"} (in the call or by \code{\link[=control_computation]{control_computation()}}), comes from an
+\code{"option"}, or keeps its \code{"default"}.
 \code{print()} returns \code{x}, invisibly.
 }
 \description{
@@ -125,6 +126,9 @@ a mistake before a long run starts.
 The tests, such as \code{\link[=test_permutation]{test_permutation()}}, read \code{ncores}, \code{strategy}, and
 \code{seed} from the same object, so one set of controls serves a model and
 a test alike.
+These three computation controls can also be set for the session with
+\code{\link[=set_control_computation]{set_control_computation()}}, or for one call with
+\code{\link[=control_computation]{control_computation()}}.
 
 A control that is not named keeps its default.
 A name that infernet used before is converted to its current name, with a
@@ -137,30 +141,20 @@ Any other name aborts, and the nearest control is suggested.
 }
 \section{Persistent controls}{
 
-\code{control_mrqap(ncores = 2, missing = "fail", persist = TRUE)} writes the
-controls that it is given to \code{options(infernet.control)}, after it checks
-them. Each later call of \code{\link[=estimate_mrqap]{estimate_mrqap()}}, \code{\link[=test_random]{test_random()}},
-\code{\link[=test_configuration]{test_configuration()}}, \code{\link[=test_permutation]{test_permutation()}}, \code{\link[=test_gof]{test_gof()}},
-\code{\link[=test_distributions]{test_distributions()}}, \code{\link[=test_parameter]{test_parameter()}}, \code{\link[=test_time]{test_time()}}, and
-\code{\link[=play_diffusions]{play_diffusions()}} then uses them as defaults, and says so with
-\code{options(snet_verbosity = "verbose")}.
-\itemize{
-\item A control given in a call takes priority over a persistent one.
-Give \code{strategy = NULL} in a call to use the plan of \code{future::plan()}
-where a \code{strategy} or \code{ncores} persists.
-\item A second call with \code{persist = TRUE} adds to the persistent controls, and
-replaces a control that it gives again. A control given as \code{NULL}, such
-as \code{control_mrqap(ncores = NULL, persist = TRUE)}, is removed.
-\item \code{control_mrqap(persist = FALSE)} clears all of them.
-\item \code{control_mrqap()} shows the controls in force, and marks each one that
-comes from the persistent controls with \code{(option)}.
-\item \code{control_mrqap()} reads the persistent controls when it is called, so
-its result keeps the same controls if the options change later.
-}
+\code{\link[=set_control_computation]{set_control_computation()}} sets \code{seed}, \code{ncores}, and \code{strategy} for the
+session, and each call of \code{control_mrqap()} then uses them where they are
+not given. A control given in the call takes priority, then one from
+\code{\link[=control_computation]{control_computation()}}, then the option, then the default.
+\code{control_mrqap()} marks each control that comes from an option with
+\code{(option)}. It reads the options when it is called, so its result keeps
+the same controls if the options change later.
 
-A \code{seed} can persist. Each call then sets the same seed, and so draws the
-same random numbers, which reproduces each result. The print of a result
-gives the seed that it used.
+\code{persist = TRUE} is deprecated, and warns once in a session.
+It still writes the computation controls that it is given with
+\code{\link[=set_control_computation]{set_control_computation()}}, and the other controls to
+\code{options(infernet.control)}. That option is read until infernet 0.8.0,
+and a computation control in \code{options(snet_computation)} takes priority
+over it. \code{persist = FALSE} clears both options.
 
 Every result records the controls that it used, as \code{control} (an
 attribute of a \code{diffs_model}). Give that record as \code{control} to fit the
@@ -171,10 +165,8 @@ same model again without the options of the session.
 control_mrqap(family = "poisson", seed = 1)
 # A name that infernet used before is converted, with a warning
 control_mrqap(nullhyp = "qapy")
-# Controls that later calls use as defaults
-control_mrqap(missing = "fail", seed = 1, persist = TRUE)
-control_mrqap()
-control_mrqap(persist = FALSE)
+# Computation controls for this call only
+c(control_mrqap(family = "poisson"), control_computation(seed = 2))
 }
 \references{
 Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
@@ -189,6 +181,7 @@ Other models:
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
+\code{\link[=set_control_computation]{set_control_computation()}},
 \code{\link{specify}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}},

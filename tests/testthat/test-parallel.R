@@ -98,6 +98,25 @@ test_that("test_parameter() gives the same p-value on two workers", {
                sequential$parameter)
 })
 
+test_that("a seed that persists gives the same draws on two workers", {
+  old <- set_control_computation(seed = 99)
+  on.exit(options(snet_computation = old), add = TRUE)
+  par <- estimate_mrqap(FORM_PAR, qap_net_gaussian(), times = 30)
+  expect_equal(par$testdist, sequential$mrqap$testdist)
+  expect_equal(par$lower, sequential$mrqap$lower)
+  expect_equal(par$control$seed, 99)
+  set_control_computation(seed = 1)
+  expect_equal(test_permutation(marvel, netrics::net_by_heterophily,
+                                attribute = "Attractive", times = 20)$testdist,
+               sequential$permutation$testdist)
+  diffusions <- play_diffusions(diffusion_net, transmissibility = 0.4,
+                                times = 20)
+  # The record says that the seed came from the option, so only it differs.
+  expect_equal(diffusions, sequential$diffusions, ignore_attr = "control")
+  expect_equal(attr(diffusions, "control")$seed, 1)
+  expect_identical(future::plan(), two_workers)
+})
+
 # `ncores` starts its own plan, and so stops the user's workers and starts them
 # again afterwards. This is the one block that pays for that.
 test_that("ncores starts its own workers, and restores the user's plan", {

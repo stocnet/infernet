@@ -219,7 +219,7 @@
 #' @param control The controls of the model, as the result of
 #'   [control_mrqap()] or a named list of its arguments, such as
 #'   `list(family = "poisson", seed = 1)`. A control that is not named keeps
-#'   its default, or the value set with `control_mrqap(..., persist = TRUE)`.
+#'   its default, or the value set with [set_control_computation()].
 #'   See [control_mrqap()] for each control, its default, and the
 #'   names it converts from other models and earlier versions.
 #'   The result records the controls that it used as `control`.

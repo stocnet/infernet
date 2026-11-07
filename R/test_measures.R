@@ -28,7 +28,7 @@
 #'   whole.
 #'   `ncores` is generally useful only when `times` > 1000.
 #'   A control that is not named keeps its default, or the value set with
-#'   `control_mrqap(..., persist = TRUE)`, and the result records the controls
+#'   [set_control_computation()], and the result records the controls
 #'   that it used as `control`.
 #'   See [control_mrqap()] for each control and its default.
 #' @references

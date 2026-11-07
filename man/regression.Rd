@@ -361,6 +361,7 @@ Other models:
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
+\code{\link[=set_control_computation]{set_control_computation()}},
 \code{\link{specify}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}},

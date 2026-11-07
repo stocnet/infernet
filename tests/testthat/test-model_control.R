@@ -326,74 +326,126 @@ test_that("control_mrqap() refuses groups that are not a vector", {
   expect_error(control_mrqap(groups = list(1, 2)), "vector with a group")
 })
 
-# ---- persistent controls -------------------------------------------------------
+# ---- computation controls that persist ---------------------------------------
 
-# Each test sets `options(infernet.control)` and restores it on exit, since the
-# test files run in the same process one after another.
-persisting <- function(expr, value = NULL) {
-  old <- options(infernet.control = value)
-  on.exit(options(old), add = TRUE)
+# Each test sets the options and restores them on exit, with base R, since the
+# test files run in the same process one after another. The deprecation of
+# `persist =` warns once in a session, so its flag is restored too.
+persisting <- function(expr, value = NULL, legacy = NULL) {
+  old <- options(snet_computation = value, infernet.control = legacy)
+  warned <- .infernet_state$warned_persist
+  .infernet_state$warned_persist <- TRUE
+  on.exit({
+    options(old)
+    .infernet_state$warned_persist <- warned
+  }, add = TRUE)
   force(expr)
 }
 
-test_that("persist = TRUE writes the given controls, checked, to the options", {
+test_that("set_control_computation() writes the given controls, checked", {
   persisting({
-    ctrl <- control_mrqap(ncores = 1, missing = "fail", persist = TRUE)
-    stored <- getOption("infernet.control")
-    expect_identical(stored[c("missing", "ncores")],
-                     list(missing = "fail", ncores = 1))
-    expect_equal(attr(ctrl, "source")[["ncores"]], "given")
+    old <- set_control_computation(seed = 1, ncores = 1)
+    expect_null(old)
+    expect_identical(getOption("snet_computation"), list(seed = 1, ncores = 1))
+    # It returns the value before the call, which restores it.
+    old <- set_control_computation(strategy = "sequential")
+    expect_identical(old, list(seed = 1, ncores = 1))
+    expect_identical(getOption("snet_computation"),
+                     list(seed = 1, ncores = 1, strategy = "sequential"))
+    options(snet_computation = old)
+    expect_identical(getOption("snet_computation"), list(seed = 1, ncores = 1))
     # A control is checked before it persists, so nothing is written.
-    options(infernet.control = NULL)
-    expect_error(control_mrqap(ncores = 0, persist = TRUE), "ncores")
-    expect_null(getOption("infernet.control"))
-    expect_error(control_mrqap(persist = NA), "persist")
+    expect_error(set_control_computation(ncores = 0), "ncores")
+    expect_error(set_control_computation(seed = "a"), "seed")
+    expect_error(set_control_computation(strategy = "fast"), "strategy")
+    expect_error(set_control_computation(persist = NA), "persist")
+    expect_identical(getOption("snet_computation"), list(seed = 1, ncores = 1))
   })
+})
+
+test_that("NULL removes one computation control, and persist = FALSE all", {
+  persisting({
+    set_control_computation(ncores = NULL)
+    expect_identical(getOption("snet_computation"), list(seed = 2))
+    # A call with no controls changes nothing.
+    set_control_computation()
+    expect_identical(getOption("snet_computation"), list(seed = 2))
+    set_control_computation(seed = NULL)
+    expect_null(getOption("snet_computation"))
+    set_control_computation(seed = 2, ncores = 1)
+    expect_identical(set_control_computation(persist = FALSE),
+                     list(seed = 2, ncores = 1))
+    expect_null(getOption("snet_computation"))
+    expect_null(control_mrqap()$seed)
+    # persist = FALSE takes no controls, since it clears them all.
+    expect_error(set_control_computation(seed = 1, persist = FALSE),
+                 "takes none")
+  }, value = list(seed = 2, ncores = 1))
 })
 
 test_that("a later call uses a persistent control, and a given one wins", {
   persisting({
     ctrl <- control_mrqap()
-    expect_equal(ctrl$missing, "fail")
     expect_equal(ctrl$seed, 3)
     expect_equal(attr(ctrl, "source")[["seed"]], "option")
     expect_equal(control_mrqap(seed = 4)$seed, 4)
-    expect_equal(.resolve_control(list(missing = "available"))$missing,
-                 "available")
+    expect_equal(attr(control_mrqap(seed = 4), "source")[["seed"]], "given")
+    expect_equal(.resolve_control(list(seed = 4))$seed, 4)
     # A control given as NULL is given too.
     expect_null(.resolve_control(list(seed = NULL))$seed)
-  }, value = list(missing = "fail", seed = 3))
+    # control_mrqap() reads the option when it is called.
+    set_control_computation(seed = 5)
+    expect_equal(ctrl$seed, 3)
+    expect_equal(control_mrqap()$seed, 5)
+  }, value = list(seed = 3))
 })
 
-test_that("persist = TRUE adds to the persistent controls, and NULL removes one", {
+test_that("the call wins, then control_computation(), then the option", {
   persisting({
-    control_mrqap(ncores = 1, persist = TRUE)
-    control_mrqap(seed = 2, persist = TRUE)
-    expect_identical(getOption("infernet.control"), list(ncores = 1, seed = 2))
-    control_mrqap(ncores = NULL, persist = TRUE)
-    expect_identical(getOption("infernet.control"), list(seed = 2))
-  })
-})
-
-test_that("persist = FALSE, given, clears the persistent controls", {
-  persisting({
-    ctrl <- control_mrqap(persist = FALSE)
-    expect_null(getOption("infernet.control"))
-    expect_null(ctrl$seed)
-    # The default leaves them as they are.
-    options(infernet.control = list(seed = 2))
-    control_mrqap(family = "poisson")
-    expect_identical(getOption("infernet.control"), list(seed = 2))
-  }, value = list(seed = 2, ncores = 1))
+    one <- control_computation(seed = 2, strategy = NULL)
+    expect_s3_class(one, "infernetComputationControl")
+    expect_identical(unclass(one), list(seed = 2, strategy = NULL))
+    expect_error(control_computation(ncores = 1.5), "ncores")
+    # control_computation() wins over the option.
+    ctrl <- c(control_mrqap(family = "poisson"), one)
+    expect_s3_class(ctrl, "mrqap_control")
+    expect_equal(ctrl$seed, 2)
+    expect_equal(ctrl$family, "poisson")
+    expect_true("strategy" %in% names(ctrl))
+    expect_null(ctrl$strategy)
+    expect_equal(attr(ctrl, "source")[c("seed", "strategy", "ncores")],
+                 c(seed = "given", strategy = "given", ncores = "option"))
+    expect_equal(ctrl$ncores, 1)
+    # The call wins over control_computation().
+    expect_equal(c(control_mrqap(seed = 9), one)$seed, 9)
+    expect_equal(.resolve_control(c(list(seed = 9), one))$seed, 9)
+    # control_computation() alone is a control too.
+    expect_equal(.resolve_control(one)$seed, 2)
+    expect_equal(.resolve_control(control_computation())$seed, 3)
+    # Any other object cannot be combined.
+    expect_error(c(control_mrqap(), list(seed = 1)), "control_computation")
+    # Without an option, the default.
+    options(snet_computation = NULL)
+    expect_null(control_mrqap()$seed)
+  }, value = list(seed = 3, ncores = 1))
 })
 
 test_that("an option set by hand is checked when it is read", {
   persisting(expect_error(control_mrqap(), "ncores"),
              value = list(ncores = 0))
-  persisting(expect_error(control_mrqap(), "not a control"),
-             value = list(foo = 1))
+  persisting(expect_error(.resolve_control(list()), "ncores"),
+             value = list(ncores = 0))
+  persisting(expect_error(control_mrqap(), "not a computation control"),
+             value = list(missing = "fail"))
   persisting(expect_error(control_mrqap(), "named list"),
              value = list(1))
+  persisting(expect_error(control_mrqap(), "named list"),
+             value = "seed")
+  persisting(expect_error(set_control_computation(seed = 1), "ncores"),
+             value = list(ncores = 0))
+  # The old option is checked too, while it is read.
+  persisting(expect_error(control_mrqap(), "not a control"),
+             legacy = list(foo = 1))
 })
 
 test_that("a strategy persists, and strategy = NULL in a call keeps the plan", {
@@ -411,7 +463,11 @@ test_that("a print marks the controls that come from the options", {
     out <- capture.output(print(control_mrqap(family = "poisson")))
     expect_match(out, "seed +5  \\(option\\)", all = FALSE)
     expect_match(out, 'family +"poisson"$', all = FALSE)
-    expect_match(out, "persist = FALSE", all = FALSE)
+    expect_match(out, "set_control_computation\\(persist = FALSE\\)", all = FALSE)
+    expect_false(any(grepl("infernet.control", out)))
+    out <- capture.output(print(control_computation(seed = 5)))
+    expect_match(out, "1 set", all = FALSE)
+    expect_match(out, "seed +5", all = FALSE)
   }, value = list(seed = 5))
   out <- capture.output(print(control_mrqap()))
   expect_false(any(grepl("\\(option\\)", out)))
@@ -423,21 +479,25 @@ test_that("a fit uses the persistent controls, reports them, and records them", 
     msgs <- testthat::capture_messages(
       verbosely(fit <- estimate_mrqap(FORM, g, times = 5)))
     msgs <- paste(msgs, collapse = "")
-    expect_match(msgs, "2 persistent controls")
-    expect_match(msgs, "permute")
-    expect_equal(fit$permute, "outcome")
+    expect_match(msgs, "1 persistent control")
+    expect_match(msgs, "seed")
     expect_s3_class(fit$control, "mrqap_control")
     expect_equal(fit$control$seed, 7)
     expect_match(capture.output(print(fit)), "seed = 7", all = FALSE)
-    # The record fits the same model again without the options.
-    options(infernet.control = NULL)
+    # The record fits the same model again without the option.
+    options(snet_computation = NULL)
     again <- estimate_mrqap(FORM, g, times = 5, control = fit$control)
     expect_equal(again$lower, fit$lower)
-    expect_equal(again$permute, "outcome")
-  }, value = list(seed = 7, permute = "outcome"))
+    expect_equal(again$testdist, fit$testdist)
+    # The same seed, given, gives the same draws.
+    given <- estimate_mrqap(FORM, g, times = 5, control = list(seed = 7))
+    expect_equal(given$testdist, fit$testdist)
+    # A given seed is in the footer of the print too.
+    expect_match(capture.output(print(given)), "seed = 7", all = FALSE)
+  }, value = list(seed = 7))
 })
 
-test_that("the tests and the diffusions use and record a persistent seed", {
+test_that("a seed that persists gives the same draws in each call", {
   g <- qap_net_gaussian(n = 10)
   persisting({
     a <- test_permutation(g, netrics::net_by_density, times = 5)
@@ -445,7 +505,94 @@ test_that("the tests and the diffusions use and record a persistent seed", {
     expect_identical(a$testdist, b$testdist)
     expect_equal(a$control$seed, 11)
     expect_match(capture.output(print(a)), "seed = 11", all = FALSE)
+    m1 <- estimate_mrqap(FORM, qap_net_gaussian(n = 12), times = 5)
+    m2 <- estimate_mrqap(FORM, qap_net_gaussian(n = 12), times = 5)
+    expect_identical(m1$testdist, m2$testdist)
     d <- play_diffusions(manynet::ison_adolescents, times = 3)
     expect_equal(attr(d, "control")$seed, 11)
+    expect_equal(play_diffusions(manynet::ison_adolescents, times = 3), d)
+    # control_computation() for one call wins, and the next call has the
+    # persistent seed again.
+    c1 <- test_permutation(g, netrics::net_by_density, times = 5,
+                           control = control_computation(seed = 12))
+    expect_equal(c1$control$seed, 12)
+    expect_identical(
+      c1$testdist,
+      test_permutation(g, netrics::net_by_density, times = 5,
+                       control = list(seed = 12))$testdist)
+    expect_identical(
+      test_permutation(g, netrics::net_by_density, times = 5)$testdist,
+      a$testdist)
   }, value = list(seed = 11))
+})
+
+# ---- the deprecated persist = ---------------------------------------------------
+
+test_that("persist = warns once in a session, and names the new function", {
+  persisting({
+    .infernet_state$warned_persist <- NULL
+    expect_warning(control_mrqap(seed = 1, persist = TRUE),
+                   "set_control_computation")
+    expect_no_warning(control_mrqap(seed = 1, persist = TRUE))
+    expect_no_warning(control_mrqap(persist = FALSE))
+    .infernet_state$warned_persist <- NULL
+    expect_warning(control_mrqap(persist = FALSE), "deprecated")
+    # Without persist =, nothing warns.
+    .infernet_state$warned_persist <- NULL
+    expect_no_warning(control_mrqap(seed = 1))
+  })
+})
+
+test_that("persist = TRUE writes the computation controls to the new option", {
+  persisting({
+    ctrl <- control_mrqap(ncores = 1, seed = 2, missing = "fail", loops = FALSE,
+                          persist = TRUE)
+    expect_identical(getOption("snet_computation"), list(seed = 2, ncores = 1))
+    expect_identical(getOption("infernet.control"),
+                     list(loops = FALSE, missing = "fail"))
+    expect_equal(attr(ctrl, "source")[["ncores"]], "given")
+    # The model controls are still read from the old option, until 0.8.0.
+    later <- control_mrqap()
+    expect_equal(later$missing, "fail")
+    expect_equal(attr(later, "source")[["missing"]], "option")
+    out <- capture.output(print(later))
+    expect_match(out, "infernet.control = NULL", all = FALSE)
+    # NULL removes a control from either option.
+    control_mrqap(ncores = NULL, loops = NULL, persist = TRUE)
+    expect_identical(getOption("snet_computation"), list(seed = 2))
+    expect_identical(getOption("infernet.control"), list(missing = "fail"))
+    # A control is checked before it persists, so nothing is written.
+    expect_error(control_mrqap(ncores = 0, persist = TRUE), "ncores")
+    expect_identical(getOption("snet_computation"), list(seed = 2))
+    expect_error(control_mrqap(persist = NA), "persist")
+  })
+})
+
+test_that("persist = FALSE, given, clears both options", {
+  persisting({
+    ctrl <- control_mrqap(persist = FALSE)
+    expect_null(getOption("snet_computation"))
+    expect_null(getOption("infernet.control"))
+    expect_null(ctrl$seed)
+    expect_equal(ctrl$missing, "available")
+    # The default leaves them as they are.
+    options(snet_computation = list(seed = 2))
+    control_mrqap(family = "poisson")
+    expect_identical(getOption("snet_computation"), list(seed = 2))
+  }, value = list(seed = 2, ncores = 1), legacy = list(missing = "fail"))
+})
+
+test_that("the new option wins over the old one, and moves a control out of it", {
+  persisting({
+    expect_equal(control_mrqap()$seed, 2)
+    expect_equal(control_mrqap()$ncores, 1)
+    # A computation control written with persist = TRUE leaves the old option,
+    # so that it does not come back when it is removed from the new one.
+    control_mrqap(ncores = 2, persist = TRUE)
+    expect_identical(getOption("infernet.control"), list(seed = 1))
+    control_mrqap(seed = 3, persist = TRUE)
+    expect_null(getOption("infernet.control"))
+    set_control_computation(seed = NULL)
+    expect_null(control_mrqap()$seed)
+  }, value = list(seed = 2), legacy = list(seed = 1, ncores = 1))
 })

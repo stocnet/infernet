@@ -128,8 +128,14 @@ print.mrqap_control <- function(x, ...) {
       cat(sprintf("  %-*s  %s%s\n", width, nm, .control_value(ctrl[[nm]]), mark))
     }
   }
-  persisted <- if (any(source == "option"))
-    "(option) persists from control_mrqap(..., persist = TRUE); control_mrqap(persist = FALSE) clears it."
+  from_option <- names(source)[source == "option"]
+  persisted <- if (length(from_option) > 0)
+    "(option) persists from set_control_computation(); set_control_computation(persist = FALSE) clears it."
+  # A model control can come only from the option that is read until 0.8.0.
+  if (length(setdiff(from_option, .computation_names())) > 0) {
+    persisted <- c(persisted,
+                   "A model control persists from the deprecated options(infernet.control); options(infernet.control = NULL) clears it.")
+  }
   .print_footer(persisted,
                 .methods_hint("?control_mrqap for each control and its default"))
   invisible(x)

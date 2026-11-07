@@ -22,7 +22,7 @@
 #'   It reads `ncores`, `strategy`, and `seed`, and leaves the other controls
 #'   alone. The same seed gives the same diffusions sequentially and in
 #'   parallel. A control that is not named keeps its default, or the value
-#'   set with `control_mrqap(..., persist = TRUE)`. The result records the
+#'   set with [set_control_computation()]. The result records the
 #'   controls that it used in its attribute `control`.
 #' @return A `diffs_model`: a tibble with one row for each step of each run,
 #'   the run in `sim`, the step in `time`, and the counts of

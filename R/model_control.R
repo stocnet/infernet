@@ -8,11 +8,19 @@
 # for (`.control_foreign()`), and otherwise it aborts with the nearest name.
 # Renaming a control is then a row in `.control_renames()`.
 #
-# `persist = TRUE` writes the given controls to `options(infernet.control)`,
-# and each later `control_mrqap()` fills the controls that it is not given from
-# there. The attribute `source` says where each control came from, so that a
+# The computation controls (`seed`, `ncores`, `strategy`) persist:
+# `set_control_computation()` writes them to `options(snet_computation)`, which
+# goldfish reads too, and `control_computation()` gives them to one call. Each
+# `control_mrqap()` fills the controls that it is not given from the options,
+# so a control given in a call wins, then `control_computation()` (applied by
+# `c.mrqap_control()`), then the option, then the default.
+#
+# `control_mrqap(persist =)` is deprecated in 0.7.0. It still writes the
+# computation controls with `set_control_computation()`, and the model controls
+# to `options(infernet.control)`, which is read until 0.8.0, below the new
+# option. The attribute `source` says where each control came from, so that a
 # print and `.report_persisted()` can say so, and a result records the
-# controls whole, so that it can be fitted again without the option.
+# controls whole, so that it can be fitted again without the options.
 
 #' Controls for an MRQAP
 #'
@@ -27,6 +35,9 @@
 #'   The tests, such as [test_permutation()], read `ncores`, `strategy`, and
 #'   `seed` from the same object, so one set of controls serves a model and
 #'   a test alike.
+#'   These three computation controls can also be set for the session with
+#'   [set_control_computation()], or for one call with
+#'   [control_computation()].
 #'
 #'   A control that is not named keeps its default.
 #'   A name that infernet used before is converted to its current name, with a
@@ -55,7 +66,8 @@
 #'   loops.
 #' @param seed A number to set the random seed with before the permutations,
 #'   so that a fit can be reproduced. `NULL` (the default) leaves the seed as it
-#'   is. The same seed gives the same result on any `strategy`.
+#'   is, unless a seed is set with [set_control_computation()].
+#'   The same seed gives the same result on any `strategy`.
 #' @param groups A vector with a group for each node, so that each node is
 #'   permuted only among the nodes of its group.
 #'   On a two-mode network, its length says which mode it groups.
@@ -71,6 +83,7 @@
 #'   a gaussian model solves its design once, so each permutation is cheap.
 #'   Give `ncores` rather than `strategy = "multisession"`, which starts a
 #'   worker on every core.
+#'   Set it for the session with [set_control_computation()].
 #' @param strategy The `{future}` plan that the permutations run on where
 #'   `ncores` is `NULL`: `"sequential"`, `"multisession"`, `"multicore"`, or
 #'   `"cluster"`. The plan that was set before is restored after the fit.
@@ -95,44 +108,34 @@
 #'   variable. See the section on missing data in [estimate_mrqap()].
 #' @param less_mem Logical, whether to leave the observed model object out of
 #'   the result, to save memory on a large network. `FALSE` by default.
-#' @param persist Logical, whether the controls given in this call become the
-#'   defaults of the session. See the section on persistent controls.
-#'   `FALSE` by default, which changes nothing. Given as `persist = FALSE`,
-#'   it clears the persistent controls.
+#' @param persist Deprecated. Use [set_control_computation()]
+#'   instead. See the section on persistent controls.
 #' @param ... Controls by another name: a name that infernet used before, or an
 #'   option of another model. See the description.
 #' @param x An object of class `mrqap_control`.
 #' @section Persistent controls:
-#'   `control_mrqap(ncores = 2, missing = "fail", persist = TRUE)` writes the
-#'   controls that it is given to `options(infernet.control)`, after it checks
-#'   them. Each later call of [estimate_mrqap()], [test_random()],
-#'   [test_configuration()], [test_permutation()], [test_gof()],
-#'   [test_distributions()], [test_parameter()], [test_time()], and
-#'   [play_diffusions()] then uses them as defaults, and says so with
-#'   `options(snet_verbosity = "verbose")`.
+#'   [set_control_computation()] sets `seed`, `ncores`, and `strategy` for the
+#'   session, and each call of `control_mrqap()` then uses them where they are
+#'   not given. A control given in the call takes priority, then one from
+#'   [control_computation()], then the option, then the default.
+#'   `control_mrqap()` marks each control that comes from an option with
+#'   `(option)`. It reads the options when it is called, so its result keeps
+#'   the same controls if the options change later.
 #'
-#'   - A control given in a call takes priority over a persistent one.
-#'     Give `strategy = NULL` in a call to use the plan of `future::plan()`
-#'     where a `strategy` or `ncores` persists.
-#'   - A second call with `persist = TRUE` adds to the persistent controls, and
-#'     replaces a control that it gives again. A control given as `NULL`, such
-#'     as `control_mrqap(ncores = NULL, persist = TRUE)`, is removed.
-#'   - `control_mrqap(persist = FALSE)` clears all of them.
-#'   - `control_mrqap()` shows the controls in force, and marks each one that
-#'     comes from the persistent controls with `(option)`.
-#'   - `control_mrqap()` reads the persistent controls when it is called, so
-#'     its result keeps the same controls if the options change later.
-#'
-#'   A `seed` can persist. Each call then sets the same seed, and so draws the
-#'   same random numbers, which reproduces each result. The print of a result
-#'   gives the seed that it used.
+#'   `persist = TRUE` is deprecated, and warns once in a session.
+#'   It still writes the computation controls that it is given with
+#'   [set_control_computation()], and the other controls to
+#'   `options(infernet.control)`. That option is read until infernet 0.8.0,
+#'   and a computation control in `options(snet_computation)` takes priority
+#'   over it. `persist = FALSE` clears both options.
 #'
 #'   Every result records the controls that it used, as `control` (an
 #'   attribute of a `diffs_model`). Give that record as `control` to fit the
 #'   same model again without the options of the session.
 #' @return An object of class `mrqap_control`: a list with one element for
 #'   each control. Its attribute `source` says whether each control was
-#'   `"given"`, comes from an `"option"`, or keeps its `"default"`.
+#'   `"given"` (in the call or by [control_computation()]), comes from an
+#'   `"option"`, or keeps its `"default"`.
 #'   `print()` returns `x`, invisibly.
 #' @references
 #'   Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
@@ -144,10 +147,8 @@
 #' control_mrqap(family = "poisson", seed = 1)
 #' # A name that infernet used before is converted, with a warning
 #' control_mrqap(nullhyp = "qapy")
-#' # Controls that later calls use as defaults
-#' control_mrqap(missing = "fail", seed = 1, persist = TRUE)
-#' control_mrqap()
-#' control_mrqap(persist = FALSE)
+#' # Computation controls for this call only
+#' c(control_mrqap(family = "poisson"), control_computation(seed = 2))
 #' @export
 control_mrqap <- function(permute = c("predictor", "outcome"),
                           family = c("auto", "gaussian", "binomial", "poisson",
@@ -168,9 +169,13 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           persist = FALSE,
                           ...) {
   .check_flag(persist, "persist")
+  if (!missing(persist)) .warn_persist_deprecated()
   # `persist = FALSE`, given, clears the persistent controls before they are
   # read, where the default leaves them alone.
-  if (!missing(persist) && !persist) options(infernet.control = NULL)
+  if (!missing(persist) && !persist) {
+    options(infernet.control = NULL)
+    set_control_computation(persist = FALSE)
+  }
   ctrl <- list(permute = permute, family = family, directed = directed,
                loops = loops, seed = seed, groups = groups, ncores = ncores,
                strategy = strategy, use_robust_errors = use_robust_errors,
@@ -198,14 +203,10 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
     given <- c(given, names(renamed))
   }
   ctrl <- .check_controls(ctrl)
-  stored <- .persisted_controls()
+  stored <- .stored_controls()
   from_option <- setdiff(names(stored), given)
   for (nm in from_option) ctrl[nm] <- list(stored[[nm]])
-  if (persist) {
-    for (nm in given) stored[nm] <- list(ctrl[[nm]])
-    stored <- stored[!vapply(stored, is.null, logical(1))]
-    options(infernet.control = if (length(stored) > 0) stored)
-  }
+  if (persist) .persist_controls(ctrl, given)
   source <- stats::setNames(rep("default", length(ctrl)), names(ctrl))
   source[given] <- "given"
   source[from_option] <- "option"
@@ -228,10 +229,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                grep("^random_intercept_", names(ctrl), value = TRUE))) {
     .check_flag(ctrl[[nm]], nm)
   }
-  if (!is.null(ctrl$seed) &&
-      !(is.numeric(ctrl$seed) && length(ctrl$seed) == 1 && !is.na(ctrl$seed))) {
-    manynet::snet_abort("{.arg seed} must be one number, or {.code NULL}.")
-  }
+  .check_seed(ctrl$seed)
   .check_ncores(ctrl$ncores)
   if (!is.null(ctrl$groups) && !is.atomic(ctrl$groups)) {
     manynet::snet_abort("{.arg groups} must be a vector with a group for each node.")
@@ -239,16 +237,257 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
   ctrl
 }
 
+# ---- computation controls ----------------------------------------------------
+
+#' Computation controls for the session or for one call
+#'
+#' @description
+#'   The computation controls say how the draws of a model or a test run,
+#'   not what is fitted: `seed`, `ncores`, and `strategy`.
+#'   They are the same for every model, so they can persist across the
+#'   scripts of a session.
+#'
+#'   - `set_control_computation()` writes them to `options(snet_computation)`,
+#'     after it checks them. Each later call of [estimate_mrqap()],
+#'     [test_random()], [test_configuration()], [test_permutation()],
+#'     [test_gof()], [test_distributions()], [test_parameter()],
+#'     [test_time()], and [play_diffusions()] then uses them where they are
+#'     not given, and says so with `options(snet_verbosity = "verbose")`.
+#'     `{goldfish}` reads the same option.
+#'   - `control_computation()` gives them to one call only, as
+#'     `control = c(control_mrqap(...), control_computation(...))`, or
+#'     `control = control_computation(...)` alone.
+#'
+#'   A control given in a call, such as `control_mrqap(seed = 1)` or
+#'   `control = list(seed = 1)`, takes priority. Then comes
+#'   `control_computation()`, then `options(snet_computation)`, and then the
+#'   default of [control_mrqap()].
+#'
+#'   `set_control_computation()` changes only the controls that it is given.
+#'   A control given as `NULL` is removed, and `persist = FALSE` removes all
+#'   of them. The option is checked again when it is read, since it can also
+#'   be set by hand.
+#'
+#'   A persistent `seed` sets the same seed in every call, so each call draws
+#'   the same random numbers, sequentially or in parallel, and its result can
+#'   be reproduced. The print of a result gives the seed that it used, and
+#'   every result records its controls as `control`.
+#' @param seed A number to set the random seed with before the draws.
+#'   See [control_mrqap()].
+#' @param ncores A whole number of cores to run the draws on.
+#'   See [control_mrqap()].
+#' @param strategy The `{future}` plan that the draws run on where `ncores` is
+#'   `NULL`: `"sequential"`, `"multisession"`, `"multicore"`, or `"cluster"`.
+#'   See [control_mrqap()].
+#' @param persist Logical. `TRUE` (the default) writes the controls that are
+#'   given to the option. `FALSE` clears the option, and takes no controls.
+#' @param x An object of class `infernetComputationControl`.
+#' @param ... For `c()`, the result of [control_mrqap()] and then of
+#'   `control_computation()`. Not used by `print()`.
+#' @return `set_control_computation()` returns the value of
+#'   `options(snet_computation)` before the call, invisibly, so that
+#'   `options(snet_computation = old)` restores it.
+#'   `control_computation()` returns an object of class
+#'   `infernetComputationControl`: a list of the controls that it is given.
+#' @family models
+#' @examples
+#' # For the session: later calls use these where they are not given
+#' old <- set_control_computation(seed = 1, ncores = 1)
+#' control_mrqap()
+#' # A control given in a call wins
+#' control_mrqap(seed = 2)$seed
+#' # NULL removes one control, and persist = FALSE removes all of them
+#' set_control_computation(ncores = NULL)
+#' getOption("snet_computation")
+#' set_control_computation(persist = FALSE)
+#' options(snet_computation = old)
+#'
+#' # For one call only
+#' control_computation(seed = 3)
+#' c(control_mrqap(family = "poisson"), control_computation(seed = 3))
+#' @export
+set_control_computation <- function(seed = NULL, ncores = NULL,
+                                    strategy = NULL, persist = TRUE) {
+  .check_flag(persist, "persist")
+  old <- getOption("snet_computation")
+  given <- intersect(names(match.call())[-1], .computation_names())
+  if (!persist) {
+    if (length(given) > 0) {
+      manynet::snet_abort(
+        c("{.code persist = FALSE} clears every computation control, so it takes none.",
+          i = "Give {.val {given}} in a second call, with {.code persist = TRUE}."))
+    }
+    options(snet_computation = NULL)
+    return(invisible(old))
+  }
+  new <- .check_computation(list(seed = seed, ncores = ncores,
+                                 strategy = strategy)[given])
+  stored <- .computation_option()
+  for (nm in given) stored[nm] <- list(new[[nm]])
+  stored <- stored[!vapply(stored, is.null, logical(1))]
+  options(snet_computation = if (length(stored) > 0) stored)
+  invisible(old)
+}
+
+#' @rdname set_control_computation
+#' @export
+control_computation <- function(seed = NULL, ncores = NULL, strategy = NULL) {
+  given <- intersect(names(match.call())[-1], .computation_names())
+  ctrl <- .check_computation(list(seed = seed, ncores = ncores,
+                                  strategy = strategy)[given])
+  structure(ctrl, class = "infernetComputationControl")
+}
+
+#' @rdname set_control_computation
+#' @export
+print.infernetComputationControl <- function(x, ...) {
+  ctrl <- unclass(x)
+  .print_title(paste0("Computation controls for one call: ", length(ctrl),
+                      " set"))
+  if (length(ctrl) > 0) {
+    width <- max(nchar(names(ctrl)))
+    for (nm in names(ctrl)) {
+      cat(sprintf("  %-*s  %s\n", width, nm, .control_value(ctrl[[nm]])))
+    }
+  }
+  .print_footer(NULL, .methods_hint("?control_computation for each control"))
+  invisible(x)
+}
+
+# `c(control_mrqap(...), control_computation(...))` gives the computation
+# controls to the controls of a model, where the model's were not given.
+#' @rdname set_control_computation
+#' @export
+c.mrqap_control <- function(...) {
+  parts <- list(...)
+  out <- parts[[1]]
+  for (part in parts[-1]) {
+    if (!inherits(part, "infernetComputationControl")) {
+      manynet::snet_abort(
+        c("Only {.fn control_computation} can be combined with {.fn control_mrqap}.",
+          i = "Give any other control in {.fn control_mrqap} itself."))
+    }
+    out <- .apply_computation(out, part)
+  }
+  out
+}
+
+#' @keywords internal
+#' @noRd
+.apply_computation <- function(ctrl, computation) {
+  source <- attr(ctrl, "source")
+  for (nm in names(computation)) {
+    if (identical(source[[nm]], "given")) next
+    ctrl[nm] <- list(computation[[nm]])
+    source[[nm]] <- "given"
+  }
+  attr(ctrl, "source") <- source
+  ctrl
+}
+
+#' @keywords internal
+#' @noRd
+.computation_names <- function() c("seed", "ncores", "strategy")
+
+# The checks of the computation controls, for a list of some of them.
+#' @keywords internal
+#' @noRd
+.check_computation <- function(ctrl) {
+  if ("seed" %in% names(ctrl)) .check_seed(ctrl$seed)
+  if ("ncores" %in% names(ctrl)) .check_ncores(ctrl$ncores)
+  if ("strategy" %in% names(ctrl)) {
+    ctrl["strategy"] <- list(.check_strategy(ctrl$strategy))
+  }
+  ctrl
+}
+
+# The controls in `options(snet_computation)`, checked, since a user can set
+# the option by hand as well as with `set_control_computation()`.
+#' @keywords internal
+#' @noRd
+.computation_option <- function() {
+  stored <- getOption("snet_computation")
+  if (is.null(stored)) return(list())
+  how <- "Set it with {.fn set_control_computation}, or clear it with {.code set_control_computation(persist = FALSE)}."
+  if (!is.list(stored) ||
+      (length(stored) > 0 && (is.null(names(stored)) || any(!nzchar(names(stored)))))) {
+    manynet::snet_abort(
+      c("{.code options(snet_computation)} must be a named list of computation controls.",
+        i = how))
+  }
+  unknown <- setdiff(names(stored), .computation_names())
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("{.code options(snet_computation)} holds {.val {unknown}}, which {?is not a computation control/are not computation controls}.",
+        i = "The computation controls are {.val {(.computation_names())}}.",
+        i = how))
+  }
+  tryCatch(.check_computation(stored), error = function(e) {
+    problem <- gsub("\\}", "}}", gsub("\\{", "{{", conditionMessage(e)))
+    manynet::snet_abort(
+      c("{.code options(snet_computation)} holds a control that cannot be used.",
+        i = problem, i = how))
+  })
+}
+
+# Every control that an option sets: those of `options(infernet.control)`,
+# read until 0.8.0, and over them those of `options(snet_computation)`.
+#' @keywords internal
+#' @noRd
+.stored_controls <- function() {
+  stored <- .persisted_controls()
+  computation <- .computation_option()
+  for (nm in names(computation)) stored[nm] <- list(computation[[nm]])
+  stored
+}
+
+# What the deprecated `persist = TRUE` writes: the computation controls that
+# are given, with `set_control_computation()`, and the others to
+# `options(infernet.control)`. A computation control leaves the old option, so
+# that a control removed from the new option does not come back from the old.
+#' @keywords internal
+#' @noRd
+.persist_controls <- function(ctrl, given) {
+  computation <- intersect(given, .computation_names())
+  if (length(computation) > 0) {
+    do.call(set_control_computation, unclass(ctrl)[computation])
+  }
+  legacy <- .persisted_controls()
+  legacy <- legacy[setdiff(names(legacy), computation)]
+  for (nm in setdiff(given, computation)) legacy[nm] <- list(ctrl[[nm]])
+  legacy <- legacy[!vapply(legacy, is.null, logical(1))]
+  options(infernet.control = if (length(legacy) > 0) legacy)
+  invisible()
+}
+
+# `persist =` warns once in a session, as a deprecation does.
+#' @keywords internal
+#' @noRd
+.warn_persist_deprecated <- function() {
+  if (isTRUE(.infernet_state$warned_persist)) return(invisible())
+  .infernet_state$warned_persist <- TRUE
+  manynet::snet_warn(
+    c("{.code control_mrqap(persist =)} is deprecated as of infernet 0.7.0.",
+      i = "Use {.fn set_control_computation} for {.code seed}, {.code ncores}, and {.code strategy}.",
+      i = "Other controls persist in {.code options(infernet.control)} only until infernet 0.8.0.",
+      i = "This warning is shown once in a session."))
+  invisible()
+}
+
+#' @keywords internal
+#' @noRd
+.infernet_state <- new.env(parent = emptyenv())
+
 # ---- persistent controls -----------------------------------------------------
 
 # The controls in `options(infernet.control)`, checked, since a user can set
-# the option by hand as well as with `persist = TRUE`.
+# the option by hand as well as with `persist = TRUE`. Read until 0.8.0.
 #' @keywords internal
 #' @noRd
 .persisted_controls <- function() {
   stored <- getOption("infernet.control")
   if (is.null(stored)) return(list())
-  how <- "Set it with {.code control_mrqap(..., persist = TRUE)}, or clear it with {.code control_mrqap(persist = FALSE)}."
+  how <- "Use {.fn set_control_computation} instead, and clear it with {.code options(infernet.control = NULL)}."
   if (!is.list(stored) ||
       (length(stored) > 0 && (is.null(names(stored)) || any(!nzchar(names(stored)))))) {
     manynet::snet_abort(
@@ -310,7 +549,8 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 }
 
 # A list given as `control` is read by `control_mrqap()`, with the same checks
-# and conversions, and the persistent controls fill what it does not name. An
+# and conversions, and the persistent controls fill what it does not name.
+# goldfish reads `options(snet_computation)` through this resolver too. An
 # unnamed entry cannot be matched to a control, so it aborts rather than being
 # matched by position. The result of `control_mrqap()` already holds the
 # persistent controls of the time it was made, so it is used as it is.
@@ -324,6 +564,9 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 #' @noRd
 .read_control <- function(control) {
   if (inherits(control, "mrqap_control")) return(control)
+  if (inherits(control, "infernetComputationControl")) {
+    return(.apply_computation(control_mrqap(), control))
+  }
   if (inherits(control, c("estimation_opt.goldfish", "goldfishAlgo"))) {
     manynet::snet_info("Reading {.arg control} as goldfish's estimation options.")
   }
@@ -339,6 +582,9 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
       (is.null(names(control)) || any(!nzchar(names(control))))) {
     manynet::snet_abort("Every entry of {.arg control} must be named.")
   }
+  # `c(list(...), control_computation(...))` is a plain list, which can name a
+  # control twice. The first is the one given in the call, so it wins.
+  control <- control[!duplicated(names(control))]
   do.call(control_mrqap, control)
 }
 
@@ -479,6 +725,16 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
       manynet::snet_abort("{.arg {what}} must be {.val {TRUE}}, {.val {FALSE}}, or {.code NULL}.")
     }
     manynet::snet_abort("{.arg {what}} must be {.val {TRUE}} or {.val {FALSE}}.")
+  }
+  invisible(value)
+}
+
+#' @keywords internal
+#' @noRd
+.check_seed <- function(value) {
+  if (!is.null(value) &&
+      !(is.numeric(value) && length(value) == 1 && !is.na(value))) {
+    manynet::snet_abort("{.arg seed} must be one number, or {.code NULL}.")
   }
   invisible(value)
 }

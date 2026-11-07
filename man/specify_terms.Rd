@@ -92,6 +92,7 @@ Other models:
 \code{\link[=play_diffusions]{play_diffusions()}},
 \code{\link[=print.netreg_lm]{print.netreg_lm()}},
 \code{\link{regression}},
+\code{\link[=set_control_computation]{set_control_computation()}},
 \code{\link{specify}},
 \code{\link{terms_mrqap}},
 \code{\link{test_fit}},

@@ -1,5 +1,11 @@
 # infernet 0.7.0
 
+## Modelling
+
+- Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
+  - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
+  - `control_computation()` sets them for one call
+
 ## Tutorials
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
