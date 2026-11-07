@@ -34,6 +34,7 @@ By contributing to this project, you agree to abide by its terms.
     - [Multivariate](#multivariate)
     - [One engine, two shapes](#one-engine-two-shapes)
     - [Parallelism](#parallelism)
+    - [Shared model API](#shared-model-api)
     - [Console messaging](#console-messaging)
   - [Formula conventions](#formula-conventions)
     - [Rules](#rules)
@@ -257,6 +258,8 @@ vocabulary; the front end's words won, since those are the ones users read:
 | reporter | the person whose report a CSS slice holds, after `{manynet}`'s `by` column | perceiver |
 | `bv` | the reporter index in the dyad-level data, after `by` | `pv` |
 | `testdist` | a null distribution: the statistics from every permutation or simulation, on a test or a fit | `dist` |
+| coefficient | the estimated or stated value of a model's term, in code, help pages, and messages | parameter |
+| parameter | only the unknown population quantity that a test is about, as in `test_parameter()` | — |
 
 `mode` is reserved for a nodeset, as in one-mode and two-mode, which is what it
 means everywhere else in the ecosystem. Do not use it for directedness.
@@ -280,6 +283,8 @@ Use one notation for code in issues, reviews, documentation, and NEWS items:
   e.g. `.helper_function()`.
 - Name a new class in camelCase, after the package plus a noun, e.g. `infernetConfusion`,
   so that a class does not look like a snake_case function.
+  Write an acronym as a word, e.g. `infernetMrqapFit`, not `infernetMRQAPFit`.
+  The nouns in use are `Fit`, `Summary`, `Spec`, `Coefs`, and `Confusion`.
   See "Class names across the stocnet ecosystem" in the `{autograph}` contributing guide.
   Older names, such as `network_test`, stay until they can be renamed with an alias.
 
@@ -740,6 +745,52 @@ So the advice to users, in `control_mrqap()` and in the tutorials, is:
 Progress reporting is not a separate argument.
 It is read from `options(snet_verbosity)`, so that one option governs how
 talkative every stocnet package is.
+
+#### Shared model API
+
+Every `estimate_*()` function, here and in `{goldfish}`, shares one API,
+decided on 6 and 7 November 2026 for 0.7.0 (D21–D27 of the roadmap).
+`estimate_mrqap()` is its first user and `estimate_eha()` its second.
+`{goldfish}` changes in lockstep: it imports infernet and registers its methods on infernet's generics.
+
+- **Classes.** A fit is `infernet<Model>Fit`, as `infernetMrqapFit` and `infernetEhaFit`,
+  with `infernetMrqapSummary`, `infernetMrqapSpec`, and `infernetMrqapCoefs` beside it.
+  Dispatch on the model, never on the family: put the family, a CSS, or a panel in a field
+  (`x$family`, `x$css`, `x$panel`), since an eha model is a glm too.
+  In 0.7.x a fit keeps `netreg` as its second class, for `{autograph}` and `{migraph}`.
+  `netlm` and `netlogit` are `{migraph}`'s old classes, which we read but never make.
+- **Computation controls.** `seed`, `ncores`, and `strategy` are the only controls that persist.
+  `set_control_computation()` writes them to `options(snet_computation)` for the session,
+  changes only the controls it is given, removes one given as `NULL`,
+  clears them all with `persist = FALSE`, and returns the old values invisibly.
+  `control_computation()` gives them to one call,
+  as `control = c(control_mrqap(...), control_computation(...))`.
+  The call wins, then `control_computation()`, then the option, then the default.
+  `times` is an argument, not a control.
+  Read the option only through `.resolve_control()`.
+  An example or a test that sets it clears it again, with base R.
+- **Outputs.** `outputs =` names the optional parts of a fit only.
+  For `estimate_mrqap()` these are "model", "confusion", and "draws",
+  and the default, `c("model", "confusion")`, keeps a fit as it was.
+  The `@return` section lists the required elements first,
+  then each optional element with the value that adds it.
+  Use the same word for the same part in every estimator ("model", "data", "draws").
+- **Coefficients.** `declare_coefs()` is a generic that makes an `infernet<Model>Coefs`
+  from a specification (with `family =`, and `sigma =` for a gaussian model) or from a fit.
+  It is a named vector, with the specification, the family, and `sigma` as attributes,
+  and `NA` for a value that is not stated.
+  `coef()` always gives a plain named vector.
+- **Simulation.** Each model has three `stats::simulate()` methods: on a fit, on its coefficients,
+  and on its specification with `coefs =` (named, since the second argument of the generic is `nsim`).
+  The default `seed` is `getOption("snet_computation")$seed`.
+  The coefficients and the specification need `.data`, since the predictors are built from it.
+  The result is always a list of `nsim` networks, of the class of `.data`, or `stocnet` without it.
+  Give each draw its own random stream with `future.seed = TRUE`, as `.simulate_statistic()` does,
+  so that the result does not depend on the plan.
+- **Shared generics.** `test_gof()`, `test_parameter()`, `test_time()`, `diagnose_outliers()`,
+  `diagnose_changepoints()`, and `diagnose_onset()` live here, with `{goldfish}`'s signatures,
+  and their first argument is `x` (or `object` for `test_gof()`).
+  Do not change a signature without `{goldfish}`.
 
 #### Console messaging
 
