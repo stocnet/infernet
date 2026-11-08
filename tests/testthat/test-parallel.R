@@ -86,7 +86,7 @@ test_that("play_diffusions() and test_distributions() agree on two workers", {
                sequential$distributions)
 })
 
-test_that("test_gof() on a netreg gives the same p-value on two workers", {
+test_that("test_gof() on an MRQAP fit gives the same p-value on two workers", {
   expect_equal(test_gof(binary_fit, binary_net, netrics::net_by_reciprocity,
                         times = 40, control = list(seed = 3)),
                sequential$gof)

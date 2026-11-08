@@ -19,7 +19,7 @@
 #'   so a measure can read the times of adoption.
 #'   For a null that rewires the network, see `netdiffuseR::struct_test()`.
 #'   
-#' @inheritParams regression
+#' @inheritParams estimate_mrqap
 #' @param control The controls of the simulations, as the result of
 #'   [control_mrqap()] or a named list of its arguments, such as
 #'   `list(ncores = 4, seed = 1)`.
@@ -39,8 +39,8 @@
 #'   \doi{10.2202/1544-6115.1585}.
 #' @family models
 #' @param FUN A graph-level statistic function to test.
-#' @param ... Additional arguments to be passed on to FUN,
-#'   e.g. the name of the attribute.
+#' @param ... For a `test_*()` function, more arguments for `FUN`,
+#'   such as the name of the attribute. For a method, not used.
 #' @return A `network_test`, which `print()`, `tidy()`, and `glance()` report.
 #'   It holds the observed statistic in `testval`, the statistics of the
 #'   simulations in `testdist`, and the p-values of the observed statistic:

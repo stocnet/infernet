@@ -2,6 +2,12 @@
 
 ## Modelling
 
+## Testing
+
+- Added `summary()` of a `network_test`, with quantiles of the null (closes #27)
+
+## Estimating
+
 - Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
   - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
   - `control_computation()` sets them for one call
