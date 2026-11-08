@@ -11,7 +11,7 @@
 #'   It is a generic, with a method for each kind of model:
 #'     - a `diffs_model`, from `play_diffusions()`, compares an observed
 #'     diffusion with the simulated diffusions;
-#'     - a `netreg`, from `estimate_mrqap()`, simulates outcome networks from
+#'     - an `infernetMrqapFit`, from `estimate_mrqap()`, simulates outcome networks from
 #'     the fitted model and compares a network statistic, `FUN`, on each
 #'     with the statistic on the observed network.
 #'   - `test_distributions()` compares the data simulated from two models.
@@ -58,7 +58,7 @@
 #'   enough that the reference holds at least 19 simulations,
 #'   or no p-value can be below 0.05.
 #' @section Network regressions:
-#'   The `netreg` method draws each simulated outcome from the fitted model
+#'   The `infernetMrqapFit` method draws each simulated outcome from the fitted model
 #'   with `stats::simulate()`, in the dyads that the model used.
 #'   The other cells keep their observed values: the diagonal, the fixed ties,
 #'   and the cells that the model left out. An unobserved cell is an absent tie
@@ -66,8 +66,8 @@
 #'   there. An undirected network is mirrored, and the simulated network takes
 #'   the node attributes of the observed one.
 #'
-#'   The model needs its `simple_fit`, so a model fitted with
-#'   `less_mem = TRUE` cannot be tested. A list of networks, a panel, and a
+#'   The model needs its `simple_fit`, so a model fitted without `"model"`
+#'   in `outputs` cannot be tested. A list of networks, a panel, and a
 #'   cognitive social structure cannot be tested yet.
 #'   Nor can a `gaussian` model: its draws are continuous, so every dyad of a
 #'   draw would hold a tie, and the test would always reject.
@@ -78,19 +78,19 @@
 #'   what that misses.
 #' @inheritParams test_measures
 #' @param object A model to simulate from:
-#'   a `diffs_model`, from `play_diffusions()`, or a `netreg`, from
+#'   a `diffs_model`, from `play_diffusions()`, or an `infernetMrqapFit`, from
 #'   `estimate_mrqap()`.
 #'   For `test_distributions()`, `object1` and `object2` are two `diffs_model`
 #'   objects.
 #' @param observed The observed data.
 #'   For a `diffs_model`, a `diff_model` from `manynet::as_diffusion()`,
 #'   or a network with a diffusion record from `manynet::play_diffusion()`.
-#'   For a `netreg`, the network that the model was fitted on.
-#' @param FUN For a `netreg`, a function of a network that returns a
+#'   For an `infernetMrqapFit`, the network that the model was fitted on.
+#' @param FUN For an `infernetMrqapFit`, a function of a network that returns a
 #'   number or a vector of numbers, such as `netrics::net_by_transitivity()`.
-#' @param ... For a `netreg`, additional arguments to be passed on to `FUN`.
+#' @param ... For an `infernetMrqapFit`, additional arguments to be passed on to `FUN`.
 #'   Other methods do not use them.
-#' @param times For a `netreg`, the number of outcomes to simulate.
+#' @param times For an `infernetMrqapFit`, the number of outcomes to simulate.
 #'   For `test_distributions()`, the number of permutations.
 #'   A `diffs_model` brings its own simulations.
 #' @param object1,object2 Two `diffs_model` objects, from `play_diffusions()`.
@@ -138,7 +138,7 @@ test_gof <- function(object, ...) UseMethod("test_gof")
 test_gof.default <- function(object, observed, ...) {
   manynet::snet_abort(
     c("{.fn test_gof} has no method for a {.cls {class(object)[1]}}.",
-      i = "Give it a {.cls diffs_model} from {.fn play_diffusions} or a {.cls netreg} from {.fn estimate_mrqap}."))
+      i = "Give it a {.cls diffs_model} from {.fn play_diffusions} or a {.cls infernetMrqapFit} from {.fn estimate_mrqap}."))
 }
 
 # `{migraph}`'s `test_fit()` took the observed diffusion first. The model now
@@ -182,14 +182,14 @@ test_gof.diffs_model <- function(object, observed, ...) {
 
 #' @rdname test_fit
 #' @export
-test_gof.netreg <- function(object, observed, FUN, ...,
+test_gof.infernetMrqapFit <- function(object, observed, FUN, ...,
                             times = 1000, control = list()) {
   statistic <- .fun_name(substitute(FUN))
   test <- .test_control(control, list(...))
   ctrl <- test$ctrl
   args <- test$args
   measure <- function(g) do.call(FUN, c(list(g), args))
-  model <- .netreg_simulator(object, observed)
+  model <- .mrqap_simulator(object, observed)
 
   obsd <- .as_statistic(measure(model$network(model$matrix)))
   if (!is.null(ctrl$seed)) set.seed(ctrl$seed)
@@ -394,17 +394,17 @@ test_distributions.diffs_model <- function(object1, object2,
 
 # ---- network regressions -----------------------------------------------------
 
-# What the `netreg` method needs to draw an outcome network: the observed
+# What the `infernetMrqapFit` method needs to draw an outcome network: the observed
 # outcome matrix, a function that fills the model's dyads with a draw from
 # the fitted model, and a function that makes a network of a matrix.
 #' @keywords internal
 #' @noRd
-.netreg_simulator <- function(object, observed) {
+.mrqap_simulator <- function(object, observed) {
   fit <- object$simple_fit
   if (is.null(fit)) {
     manynet::snet_abort(
       c("The model has no {.code simple_fit} to simulate from.",
-        i = "Fit it again without {.code less_mem = TRUE}."))
+        i = "Fit it again with {.val model} in {.arg outputs}, as by default."))
   }
   # `as_tidygraph()` makes a tie of every nonzero cell, and a continuous draw
   # has no zero, so every draw would be a complete network.
@@ -414,7 +414,7 @@ test_distributions.diffs_model <- function(object1, object2,
         i = "Its draws are continuous, so every dyad would hold a tie, and the test would always reject.",
         i = "Fit a family whose outcomes are ties or counts, such as {.val binomial} or {.val poisson}."))
   }
-  if (inherits(object, "netreg_css") || isTRUE(object$panel) ||
+  if (isTRUE(object$css) || isTRUE(object$panel) ||
       length(unique(object$pred$nv)) > 1) {
     manynet::snet_abort(
       "{.fn test_gof} cannot yet simulate a list of networks, a panel, or a cognitive social structure.")

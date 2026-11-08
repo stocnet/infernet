@@ -8,6 +8,13 @@
 - Renamed the class of an `estimate_mrqap()` fit to `infernetMrqapFit`
   - `netreg` stays second in 0.7.x for `{autograph}` and `{migraph}`
   - Its `summary()` is now an `infernetMrqapSummary`
+- Added `outputs =` to `estimate_mrqap()` for the optional parts of a fit
+  - `"model"` keeps the observed model, as `simple_fit`
+  - `"confusion"` keeps the confusion matrix of a binary outcome
+  - `"draws"` (new) keeps the coefficient of each permutation
+  - The default, `c("model", "confusion")`, keeps a fit as it was
+  - `control_mrqap(less_mem =)` is deprecated; `TRUE` leaves out `"model"`
+
 
 ## Tutorials
 

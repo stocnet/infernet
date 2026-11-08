@@ -662,7 +662,7 @@ HC3 <- function(X, e) {
 # "(Intercept)", which double semi-partialling leaves untested and printing
 # marks, so the intercept is kept as `NA` rather than dropped.
 #
-# `fixed_df` is the number of parameters that a gaussian model absorbed before
+# `fixed_df` is the number of coefficients that a gaussian model absorbed before
 # it reached `lm()`. The fit of the demeaned variables does not know of them,
 # so its residual degrees of freedom are too many, and each t-statistic is
 # rescaled to what the model with the fixed effects gives. The rescaling is the
@@ -846,11 +846,13 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
     out$larger <- pres >= bres
     out$abs    <- abs(pres) >= abs(bres)
     out$t      <- perm_t
+    out$b      <- perm_coefs
   } else {
     out$lower  <- (pres <= bres)[, xi]
     out$larger <- (pres >= bres)[, xi]
     out$abs    <- (abs(pres) >= abs(bres))[, xi]
     out$t      <- perm_t[xi]
+    out$b      <- perm_coefs[xi]
   }
   return(out)
 }
@@ -885,7 +887,9 @@ aggregate_perm_results <- function(results, times) {
     # The permuted test statistics themselves, one row per permutation that
     # succeeded. The three p-values above are read from this; keeping it lets a
     # plot draw the null distribution they were read from.
-    testdist = do.call(rbind, lapply(results, function(r) r$t))
+    testdist = do.call(rbind, lapply(results, function(r) r$t)),
+    # The permuted coefficients, which `outputs = "draws"` keeps.
+    coefdist = do.call(rbind, lapply(results, function(r) r$b))
   )
 }
 
