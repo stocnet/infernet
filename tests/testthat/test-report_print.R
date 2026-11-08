@@ -4,7 +4,7 @@
 
 old_width <- options(width = 80)
 
-test_that("each netreg variant prints its title, its estimates, and its footer", {
+test_that("each MRQAP variant prints its title, its estimates, and its footer", {
   g <- qap_net_gaussian(n = 10)
   b <- qap_net_binary(n = 10)
   expect_snapshot(print(estimate_mrqap(weight ~ ego(Age) + same(Grp), g,

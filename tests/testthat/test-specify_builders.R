@@ -400,7 +400,7 @@ test_that("the layer terms fit a CSS under both permutation schemes", {
       estimate_mrqap(advice ~ recip(friends) + indeg(friends) + same(dept),
                      manynet::ison_hightech, times = 5,
                      control = list(seed = 1, permute = permute)))
-    expect_s3_class(fit, "netreg_css")
+    expect_true(fit$css)
     expect_named(fit$coefficients,
                  c("(Intercept)", "recip_friends", "indeg_friends", "same_dept"))
   }
@@ -412,7 +412,7 @@ test_that("the new terms fit a dyadic network under both permutation schemes", {
       estimate_mrqap(a ~ recip(b) + indeg(b) + same(grp, diff = TRUE) + tertius(b, x),
                      formula_net(), times = 5,
                      control = list(seed = 1, permute = permute)))
-    expect_s3_class(fit, "netreg")
+    expect_s3_class(fit, "infernetMrqapFit")
     expect_false(anyNA(fit$coefficients))
   }
 })

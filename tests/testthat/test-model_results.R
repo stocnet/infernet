@@ -1,8 +1,8 @@
 # The results are built by hand, so that each field is known and small.
-# The fits through estimate_mrqap(), and the methods of a netreg, are in the
+# The fits through estimate_mrqap(), and the methods of an MRQAP fit, are in the
 # last blocks.
 
-fake_netreg <- function(family = "gaussian", permute = "predictor") {
+fake_mrqap <- function(family = "gaussian", permute = "predictor") {
   y <- c(1.2, 0.4, 2.8, 1.9, 3.1, 0.7, 2.2, 1.5)
   z <- c(0.5, 0.1, 1.6, 0.9, 1.8, 0.2, 1.0, 0.8)
   fit <- stats::lm(y ~ z)
@@ -15,11 +15,11 @@ fake_netreg <- function(family = "gaussian", permute = "predictor") {
     r.squared = 0.6, adj.r.squared = 0.55,
     simple_fit = fit, family = family, permute = permute, times = 20,
     pred = data.frame(y = y, z = z)),
-    class = c("netreg_lm", "netreg"))
+    class = c("infernetMrqapFit", "netreg"))
 }
 
-test_that("tidy() reads a netreg's t-based p-values", {
-  x <- fake_netreg()
+test_that("tidy() reads an MRQAP fit's t-based p-values", {
+  x <- fake_mrqap()
   out <- tidy(x)
   expect_named(out, c("term", "estimate", "statistic", "p.value"))
   expect_equal(out$term, c("(Intercept)", "ego_x"))
@@ -28,45 +28,44 @@ test_that("tidy() reads a netreg's t-based p-values", {
   expect_equal(tidy(x, alternative = "less")$p.value, c(NA, 0.95))
 })
 
-test_that("tidy() exponentiates a netreg, and warns on a gaussian one", {
-  x <- fake_netreg()
+test_that("tidy() exponentiates an MRQAP fit, and warns on a gaussian one", {
+  x <- fake_mrqap()
   expect_warning(out <- tidy(x, exponentiate = TRUE), "gaussian")
   expect_equal(out$estimate, exp(c(0.1, 1.5)))
   x$family <- "binomial"
   expect_no_warning(tidy(x, exponentiate = TRUE))
 })
 
-test_that("glance() gives the fit of a netreg_lm", {
-  out <- glance(fake_netreg())
+test_that("glance() gives the fit of a gaussian MRQAP", {
+  out <- glance(fake_mrqap())
   expect_equal(nrow(out), 1)
   expect_equal(out$r.squared, 0.6)
   expect_equal(out$nobs, 8)
-  expect_equal(out$AIC, stats::AIC(fake_netreg()$simple_fit))
+  expect_equal(out$AIC, stats::AIC(fake_mrqap()$simple_fit))
 })
 
-test_that("glance() gives NA where a netreg keeps no fit", {
-  x <- fake_netreg()
+test_that("glance() gives NA where an MRQAP fit keeps no fit", {
+  x <- fake_mrqap()
   x$simple_fit <- NULL
   out <- glance(x)
   expect_true(is.na(out$AIC))
   expect_true(is.na(out$sigma))
 })
 
-test_that("glance() of a netreg_glm reads its glm fit", {
-  x <- fake_netreg(family = "binomial")
+test_that("glance() of a binomial fit reads its glm fit", {
+  x <- fake_mrqap(family = "binomial")
   y <- c(1, 0, 1, 1, 0, 0, 1, 0)
   z <- c(0.5, 0.1, 1.6, 0.9, 1.8, 0.2, 1.0, 0.8)
   x$simple_fit <- stats::glm(y ~ z, family = stats::binomial)
-  class(x) <- c("netreg_glm", "netreg")
   out <- glance(x)
   expect_equal(out$deviance, stats::deviance(x$simple_fit))
   expect_equal(out$family, "binomial")
 })
 
-test_that("glance() of a netreg_css counts the reporters", {
-  x <- fake_netreg()
+test_that("glance() of a CSS fit counts the reporters", {
+  x <- fake_mrqap()
   x$pred$bv <- rep(1:4, 2)
-  class(x) <- c("netreg_css", "netreg_lm", "netreg")
+  x$css <- TRUE
   out <- glance(x)
   expect_equal(out$reporters, 4)
   expect_equal(out$r.squared, 0.6)
@@ -247,7 +246,7 @@ test_that("tidy() of a netlogit gives its null interval and its odds ratios", {
   expect_equal(out$conf.high, exp(c(0.5, 1)))
 })
 
-# ---- the methods of a netreg ----------------------------------------------------
+# ---- the methods of an MRQAP fit ----------------------------------------------------
 #
 # Each method reads the observed model, so each must give the value of the
 # equivalent standard fit on the same dyad-level data, from
@@ -329,13 +328,13 @@ test_that("nobs() leaves out the fixed ties, and glance() agrees", {
   expect_equal(glance(fit)$nobs, stats::nobs(fit))
 })
 
-# ---- less_mem ------------------------------------------------------------------
+# ---- outputs -------------------------------------------------------------------
 
-test_that("the methods read the observed model when less_mem leaves out simple_fit", {
+test_that("the methods read the observed model when outputs leaves out simple_fit", {
   g <- qap_net_gaussian()
   full <- estimate_mrqap(FORM_M, g, times = 5, control = list(seed = 1))
-  lean <- estimate_mrqap(FORM_M, g, times = 5,
-                         control = list(seed = 1, less_mem = TRUE))
+  lean <- estimate_mrqap(FORM_M, g, times = 5, control = list(seed = 1),
+                         outputs = character(0))
   expect_null(lean$simple_fit)
   expect_equal(stats::nobs(lean), stats::nobs(full))
   expect_equal(stats::logLik(lean), stats::logLik(full))
@@ -394,7 +393,7 @@ test_that("tidy() gives the generics columns, and summary() adds the term table"
   expect_named(tidy(fit), c("term", "estimate", "statistic", "p.value"))
   out <- summary(fit)
   expect_s3_class(out, "tbl_df")
-  expect_s3_class(out, "summary_netreg")
+  expect_s3_class(out, "infernetMrqapSummary")
   expect_named(out, c("term", "estimate", "statistic", "p.lower", "p.upper",
                       "p.value", "title", "effect", "layer", "attribute",
                       "category", "reference", "operands"))

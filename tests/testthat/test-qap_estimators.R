@@ -163,7 +163,8 @@ test_that("family = 'auto' picks gaussian for a weighted outcome", {
   g <- qap_net_gaussian(n = 10)
   fit <- estimate_mrqap(weight ~ sim(Age), g, times = 10)
   expect_equal(fit$family, "gaussian")
-  expect_s3_class(fit, "netreg_lm")
+  expect_s3_class(fit, "infernetMrqapFit")
+  expect_equal(fit$family, "gaussian")
 })
 
 test_that("a gaussian model of a binary outcome keeps a confusion matrix", {
@@ -171,6 +172,7 @@ test_that("a gaussian model of a binary outcome keeps a confusion matrix", {
   fit <- estimate_mrqap(. ~ sim(Age), g, times = 10,
                         control = list(family = "gaussian"))
   expect_equal(fit$family, "gaussian")
-  expect_s3_class(fit, "netreg_lm")
+  expect_s3_class(fit, "infernetMrqapFit")
+  expect_equal(fit$family, "gaussian")
   expect_s3_class(fit$confusion_matrix, "infernetConfusion")
 })

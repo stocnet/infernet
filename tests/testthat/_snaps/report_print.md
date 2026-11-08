@@ -1,4 +1,4 @@
-# each netreg variant prints its title, its estimates, and its footer
+# each MRQAP variant prints its title, its estimates, and its footer
 
     Code
       print(estimate_mrqap(weight ~ ego(Age) + same(Grp), g, times = 20, control = list(

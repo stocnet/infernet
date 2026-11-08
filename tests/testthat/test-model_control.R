@@ -147,7 +147,7 @@ test_that("a control with a value it cannot take aborts", {
   expect_error(control_mrqap(family = "logit"), "family")
   expect_error(control_mrqap(strategy = "parallel"), "strategy")
   expect_error(control_mrqap(directed = "yes"), "directed")
-  expect_error(control_mrqap(less_mem = NA), "less_mem")
+  expect_error(suppressWarnings(control_mrqap(less_mem = NA)), "less_mem")
   expect_error(control_mrqap(seed = "a"), "seed")
   expect_error(control_mrqap(ncores = 0), "ncores")
   expect_error(control_mrqap(missing = "impute"), "not yet available")
@@ -217,7 +217,7 @@ test_that("goldfish 2.0's option objects are read whole", {
   g <- qap_net_gaussian(n = 15)
   expect_warning(fit <- suppressMessages(
     estimate_mrqap(FORM, g, times = 5, control = algo)), "Dropped")
-  expect_s3_class(fit, "netreg")
+  expect_s3_class(fit, "infernetMrqapFit")
 })
 
 test_that("an unknown name suggests the nearest, old names included", {

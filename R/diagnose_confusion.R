@@ -4,8 +4,8 @@
 #'
 #' @description
 #'   `diagnose_confusion()` compares the ties that a model of a binary outcome
-#'   predicts with the ties that were observed. It has a method for a
-#'   `netreg` from [estimate_mrqap()]: a logistic model, or a linear model of
+#'   predicts with the ties that were observed. It has a method for an
+#'   `infernetMrqapFit` from [estimate_mrqap()]: a logistic model, or a linear model of
 #'   a 0/1 outcome, read as a linear probability model.
 #'
 #'   - The probabilistic confusion matrix draws each tie from its predicted
@@ -29,9 +29,10 @@
 #'   permutations do not change. A linear probability model can predict a
 #'   value below 0 or above 1, which is taken as 0 or 1.
 #'
-#'   [estimate_mrqap()] keeps the result for a binary outcome as
-#'   `$confusion_matrix`, from 1000 draws with the seed of the fit.
-#' @param x A `netreg` of a binary outcome, from [estimate_mrqap()].
+#'   With `"confusion"` in `outputs`, as by default, [estimate_mrqap()]
+#'   keeps the result for a binary outcome as `$confusion_matrix`, from 1000
+#'   draws with the seed of the fit.
+#' @param x An `infernetMrqapFit` of a binary outcome, from [estimate_mrqap()].
 #'   For `print()`, `tidy()`, and `glance()`, the result of
 #'   `diagnose_confusion()`.
 #' @param threshold The predicted probability at or above which a dyad is
@@ -65,13 +66,24 @@ diagnose_confusion <- function(x, ...) UseMethod("diagnose_confusion")
 diagnose_confusion.default <- function(x, ...) {
   manynet::snet_abort(
     c("{.fn diagnose_confusion} has no method for a {.cls {class(x)[1]}}.",
-      i = "Give it a {.cls netreg} of a binary outcome, from {.fn estimate_mrqap}."))
+      i = "Give it a {.cls infernetMrqapFit} of a binary outcome, from {.fn estimate_mrqap}."))
 }
 
 #' @rdname diagnose_confusion
 #' @export
-diagnose_confusion.netreg_glm <- function(x, threshold = 0.5, times = 1000,
-                                          control = list(), ...) {
+diagnose_confusion.infernetMrqapFit <- function(x, threshold = 0.5,
+                                                times = 1000,
+                                                control = list(), ...) {
+  seed <- .confusion_seed(x, control)
+  if (identical(x$family, "gaussian")) {
+    if (!.is_binary_outcome(x$pred[[x$dep]])) {
+      manynet::snet_abort(
+        c("{.fn diagnose_confusion} needs a model of a binary outcome.",
+          i = "The outcome {.val {x$dep}} has values other than 0 and 1."))
+    }
+    out <- .lpm_confusion(x, seed = seed, threshold = threshold, times = times)
+    return(.confusion_model(out, x))
+  }
   if (!identical(x$family, "binomial")) {
     manynet::snet_abort(
       c("{.fn diagnose_confusion} needs a model of a binary outcome, and this one is {.val {x$family}}.",
@@ -84,21 +96,7 @@ diagnose_confusion.netreg_glm <- function(x, threshold = 0.5, times = 1000,
   out <- probabilistic_confusion_matrix(
     actual = prob + stats::residuals(bm, type = "response"),
     predicted_prob = prob, n_draws = times,
-    seed = .confusion_seed(x, control), threshold = threshold)
-  .confusion_model(out, x)
-}
-
-#' @rdname diagnose_confusion
-#' @export
-diagnose_confusion.netreg_lm <- function(x, threshold = 0.5, times = 1000,
-                                         control = list(), ...) {
-  if (!.is_binary_outcome(x$pred[[x$dep]])) {
-    manynet::snet_abort(
-      c("{.fn diagnose_confusion} needs a model of a binary outcome.",
-        i = "The outcome {.val {x$dep}} has values other than 0 and 1."))
-  }
-  out <- .lpm_confusion(x, seed = .confusion_seed(x, control),
-                        threshold = threshold, times = times)
+    seed = seed, threshold = threshold)
   .confusion_model(out, x)
 }
 

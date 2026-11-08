@@ -3,28 +3,28 @@
 \name{test_parameter}
 \alias{test_parameter}
 \alias{test_parameter.default}
-\alias{test_parameter.netreg}
+\alias{test_parameter.infernetMrqapFit}
 \alias{test_time}
 \alias{test_time.default}
-\alias{test_time.netreg}
-\title{Tests of a model's parameters}
+\alias{test_time.infernetMrqapFit}
+\title{Tests of a model's coefficients}
 \usage{
 test_parameter(x, ...)
 
 \method{test_parameter}{default}(x, ...)
 
-\method{test_parameter}{netreg}(x, terms, value = 0, ..., times = 1000, control = list())
+\method{test_parameter}{infernetMrqapFit}(x, terms, value = 0, ..., times = 1000, control = list())
 
 test_time(x, ...)
 
 \method{test_time}{default}(x, ...)
 
-\method{test_time}{netreg}(x, terms = NULL, ..., times = 1000, control = list())
+\method{test_time}{infernetMrqapFit}(x, terms = NULL, ..., times = 1000, control = list())
 }
 \arguments{
-\item{x}{A fitted model, such as a \code{netreg} from \code{estimate_mrqap()}.}
+\item{x}{A fitted model, such as an \code{infernetMrqapFit} from \code{estimate_mrqap()}.}
 
-\item{...}{Arguments for a method. Not used by the methods for a \code{netreg}.}
+\item{...}{Arguments for a method. Not used by the methods for an \code{infernetMrqapFit}.}
 
 \item{terms}{The names of the coefficients to test, as the model prints
 them, such as \code{"ego_Age"}.
@@ -40,30 +40,34 @@ one number for all of them, or one for each.}
 
 \item{control}{A list of controls, or the result of \code{control_mrqap()}.
 The tests read \code{seed}, \code{strategy}, \code{ncores}, and \code{groups}, and the
-controls set with \code{control_mrqap(..., persist = TRUE)} where these are
+controls set with \code{\link[=set_control_computation]{set_control_computation()}} where these are
 not named.}
 }
 \value{
-For a \code{netreg}, a \code{network_test}, with the statistic, the
+For an \code{infernetMrqapFit}, a \code{network_test}, with the statistic, the
 permutation distribution, and the p-value as \code{pgteobs}.
 It also holds the tested coefficients as \code{terms}, the tested values as
 \code{value}, and the number of permutations left out because the model did
 not converge on them as \code{failed}.
 }
 \description{
-These generics test hypotheses about the parameters of a fitted model:
+These generics test hypotheses about the coefficients of a fitted model:
 \itemize{
-\item \code{test_parameter()} asks whether one or more parameters have the values
-that a hypothesis gives them.
-\item \code{test_time()} asks whether parameters are constant over time.
+\item \code{test_parameter()} asks whether one or more coefficients have the
+values that a hypothesis gives them.
+\item \code{test_time()} asks whether coefficients are constant over time.
 }
 
-Each has a method for a \code{netreg}, from \code{estimate_mrqap()}.
+\code{test_parameter()} keeps its name, which \code{{goldfish}} and \code{{RSiena}}
+share: a hypothesis is about a parameter of the model, and the value
+that is estimated or stated for it is a coefficient.
+
+Each has a method for an \code{infernetMrqapFit}, from \code{estimate_mrqap()}.
 \code{{infernet}} holds the generics so that other packages can register
 methods for their own models on them.
 }
 \details{
-For a \code{netreg}, both tests compare a model in which the tested
+For an \code{infernetMrqapFit}, both tests compare a model in which the tested
 coefficients are free with one in which they are fixed.
 The statistic is the deviance that freeing them removes:
 the residual sum of squares of a gaussian model, and the deviance of a
@@ -141,11 +145,13 @@ Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
 }
 \seealso{
 Other models:
+\code{\link[=anova.infernetMrqapFit]{anova.infernetMrqapFit()}},
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link{diagnose}},
 \code{\link[=diagnose_confusion]{diagnose_confusion()}},
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.netreg_lm]{print.netreg_lm()}},
+\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
 \code{\link{regression}},
 \code{\link[=set_control_computation]{set_control_computation()}},
 \code{\link{specify}},

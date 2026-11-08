@@ -3,8 +3,7 @@
 \name{diagnose_confusion}
 \alias{diagnose_confusion}
 \alias{diagnose_confusion.default}
-\alias{diagnose_confusion.netreg_glm}
-\alias{diagnose_confusion.netreg_lm}
+\alias{diagnose_confusion.infernetMrqapFit}
 \alias{print.infernetConfusion}
 \alias{tidy.infernetConfusion}
 \alias{glance.infernetConfusion}
@@ -14,9 +13,7 @@ diagnose_confusion(x, ...)
 
 \method{diagnose_confusion}{default}(x, ...)
 
-\method{diagnose_confusion}{netreg_glm}(x, threshold = 0.5, times = 1000, control = list(), ...)
-
-\method{diagnose_confusion}{netreg_lm}(x, threshold = 0.5, times = 1000, control = list(), ...)
+\method{diagnose_confusion}{infernetMrqapFit}(x, threshold = 0.5, times = 1000, control = list(), ...)
 
 \method{print}{infernetConfusion}(x, ...)
 
@@ -25,7 +22,7 @@ diagnose_confusion(x, ...)
 \method{glance}{infernetConfusion}(x, ...)
 }
 \arguments{
-\item{x}{A \code{netreg} of a binary outcome, from \code{\link[=estimate_mrqap]{estimate_mrqap()}}.
+\item{x}{An \code{infernetMrqapFit} of a binary outcome, from \code{\link[=estimate_mrqap]{estimate_mrqap()}}.
 For \code{print()}, \code{tidy()}, and \code{glance()}, the result of
 \code{diagnose_confusion()}.}
 
@@ -51,8 +48,8 @@ the seed of the fit is used.}
 }
 \description{
 \code{diagnose_confusion()} compares the ties that a model of a binary outcome
-predicts with the ties that were observed. It has a method for a
-\code{netreg} from \code{\link[=estimate_mrqap]{estimate_mrqap()}}: a logistic model, or a linear model of
+predicts with the ties that were observed. It has a method for an
+\code{infernetMrqapFit} from \code{\link[=estimate_mrqap]{estimate_mrqap()}}: a logistic model, or a linear model of
 a 0/1 outcome, read as a linear probability model.
 \itemize{
 \item The probabilistic confusion matrix draws each tie from its predicted
@@ -78,8 +75,9 @@ The predicted probabilities are those of the observed model, which the
 permutations do not change. A linear probability model can predict a
 value below 0 or above 1, which is taken as 0 or 1.
 
-\code{\link[=estimate_mrqap]{estimate_mrqap()}} keeps the result for a binary outcome as
-\verb{$confusion_matrix}, from 1000 draws with the seed of the fit.
+With \code{"confusion"} in \code{outputs}, as by default, \code{\link[=estimate_mrqap]{estimate_mrqap()}}
+keeps the result for a binary outcome as \verb{$confusion_matrix}, from 1000
+draws with the seed of the fit.
 }
 \examples{
 fit <- estimate_mrqap(. ~ ego(Age) + alter(Age),
@@ -92,10 +90,12 @@ tidy(conf)
 }
 \seealso{
 Other models:
+\code{\link[=anova.infernetMrqapFit]{anova.infernetMrqapFit()}},
 \code{\link[=control_mrqap]{control_mrqap()}},
+\code{\link{diagnose}},
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.netreg_lm]{print.netreg_lm()}},
+\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
 \code{\link{regression}},
 \code{\link[=set_control_computation]{set_control_computation()}},
 \code{\link{specify}},

@@ -1,27 +1,30 @@
 # What `estimate_mrqap()` returns: the classes of a result, and the print method
 # of each. The contracts of the engine are in the test-qap_*.R files.
 
-# The class says what the result is, most specific first, so that a method can
-# be written at any level and S3 falls back to the next. `{autograph}` plots a
-# `netreg`, and can add a method for a more specific class later.
-test_that("a result's classes run from the most specific to netreg", {
+# The class names the model, not the family (D26). The family, a CSS, and a
+# panel are fields. `netreg` stays second for `{autograph}` and `{migraph}`.
+test_that("a result is an infernetMrqapFit of any family or shape", {
   g <- qap_net_gaussian(n = 12)
   lin <- estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 5,
                         control = list(seed = 1))
-  expect_equal(class(lin), c("netreg_lm", "netreg"))
+  expect_equal(class(lin), c("infernetMrqapFit", "netreg"))
+  expect_equal(lin$family, "gaussian")
+  expect_false(lin$css)
 
   b <- qap_net_binary(n = 12)
   glm_fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), b, times = 5,
                             control = list(seed = 1))
-  expect_equal(class(glm_fit), c("netreg_glm", "netreg"))
+  expect_equal(class(glm_fit), c("infernetMrqapFit", "netreg"))
+  expect_equal(glm_fit$family, "binomial")
 
   css <- suppressMessages(
     estimate_mrqap(advice ~ ego(age) + friends, css_hightech(),
                    times = 5, control = list(seed = 1)))
-  expect_equal(class(css), c("netreg_css", "netreg_glm", "netreg"))
+  expect_equal(class(css), c("infernetMrqapFit", "netreg"))
+  expect_true(css$css)
 })
 
-test_that("each class prints through its own method", {
+test_that("each family and shape prints through one method", {
   g <- qap_net_gaussian(n = 12)
   lin <- estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 5,
                         control = list(seed = 1))
@@ -30,9 +33,6 @@ test_that("each class prints through its own method", {
     estimate_mrqap(advice ~ ego(age) + friends, css_hightech(),
                    times = 5, control = list(seed = 1)))
   expect_output(print(css), "reporters alike")
-  # A bare netreg falls back to a structural summary rather than erroring.
-  bare <- structure(list(coefficients = 1), class = "netreg")
-  expect_output(print(bare), "<netreg>")
 })
 
 test_that("a print returns its input invisibly", {
@@ -159,4 +159,72 @@ test_that("a summary lists the terms that the formula dropped", {
   out <- capture.output(print(summary(fit)))
   expect_match(out, "Terms that the formula changed", all = FALSE)
   expect_match(out, "inertia", all = FALSE)
+})
+
+# ---- outputs -------------------------------------------------------------------
+
+# `outputs =` names the optional parts of a fit only (D23). The default keeps
+# a fit as it was before 0.7.0.
+test_that("the default outputs keep the observed model and the confusion matrix", {
+  b <- qap_net_binary(n = 12)
+  fit <- estimate_mrqap(. ~ ego(Age), b, times = 5, control = list(seed = 1))
+  expect_equal(fit$outputs, c("model", "confusion"))
+  expect_false(is.null(fit$simple_fit))
+  expect_s3_class(fit$confusion_matrix, "infernetConfusion")
+  expect_null(fit$draws)
+})
+
+test_that("outputs leaves out the observed model and the confusion matrix", {
+  b <- qap_net_binary(n = 12)
+  fit <- estimate_mrqap(. ~ ego(Age), b, times = 5, control = list(seed = 1),
+                        outputs = character(0))
+  expect_null(fit$simple_fit)
+  expect_null(fit$confusion_matrix)
+  # What is left out is made again from the baseline fit.
+  full <- estimate_mrqap(. ~ ego(Age), b, times = 5, control = list(seed = 1))
+  expect_equal(coef(fit), coef(full))
+  expect_equal(glance(fit)$deviance, glance(full)$deviance)
+  expect_equal(diagnose_confusion(fit, control = list(seed = 1))$auc,
+               full$confusion_matrix$auc)
+})
+
+test_that("outputs = \"draws\" keeps the permuted coefficients", {
+  g <- qap_net_gaussian(n = 12)
+  out <- estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 8,
+                        control = list(seed = 1, permute = "outcome"),
+                        outputs = "draws")
+  expect_equal(dim(out$draws), dim(out$testdist))
+  expect_equal(colnames(out$draws), names(out$coefficients))
+  # The share of permuted coefficients at or above the observed one is the
+  # upper p-value of the coefficient, as the engine counts it.
+  b <- out$coefficients[["ego_Age"]]
+  expect_equal(out$larger[1, "ego_Age"],
+               (1 + sum(out$draws[, "ego_Age"] >= b)) / (8 + 1))
+
+  pred <- estimate_mrqap(weight ~ ego(Age) + alter(Age), g, times = 8,
+                         control = list(seed = 1), outputs = "draws")
+  expect_true(all(is.na(pred$draws[, "(Intercept)"])))
+  expect_false(anyNA(pred$draws[, "ego_Age"]))
+})
+
+test_that("outputs aborts on a value it does not know", {
+  g <- qap_net_gaussian(n = 10)
+  expect_error(estimate_mrqap(weight ~ ego(Age), g, times = 5,
+                              outputs = "chains"),
+               "unknown value")
+  expect_error(estimate_mrqap(weight ~ ego(Age), g, times = 5, outputs = 1),
+               "character vector")
+})
+
+test_that("less_mem is deprecated, and leaves out the observed model", {
+  warned <- .infernet_state$warned_less_mem
+  .infernet_state$warned_less_mem <- NULL
+  on.exit(.infernet_state$warned_less_mem <- warned)
+  g <- qap_net_gaussian(n = 10)
+  expect_warning(
+    fit <- estimate_mrqap(weight ~ ego(Age), g, times = 5,
+                          control = list(less_mem = TRUE)),
+    "deprecated")
+  expect_null(fit$simple_fit)
+  expect_equal(fit$outputs, "confusion")
 })

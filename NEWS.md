@@ -16,6 +16,10 @@
   - `control_mrqap(less_mem =)` is deprecated; `TRUE` leaves out `"model"`
 
 
+## Diagnosing
+
+- Merged the two `diagnose_confusion()` methods into one for an MRQAP
+
 ## Tutorials
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial

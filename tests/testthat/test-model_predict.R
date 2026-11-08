@@ -1,4 +1,4 @@
-# `predict()` of a `netreg` gives, without `newdata`, the fitted values of the
+# `predict()` of an `infernetMrqapFit` gives, without `newdata`, the fitted values of the
 # equivalent standard fit on the same dyads, and with `newdata`, the values
 # from the coefficients. Each family is checked against its standard fit.
 

@@ -138,7 +138,7 @@ test_that("a cognitive social structure absorbs a reporter fixed effect", {
   fit <- estimate_mrqap(advice ~ same(dept) + reports | reporter,
                         manynet::ison_hightech, times = 5,
                         control = list(seed = 1, family = "gaussian"))
-  expect_s3_class(fit, "netreg_css")
+  expect_true(fit$css)
   expect_equal(fit$fixed_effects, "reporter")
   expect_output(print(fit), "with reporter fixed effects")
 })
@@ -188,7 +188,7 @@ test_that("an interaction fits with a reporter fixed effect on a CSS", {
       advice ~ friends + ego(level) + friends:ego(level) | reporter,
       manynet::ison_hightech, times = 5,
       control = list(seed = 1, family = family))
-    expect_s3_class(fit, "netreg_css")
+    expect_true(fit$css)
     expect_equal(names(fit$coefficients),
                  c("(Intercept)", "friends", "ego_level", "friends:ego_level"))
     expect_false(anyNA(fit$coefficients[-1]))
