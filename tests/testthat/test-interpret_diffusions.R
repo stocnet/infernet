@@ -43,3 +43,20 @@ test_that("play_diffusions() binds runs that report different columns", {
   expect_equal(nrow(out), 3)
   expect_equal(out$S_new, c(0, 0, 2))
 })
+
+test_that("a subset of the rows of a diffs_model is still one", {
+  set.seed(21)
+  g <- manynet::generate_random(12, 0.25)
+  res <- play_diffusions(g, transmissibility = 0.4, times = 3,
+                         control = list(seed = 1))
+  rows <- res[res$sim == 2, ]
+  expect_s3_class(rows, "diffs_model")
+  expect_equal(attr(rows, "control"), attr(res, "control"))
+  expect_equal(unique(rows$sim), 2L)
+  expect_output(print(rows), "1 simulated")
+  # A subset without the columns that its print reads is a plain tibble.
+  cols <- res[, c("time", "S")]
+  expect_false(inherits(cols, "diffs_model"))
+  expect_s3_class(cols, "tbl_df")
+  expect_equal(res[["sim"]], res$sim)
+})

@@ -26,6 +26,10 @@
 
 - Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
 
+## Interpreting
+
+- Added `[` for a `diffs_model`, so that a subset of its rows still prints
+
 ## Tutorials
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
