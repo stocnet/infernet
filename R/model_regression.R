@@ -223,12 +223,24 @@
 #'   See [control_mrqap()] for each control, its default, and the
 #'   names it converts from other models and earlier versions.
 #'   The result records the controls that it used as `control`.
-#' @return An object of class `netreg`, with a more specific class in front:
-#'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
-#'   A cognitive social structure also puts `netreg_css` first, so
-#'   `c("netreg_css", "netreg_glm", "netreg")` for a binomial CSS model.
-#'   A method can be written for any of these, and falls back to the next.
-#'   Among its elements:
+#' @param outputs The optional parts of the result, as a character vector
+#'   of any of:
+#'   - `"model"`, the observed model object, as `simple_fit`, which
+#'     [test_gof()] simulates from;
+#'   - `"confusion"`, the probabilistic confusion matrix of a binary outcome,
+#'     as `confusion_matrix`;
+#'   - `"draws"`, the coefficient of each permutation, as `draws`.
+#'
+#'   The default, `c("model", "confusion")`, keeps what a result kept before
+#'   infernet 0.7.0. Leave out `"model"` and `"confusion"` to save memory on a
+#'   large network: every method still reads the baseline fit in `base`, and
+#'   [diagnose_confusion()] makes the confusion matrix again.
+#' @return An object of class `c("infernetMrqapFit", "netreg")`.
+#'   `netreg` is kept for `{autograph}` and `{migraph}` in infernet 0.7.x,
+#'   and goes in 0.8.0.
+#'   The family, a cognitive social structure, and a panel are not classes,
+#'   but the elements `family`, `css`, and `panel`.
+#'   It always has these elements:
 #'   - `coefficients` and `obs`, the estimates and the observed test
 #'     statistics of the model;
 #'   - `lower`, `larger`, and `abs`, the share of permutations whose
@@ -240,7 +252,9 @@
 #'     `permute = "predictor"` each column comes from its own set of
 #'     permutations, so rows pair columns only by position, and the intercept
 #'     column is `NA`. A permutation that failed leaves its row `NA`.
-#'   - `panel`, whether the network was fitted as a panel of its waves.
+#'   - `family`, the family that was fitted; `css`, whether the outcome is a
+#'     cognitive social structure; and `panel`, whether the network was
+#'     fitted as a panel of its waves.
 #'   - `missing`, a list of the treatment of unobserved dyads, the number of
 #'     dyads the model could use (`possible`) and did use (`used`), the number
 #'     unobserved on each variable (`unobserved`), the number of fixed ties left
@@ -259,20 +273,25 @@
 #'   - `call`, `formula`, and `model_formula`: the call, the formula as
 #'     [specify_mrqap()] read it, and the formula of the columns that were
 #'     fitted. `update()`, `formula()`, and `terms()` read them
-#'     (see [netreg_results]).
-#'   - `fixed_df`, the number of parameters that a gaussian model absorbed by
-#'     demeaning, or `NULL`.
-#'
-#'   When the outcome is binary -- either `family = "binomial"` or
-#'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
-#'   attached as `$confusion_matrix`; for the gaussian-binary case the linear
-#'   probability fitted values are clamped to 0/1 before sampling.
-#'   [diagnose_confusion()] gives it again with another threshold or number
-#'   of draws.
+#'     (see [mrqap_results]).
+#'   - `fixed_df`, the number of coefficients that a gaussian model absorbed
+#'     by demeaning, or `NULL`.
 #'   - `node_names`, the names of the nodes, which name the random
-#'     intercepts; `control`, the controls as the fit resolved them; and
+#'     intercepts; `control`, the controls as the fit resolved them;
+#'     `outputs`, the optional parts that it keeps; and
 #'     `record`, what [specify_mrqap()] made of each term. `print()` and
 #'     `summary()` read them.
+#'
+#'   Each value of `outputs` adds one element:
+#'   - `"model"` adds `simple_fit`, the observed `lm`, `glm`, or other model
+#'     object.
+#'   - `"confusion"` adds `confusion_matrix` where the outcome is binary,
+#'     either with `family = "binomial"` or with `"gaussian"` and a 0/1
+#'     outcome. It is the result of [diagnose_confusion()] with 1000 draws and
+#'     the seed of the fit. For the gaussian case the linear probability
+#'     fitted values are clamped to 0/1 before the draws.
+#'   - `"draws"` adds `draws`, the permuted coefficients, as a matrix with
+#'     the rows and columns of `testdist`.
 #' @name regression
 #' @family models
 #' @references
@@ -324,10 +343,13 @@
 estimate_mrqap <- function(formula,
                            .data,
                            times   = 1000,
-                           control = list()) {
+                           control = list(),
+                           outputs = c("model", "confusion")) {
 
   call <- match.call()
   ctrl <- .resolve_control(control)
+  outputs <- .check_outputs(outputs, c("model", "confusion", "draws"))
+  if (isTRUE(ctrl$less_mem)) outputs <- setdiff(outputs, "model")
   # A formula written for another model is read as an MRQAP reads it, and the
   # terms it cannot fit are dropped and named.
   formula <- specify_mrqap(formula, .data)
@@ -410,10 +432,10 @@ estimate_mrqap <- function(formula,
     missing  = ctrl$missing,
     panel    = panel,
     fixed_effects = spec$fixed,
-    less_mem = ctrl$less_mem
+    outputs  = outputs
   )
 
-  if (user_requested_gaussian_binary) {
+  if (user_requested_gaussian_binary && "confusion" %in% outputs) {
     fit$confusion_matrix <- .lpm_confusion(fit, seed = ctrl$seed)
   }
   fit$terms <- .coef_terms(names(fit$coefficients), terms)
@@ -430,11 +452,33 @@ estimate_mrqap <- function(formula,
   ctrl$permute <- fit$permute
   fit$control <- ctrl
   fit$record <- record
+  fit$outputs <- outputs
   if (!is.null(fit$confusion_matrix)) {
     fit$confusion_matrix <- .confusion_model(fit$confusion_matrix, fit)
   }
 
   fit
+}
+
+# The optional parts of a result, checked as every `estimate_*()` checks
+# them: a character vector of the values that the estimator knows, in any
+# order, with each named once. `character(0)` keeps none.
+#' @keywords internal
+#' @noRd
+.check_outputs <- function(outputs, choices) {
+  if (is.null(outputs)) return(character(0))
+  if (!is.character(outputs) || anyNA(outputs)) {
+    manynet::snet_abort(
+      c("{.arg outputs} must be a character vector.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unknown <- setdiff(outputs, choices)
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("{.arg outputs} has {length(unknown)} unknown value{?s}: {.val {unknown}}.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unique(outputs)
 }
 
 # ---- permutation schemes and missing data --------------------------------------

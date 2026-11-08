@@ -5,6 +5,9 @@
 - Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
   - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
   - `control_computation()` sets them for one call
+- Renamed the class of an `estimate_mrqap()` fit to `infernetMrqapFit`
+  - `netreg` stays second in 0.7.x for `{autograph}` and `{migraph}`
+  - Its `summary()` is now an `infernetMrqapSummary`
 
 ## Tutorials
 
