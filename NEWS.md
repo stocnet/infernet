@@ -22,6 +22,10 @@
   - `diagnose_outliers()` flags the dyads of an MRQAP with extreme residuals
 - Merged the two `diagnose_confusion()` methods into one for an MRQAP
 
+## Evaluating
+
+- Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
+
 ## Tutorials
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
