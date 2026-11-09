@@ -111,8 +111,10 @@ reference:
       - starts_with("evaluate_")
   - title: "Interpreting"
     desc: >
-      Functions for predicting from a model,
+      Functions for predicting from a model and reading its terms,
+      for simulating networks from a model,
       and for simulating many diffusions on a network:
     contents:
       - starts_with("predict")
+      - starts_with("simulate")
       - starts_with("play_")

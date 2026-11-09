@@ -40,6 +40,9 @@
 
 ## Interpreting
 
+- Added `simulate()` of an MRQAP from a fit, its coefficients, or a specification (closes #24)
+  - The routes give the same networks for one seed, sequentially and in parallel
+  - The result is a list of networks of the class of `.data`, or `stocnet`
 - Added `[` for a `diffs_model`, so that a subset of its rows still prints
 
 ## Tutorials

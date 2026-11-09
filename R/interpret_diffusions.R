@@ -30,7 +30,7 @@
 #'   `summary()` gives the time of adoption, the number of steps until every
 #'   node is infected, for each run.
 #'   `print()` returns `x`, invisibly.
-#' @family models
+#' @family interpreting functions
 #' @examples
 #' play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
 #'                 control = list(seed = 1))

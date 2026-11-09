@@ -1,6 +1,6 @@
 # Predicting from network regressions ####
 
-#' Predicting from a network regression
+#' Predicting from a network regression, and its terms
 #'
 #' @description
 #'   `predict()` gives the predicted value of the outcome for each dyad.
@@ -9,6 +9,9 @@
 #'     that the model was fitted on, or the dyads of `newdata`.
 #'   - For a `netlm` or `netlogit`, from `net_regression()` in `{migraph}`
 #'     before 2.0.0, it predicts the rows of a design matrix.
+#'
+#'   `formula()` and `terms()` of an `infernetMrqapFit` give the formula that
+#'   was fitted and the columns of its coefficients.
 #' @details
 #'   Without `newdata`, the prediction for an `infernetMrqapFit` is the fitted value of
 #'   each dyad of the model, with any random intercepts and absorbed fixed
@@ -41,6 +44,7 @@
 #' @return A numeric vector of predicted values, one for each dyad or row.
 #' @name predict_mrqap
 #' @aliases predict
+#' @family interpreting functions
 #' @examples
 #' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")
@@ -174,4 +178,36 @@ predict.netlogit <- function(object, newdata = NULL,
   out <- do.call(cbind, cols)
   colnames(out) <- coef_names
   out
+}
+
+# The formula and the terms of a fit ####
+
+#' @section The formula and the terms of a fit:
+#'   `formula()` of a fit from [estimate_mrqap()] gives the formula that was
+#'   fitted, after [specify_mrqap()] read it, and `terms()` gives the terms
+#'   of the columns that were fitted, as the coefficients name them.
+#'   These are the columns that `newdata` needs, and that each coefficient
+#'   is the effect of.
+#'   For the formula of chosen rows of a table of terms, see [specify_terms].
+#' @param x For `formula()` and `terms()`, an `infernetMrqapFit`, from
+#'   [estimate_mrqap()].
+#' @return `formula()` of a fit gives a formula, and `terms()` a `terms`
+#'   object.
+#' @examples
+#' fit <- estimate_mrqap(advice ~ same(dept) + reports,
+#'                       manynet::ison_hightech, times = 5)
+#' formula(fit)
+#' terms(fit)
+#' @rdname predict_mrqap
+#' @exportS3Method stats::formula
+formula.infernetMrqapFit <- function(x, ...) {
+  if (is.null(x$formula)) .refit_abort("formula")
+  x$formula
+}
+
+#' @rdname predict_mrqap
+#' @exportS3Method stats::terms
+terms.infernetMrqapFit <- function(x, ...) {
+  if (is.null(x$model_formula)) .refit_abort("terms")
+  stats::terms(x$model_formula)
 }

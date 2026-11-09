@@ -6,13 +6,19 @@
 \alias{predict.infernetMrqapFit}
 \alias{predict.netlm}
 \alias{predict.netlogit}
-\title{Predicting from a network regression}
+\alias{formula.infernetMrqapFit}
+\alias{terms.infernetMrqapFit}
+\title{Predicting from a network regression, and its terms}
 \usage{
 \method{predict}{infernetMrqapFit}(object, newdata = NULL, type = c("link", "response"), ...)
 
 \method{predict}{netlm}(object, newdata = NULL, ...)
 
 \method{predict}{netlogit}(object, newdata = NULL, type = c("link", "response"), ...)
+
+\method{formula}{infernetMrqapFit}(x, ...)
+
+\method{terms}{infernetMrqapFit}(x, ...)
 }
 \arguments{
 \item{object}{An \code{infernetMrqapFit} object, as returned by \code{estimate_mrqap()},
@@ -36,9 +42,15 @@ e.g. probabilities for a binomial model and expected counts for a count
 model. For a gaussian model the two are the same.}
 
 \item{...}{Not used.}
+
+\item{x}{For \code{formula()} and \code{terms()}, an \code{infernetMrqapFit}, from
+\code{\link[=estimate_mrqap]{estimate_mrqap()}}.}
 }
 \value{
 A numeric vector of predicted values, one for each dyad or row.
+
+\code{formula()} of a fit gives a formula, and \code{terms()} a \code{terms}
+object.
 }
 \description{
 \code{predict()} gives the predicted value of the outcome for each dyad.
@@ -48,6 +60,9 @@ that the model was fitted on, or the dyads of \code{newdata}.
 \item For a \code{netlm} or \code{netlogit}, from \code{net_regression()} in \code{{migraph}}
 before 2.0.0, it predicts the rows of a design matrix.
 }
+
+\code{formula()} and \code{terms()} of an \code{infernetMrqapFit} give the formula that
+was fitted and the columns of its coefficients.
 }
 \details{
 Without \code{newdata}, the prediction for an \code{infernetMrqapFit} is the fitted value of
@@ -61,6 +76,16 @@ model with fixed effects predicts only the dyads it was fitted on.
 For a zero-inflated Poisson model, the zero-inflation part reads the same
 columns as the count part.
 }
+\section{The formula and the terms of a fit}{
+
+\code{formula()} of a fit from \code{\link[=estimate_mrqap]{estimate_mrqap()}} gives the formula that was
+fitted, after \code{\link[=specify_mrqap]{specify_mrqap()}} read it, and \code{terms()} gives the terms
+of the columns that were fitted, as the coefficients name them.
+These are the columns that \code{newdata} needs, and that each coefficient
+is the effect of.
+For the formula of chosen rows of a table of terms, see \link{specify_terms}.
+}
+
 \examples{
 networkers <- manynet::ison_networkers |>
   manynet::to_subgraph(Discipline == "Sociology")
@@ -70,4 +95,14 @@ model1 <- estimate_mrqap(weight ~ ego(Citations) + alter(Citations),
 head(predict(model1))
 # A sender with 10 citations, to a receiver with 50
 predict(model1, data.frame(ego_Citations = 10, alter_Citations = 50))
+fit <- estimate_mrqap(advice ~ same(dept) + reports,
+                      manynet::ison_hightech, times = 5)
+formula(fit)
+terms(fit)
 }
+\seealso{
+Other interpreting functions:
+\code{\link[=play_diffusions]{play_diffusions()}},
+\code{\link{simulate_mrqap}}
+}
+\concept{interpreting functions}

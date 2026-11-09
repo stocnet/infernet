@@ -322,10 +322,10 @@ The package follows the stages of an inference.
 | Stage | Question | Functions |
 |---|---|---|
 | Testing | Is this one statistic more than chance? | `test_random()`, `test_configuration()`, `test_permutation()` |
-| Specifying | Which terms, and with which coefficients? | `specify_*()`, `specify_terms()`, `terms_mrqap`, `formula()` and `terms()` of a fit, and later `declare_coefs()` |
+| Specifying | Which terms, and with which coefficients? | `specify_*()`, `specify_terms()`, `terms_mrqap`, and `declare_coefs()`, with `coef()` of a fit |
 | Estimating | What are the coefficients? | `estimate_*()`, `control_*()`, and `other_results` for the fits of other packages |
 | Evaluating | Can I trust this fit? Does the model fit the network, and which terms does it need? | `diagnose_*()`, `fitted()` and `residuals()` of a fit; and `test_gof()`, `test_distributions()`, `test_parameter()`, `test_time()`, `anova()`, and `nobs()`, `logLik()`, and `deviance()` of a fit |
-| Interpreting | What does a coefficient mean for the network? | `predict()`, `play_diffusions()`, and later `simulate()` |
+| Interpreting | What does a coefficient mean for the network? | `predict()`, `formula()` and `terms()` of a fit, `simulate()`, and `play_diffusions()` |
 
 The stage names are gerunds, and they are used in three places:
 
@@ -364,13 +364,14 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 |---|---|
 | `test_measures.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and the null distribution of each |
 | `test_report.R` | `print()`, `summary()`, `tidy()`, and `glance()` of a `network_test`, on the `test_measures` help page |
-| `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify_formula` help page: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish's writer is goldfish's own `specify_dynam()` |
+| `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify_mrqap` and `specify_ergm` help pages: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish's writer is goldfish's own `specify_dynam()` |
+| `specify_coefs.R` | the generic `declare_coefs()`, its methods for a specification and for an `infernetMrqapFit`, `print()` and `coef()` of an `infernetMrqapCoefs`, and `coef()` of an `infernetMrqapFit` |
 | `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its `formula()` method |
 | `specify_registry.R` | the term registry `.formula_terms()` and goldfish's terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term's equation |
 | `specify_builders.R` | the builder of each term, which makes its matrices for one network |
 | `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
 | `specify_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
-| `specify_report.R` | `print()` and `tidy()` of a formula from `specify_*()`, of the term table from `specify_terms()`, and the print of `control_mrqap()`; and `formula()` and `terms()` of an `infernetMrqapFit`, on the `specify_formula` help page |
+| `specify_report.R` | `print()` and `tidy()` of a formula from `specify_*()`, with `tidy()` on the page of its `specify_*()` function; of the term table from `specify_terms()`; and the print of `control_mrqap()` |
 | `estimate_mrqap.R` | `estimate_mrqap()` and the list path |
 | `estimate_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`); the persistent controls in `options(infernet.control)` (`.persisted_controls()`); and `control_computation()` and `set_control_computation()` |
 | `estimate_report.R` | the methods that report an `infernetMrqapFit`, on the `estimate_mrqap` help page: `print()`, `summary()` and its print, `tidy()`, and `glance()`; the helpers that the methods of a fit on other pages share, `.observed_model()` and `.refit_abort()`; and the `other_results` help page, for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
@@ -381,7 +382,8 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `evaluate_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
 | `evaluate_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for an `infernetMrqapFit`, the joint double semi-partialling they share, and `anova()` of two nested fits |
 | `evaluate_report.R` | `nobs()`, `logLik()`, and `deviance()` of an `infernetMrqapFit`, on the `evaluate_likelihood` help page, so that `AIC()` and `BIC()` compare fits |
-| `interpret_predict.R` | `predict()` for an `infernetMrqapFit`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0, on the `predict_mrqap` help page |
+| `interpret_predict.R` | `predict()` for an `infernetMrqapFit`, and for the `netlm` and `netlogit` results of `{migraph}` before 2.0.0; and `formula()` and `terms()` of an `infernetMrqapFit`; on the `predict_mrqap` help page |
+| `interpret_simulate.R` | `simulate()` of an `infernetMrqapFit`, an `infernetMrqapCoefs`, and an `mrqap_formula`, on the `simulate_mrqap` help page, and the simulator that `test_gof()` shares |
 | `interpret_diffusions.R` | `play_diffusions()`, which simulates the diffusions of a `diffs_model` |
 | `interpret_report.R` | `print()`, `summary()`, and `[` of a `diffs_model`, on the `play_diffusions` help page |
 | `report_print.R` | what every print shares: the `#` title, sections, and footer, the p-values and their marks, the controls that differ from the default, and the verbosity at which a footer names more methods |
@@ -824,6 +826,13 @@ decided on 6 and 7 November 2026 for 0.7.0 (D21–D27 of the roadmap).
   The result is always a list of `nsim` networks, of the class of `.data`, or `stocnet` without it.
   Give each draw its own random stream with `future.seed = TRUE`, as `.simulate_statistic()` does,
   so that the result does not depend on the plan.
+  For an MRQAP, all three routes and `test_gof()` draw through `.mrqap_simulator()`
+  or `.coefs_simulator()` in `R/interpret_simulate.R`.
+  A gaussian, binomial, or poisson model without random or fixed effects draws from its coefficients,
+  with the same calls to the generator as `stats::simulate()` of the same `lm()` or `glm()`,
+  so a fit and its coefficients give the same networks.
+  Any other fit draws with `stats::simulate()` of its `simple_fit`.
+  A fit keeps `dims` and `twomode`, so that it can place a draw without `.data`.
 - **Shared generics.** `test_gof()`, `test_parameter()`, `test_time()`, `diagnose_outliers()`,
   `diagnose_changepoints()`, and `diagnose_onset()` live here, with `{goldfish}`'s signatures,
   and their first argument is `x` (or `object` for `test_gof()`).
@@ -1200,12 +1209,13 @@ not "two-mode works".
 | `test-test_measures.R` | `test_random()`, `test_configuration()`, and `test_permutation()`: the statistic, its draws, both tails, and the controls they read |
 | `test-evaluate_fit.R` | `test_gof()` and `test_distributions()`: each method, and what they refuse |
 | `test-evaluate_parameter.R` | `test_parameter()` and `test_time()`: the signature of the generics of `{RSiena}` and `{goldfish}`, and the dyads of the model in every shape; and `anova()` of two nested fits |
+| `test-specify_coefs.R` | `declare_coefs()`: the names against the columns of a fit, the coefficients of a fit, the print, and what it refuses |
+| `test-interpret_simulate.R` | `simulate()`: the same networks by every route for one seed, the draw of `stats::simulate()`, the class of the result, and what it refuses |
 | `test-interpret_diffusions.R` | `play_diffusions()`, its old arguments, and `[` of a `diffs_model` |
 | `test-estimate_mrqap.R` | what `estimate_mrqap()` returns: the class of a result, what its print reports, and each value of `outputs` |
-| `test-interpret_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit |
+| `test-interpret_predict.R` | `predict()` of each family, against the fitted values of the equivalent standard fit; and `formula()` and `terms()` of an `infernetMrqapFit` |
 | `test-estimate_control.R` | `control_mrqap()`, the persistent controls, the choice of null hypothesis, and the messages that report what the model resolved |
 | `test-estimate_report.R` | `tidy()` and `glance()`, on hand-built results, on fits, and on the results of `{migraph}` and `{ergm}`; the stored null distribution, `testdist`; and the coefficients of an `infernetMrqapFit`, against the equivalent `lm()` or `glm()` |
-| `test-specify_report.R` | `formula()` and `terms()` of an `infernetMrqapFit` |
 | `test-diagnose_report.R` | `fitted()` and `residuals()` of an `infernetMrqapFit`, against the equivalent `lm()` or `glm()`, with fixed effects and no `outputs` |
 | `test-evaluate_report.R` | `nobs()`, `logLik()`, and `deviance()` of an `infernetMrqapFit`, against the equivalent `lm()` or `glm()`, with fixed effects, fixed ties, and no `outputs` |
 | `test-report_print.R` | the print of every result and of `summary()`, as snapshots |
@@ -1395,11 +1405,11 @@ Run `devtools::document()` after changing any roxygen comment.
 
   | Methods of an `infernetMrqapFit` | Stage | Page |
   |---|---|---|
-  | `formula()`, `terms()` | Specifying | `specify_formula` |
+  | `coef()` | Specifying | `declare_coefs` |
   | `fitted()`, `residuals()` | Evaluating | `diagnose_residuals` |
   | `nobs()`, `logLik()`, `deviance()` | Evaluating | `evaluate_likelihood` |
   | `anova()` | Evaluating | `test_parameter` |
-  | `predict()` | Interpreting | `predict_mrqap` |
+  | `predict()`, `formula()`, `terms()` | Interpreting | `predict_mrqap` |
 
   A page that holds only methods takes the prefix of its stage,
   such as `diagnose_residuals`, so that its section still selects it.

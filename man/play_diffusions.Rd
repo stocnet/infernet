@@ -62,21 +62,8 @@ play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
                 control = list(seed = 1))
 }
 \seealso{
-Other models:
-\code{\link[=control_computation]{control_computation()}},
-\code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link[=diagnose_outliers]{diagnose_outliers()}},
-\code{\link{diagnose_residuals}},
-\code{\link{diagnose_time}},
-\code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+Other interpreting functions:
+\code{\link{predict_mrqap}},
+\code{\link{simulate_mrqap}}
 }
-\concept{models}
+\concept{interpreting functions}
