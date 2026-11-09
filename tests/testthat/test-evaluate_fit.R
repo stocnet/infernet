@@ -226,7 +226,10 @@ test_that("test_gof() on an MRQAP fit reproduces with a seed", {
 
 test_that("test_gof() on an MRQAP fit refuses what it cannot simulate", {
   net <- qap_net_binary(n = 12)
-  lean <- estimate_mrqap(. ~ ego(Age), net, times = 5, outputs = "confusion")
+  # A model with random intercepts draws from its observed model, which a fit
+  # keeps only with "model" in `outputs`.
+  lean <- suppressMessages(estimate_mrqap(. ~ ego(Age) + (1 | sender), net,
+                                          times = 5, outputs = "confusion"))
   expect_error(test_gof(lean, net, netrics::net_by_reciprocity, times = 5),
                "outputs")
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)

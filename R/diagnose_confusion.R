@@ -49,7 +49,7 @@
 #'   `tidy()` returns a tibble of `threshold`, `fpr`, and `tpr`, and
 #'   `glance()` a tibble of one row of the metrics.
 #'   `print()` returns `x`, invisibly.
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' fit <- estimate_mrqap(. ~ ego(Age) + alter(Age),
 #'                       manynet::ison_adolescents |>

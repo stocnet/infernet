@@ -42,7 +42,7 @@
 #'   is an `outlier`, and a `label` of the dyad where it is one.
 #'   Its attributes `method` and `threshold` record how it was made.
 #'   The print shows the outliers only.
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' fit <- estimate_mrqap(weight ~ ego(Citations) + alter(Citations),
 #'                       manynet::ison_networkers, times = 5)

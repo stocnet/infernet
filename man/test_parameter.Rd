@@ -171,21 +171,12 @@ Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
 \doi{10.1007/s11336-007-9016-1}
 }
 \seealso{
-Other models:
-\code{\link[=control_computation]{control_computation()}},
-\code{\link[=control_mrqap]{control_mrqap()}},
+Other evaluating functions:
 \code{\link[=diagnose_confusion]{diagnose_confusion()}},
 \code{\link[=diagnose_outliers]{diagnose_outliers()}},
 \code{\link{diagnose_residuals}},
 \code{\link{diagnose_time}},
 \code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link{test_measures}}
+\code{\link{test_fit}}
 }
-\concept{models}
+\concept{evaluating functions}

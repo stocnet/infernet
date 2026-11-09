@@ -37,7 +37,7 @@
 #'   When Permutations Are Randomly Drawn."
 #'   _Statistical Applications in Genetics and Molecular Biology_ 9(1): 39.
 #'   \doi{10.2202/1544-6115.1585}.
-#' @family models
+#' @family testing functions
 #' @param FUN A graph-level statistic function to test.
 #' @param ... For a `test_*()` function, more arguments for `FUN`,
 #'   such as the name of the attribute. For a method, not used.

@@ -59,15 +59,18 @@
 #'   or no p-value can be below 0.05.
 #' @section Network regressions:
 #'   The `infernetMrqapFit` method draws each simulated outcome from the fitted model
-#'   with `stats::simulate()`, in the dyads that the model used.
+#'   in the dyads that the model used, as [simulate()] of the fit does
+#'   (see [simulate_mrqap]), so a seed gives the same networks to both.
 #'   The other cells keep their observed values: the diagonal, the fixed ties,
 #'   and the cells that the model left out. An unobserved cell is an absent tie
 #'   in both the observed and the simulated networks, so they do not differ
 #'   there. An undirected network is mirrored, and the simulated network takes
 #'   the node attributes of the observed one.
 #'
-#'   The model needs its `simple_fit`, so a model fitted without `"model"`
-#'   in `outputs` cannot be tested. A list of networks, a panel, and a
+#'   A `"binomial"` or `"poisson"` model without random or fixed effects draws
+#'   from its coefficients. Any other model draws with `stats::simulate()` of
+#'   its `simple_fit`, so such a model fitted without `"model"` in `outputs`
+#'   cannot be tested. A list of networks, a panel, and a
 #'   cognitive social structure cannot be tested yet.
 #'   Nor can a `gaussian` model: its draws are continuous, so every dyad of a
 #'   draw would hold a tie, and the test would always reject.
@@ -114,7 +117,7 @@
 #'   "Goodness of fit for stochastic actor-oriented models".
 #'   _Methodological Innovations_ 12(3).
 #'   \doi{10.1177/2059799119884282}
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' fast <- play_diffusions(ison_adolescents, transmissibility = 0.5,
 #'                         times = 20, control = list(seed = 1))
@@ -189,6 +192,15 @@ test_gof.infernetMrqapFit <- function(object, observed, FUN, ...,
   ctrl <- test$ctrl
   args <- test$args
   measure <- function(g) do.call(FUN, c(list(g), args))
+  # `as_tidygraph()` makes a tie of every nonzero cell, and a continuous draw
+  # has no zero, so every draw would be a complete network.
+  if (identical(object$family, "gaussian")) {
+    manynet::snet_abort(
+      c("{.fn test_gof} cannot simulate networks from a {.val gaussian} model.",
+        i = "Its draws are continuous, so every dyad would hold a tie, and the test would always reject.",
+        i = "Fit a family whose outcomes are ties or counts, such as {.val binomial} or {.val poisson}."))
+  }
+  # The simulator of `simulate()`, so that both draw the same networks.
   model <- .mrqap_simulator(object, observed)
 
   obsd <- .as_statistic(measure(model$network(model$matrix)))
@@ -392,76 +404,3 @@ test_distributions.diffs_model <- function(object1, object2,
        simulated = rows(simulated))
 }
 
-# ---- network regressions -----------------------------------------------------
-
-# What the `infernetMrqapFit` method needs to draw an outcome network: the observed
-# outcome matrix, a function that fills the model's dyads with a draw from
-# the fitted model, and a function that makes a network of a matrix.
-#' @keywords internal
-#' @noRd
-.mrqap_simulator <- function(object, observed) {
-  fit <- object$simple_fit
-  if (is.null(fit)) {
-    manynet::snet_abort(
-      c("The model has no {.code simple_fit} to simulate from.",
-        i = "Fit it again with {.val model} in {.arg outputs}, as by default."))
-  }
-  # `as_tidygraph()` makes a tie of every nonzero cell, and a continuous draw
-  # has no zero, so every draw would be a complete network.
-  if (identical(object$family, "gaussian")) {
-    manynet::snet_abort(
-      c("{.fn test_gof} cannot simulate networks from a {.val gaussian} model.",
-        i = "Its draws are continuous, so every dyad would hold a tie, and the test would always reject.",
-        i = "Fit a family whose outcomes are ties or counts, such as {.val binomial} or {.val poisson}."))
-  }
-  if (isTRUE(object$css) || isTRUE(object$panel) ||
-      length(unique(object$pred$nv)) > 1) {
-    manynet::snet_abort(
-      "{.fn test_gof} cannot yet simulate a list of networks, a panel, or a cognitive social structure.")
-  }
-  net <- manynet::as_tidygraph(observed)
-  layers <- .layer_names(net)
-  lhs <- if (object$dep %in% layers) object$dep else "."
-  outcome <- .resolve_outcome(lhs, net, layers)
-  mat <- outcome$DV
-  pred <- object$pred
-  dep <- if (object$dep %in% names(pred)) object$dep else "yv"
-  if (!is.matrix(mat) || max(pred$location) > length(mat) ||
-      (dep %in% names(pred) &&
-       !isTRUE(all.equal(as.numeric(mat[pred$location]), as.numeric(pred[[dep]]))))) {
-    manynet::snet_abort("{.arg observed} is not the network that the model was fitted on.")
-  }
-  first <- tryCatch(stats::simulate(fit, nsim = 1)[[1]], error = function(e) {
-    manynet::snet_abort(
-      c("Cannot simulate from the fitted {.cls {class(fit)[1]}}.",
-        x = conditionMessage(e)))
-  })
-  if (length(first) != nrow(pred)) {
-    manynet::snet_abort(
-      "The fitted model used {length(first)} of the {nrow(pred)} dyads, so its draws cannot be placed.")
-  }
-
-  directed <- object$directed
-  square <- nrow(mat) == ncol(mat)
-  twomode <- manynet::is_twomode(outcome$net)
-  draw <- function() {
-    y <- as.numeric(as.matrix(stats::simulate(fit, nsim = 1)[[1]])[, 1])
-    out <- mat
-    out[pred$location] <- y
-    if (!directed && square) out[upper.tri(out)] <- t(out)[upper.tri(out)]
-    out
-  }
-  template <- outcome$net
-  network <- function(m) {
-    m[is.na(m)] <- 0
-    g <- manynet::as_tidygraph(m, twomode = twomode)
-    if (!twomode) {
-      # A symmetric matrix reads as undirected, and `to_directed()` would keep
-      # one arc of each pair, so a directed network is reciprocated.
-      if (directed && !manynet::is_directed(g)) g <- manynet::to_reciprocated(g)
-      if (!directed && manynet::is_directed(g)) g <- manynet::to_undirected(g)
-    }
-    manynet::bind_node_attributes(g, template)
-  }
-  list(matrix = mat, draw = draw, network = network)
-}

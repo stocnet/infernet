@@ -99,7 +99,7 @@
 #'   "Sensitivity of MRQAP Tests to Collinearity and Autocorrelation Conditions."
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' fit <- estimate_mrqap(. ~ ego(Grp) + alter(Age), ison_adolescents |>
 #'   mutate_nodes(Grp = rep(c("a", "b", "c"), length.out = 8),

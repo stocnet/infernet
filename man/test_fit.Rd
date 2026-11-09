@@ -135,15 +135,18 @@ or no p-value can be below 0.05.
 \section{Network regressions}{
 
 The \code{infernetMrqapFit} method draws each simulated outcome from the fitted model
-with \code{stats::simulate()}, in the dyads that the model used.
+in the dyads that the model used, as \code{\link[=simulate]{simulate()}} of the fit does
+(see \link{simulate_mrqap}), so a seed gives the same networks to both.
 The other cells keep their observed values: the diagonal, the fixed ties,
 and the cells that the model left out. An unobserved cell is an absent tie
 in both the observed and the simulated networks, so they do not differ
 there. An undirected network is mirrored, and the simulated network takes
 the node attributes of the observed one.
 
-The model needs its \code{simple_fit}, so a model fitted without \code{"model"}
-in \code{outputs} cannot be tested. A list of networks, a panel, and a
+A \code{"binomial"} or \code{"poisson"} model without random or fixed effects draws
+from its coefficients. Any other model draws with \code{stats::simulate()} of
+its \code{simple_fit}, so such a model fitted without \code{"model"} in \code{outputs}
+cannot be tested. A list of networks, a panel, and a
 cognitive social structure cannot be tested yet.
 Nor can a \code{gaussian} model: its draws are continuous, so every dyad of a
 draw would hold a tie, and the test would always reject.
@@ -192,21 +195,12 @@ Lospinoso, Josh, and Tom A.B. Snijders. 2019.
 \doi{10.1177/2059799119884282}
 }
 \seealso{
-Other models:
-\code{\link[=control_computation]{control_computation()}},
-\code{\link[=control_mrqap]{control_mrqap()}},
+Other evaluating functions:
 \code{\link[=diagnose_confusion]{diagnose_confusion()}},
 \code{\link[=diagnose_outliers]{diagnose_outliers()}},
 \code{\link{diagnose_residuals}},
 \code{\link{diagnose_time}},
 \code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_measures}},
 \code{\link[=test_parameter]{test_parameter()}}
 }
-\concept{models}
+\concept{evaluating functions}

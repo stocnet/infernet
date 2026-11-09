@@ -152,22 +152,4 @@ When Permutations Are Randomly Drawn."
 \emph{Statistical Applications in Genetics and Molecular Biology} 9(1): 39.
 \doi{10.2202/1544-6115.1585}.
 }
-\seealso{
-Other models:
-\code{\link[=control_computation]{control_computation()}},
-\code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link[=diagnose_outliers]{diagnose_outliers()}},
-\code{\link{diagnose_residuals}},
-\code{\link{diagnose_time}},
-\code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link[=test_parameter]{test_parameter()}}
-}
-\concept{models}
+\concept{testing functions}

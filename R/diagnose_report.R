@@ -78,7 +78,7 @@ glance.infernetConfusion <- function(x, ...) {
 #'   observed model, such as `type = "pearson"` for a `glm`.
 #'   Not used by `fitted()`.
 #' @return A numeric vector, with one value for each dyad that the model used.
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)

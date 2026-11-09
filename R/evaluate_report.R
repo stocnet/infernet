@@ -27,7 +27,7 @@
 #' @param ... Not used.
 #' @return `nobs()` gives an integer, `logLik()` a `logLik` object, and
 #'   `deviance()` a number.
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)

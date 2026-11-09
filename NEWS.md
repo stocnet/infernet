@@ -4,6 +4,7 @@
 
 - Improved the function overview to follow the stages of an inference
   - Sections are Testing, Specifying, Estimating, Evaluating, and Interpreting
+  - Each help page links to the other pages of its stage under "See also"
 
 ## Testing
 
@@ -20,18 +21,11 @@
 - Improved `estimate_mrqap()` to read information from its inputs
   - Now can read coefficients or a fit as its formula for `glm()` and `MASS::glm.nb()`
   - Improved `family=` inference to read a count as `"poisson"` rather than `"gaussian"`
+  - Renamed its output class to `infernetMrqapFit`
+  - Added `outputs =` for the optional parts of a fit, deprecating `less_mem =`
 - Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
   - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
   - `control_computation()` sets them for one call
-- Renamed the class of an `estimate_mrqap()` fit to `infernetMrqapFit`
-  - `netreg` stays second in 0.7.x for `{autograph}` and `{migraph}`
-  - Its `summary()` is now an `infernetMrqapSummary`
-- Added `outputs =` to `estimate_mrqap()` for the optional parts of a fit
-  - `"model"` keeps the observed model, as `simple_fit`
-  - `"confusion"` keeps the confusion matrix of a binary outcome
-  - `"draws"` (new) keeps the coefficient of each permutation
-  - The default, `c("model", "confusion")`, keeps a fit as it was
-  - `control_mrqap(less_mem =)` is deprecated; `TRUE` leaves out `"model"`
 
 ## Evaluating
 
@@ -40,6 +34,7 @@
   - `diagnose_outliers()` flags the dyads of an MRQAP with extreme residuals
 - Merged the two `diagnose_confusion()` methods into one for an MRQAP
 - Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
+- Improved `test_gof()` of an MRQAP to draw with the simulator of `simulate()`
 
 ## Interpreting
 

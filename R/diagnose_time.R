@@ -18,7 +18,7 @@
 #' @param x A fitted model of a sequence.
 #' @param ... Arguments for a method.
 #' @return The diagnosis that the method of the model gives.
-#' @family models
+#' @family evaluating functions
 #' @name diagnose_time
 NULL
 
