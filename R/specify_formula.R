@@ -9,17 +9,14 @@
 # one for each pair of them. goldfish's writer is goldfish's own
 # `specify_dynam()`, which reads the same terms.
 
-#' Specify a model from a formula written for many models
+#' Specify an MRQAP from a formula written for any model
 #'
 #' @description
-#' These functions read a formula, whichever model it was written for, and
-#' return the formula that another model fits from it:
-#'
-#' - `specify_mrqap()` for [estimate_mrqap()], which calls it on every formula;
-#' - `specify_ergm()` for `ergm::ergm()`.
-#'
-#' `{goldfish}`'s own `specify_dynam()` writes a formula for a DyNAM or REM,
-#' and reads the same terms.
+#' `specify_mrqap()` reads a formula, whichever model it was written for, and
+#' returns the formula that [estimate_mrqap()] fits from it.
+#' `estimate_mrqap()` calls it on every formula.
+#' [specify_ergm()] reads the same formulas for `ergm::ergm()`, and
+#' `{goldfish}`'s own `specify_dynam()` for a DyNAM or REM.
 #'
 #' A term with an equivalent in the model is rewritten as that term.
 #' A term that means something different in the model is kept and named.
@@ -85,19 +82,6 @@
 #'   layer, so where it names no layer or tie attribute of `.data`, the
 #'   outcome is read as `.`.
 #'
-#'   A formula written for ergm is returned as it is.
-#'   Written for ergm, every other term, such as `sim()`, `indeg()`, or an
-#'   interaction, is `edgecov()` of the matrix infernet builds, which needs
-#'   `.data`. With `.data`, the formula's environment holds those matrices,
-#'   and the outcome as a `network` object under its own name, so
-#'   `ergm::ergm(specify_ergm(f, .data))` fits as it is.
-#'   `edges` is always added, as ergm's intercept.
-#'   `(1 | sender)` and `(1 | receiver)` become ergm's fixed effects `sender`
-#'   and `receiver`, which are the nearest ergm has, and the fixed effects
-#'   `| sender + receiver` become the same terms.
-#'   A cognitive social structure or a list of networks aborts, since ergm
-#'   fits one report of one network.
-#'
 #' @section goldfish and infernet:
 #'   goldfish's terms are infernet's where the two packages share them, as
 #'   [terms_mrqap] lists.
@@ -129,34 +113,27 @@
 #'   for `.data`, as [specify_terms] describes.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
-#'   In `tidy()` of an MRQAP formula, the network to build the columns from.
-#'   `specify_ergm()` needs it to write the terms that ergm reads as
-#'   `edgecov()` of a matrix, and drops them without it.
+#'   In `tidy()`, the network to build the columns from.
 #' @param input The model the formula was written for: `"mrqap"`, `"dynam"`,
 #'   `"rem"`, or `"ergm"`. `NULL`, the default, reads it from the class of the
 #'   formula, such as goldfish's `"goldfishFormula"`, or else from the names in
 #'   the formula.
-#' @return A formula of class `c("mrqap_formula", "formula")` or
-#'   `c("ergm_formula", "formula")`.
+#' @param x A formula returned by `specify_mrqap()`.
+#' @param ... Not used.
+#' @return A formula of class `c("mrqap_formula", "formula")`.
 #'   Its `input` attribute names the model it was read from, and its `record`
 #'   attribute holds what the model makes of each term.
 #'   Printing the formula lists the terms that do not fit as written and
 #'   returns the formula, invisibly.
 #'   `tidy()` returns every term as a tibble,
-#'   with the columns `term`, `status`, `as`, and `reason`, and for an MRQAP
-#'   also `columns`.
+#'   with the columns `term`, `status`, `as`, `reason`, and `columns`.
 #'   Without a formula, the table of every term for `.data`, as
 #'   [specify_terms] describes.
 #' @seealso [terms_mrqap] for what each term measures, and [specify_terms]
 #'   for the terms that suit a network.
-#' @name specify_formula
-#' @aliases specify
+#' @aliases specify_formula specify
 #' @order 1
-#' @family models
-NULL
-
-#' @rdname specify_formula
-#' @order 2
+#' @family specifying functions
 #' @examples
 #' # An ergm formula, read for an MRQAP
 #' specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
@@ -204,8 +181,61 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
                   fixed = read$fixed, abort = abort)
 }
 
-#' @rdname specify_formula
-#' @order 3
+#' Specify an ERGM from a formula written for any model
+#'
+#' @description
+#' `specify_ergm()` reads a formula, whichever model it was written for, and
+#' returns the formula that `ergm::ergm()` fits from it.
+#' [specify_mrqap()] reads the same formulas for [estimate_mrqap()], and
+#' `{goldfish}`'s own `specify_dynam()` for a DyNAM or REM.
+#'
+#' A term with an equivalent in the model is rewritten as that term.
+#' A term that means something different in the model is kept and named.
+#' A term the model cannot fit is dropped and named, so that the rest of the
+#' model still fits. Rewritten and differently interpreted terms are reported
+#' with `manynet::snet_info()`, which is silent unless
+#' `options(snet_verbosity = "verbose")`, and dropped terms are reported in
+#' one warning.
+#' A formula aborts only where no term is left to fit.
+#' A name that no model knows is left for the fitting function, which then
+#' aborts and suggests the nearest name.
+#' @inheritSection specify_mrqap What each model makes of each term
+#' @inheritSection specify_mrqap Reading the model a formula was written for
+#' @inheritSection specify_mrqap ergm and infernet
+#' @section Writing a formula for ergm:
+#'   A formula written for ergm is returned as it is.
+#'   Written for ergm, every other term, such as `sim()`, `indeg()`, or an
+#'   interaction, is `edgecov()` of the matrix infernet builds, which needs
+#'   `.data`. With `.data`, the formula's environment holds those matrices,
+#'   and the outcome as a `network` object under its own name, so
+#'   `ergm::ergm(specify_ergm(f, .data))` fits as it is.
+#'   `edges` is always added, as ergm's intercept.
+#'   `(1 | sender)` and `(1 | receiver)` become ergm's fixed effects `sender`
+#'   and `receiver`, which are the nearest ergm has, and the fixed effects
+#'   `| sender + receiver` become the same terms.
+#'   A cognitive social structure or a list of networks aborts, since ergm
+#'   fits one report of one network.
+#'
+#' @inheritSection specify_mrqap goldfish and infernet
+#' @inheritParams specify_mrqap
+#' @param .data Optionally, the network the formula is for.
+#'   With it, a bare name that is a layer of the network stays a layer.
+#'   `specify_ergm()` needs it to write the terms that ergm reads as
+#'   `edgecov()` of a matrix, and drops them without it.
+#' @param x A formula returned by `specify_ergm()`.
+#' @return A formula of class `c("ergm_formula", "formula")`.
+#'   Its `input` attribute names the model it was read from, and its `record`
+#'   attribute holds what the model makes of each term.
+#'   Printing the formula lists the terms that do not fit as written and
+#'   returns the formula, invisibly.
+#'   `tidy()` returns every term as a tibble,
+#'   with the columns `term`, `status`, `as`, and `reason`.
+#'   Without a formula, the table of every term for `.data`, as
+#'   [specify_terms] describes.
+#' @seealso [terms_mrqap] for the ergm equivalent of each term, and
+#'   [specify_terms] for the terms that suit a network.
+#' @order 1
+#' @family specifying functions
 #' @examples
 #' # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it
 #' specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)

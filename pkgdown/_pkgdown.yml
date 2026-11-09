@@ -63,7 +63,8 @@ redirects:
   - ["reference/regression.html", "reference/estimate_mrqap.html"]
   - ["reference/netreg_results.html", "reference/estimate_mrqap.html"]
   - ["reference/report_tests.html", "reference/test_measures.html"]
-  - ["reference/specify.html", "reference/specify_formula.html"]
+  - ["reference/specify.html", "reference/specify_mrqap.html"]
+  - ["reference/specify_formula.html", "reference/specify_mrqap.html"]
   - ["reference/predict.html", "reference/predict_mrqap.html"]
 # The sections follow the stages of an inference, in order
 # (see "The inferential pipeline" in .github/CONTRIBUTING.md).
@@ -80,11 +81,12 @@ reference:
     desc: >
       Functions for reading one formula for an MRQAP or an ERGM,
       for listing the terms that suit a network,
-      and the terms of an MRQAP formula and what each measures,
-      and the formula and the terms of a fitted model:
+      the terms of an MRQAP formula and what each measures,
+      and the coefficients of a model:
     contents:
       - starts_with("specify_")
       - starts_with("terms_")
+      - starts_with("declare_")
   - title: "Estimating"
     desc: >
       Functions for regressing a network on nodal and dyadic covariates

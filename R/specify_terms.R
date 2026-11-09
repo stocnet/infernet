@@ -46,7 +46,7 @@
 #'   `formula()` of the rows gives the formula of their terms, read by the
 #'   same `specify_*()` function, for the same outcome or for `lhs`.
 #'   What the model makes of each term is in the record of that formula, as
-#'   [specify_formula] describes.
+#'   [specify_mrqap] describes.
 #'   Some terms measure the same thing in different ways: `same(x)`,
 #'   `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and `sim(x)`.
 #'   Of each such set, `formula()` keeps the first row, and a message names
@@ -62,11 +62,11 @@
 #'   and `attribute`. `print()` shows every row, and `tidy()` returns the
 #'   table as a plain tibble. `formula()` returns the formula of the chosen
 #'   rows, as [specify_mrqap()] or [specify_ergm()] returns it.
-#' @seealso [terms_mrqap] for what each term measures, and [specify_formula] for
+#' @seealso [terms_mrqap] for what each term measures, and [specify_mrqap] for
 #'   what each model makes of a formula.
 #' @name specify_terms
 #' @order 1
-#' @family models
+#' @family specifying functions
 #' @examples
 #' # Every term for a network, and a formula of some of them
 #' terms <- specify_mrqap(advice ~ ., ison_hightech)

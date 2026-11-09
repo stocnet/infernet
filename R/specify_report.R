@@ -11,12 +11,8 @@ print.mrqap_formula <- function(x, ...) .print_specified(x, "mrqap")
 #' @export
 print.ergm_formula <- function(x, ...) .print_specified(x, "ergm")
 
-#' @rdname specify_formula
-#' @order 4
-#' @param x For `tidy()`, a formula returned by a `specify_*()` function.
-#'   For `formula()` and `terms()`, an `infernetMrqapFit`, from
-#'   [estimate_mrqap()].
-#' @param ... Not used.
+#' @rdname specify_mrqap
+#' @order 2
 #' @examples
 #' # Each term, and what the model makes of it
 #' tidy(f)
@@ -30,8 +26,10 @@ tidy.mrqap_formula <- function(x, .data = NULL, ...) {
   .record_columns(x, out, .data)
 }
 
-#' @rdname specify_formula
-#' @order 5
+#' @rdname specify_ergm
+#' @order 2
+#' @examples
+#' tidy(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
 #' @export
 tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 
@@ -141,32 +139,4 @@ print.mrqap_control <- function(x, ...) {
   .print_footer(persisted,
                 .methods_hint("?control_mrqap for each control and its default"))
   invisible(x)
-}
-
-# ---- the formula of a fit ----------------------------------------------------
-
-#' @section The formula of a fit:
-#'   `formula()` of a fit from [estimate_mrqap()] gives the formula that was
-#'   fitted, after `specify_mrqap()` read it, and `terms()` gives the terms
-#'   of the columns that were fitted, as the coefficients name them.
-#'   For the formula of chosen rows of a table of terms, see [specify_terms].
-#' @return `formula()` of a fit gives a formula, and `terms()` a `terms`
-#'   object.
-#' @examples
-#' fit <- estimate_mrqap(advice ~ same(dept) + reports,
-#'                       manynet::ison_hightech, times = 5)
-#' formula(fit)
-#' terms(fit)
-#' @rdname specify_formula
-#' @exportS3Method stats::formula
-formula.infernetMrqapFit <- function(x, ...) {
-  if (is.null(x$formula)) .refit_abort("formula")
-  x$formula
-}
-
-#' @rdname specify_formula
-#' @exportS3Method stats::terms
-terms.infernetMrqapFit <- function(x, ...) {
-  if (is.null(x$model_formula)) .refit_abort("terms")
-  stats::terms(x$model_formula)
 }

@@ -9,6 +9,12 @@
 
 - Added `summary()` of a `network_test`, with quantiles of the null (closes #27)
 
+## Specifying
+
+- Added `declare_coefs()` to set coefficients 
+  - Without `family =`, the family is read from the outcome in `.data`
+- Added `coef.infernetMrqapCoefs()` and `coef.infernetMrqapFit()` for plain vectors
+
 ## Estimating
 
 - Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)

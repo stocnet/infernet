@@ -66,7 +66,7 @@ layer, the terms are for its first layer, and a message says so.
 \code{formula()} of the rows gives the formula of their terms, read by the
 same \verb{specify_*()} function, for the same outcome or for \code{lhs}.
 What the model makes of each term is in the record of that formula, as
-\link{specify_formula} describes.
+\link{specify_mrqap} describes.
 Some terms measure the same thing in different ways: \code{same(x)},
 \code{same(x, diff = TRUE)}, and \code{mix(x)}, and \code{diff(x)} and \code{sim(x)}.
 Of each such set, \code{formula()} keeps the first row, and a message names
@@ -82,24 +82,13 @@ formula(terms[terms$term \%in\% c("ego(age)", "same(dept)", "tie(friends)"), ])
 formula(terms[terms$effect == "reporter", ], friends)
 }
 \seealso{
-\link{terms_mrqap} for what each term measures, and \link{specify_formula} for
+\link{terms_mrqap} for what each term measures, and \link{specify_mrqap} for
 what each model makes of a formula.
 
-Other models:
-\code{\link[=control_computation]{control_computation()}},
-\code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link[=diagnose_outliers]{diagnose_outliers()}},
-\code{\link{diagnose_residuals}},
-\code{\link{diagnose_time}},
-\code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+Other specifying functions:
+\code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link[=specify_ergm]{specify_ergm()}},
+\code{\link[=specify_mrqap]{specify_mrqap()}},
+\code{\link{terms_mrqap}}
 }
-\concept{models}
+\concept{specifying functions}
