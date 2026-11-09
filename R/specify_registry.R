@@ -236,7 +236,7 @@
 #'   The reporter terms have no equivalent, since no other model has a
 #'   reporter. ergm's terms of the outcome's own structure, such as `gwesp()`,
 #'   and goldfish's endogenous effects, such as `cycle`, have no MRQAP term,
-#'   and an MRQAP drops them (see [specify]).
+#'   and an MRQAP drops them (see [specify_formula]).
 #'
 #' @references
 #'   Haunss, Sebastian, and James Hollway. 2023.

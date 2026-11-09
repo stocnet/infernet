@@ -1,6 +1,9 @@
 # infernet 0.7.0
 
-## Modelling
+## Package
+
+- Improved the function overview to follow the stages of an inference
+  - Sections are Testing, Specifying, Estimating, Evaluating, and Interpreting
 
 ## Testing
 
@@ -21,15 +24,12 @@
   - The default, `c("model", "confusion")`, keeps a fit as it was
   - `control_mrqap(less_mem =)` is deprecated; `TRUE` leaves out `"model"`
 
-## Diagnosing
+## Evaluating
 
 - Added `diagnose_outliers()`, `diagnose_changepoints()`, and `diagnose_onset()`
   - Each is a generic with `{goldfish}`'s signature `(x, ...)`
   - `diagnose_outliers()` flags the dyads of an MRQAP with extreme residuals
 - Merged the two `diagnose_confusion()` methods into one for an MRQAP
-
-## Evaluating
-
 - Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
 
 ## Interpreting

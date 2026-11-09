@@ -149,12 +149,13 @@
 #'   [specify_terms] describes.
 #' @seealso [terms_mrqap] for what each term measures, and [specify_terms]
 #'   for the terms that suit a network.
-#' @name specify
+#' @name specify_formula
+#' @aliases specify
 #' @order 1
 #' @family models
 NULL
 
-#' @rdname specify
+#' @rdname specify_formula
 #' @order 2
 #' @examples
 #' # An ergm formula, read for an MRQAP
@@ -203,7 +204,7 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
                   fixed = read$fixed, abort = abort)
 }
 
-#' @rdname specify
+#' @rdname specify_formula
 #' @order 3
 #' @examples
 #' # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it

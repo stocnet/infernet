@@ -261,7 +261,7 @@ formula. ergm's \code{edges} is the intercept, which an MRQAP always has.
 The reporter terms have no equivalent, since no other model has a
 reporter. ergm's terms of the outcome's own structure, such as \code{gwesp()},
 and goldfish's endogenous effects, such as \code{cycle}, have no MRQAP term,
-and an MRQAP drops them (see \link{specify}).
+and an MRQAP drops them (see \link{specify_formula}).
 }
 
 \examples{
@@ -293,14 +293,17 @@ Computational Aspects."
 lists the terms that suit a network.
 
 Other models:
+\code{\link[=control_computation]{control_computation()}},
 \code{\link[=control_mrqap]{control_mrqap()}},
 \code{\link[=diagnose_confusion]{diagnose_confusion()}},
+\code{\link[=diagnose_outliers]{diagnose_outliers()}},
+\code{\link{diagnose_residuals}},
+\code{\link{diagnose_time}},
+\code{\link{evaluate_likelihood}},
 \code{\link{other_results}},
 \code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.netreg_lm]{print.netreg_lm()}},
-\code{\link{regression}},
-\code{\link[=set_control_computation]{set_control_computation()}},
-\code{\link{specify}},
+\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
+\code{\link{specify_formula}},
 \code{\link{specify_terms}},
 \code{\link{test_fit}},
 \code{\link{test_measures}},

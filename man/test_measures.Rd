@@ -127,8 +127,9 @@ marvel_friends <- fict_marvel |> to_uniplex("relationship") |>
 # plot(cugtest)
 # In a two-mode network with repeated ties, such as texts and the terms
 # they use, each draw keeps the number of tokens in each text and the
-# number of times each term is used, and so is a shuffled text. Project inside the statistic to test the
-# co-occurrence of the terms against such shuffled texts.
+# number of times each term is used, and so is a shuffled text.
+# Project inside the statistic to test the co-occurrence of the terms
+# against such shuffled texts.
 tokens <- manynet::as_igraph(data.frame(
   from = c("A","A","A","A","B","B","B","C","C","C","C"),
   to = c("w","w","x","y","x","x","z","y","z","z","w")), twomode = TRUE)

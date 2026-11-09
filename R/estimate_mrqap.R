@@ -273,7 +273,7 @@
 #'   - `call`, `formula`, and `model_formula`: the call, the formula as
 #'     [specify_mrqap()] read it, and the formula of the columns that were
 #'     fitted. `update()`, `formula()`, and `terms()` read them
-#'     (see [mrqap_results]).
+#'     (see [estimate_mrqap]).
 #'   - `fixed_df`, the number of coefficients that a gaussian model absorbed
 #'     by demeaning, or `NULL`.
 #'   - `node_names`, the names of the nodes, which name the random
@@ -292,7 +292,8 @@
 #'     fitted values are clamped to 0/1 before the draws.
 #'   - `"draws"` adds `draws`, the permuted coefficients, as a matrix with
 #'     the rows and columns of `testdist`.
-#' @name regression
+#' @name estimate_mrqap
+#' @aliases regression
 #' @family models
 #' @references
 #'   Krackhardt, David. 1987.

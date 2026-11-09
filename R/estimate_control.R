@@ -106,13 +106,13 @@
 #'   the same dyads as the observed model.
 #'   `"fail"` stops instead, and names how many dyads are unobserved on each
 #'   variable. See the section on missing data in [estimate_mrqap()].
-#' @param less_mem Logical, whether to leave the observed model object out of
-#'   the result, to save memory on a large network. `FALSE` by default.
+#' @param less_mem Deprecated. Use `outputs =` of [estimate_mrqap()]:
+#'   `less_mem = TRUE` leaves `"model"` out of `outputs`, so that the result
+#'   keeps no observed model object.
 #' @param persist Deprecated. Use [set_control_computation()]
 #'   instead. See the section on persistent controls.
 #' @param ... Controls by another name: a name that infernet used before, or an
 #'   option of another model. See the description.
-#' @param x An object of class `mrqap_control`.
 #' @section Persistent controls:
 #'   [set_control_computation()] sets `seed`, `ncores`, and `strategy` for the
 #'   session, and each call of `control_mrqap()` then uses them where they are
@@ -136,7 +136,7 @@
 #'   each control. Its attribute `source` says whether each control was
 #'   `"given"` (in the call or by [control_computation()]), comes from an
 #'   `"option"`, or keeps its `"default"`.
-#'   `print()` returns `x`, invisibly.
+#'   The print shows each control and where its value comes from.
 #' @references
 #'   Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
 #'   "Sensitivity of MRQAP tests to collinearity and autocorrelation conditions."
@@ -170,6 +170,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
                           ...) {
   .check_flag(persist, "persist")
   if (!missing(persist)) .warn_persist_deprecated()
+  if (!missing(less_mem)) .warn_less_mem_deprecated()
   # `persist = FALSE`, given, clears the persistent controls before they are
   # read, where the default leaves them alone.
   if (!missing(persist) && !persist) {
@@ -240,7 +241,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 # ---- computation controls ----------------------------------------------------
 
 #' Computation controls for the session or for one call
-#'
+#' @name control_computation
 #' @description
 #'   The computation controls say how the draws of a model or a test run,
 #'   not what is fitted: `seed`, `ncores`, and `strategy`.
@@ -281,9 +282,8 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 #'   See [control_mrqap()].
 #' @param persist Logical. `TRUE` (the default) writes the controls that are
 #'   given to the option. `FALSE` clears the option, and takes no controls.
-#' @param x An object of class `infernetComputationControl`.
 #' @param ... For `c()`, the result of [control_mrqap()] and then of
-#'   `control_computation()`. Not used by `print()`.
+#'   `control_computation()`.
 #' @return `set_control_computation()` returns the value of
 #'   `options(snet_computation)` before the call, invisibly, so that
 #'   `options(snet_computation = old)` restores it.
@@ -329,7 +329,7 @@ set_control_computation <- function(seed = NULL, ncores = NULL,
   invisible(old)
 }
 
-#' @rdname set_control_computation
+#' @rdname control_computation
 #' @export
 control_computation <- function(seed = NULL, ncores = NULL, strategy = NULL) {
   given <- intersect(names(match.call())[-1], .computation_names())
@@ -338,8 +338,8 @@ control_computation <- function(seed = NULL, ncores = NULL, strategy = NULL) {
   structure(ctrl, class = "infernetComputationControl")
 }
 
-#' @rdname set_control_computation
 #' @export
+#' @noRd
 print.infernetComputationControl <- function(x, ...) {
   ctrl <- unclass(x)
   .print_title(paste0("Computation controls for one call: ", length(ctrl),
@@ -356,7 +356,7 @@ print.infernetComputationControl <- function(x, ...) {
 
 # `c(control_mrqap(...), control_computation(...))` gives the computation
 # controls to the controls of a model, where the model's were not given.
-#' @rdname set_control_computation
+#' @rdname control_computation
 #' @export
 c.mrqap_control <- function(...) {
   parts <- list(...)
@@ -470,6 +470,18 @@ c.mrqap_control <- function(...) {
     c("{.code control_mrqap(persist =)} is deprecated as of infernet 0.7.0.",
       i = "Use {.fn set_control_computation} for {.code seed}, {.code ncores}, and {.code strategy}.",
       i = "Other controls persist in {.code options(infernet.control)} only until infernet 0.8.0.",
+      i = "This warning is shown once in a session."))
+  invisible()
+}
+
+#' @keywords internal
+#' @noRd
+.warn_less_mem_deprecated <- function() {
+  if (isTRUE(.infernet_state$warned_less_mem)) return(invisible())
+  .infernet_state$warned_less_mem <- TRUE
+  manynet::snet_warn(
+    c("{.code control_mrqap(less_mem =)} is deprecated as of infernet 0.7.0.",
+      i = "Use {.code estimate_mrqap(outputs =)}: leave out {.val model} to keep no observed model.",
       i = "This warning is shown once in a session."))
   invisible()
 }
