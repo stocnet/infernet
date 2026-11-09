@@ -17,6 +17,9 @@
 
 ## Estimating
 
+- Improved `estimate_mrqap()` to read information from its inputs
+  - Now can read coefficients or a fit as its formula for `glm()` and `MASS::glm.nb()`
+  - Improved `family=` inference to read a count as `"poisson"` rather than `"gaussian"`
 - Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
   - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
   - `control_computation()` sets them for one call

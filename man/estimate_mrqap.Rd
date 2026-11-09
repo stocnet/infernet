@@ -83,7 +83,12 @@ A bar adds a random intercept, as in \code{{lme4}}: \code{(1 | sender)},
 \verb{random_intercept_*} control. Random slopes are not supported.
 
 A bar outside parentheses absorbs fixed effects, as in \code{{fixest}}:
-\code{y ~ x | sender + receiver} (see the section on fixed effects).}
+\code{y ~ x | sender + receiver} (see the section on fixed effects).
+
+In place of a formula, \code{formula} can also be a set of coefficients from
+\code{\link[=declare_coefs]{declare_coefs()}}, or an earlier fit. The model then fits their
+specification, with their family where \code{control} names none, and takes
+their values as initial values (see the section on initial values).}
 
 \item{.data}{A manynet-consistent network (see
 \code{\link[manynet:as_tidygraph]{manynet::as_tidygraph()}}), or a list of such networks.  When a list is
@@ -105,7 +110,8 @@ The result records the controls that it used as \code{control}.}
 of any of:
 \itemize{
 \item \code{"model"}, the observed model object, as \code{simple_fit}, which
-\code{\link[=test_gof]{test_gof()}} simulates from;
+\code{\link[=simulate]{simulate()}} and \code{\link[=test_gof]{test_gof()}} draw from where a model has random or
+fixed effects, or a \code{"negbin"} or \code{"zip"} family;
 \item \code{"confusion"}, the probabilistic confusion matrix of a binary outcome,
 as \code{confusion_matrix};
 \item \code{"draws"}, the coefficient of each permutation, as \code{draws}.
@@ -171,6 +177,10 @@ intercepts; \code{control}, the controls as the fit resolved them;
 \code{outputs}, the optional parts that it keeps; and
 \code{record}, what \code{\link[=specify_mrqap]{specify_mrqap()}} made of each term. \code{print()} and
 \code{summary()} read them.
+\item \code{dims} and \code{twomode}, the dimensions of the outcome matrix and whether
+the network is two-mode, which \code{\link[=simulate]{simulate()}} reads without the network;
+they are \code{NULL} for a list of networks or a panel.
+\item \code{start}, the initial values that the estimator used, or \code{NULL}.
 }
 
 Each value of \code{outputs} adds one element:
@@ -386,6 +396,20 @@ permuting the outcome does not permute such a predictor with it.
 outcome, and warn.
 }
 
+\section{Initial values}{
+
+A set of coefficients from \code{\link[=declare_coefs]{declare_coefs()}}, or an earlier fit, gives the
+initial values of the observed model.
+Only an estimator that iterates uses them: \code{stats::glm()} for a
+\code{"binomial"} or \code{"poisson"} model, and \code{MASS::glm.nb()} for \code{"negbin"}.
+A converged estimate does not depend on them, and the permutations do not
+use them.
+A \code{"gaussian"} model, a \code{"zip"} model, and a model with random or fixed
+effects do not use them, and say so, as does a set with a value that is
+not stated.
+Each column of the model needs one value, named as its coefficient.
+}
+
 \section{Methods}{
 
 These methods report an \code{infernetMrqapFit} of any family, and of a
@@ -413,8 +437,6 @@ one (see \link{other_results}).
 
 The other methods of a fit are on the page of the stage that uses them:
 \itemize{
-\item \link[=specify_formula]{formula()} and \link[=specify_formula]{terms()}, on
-\link{specify_formula}, give what \code{\link[=specify_mrqap]{specify_mrqap()}} read.
 \item \link[=diagnose_residuals]{fitted()} and \link[=diagnose_residuals]{residuals()},
 on \link{diagnose_residuals}, give the input of a diagnosis.
 \item \link[=evaluate_likelihood]{nobs()}, \link[=evaluate_likelihood]{logLik()}, and
@@ -424,6 +446,9 @@ models, through \code{AIC()} and \code{BIC()}.
 larger of two nested fits adds.
 \item \link[=predict_mrqap]{predict()}, on \link{predict_mrqap}, gives the outcome for
 new values of the predictors.
+\item \link[=predict_mrqap]{formula()} and \link[=predict_mrqap]{terms()}, on
+\link{predict_mrqap}, give the formula that was fitted and the columns of
+its coefficients.
 }
 }
 
@@ -442,10 +467,11 @@ For the confusion matrix of a binary outcome, see \code{\link[=diagnose_confusio
 When the predictors are permuted, the intercept has no test,
 and its \code{p.value} is \code{NA}.
 
-Two methods of \code{{stats}} work without a method here:
-\code{coef()} gives the estimates, and \code{update()} fits the model again,
-with a changed formula, \code{times}, or \code{control}, from the call that the
-result keeps.
+\code{coef()} gives the estimated coefficients as a plain named vector
+(see \link{declare_coefs}).
+\code{update()} of \code{{stats}} works without a method here: it fits the model
+again, with a changed formula, \code{times}, or \code{control}, from the call that
+the result keeps.
 }
 
 \section{Methods left out}{
@@ -479,6 +505,10 @@ css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 css_reporter <- estimate_mrqap(
   advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
   manynet::ison_hightech, times = 5)
+# A fit, refitted from the initial values of an earlier fit
+counts <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 5,
+                         control = list(family = "poisson"))
+again <- estimate_mrqap(counts, ison_algebra, times = 5)
 css_model <- estimate_mrqap(advice ~ same(dept) + reports,
                             manynet::ison_hightech, times = 5)
 css_model
@@ -517,21 +547,9 @@ When Permutations Are Randomly Drawn."
 \doi{10.2202/1544-6115.1585}.
 }
 \seealso{
-Other models:
+Other estimating functions:
 \code{\link[=control_computation]{control_computation()}},
 \code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link[=diagnose_outliers]{diagnose_outliers()}},
-\code{\link{diagnose_residuals}},
-\code{\link{diagnose_time}},
-\code{\link{evaluate_likelihood}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link{other_results}}
 }
-\concept{models}
+\concept{estimating functions}

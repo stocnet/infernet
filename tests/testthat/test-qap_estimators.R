@@ -56,7 +56,7 @@ test_that("binomial baseline matches glm() on the same dyads", {
   expect_equal(unname(fit$obs), unname(summary(glm_fit)$coefficients[, 3]))
 })
 
-test_that("family = 'auto' picks binomial for a binary outcome", {
+test_that("without a family, a binary outcome is binomial", {
   auto  <- estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
                           control = list(seed = 1))
   named <- estimate_mrqap(FORM_B, qap_net_binary(), times = 10,
@@ -159,12 +159,27 @@ test_that("binomial and poisson random intercepts meet the shape contract", {
 
 # ---- the family read from the outcome ---------------------------------------------
 
-test_that("family = 'auto' picks gaussian for a weighted outcome", {
+test_that("without a family, a weighted outcome is gaussian", {
   g <- qap_net_gaussian(n = 10)
   fit <- estimate_mrqap(weight ~ sim(Age), g, times = 10)
   expect_equal(fit$family, "gaussian")
   expect_s3_class(fit, "infernetMrqapFit")
   expect_equal(fit$family, "gaussian")
+})
+
+test_that("without a family, a count is poisson, and a rating gaussian", {
+  counts <- estimate_mrqap(FORM, qap_net_count(), times = 10,
+                           control = list(seed = 1))
+  named <- estimate_mrqap(FORM, qap_net_count(), times = 10,
+                          control = list(seed = 1, family = "poisson"))
+  expect_equal(counts$family, "poisson")
+  expect_equal(counts$coefficients, named$coefficients)
+  expect_identical(.auto_family(matrix(c(0, 1, 2, NA), 2)), "poisson")
+  expect_identical(.auto_family(matrix(c(0, 1, 1, NA), 2)), "binomial")
+  expect_identical(.auto_family(matrix(c(0, 1.5, 2, 3), 2)), "gaussian")
+  expect_identical(.auto_family(matrix(c(-1, 1, 2, 3), 2)), "gaussian")
+  expect_identical(.auto_family(list(matrix(c(0, 1), 1), matrix(c(2, 3), 1))),
+                   "poisson")
 })
 
 test_that("a gaussian model of a binary outcome keeps a confusion matrix", {

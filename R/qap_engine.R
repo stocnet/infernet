@@ -31,7 +31,8 @@ QAPengine <- function(formula,
                       missing   = "available",
                       panel     = FALSE,
                       fixed_effects = character(0),
-                      outputs   = c("model", "confusion")) {
+                      outputs   = c("model", "confusion"),
+                      start     = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
 
@@ -200,7 +201,8 @@ QAPengine <- function(formula,
                             main_vars    = main,
                             has_random   = has_random,
                             fixed_effects = fit_fixed,
-                            fixed_df     = fixed_df)
+                            fixed_df     = fixed_df,
+                            start        = start)
   .check_estimable(fit$base$coefficients, pred)
   if (!is.null(fit_fixed)) {
     removed <- nrow(pred) - stats::nobs(fit$base$base_model)

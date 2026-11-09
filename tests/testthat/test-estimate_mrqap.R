@@ -228,3 +228,44 @@ test_that("less_mem is deprecated, and leaves out the observed model", {
   expect_null(fit$simple_fit)
   expect_equal(fit$outputs, "confusion")
 })
+
+# ---- initial values ---------------------------------------------------------------
+
+test_that("a fit or a set of coefficients gives initial values to a glm", {
+  net <- qap_net_count(n = 12)
+  first <- estimate_mrqap(. ~ ego(Age), net, times = 5,
+                          control = list(family = "poisson", seed = 1))
+  expect_null(first$start)
+  again <- estimate_mrqap(first, net, times = 5, control = list(seed = 1))
+  expect_identical(again$family, "poisson")
+  expect_equal(again$start, coef(first))
+  expect_equal(again$coefficients, first$coefficients, tolerance = 1e-6)
+  coefs <- declare_coefs(specify_mrqap(. ~ ego(Age)), "(Intercept)" = 0,
+                         ego_Age = 0, family = "poisson")
+  stated <- estimate_mrqap(coefs, net, times = 5, control = list(seed = 1))
+  expect_equal(unname(stated$start), c(0, 0))
+  expect_equal(stated$coefficients, first$coefficients, tolerance = 1e-6)
+})
+
+test_that("an estimator that does not iterate says that it does not use them", {
+  old <- options(snet_verbosity = "verbose")
+  on.exit(options(old), add = TRUE)
+  net <- qap_net_gaussian(n = 12)
+  first <- suppressMessages(estimate_mrqap(. ~ ego(Age), net, times = 5))
+  expect_any_message(again <- estimate_mrqap(first, net, times = 5),
+                     "not used: a gaussian model")
+  expect_null(again$start)
+  unstated <- declare_coefs(specify_mrqap(. ~ ego(Age)), ego_Age = 0,
+                            family = "poisson")
+  expect_any_message(
+    unused <- estimate_mrqap(unstated, qap_net_count(n = 12), times = 5),
+    "not used: .*not stated")
+  expect_null(unused$start)
+})
+
+test_that("initial values must name each column of the model", {
+  wrong <- declare_coefs(specify_mrqap(. ~ ego(Age)), "(Intercept)" = 0,
+                         ego_age = 0, family = "poisson")
+  expect_error(estimate_mrqap(wrong, qap_net_count(n = 12), times = 5),
+               "No column named")
+})

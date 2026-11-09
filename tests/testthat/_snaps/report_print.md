@@ -246,7 +246,7 @@
       
       # A tibble: 38 x 6
            sim  time     n     S     s     I
-         <int> <dbl> <dbl> <dbl> <dbl> <int>
+         <int> <int> <dbl> <int> <dbl> <int>
        1     1     0     8     7     1     1
        2     1     1     8     7     1     1
        3     1     2     8     6     3     2

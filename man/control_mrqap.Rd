@@ -6,7 +6,7 @@
 \usage{
 control_mrqap(
   permute = c("predictor", "outcome"),
-  family = c("auto", "gaussian", "binomial", "poisson", "negbin", "zip"),
+  family = NULL,
   directed = NULL,
   loops = NULL,
   seed = NULL,
@@ -34,8 +34,12 @@ With one predictor there is nothing to residualise against, so
 \code{"predictor"} reduces to \code{"outcome"}, and the model says so.}
 
 \item{family}{The family of the model.
-\code{"auto"} (the default) reads it from the outcome: \code{"binomial"} for a binary
-outcome, otherwise \code{"gaussian"}, and says which.
+\code{NULL} (the default) reads it from the outcome's observed values, and
+says which: \code{"binomial"} for 0/1 values; \code{"poisson"} for whole numbers of
+0 or more, with at least one above 1; and \code{"gaussian"} otherwise.
+A rating or a rank on a scale of whole numbers also reads as a count,
+so name the family of such an outcome.
+\code{"auto"}, its name before infernet 0.7.0, still works and warns.
 The others are \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"negbin"}
 (with \code{{MASS}}), and \code{"zip"}, a zero-inflated Poisson (with \code{{pscl}}).}
 
@@ -171,21 +175,9 @@ Dekker, David, David Krackhardt, and Tom A.B. Snijders. 2007.
 \doi{10.1007/s11336-007-9016-1}
 }
 \seealso{
-Other models:
+Other estimating functions:
 \code{\link[=control_computation]{control_computation()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link[=diagnose_outliers]{diagnose_outliers()}},
-\code{\link{diagnose_residuals}},
-\code{\link{diagnose_time}},
-\code{\link{evaluate_likelihood}},
 \code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}},
-\code{\link{specify_formula}},
-\code{\link{specify_terms}},
-\code{\link{terms_mrqap}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+\code{\link[=print.infernetMrqapFit]{print.infernetMrqapFit()}}
 }
-\concept{models}
+\concept{estimating functions}

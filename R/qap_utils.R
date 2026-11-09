@@ -710,8 +710,11 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
                           use_robust_errors = FALSE,
                           main_vars = NULL,
                           has_random = FALSE,
-                          fixed_effects = NULL) {
+                          fixed_effects = NULL,
+                          start = NULL) {
   fit <- list()
+  start <- .match_start(start, mod)
+  fit$start <- start
   dep_var <- all.vars(mod)[1]
   nx  <- length(main_vars)
 
@@ -777,10 +780,11 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
       fit$adj.r.squared <- summary(base_model)$adj.r.squared
     } else if (family == "negbin") {
       thisRequires("MASS", "for negative binomial models")
-      base_model <- MASS::glm.nb(mod, data = pred)
+      base_model <- MASS::glm.nb(mod, data = pred, start = start)
       fit$theta  <- base_model$theta
     } else {
-      base_model <- stats::glm(mod, data = pred, family = family)
+      base_model <- stats::glm(mod, data = pred, family = family,
+                               start = start)
     }
     fit$coefficients <- base_model$coefficients
     resid <- stats::residuals(base_model)
@@ -828,6 +832,33 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
 
   fit$base_model <- base_model
   return(fit)
+}
+
+
+# Initial values in the order of the model's columns, which `glm()` reads by
+# position. A name that is no column aborts. A column without a value is not
+# stated, so the initial values are not used.
+#' @keywords internal
+#' @noRd
+.match_start <- function(start, mod) {
+  if (is.null(start)) return(NULL)
+  tt <- stats::terms(mod)
+  cols <- gsub("`", "", attr(tt, "term.labels"), fixed = TRUE)
+  if (attr(tt, "intercept") == 1) cols <- c("(Intercept)", cols)
+  unknown <- setdiff(names(start), cols)
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("The initial values must be named for the columns of the model.",
+        x = "No column named {.val {unknown}}.",
+        i = "The columns are {.val {cols}}."))
+  }
+  unstated <- setdiff(cols, names(start))
+  if (length(unstated) > 0) {
+    manynet::snet_info(
+      "The initial values are not used: {.val {unstated}} {?is/are} not stated.")
+    return(NULL)
+  }
+  start[cols]
 }
 
 

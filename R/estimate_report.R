@@ -29,8 +29,6 @@
 #'     one (see [other_results]).
 #'
 #'   The other methods of a fit are on the page of the stage that uses them:
-#'   - [formula()][specify_formula] and [terms()][specify_formula], on
-#'     [specify_formula], give what [specify_mrqap()] read.
 #'   - [fitted()][diagnose_residuals] and [residuals()][diagnose_residuals],
 #'     on [diagnose_residuals], give the input of a diagnosis.
 #'   - [nobs()][evaluate_likelihood], [logLik()][evaluate_likelihood], and
@@ -40,6 +38,9 @@
 #'     larger of two nested fits adds.
 #'   - [predict()][predict_mrqap], on [predict_mrqap], gives the outcome for
 #'     new values of the predictors.
+#'   - [formula()][predict_mrqap] and [terms()][predict_mrqap], on
+#'     [predict_mrqap], give the formula that was fitted and the columns of
+#'     its coefficients.
 #' @section P-values and the observed model:
 #'   The p-values come from the permutations. Every other method reads the
 #'   observed model, which the permutations do not change.
@@ -54,10 +55,11 @@
 #'   When the predictors are permuted, the intercept has no test,
 #'   and its `p.value` is `NA`.
 #'
-#'   Two methods of `{stats}` work without a method here:
-#'   `coef()` gives the estimates, and `update()` fits the model again,
-#'   with a changed formula, `times`, or `control`, from the call that the
-#'   result keeps.
+#'   `coef()` gives the estimated coefficients as a plain named vector
+#'   (see [declare_coefs]).
+#'   `update()` of `{stats}` works without a method here: it fits the model
+#'   again, with a changed formula, `times`, or `control`, from the call that
+#'   the result keeps.
 #' @section Methods left out:
 #'   - `vcov()`, `confint()`, and a `std.error` column: a covariance, an
 #'     interval, or a standard error from the observed model would not come
@@ -561,7 +563,7 @@ glance.infernetMrqapFit <- function(x, ...) {
 #' @param ... Further arguments, passed to `summary()` for an `ergm`
 #'   and otherwise not used.
 #' @return `tidy()` and `glance()` return a tibble.
-#' @family models
+#' @family estimating functions
 #' @examplesIf requireNamespace("ergm", quietly = TRUE)
 #' fit <- suppressMessages(
 #'   ergm::ergm(manynet::as_network(manynet::ison_adolescents) ~ edges))

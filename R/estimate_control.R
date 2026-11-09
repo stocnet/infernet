@@ -55,8 +55,12 @@
 #'   With one predictor there is nothing to residualise against, so
 #'   `"predictor"` reduces to `"outcome"`, and the model says so.
 #' @param family The family of the model.
-#'   `"auto"` (the default) reads it from the outcome: `"binomial"` for a binary
-#'   outcome, otherwise `"gaussian"`, and says which.
+#'   `NULL` (the default) reads it from the outcome's observed values, and
+#'   says which: `"binomial"` for 0/1 values; `"poisson"` for whole numbers of
+#'   0 or more, with at least one above 1; and `"gaussian"` otherwise.
+#'   A rating or a rank on a scale of whole numbers also reads as a count,
+#'   so name the family of such an outcome.
+#'   `"auto"`, its name before infernet 0.7.0, still works and warns.
 #'   The others are `"gaussian"`, `"binomial"`, `"poisson"`, `"negbin"`
 #'   (with `{MASS}`), and `"zip"`, a zero-inflated Poisson (with `{pscl}`).
 #' @param directed Logical, whether a tie from i to j differs from one from
@@ -142,7 +146,7 @@
 #'   "Sensitivity of MRQAP tests to collinearity and autocorrelation conditions."
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}
-#' @family models
+#' @family estimating functions
 #' @examples
 #' control_mrqap(family = "poisson", seed = 1)
 #' # A name that infernet used before is converted, with a warning
@@ -151,8 +155,7 @@
 #' c(control_mrqap(family = "poisson"), control_computation(seed = 2))
 #' @export
 control_mrqap <- function(permute = c("predictor", "outcome"),
-                          family = c("auto", "gaussian", "binomial", "poisson",
-                                     "negbin", "zip"),
+                          family = NULL,
                           directed = NULL,
                           loops = NULL,
                           seed = NULL,
@@ -221,7 +224,8 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 #' @noRd
 .check_controls <- function(ctrl) {
   ctrl$permute <- .check_choice(ctrl$permute, .permute_schemes(), "permute")
-  ctrl$family  <- .check_choice(ctrl$family, .control_families(), "family")
+  # `$<-` with NULL would drop the control, so it is set as a list.
+  ctrl["family"] <- list(.check_family(ctrl$family))
   # `$<-` with NULL would drop the control, so it is set as a list.
   ctrl["strategy"] <- list(.check_strategy(ctrl$strategy))
   .check_missing_control(ctrl$missing)
@@ -289,7 +293,7 @@ control_mrqap <- function(permute = c("predictor", "outcome"),
 #'   `options(snet_computation = old)` restores it.
 #'   `control_computation()` returns an object of class
 #'   `infernetComputationControl`: a list of the controls that it is given.
-#' @family models
+#' @family estimating functions
 #' @examples
 #' # For the session: later calls use these where they are not given
 #' old <- set_control_computation(seed = 1, ncores = 1)
@@ -600,10 +604,43 @@ c.mrqap_control <- function(...) {
   do.call(control_mrqap, control)
 }
 
+# The family that `family = NULL` reads from the observed values of an outcome, in
+# `estimate_mrqap()` and `declare_coefs()` alike. Whole numbers of 0 or more,
+# other than 0/1, read as a count.
+#' @keywords internal
+#' @noRd
+.auto_family <- function(y) {
+  if (.is_binary_outcome(y)) return("binomial")
+  vals <- if (is.list(y)) unlist(y, use.names = FALSE) else as.vector(y)
+  vals <- vals[!is.na(vals)]
+  if (length(vals) > 0 && is.numeric(vals) && all(vals >= 0) &&
+      all(vals == round(vals)) && any(vals > 1)) return("poisson")
+  "gaussian"
+}
+
 #' @keywords internal
 #' @noRd
 .control_families <- function() {
-  c("auto", "gaussian", "binomial", "poisson", "negbin", "zip")
+  c("gaussian", "binomial", "poisson", "negbin", "zip")
+}
+
+# `NULL` reads the family from the outcome. "auto" was its name before
+# infernet 0.7.0, and still works, with a warning once in a session.
+#' @keywords internal
+#' @noRd
+.check_family <- function(family) {
+  if (is.null(family)) return(NULL)
+  if (identical(family, "auto")) {
+    if (!isTRUE(.infernet_state$warned_family_auto)) {
+      .infernet_state$warned_family_auto <- TRUE
+      manynet::snet_warn(
+        c("{.code family = \"auto\"} is deprecated as of infernet 0.7.0.",
+          i = "Use {.code family = NULL}, the default, to read the family from the outcome.",
+          i = "This warning is shown once in a session."))
+    }
+    return(NULL)
+  }
+  .check_choice(family, .control_families(), "family")
 }
 
 # ---- other names -------------------------------------------------------------

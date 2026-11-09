@@ -25,7 +25,17 @@ test_that("an empty control list gives the defaults", {
   expect_equal(.resolve_control(list()), .resolve_control())
   expect_equal(.resolve_control()$permute, "predictor")
   expect_null(.resolve_control()$strategy)
-  expect_equal(.resolve_control()$family, "auto")
+  expect_null(.resolve_control()$family)
+  expect_true("family" %in% names(.resolve_control()))
+})
+
+test_that("family = \"auto\" still reads the family from the outcome, and warns", {
+  .infernet_state$warned_family_auto <- NULL
+  on.exit(.infernet_state$warned_family_auto <- NULL, add = TRUE)
+  expect_snet_warning(ctrl <- control_mrqap(family = "auto"), "deprecated")
+  expect_null(ctrl$family)
+  expect_true("family" %in% names(ctrl))
+  expect_error(control_mrqap(family = "logit"), "must be one of")
 })
 
 test_that("a named control overrides only that default", {
@@ -81,7 +91,7 @@ test_that("control_mrqap() gives every control, with its default", {
   ctrl <- control_mrqap()
   expect_s3_class(ctrl, "mrqap_control")
   expect_equal(ctrl$permute, "predictor")
-  expect_equal(ctrl$family, "auto")
+  expect_null(ctrl$family)
   expect_null(ctrl$directed)
   expect_true("directed" %in% names(ctrl))
   expect_false(ctrl$less_mem)

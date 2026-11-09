@@ -825,7 +825,7 @@ So far each model has used its default controls.
 Its result goes to the `control =` argument of `estimate_mrqap()`.
 The most useful controls are:
 
-- `family`: `"auto"` reads it from the outcome (`"binomial"` for a binary outcome, otherwise `"gaussian"`).
+- `family`: `NULL`, the default, reads it from the outcome (`"binomial"` for a binary outcome, `"poisson"` for a count, otherwise `"gaussian"`).
   The message counts here might also be fitted as `"poisson"` or `"negbin"`.
 - `permute`: `"predictor"` (Dekker's double semi-partialling, the default) or `"outcome"`.
 - `seed`: a number, so that the same permutations, and so the same p-values, come back each time.

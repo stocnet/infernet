@@ -38,6 +38,10 @@ sequential <- list(
                  times = 40, control = list(seed = 3)),
   parameter = test_parameter(param_fit, "ego_Grp", times = 20,
                              control = list(seed = 3)))
+sim_spec <- specify_mrqap(. ~ ego(Age))
+sim_matrices <- function(nets) lapply(nets, manynet::as_matrix)
+sequential$simulate <- sim_matrices(
+  simulate(binary_fit, nsim = 4, seed = 8, .data = binary_net))
 sequential$distributions <- test_distributions(
   sequential$diffusions, sequential$diffusions, times = 10,
   control = list(seed = 2))
@@ -96,6 +100,20 @@ test_that("test_parameter() gives the same p-value on two workers", {
   expect_equal(test_parameter(param_fit, "ego_Grp", times = 20,
                               control = list(seed = 3)),
                sequential$parameter)
+})
+
+test_that("simulate() gives the same networks on two workers, by every route", {
+  expect_identical(
+    sim_matrices(simulate(binary_fit, nsim = 4, seed = 8, .data = binary_net)),
+    sequential$simulate)
+  expect_identical(
+    sim_matrices(simulate(declare_coefs(binary_fit), nsim = 4, seed = 8,
+                          .data = binary_net)),
+    sequential$simulate)
+  expect_identical(
+    sim_matrices(simulate(sim_spec, nsim = 4, seed = 8, .data = binary_net,
+                          coefs = coef(binary_fit), family = "binomial")),
+    sequential$simulate)
 })
 
 test_that("a seed that persists gives the same draws on two workers", {

@@ -629,8 +629,8 @@ regression entry point. Its control flow is:
    a list of networks goes to `.prepare_list_of_graphs()`, which converts each
    network, drops the ones that are missing a predictor with a warning,
    and pools the rest.
-4. Resolve `family = "auto"` against the dependent variable
-   (binomial for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
+4. Resolve `family = NULL` against the dependent variable, with `.auto_family()`
+   (binomial for a 0/1 outcome, poisson for a count, gaussian otherwise), and resolve `directed` and
    `loops` from the network with `manynet::is_directed()` and `manynet::is_complex()`.
    Report each resolution with `snet_info()` so that the user can describe 
    these (default) choices in a paper.
@@ -818,7 +818,15 @@ decided on 6 and 7 November 2026 for 0.7.0 (D21–D27 of the roadmap).
   from a specification (with `family =`, and `sigma =` for a gaussian model) or from a fit.
   It is a named vector, with the specification, the family, and `sigma` as attributes,
   and `NA` for a value that is not stated.
+  The names are those of the columns that the specification builds, as the coefficients of a fit;
+  with `.data`, the method for a specification checks them and gives a column without a value `NA`.
+  Its `family = NULL`, the default, reads the family from the outcome in `.data` with `.auto_family()`, as `estimate_mrqap()` does
+  (binomial for 0/1, poisson for whole numbers of 0 or more with one above 1, gaussian otherwise),
+  and aborts without `.data`; `simulate()` of a specification does the same, unless its coefficients carry a family.
   `coef()` always gives a plain named vector.
+  `estimate_mrqap()` reads a set of coefficients or a fit in place of its formula,
+  and its values are initial values only where an estimator iterates
+  (`glm()` and `MASS::glm.nb()`); every other estimator says that it does not use them.
 - **Simulation.** Each model has three `stats::simulate()` methods: on a fit, on its coefficients,
   and on its specification with `coefs =` (named, since the second argument of the generic is `nsim`).
   The default `seed` is `getOption("snet_computation")$seed`.
@@ -1415,6 +1423,11 @@ Run `devtools::document()` after changing any roxygen comment.
   such as `diagnose_residuals`, so that its section still selects it.
   The page of the function that makes the object lists every method, with a link to its page.
   The fits of other packages are on `other_results`.
+- Give each help page the `@family` of its stage, so that its "See also"
+  links to the other pages of that stage:
+  `testing functions`, `specifying functions`, `estimating functions`,
+  `evaluating functions`, or `interpreting functions`.
+  A page that only another page's `@rdname` holds needs no `@family`.
 - Give a `print()` method a help entry only when it has an argument of its own.
   Otherwise give it `@export` and `@noRd`, and describe the print
   on the help page of the function that makes the object.
