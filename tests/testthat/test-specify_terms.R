@@ -143,12 +143,12 @@ test_that("a formula of the table's terms takes every term", {
                "mix(office)")
 })
 
-test_that("the table prints its terms, and tidy() gives a plain tibble", {
+test_that("the table prints its terms, and summary() gives a plain tibble", {
   tab <- quietly(specify_mrqap(advice ~ ., manynet::ison_lawfirm))
   expect_output(print(tab), "[0-9]+ terms for an MRQAP of advice")
   expect_output(print(tab), "indeg(friends, node = 'ego')", fixed = TRUE)
   expect_output(print(tab[c("term", "effect")]), "ego\\(status\\)")
-  tidied <- tidy(tab)
+  tidied <- summary(tab)
   expect_s3_class(tidied, c("tbl_df", "tbl", "data.frame"), exact = TRUE)
   expect_equal(nrow(tidied), nrow(tab))
   expect_null(attr(tidied, "data"))
@@ -160,9 +160,9 @@ test_that("a missing formula without a network keeps its error", {
   expect_error(specify_ergm(), "formula")
 })
 
-test_that("tidy() of a formula builds its columns on a list of networks", {
+test_that("summary() of a formula builds its columns on a list of networks", {
   ls <- functional_nets()$list
-  out <- quietly(tidy(specify_mrqap(a ~ ego(x) + global(gdp)), ls))
+  out <- quietly(summary(specify_mrqap(a ~ ego(x) + global(gdp)), ls))
   expect_equal(out$status, c("fits", "fits"))
   expect_equal(out$columns[[2]], "global_gdp")
 })

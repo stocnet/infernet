@@ -140,13 +140,13 @@ specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 #> # adapted trans -> ttriple
 ```
 
-`tidy()` of a specification gives one row for each term, with what the
+`summary()` of a specification gives one row for each term, with what the
 model makes of it on a network:
 
 ``` r
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
-tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+summary(spec, ison_hightech)[, c("term", "status", "reason")]
 #> # A tibble: 4 x 3
 #>   term           status reason                                                  
 #>   <chr>          <chr>  <chr>                                                   

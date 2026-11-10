@@ -4,10 +4,13 @@
 \alias{specify_mrqap}
 \alias{specify_formula}
 \alias{specify}
+\alias{summary.mrqap_formula}
 \alias{tidy.mrqap_formula}
 \title{Specify an MRQAP from a formula written for any model}
 \usage{
 specify_mrqap(formula, .data = NULL, input = NULL)
+
+\method{summary}{mrqap_formula}(object, .data = NULL, ...)
 
 \method{tidy}{mrqap_formula}(x, .data = NULL, ...)
 }
@@ -18,14 +21,14 @@ for \code{.data}, as \link{specify_terms} describes.}
 
 \item{.data}{Optionally, the network the formula is for.
 With it, a bare name that is a layer of the network stays a layer.
-In \code{tidy()}, the network to build the columns from.}
+In \code{summary()}, the network to build the columns from.}
 
 \item{input}{The model the formula was written for: \code{"mrqap"}, \code{"dynam"},
 \code{"rem"}, or \code{"ergm"}. \code{NULL}, the default, reads it from the class of the
 formula, such as goldfish's \code{"goldfishFormula"}, or else from the names in
 the formula.}
 
-\item{x}{A formula returned by \code{specify_mrqap()}.}
+\item{object, x}{A formula returned by \code{specify_mrqap()}.}
 
 \item{...}{Not used.}
 }
@@ -35,8 +38,10 @@ Its \code{input} attribute names the model it was read from, and its \code{recor
 attribute holds what the model makes of each term.
 Printing the formula lists the terms that do not fit as written and
 returns the formula, invisibly.
-\code{tidy()} returns every term as a tibble,
+\code{summary()} returns every term as a tibble,
 with the columns \code{term}, \code{status}, \code{as}, \code{reason}, and \code{columns}.
+\code{tidy()} of a specification is deprecated: it gives the same table and
+warns once.
 Without a formula, the table of every term for \code{.data}, as
 \link{specify_terms} describes.
 }
@@ -60,7 +65,7 @@ aborts and suggests the nearest name.
 }
 \section{What each model makes of each term}{
 
-\code{tidy()} of the result has one row for each term of the formula, and
+\code{summary()} of the result has one row for each term of the formula, and
 fits nothing. Its \code{status} is what the model makes of the term:
 \itemize{
 \item \code{"fits"}: the model fits the term as it is written;
@@ -76,7 +81,7 @@ is fitted;
 An MRQAP warns for a term that reads the outcome's own ties, such as
 \code{recip}, and refuses \code{tie()}, \code{indeg()}, and \code{outdeg()} of the outcome
 layer. It drops an offset, such as goldfish's \code{offset(recip, coef = 0)},
-since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, \code{tidy()} with \code{.data} also builds each term and names
+since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, \code{summary()} with \code{.data} also builds each term and names
 its \code{columns}, as \code{\link[=estimate_mrqap]{estimate_mrqap()}} names them.
 }
 
@@ -155,9 +160,9 @@ f <- suppressWarnings(
   specify_mrqap(advice ~ inertia + recip + trans + ego(age)))
 f
 # Each term, and what the model makes of it
-tidy(f)
+summary(f)
 g <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends), ison_hightech)
-tidy(g, ison_hightech)
+summary(g, ison_hightech)
 }
 \seealso{
 \link{terms_mrqap} for what each term measures, and \link{specify_terms}
@@ -165,6 +170,7 @@ for the terms that suit a network.
 
 Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}}

@@ -47,7 +47,7 @@ test_that("a panel records each lagged term as fitted, and as an MRQAP term", {
   on.exit(options(old), add = TRUE)
   expect_no_message(f <- specify_mrqap(. ~ inertia + trans + ego(age), g),
                     message = "written for")
-  rec <- tidy(f, .data = g)
+  rec <- summary(f, .data = g)
   expect_equal(rec$status, rep("fits", 3))
   expect_equal(unlist(rec$columns), c("inertia", "trans", "ego_age"))
   expect_equal(attr(f, "input"), "mrqap")

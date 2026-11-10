@@ -78,7 +78,7 @@ A value that is not stated is \code{NA}.
 The names of the values are the names of the columns that the
 specification builds, as \code{estimate_mrqap()} names its coefficients:
 \code{"(Intercept)"}, and then a column such as \code{"ego_age"} or \code{"same_dept"}.
-\code{tidy(specify_mrqap(formula, .data), .data)} lists the columns of each
+\code{summary(specify_mrqap(formula, .data), .data)} lists the columns of each
 term in its \code{columns} column.
 With \code{.data}, \code{declare_coefs()} checks each name against these columns,
 and gives each column without a value an \code{NA}.
@@ -109,6 +109,7 @@ declare_coefs(fit)
 and \code{\link[=estimate_mrqap]{estimate_mrqap()}} for the initial values of an estimation.
 
 Other specifying functions:
+\code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
 \code{\link{specify_terms}},

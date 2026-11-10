@@ -20,7 +20,7 @@
 #'   The names of the values are the names of the columns that the
 #'   specification builds, as `estimate_mrqap()` names its coefficients:
 #'   `"(Intercept)"`, and then a column such as `"ego_age"` or `"same_dept"`.
-#'   `tidy(specify_mrqap(formula, .data), .data)` lists the columns of each
+#'   `summary(specify_mrqap(formula, .data), .data)` lists the columns of each
 #'   term in its `columns` column.
 #'   With `.data`, `declare_coefs()` checks each name against these columns,
 #'   and gives each column without a value an `NA`.
@@ -82,7 +82,7 @@ declare_coefs <- function(x, ...) UseMethod("declare_coefs")
 declare_coefs.default <- function(x, ...) {
   manynet::snet_abort(
     c("{.fn declare_coefs} has no method for a {.cls {class(x)[1]}}.",
-      i = "Give it a specification from {.fn specify_mrqap}, or a fit from {.fn estimate_mrqap}."))
+      i = "Give it a specification from {.fn specify_mrqap} or {.fn specify_ergm}, or a fit from {.fn estimate_mrqap} or {.fn ergm::ergm}."))
 }
 
 #' @rdname declare_coefs
@@ -244,4 +244,154 @@ coef.infernetMrqapFit <- function(object, ...) .plain_coefs(object$coefficients)
 .fit_spec <- function(x) {
   structure(x$formula, class = c("mrqap_formula", "formula"),
             input = "mrqap", record = x$record)
+}
+
+# ---- ergm ----------------------------------------------------------------------
+
+#' Declare the coefficients of an ERGM
+#'
+#' @description
+#'   `declare_coefs()` also makes a set of coefficients for an exponential
+#'   random graph model from `{ergm}`:
+#'
+#'   - for an ergm formula, such as the result of [specify_ergm()], the values
+#'     stated in `...`;
+#'   - for an `ergm`, from [ergm::ergm()], the estimated coefficients, with
+#'     the formula and the network of the fit.
+#'
+#'   The set is in the form that `{ergm}` reads.
+#'   `stats::coef()` of it is a named vector in the order of ergm's
+#'   coefficients, so it can be given as `coef =` to `{ergm}`'s
+#'   `simulate()`, or as `init =` to [ergm::control.ergm()].
+#'   `simulate()` of the set draws networks from it with `{ergm}`'s
+#'   `simulate()`.
+#' @details
+#'   The names of the values are ergm's names for the coefficients, as
+#'   `stats::coef()` of a fit gives them, such as `"edges"`,
+#'   `"nodematch.dept"`, or `"gwesp.fixed.0.25"`.
+#'   A curved term without `fixed = TRUE` has a coefficient for its decay too,
+#'   such as `"gwesp.decay"`.
+#'   Where ergm can find the network, as in the result of
+#'   `specify_ergm(formula, .data)`, or with `.data`, each name is checked
+#'   against these, and each coefficient without a value is `NA`.
+#'
+#'   [specify_ergm()] gives a formula that `{ergm}` reads, so
+#'   `simulate(specify_ergm(formula, .data), coef = coef(fit))` already draws
+#'   from `{ergm}`, without a set of coefficients.
+#' @param x An ergm formula, such as from [specify_ergm()], or an `ergm`
+#'   from [ergm::ergm()].
+#' @param ... For a formula, the values of the coefficients, each named for
+#'   its coefficient, such as `edges = -2, nodecov.wealth = 0.01`, or as one
+#'   named vector, such as `coef(fit)`. For a fit, not used.
+#' @param .data Optionally, the network of the model, which ergm reads as
+#'   `basis`. Without it, the network is the outcome of the formula.
+#' @param object A set of coefficients of an ERGM, from `declare_coefs()`.
+#' @param nsim The number of networks to draw.
+#' @param seed A seed for the draws, as `{ergm}`'s `simulate()` reads it.
+#' @return An object of class `infernetErgmCoefs`: a named numeric vector of
+#'   the coefficients, with `NA` for a value that is not stated.
+#'   Its attributes are `spec`, the formula, and `basis`, the network or
+#'   `NULL`.
+#'   `simulate()` returns what `{ergm}`'s `simulate()` returns: a `network`
+#'   for one draw, and a `network.list` for more.
+#' @family specifying functions
+#' @examplesIf requireNamespace("ergm", quietly = TRUE)
+#' data(florentine, package = "ergm")
+#' coefs <- declare_coefs(specify_ergm(flomarriage ~ edges + nodecov("wealth")),
+#'                        edges = -3, nodecov.wealth = 0.01)
+#' coefs
+#' simulate(coefs, seed = 1)
+#'
+#' fit <- ergm::ergm(flomarriage ~ edges + nodecov("wealth"))
+#' declare_coefs(fit)
+#' @name declare_coefs_ergm
+NULL
+
+#' @rdname declare_coefs_ergm
+#' @export
+declare_coefs.ergm_formula <- function(x, ..., .data = NULL) {
+  .need_ergm()
+  values <- .coef_values(list(...))
+  basis <- if (!is.null(.data)) manynet::as_network(.data)
+  names_ergm <- .ergm_coef_names(x, basis)
+  if (!is.null(names_ergm)) {
+    unknown <- setdiff(names(values), names_ergm)
+    if (length(unknown) > 0) {
+      manynet::snet_abort(
+        c("The ergm formula has no coefficient named {.val {unknown}}.",
+          i = "Its coefficients are {.val {names_ergm}}."))
+    }
+    values <- stats::setNames(values[names_ergm], names_ergm)
+  }
+  .new_ergm_coefs(values, x, basis)
+}
+
+#' @rdname declare_coefs_ergm
+#' @export
+declare_coefs.ergm <- function(x, ...) {
+  spec <- structure(stats::formula(x), class = c("ergm_formula", "formula"),
+                    input = "ergm")
+  .new_ergm_coefs(stats::coef(x), spec, x$network)
+}
+
+#' @export
+print.infernetErgmCoefs <- function(x, ...) {
+  stated <- sum(!is.na(x))
+  .print_title(c("Coefficients of an ERGM",
+                 paste(stated, "of", length(x), "coefficients stated")))
+  spec <- attr(x, "spec")
+  if (!is.null(spec)) print(.plain_formula(spec), showEnv = FALSE)
+  cat("\n")
+  print(stats::coef(x))
+  .print_footer(NULL)
+  invisible(x)
+}
+
+#' @rdname declare_coefs_ergm
+#' @export
+coef.infernetErgmCoefs <- function(object, ...) .plain_coefs(object)
+
+#' @rdname declare_coefs_ergm
+#' @export
+simulate.infernetErgmCoefs <- function(object, nsim = 1, seed = NULL, ...) {
+  .need_ergm()
+  values <- stats::coef(object)
+  if (anyNA(values)) {
+    manynet::snet_abort(
+      c("{.fn simulate} needs a value for each coefficient.",
+        i = "{.val {names(values)[is.na(values)]}} {?has/have} no value."))
+  }
+  args <- list(object = .plain_formula(attr(object, "spec")), nsim = nsim,
+               seed = seed, coef = values, ...)
+  basis <- attr(object, "basis")
+  if (!is.null(basis) && is.null(args$basis)) args$basis <- basis
+  do.call(stats::simulate, args)
+}
+
+#' @keywords internal
+#' @noRd
+.new_ergm_coefs <- function(values, spec, basis) {
+  structure(values, spec = spec, basis = basis, class = "infernetErgmCoefs")
+}
+
+#' @keywords internal
+#' @noRd
+.need_ergm <- function() {
+  if (!requireNamespace("ergm", quietly = TRUE)) {
+    manynet::snet_abort("This needs the {.pkg ergm} package. Install it first.")
+  }
+}
+
+# ergm's names of the coefficients, as `coef()` of a fit gives them, or `NULL`
+# where ergm cannot find the network of the formula.
+#' @keywords internal
+#' @noRd
+.ergm_coef_names <- function(spec, basis = NULL) {
+  f <- .plain_formula(spec)
+  model <- tryCatch(
+    suppressMessages(if (is.null(basis)) ergm::ergm_model(f)
+                     else ergm::ergm_model(f, nw = basis)),
+    error = function(e) NULL)
+  if (is.null(model)) return(NULL)
+  ergm::param_names(model, canonical = FALSE)
 }

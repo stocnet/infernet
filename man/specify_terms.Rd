@@ -3,26 +3,29 @@
 \name{specify_terms}
 \alias{specify_terms}
 \alias{formula.specify_terms}
+\alias{summary.specify_terms}
 \alias{tidy.specify_terms}
 \title{The terms that suit a network}
 \usage{
 \method{formula}{specify_terms}(x, lhs = NULL, ...)
 
+\method{summary}{specify_terms}(object, ...)
+
 \method{tidy}{specify_terms}(x, ...)
 }
 \arguments{
-\item{x}{The table of every term.}
-
 \item{lhs}{The outcome of the formula, as a name or a string. \code{NULL}, the
 default, is the outcome the table was made for.}
 
 \item{...}{Not used.}
+
+\item{object, x}{The table of every term.}
 }
 \value{
 The table is a tibble of class \code{"mrqap_terms"} or \code{"ergm_terms"},
 and also \code{"specify_terms"}, with the columns \code{term}, \code{effect}, \code{layer},
-and \code{attribute}. \code{print()} shows every row, and \code{tidy()} returns the
-table as a plain tibble. \code{formula()} returns the formula of the chosen
+and \code{attribute}. \code{print()} shows every row, and \code{summary()} returns the
+table as a plain tibble. \code{tidy()} of it is deprecated. \code{formula()} returns the formula of the chosen
 rows, as \code{\link[=specify_mrqap]{specify_mrqap()}} or \code{\link[=specify_ergm]{specify_ergm()}} returns it.
 }
 \description{
@@ -87,6 +90,7 @@ what each model makes of a formula.
 
 Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
 \code{\link{terms_mrqap}}

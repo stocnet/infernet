@@ -30,11 +30,11 @@ test_that("a bare bar that cannot be read aborts and says why", {
 test_that("each model's formula says what it makes of a fixed effect", {
   f <- specify_mrqap(advice ~ same(dept) | sender + receiver)
   expect_equal(deparse(f[[3]]), "same(dept) | sender + receiver")
-  expect_equal(tidy(f)$status, c("fits", "fits", "fits"))
+  expect_equal(summary(f)$status, c("fits", "fits", "fits"))
 
   e <- specify_ergm(advice ~ same(dept) | sender + receiver)
   expect_true(all(c("sender", "receiver") %in% all.vars(e)))
-  expect_equal(tidy(e)$as[tidy(e)$term == "| sender"], "sender")
+  expect_equal(summary(e)$as[summary(e)$term == "| sender"], "sender")
 })
 
 # ---- gaussian: absorbed once ---------------------------------------------------

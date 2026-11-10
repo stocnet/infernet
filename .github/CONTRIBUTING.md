@@ -365,19 +365,19 @@ the internal engine ported from `MrQAP` is named `qap_*.R`.
 | `test_measures.R` | the test family: `test_random()` (CUG), `test_configuration()`, `test_permutation()` (QAP), and the null distribution of each |
 | `test_report.R` | `print()`, `summary()`, `tidy()`, and `glance()` of a `network_test`, on the `test_measures` help page |
 | `specify_formula.R` | `specify_mrqap()` and `specify_ergm()`, on the `specify_mrqap` and `specify_ergm` help pages: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish's writer is goldfish's own `specify_dynam()` |
-| `specify_coefs.R` | the generic `declare_coefs()`, its methods for a specification and for an `infernetMrqapFit`, `print()` and `coef()` of an `infernetMrqapCoefs`, and `coef()` of an `infernetMrqapFit` |
+| `specify_coefs.R` | the generic `declare_coefs()`, its methods for a specification and for an `infernetMrqapFit`, `print()` and `coef()` of an `infernetMrqapCoefs`, and `coef()` of an `infernetMrqapFit`; and its methods for an ergm formula and an `ergm`, with `print()`, `coef()`, and `simulate()` of an `infernetErgmCoefs` |
 | `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its `formula()` method |
 | `specify_registry.R` | the term registry `.formula_terms()` and goldfish's terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term's equation |
 | `specify_builders.R` | the builder of each term, which makes its matrices for one network |
 | `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
 | `specify_ergm.R` | the `to_ergm` writer of each term, which `specify_ergm()` calls |
-| `specify_report.R` | `print()` and `tidy()` of a formula from `specify_*()`, with `tidy()` on the page of its `specify_*()` function; of the term table from `specify_terms()`; and the print of `control_mrqap()` |
+| `specify_report.R` | `print()` and `summary()` of a formula from `specify_*()`, with `summary()` on the page of its `specify_*()` function, and the deprecated `tidy()`; of the term table from `specify_terms()`; and the print of `control_mrqap()` |
 | `estimate_mrqap.R` | `estimate_mrqap()` and the list path |
 | `estimate_control.R` | `control_mrqap()`, which names, defaults, and checks every control of `estimate_mrqap()`; the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`); the persistent controls in `options(infernet.control)` (`.persisted_controls()`); and `control_computation()` and `set_control_computation()` |
 | `estimate_report.R` | the methods that report an `infernetMrqapFit`, on the `estimate_mrqap` help page: `print()`, `summary()` and its print, `tidy()`, and `glance()`; the helpers that the methods of a fit on other pages share, `.observed_model()` and `.refit_abort()`; and the `other_results` help page, for the `{migraph}`, `{ergm}`, and `{RSiena}` results |
 | `diagnose_outliers.R` | the generic `diagnose_outliers()`, which `{goldfish}` registers methods on, and its method for an `infernetMrqapFit` |
 | `diagnose_time.R` | the generics `diagnose_changepoints()` and `diagnose_onset()`, which `{goldfish}` registers methods on, and the abort that every default of a `diagnose_*()` generic shares |
-| `diagnose_confusion.R` | `diagnose_confusion()`, with a method for an `infernetMrqapFit` of a binary outcome, the probabilistic confusion matrix, and the ROC curve and AUC |
+| `diagnose_confusion.R` | `diagnose_confusion()`, with methods for an `infernetMrqapFit` of a binary outcome and for an `ergm` of a binary network, the probabilistic confusion matrix, and the ROC curve and AUC |
 | `diagnose_report.R` | `print()`, `tidy()`, and `glance()` of the result of `diagnose_confusion()`; and `fitted()` and `residuals()` of an `infernetMrqapFit`, on the `diagnose_residuals` help page |
 | `evaluate_fit.R` | `test_gof()` and `test_distributions()`, generics with a method for each model they can simulate from, and the simulated p-value they share |
 | `evaluate_parameter.R` | the generics `test_parameter()` and `test_time()`, which `{RSiena}` and `{goldfish}` share, their methods for an `infernetMrqapFit`, the joint double semi-partialling they share, and `anova()` of two nested fits |
@@ -1233,7 +1233,7 @@ not "two-mode works".
 | `test-specify_parse.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-specify_builders.R` | each term's matrix against a value computed by hand, or by a loop over the equation on `terms_mrqap`, and the dictionary |
 | `test-specify_formula.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |
-| `test-specify_record.R` | the status that each model gives each registered term, and `tidy()` of the record |
+| `test-specify_record.R` | the status that each model gives each registered term, and `summary()` of the record |
 | `test-specify_ergm.R` | `specify_ergm()` with a network, and an ergm fit of the result |
 | `test-specify_terms.R` | the table of every term for each shape of network, and `formula()` of its rows |
 | `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |

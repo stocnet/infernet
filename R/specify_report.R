@@ -1,7 +1,9 @@
 # Reporting specifications and controls ####
 
-# The print and `tidy()` of what `specify_*()`, `specify_terms()`, and
-# `control_mrqap()` return, before a model is fitted.
+# The print and `summary()` of what `specify_*()`, `specify_terms()`, and
+# `control_mrqap()` return, before a model is fitted. `summary()` gives the
+# term table. `tidy()` of a specification is deprecated in 0.7.0, since a
+# term table is not the table of estimates that `tidy()` gives for a fit.
 
 # ---- formulas -----------------------------------------------------------------
 
@@ -15,23 +17,56 @@ print.ergm_formula <- function(x, ...) .print_specified(x, "ergm")
 #' @order 2
 #' @examples
 #' # Each term, and what the model makes of it
-#' tidy(f)
+#' summary(f)
 #' g <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends), ison_hightech)
-#' tidy(g, ison_hightech)
+#' summary(g, ison_hightech)
 #' @export
-tidy.mrqap_formula <- function(x, .data = NULL, ...) {
-  out <- .tidy_specified(x)
+summary.mrqap_formula <- function(object, .data = NULL, ...) {
+  out <- .tidy_specified(object)
   out$columns <- rep(list(character(0)), nrow(out))
   if (is.null(.data)) return(out)
-  .record_columns(x, out, .data)
+  .record_columns(object, out, .data)
+}
+
+#' @rdname specify_mrqap
+#' @order 3
+#' @export
+tidy.mrqap_formula <- function(x, .data = NULL, ...) {
+  .warn_tidy_spec_deprecated()
+  summary.mrqap_formula(x, .data = .data, ...)
 }
 
 #' @rdname specify_ergm
 #' @order 2
+#' @details
+#'   `summary()` of the result gives the term table, not the statistics of
+#'   the observed network that `{ergm}`'s `summary()` of a formula gives.
+#'   For those, use `ergm::summary_formula()` of the result.
 #' @examples
-#' tidy(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
+#' summary(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
 #' @export
-tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
+summary.ergm_formula <- function(object, ...) .tidy_specified(object)
+
+#' @rdname specify_ergm
+#' @order 3
+#' @export
+tidy.ergm_formula <- function(x, ...) {
+  .warn_tidy_spec_deprecated()
+  summary.ergm_formula(x, ...)
+}
+
+# `tidy()` of a specification warns once in a session, as a deprecation does.
+#' @keywords internal
+#' @noRd
+.warn_tidy_spec_deprecated <- function() {
+  if (isTRUE(.infernet_state$warned_tidy_spec)) return(invisible())
+  .infernet_state$warned_tidy_spec <- TRUE
+  manynet::snet_warn(
+    c("{.code tidy()} of a specification is deprecated as of infernet 0.7.0.",
+      i = "Use {.code summary()} for the table of terms. {.code tidy()} of a fitted model does not change.",
+      i = "This warning is shown once in a session."))
+  invisible()
+}
 
 #' @keywords internal
 #' @noRd
@@ -55,7 +90,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 }
 
 # A term that fits as written needs no note, so the print lists only the terms
-# that the model changes, warns about, drops, or refuses. `tidy()` gives them all.
+# that the model changes, warns about, drops, or refuses. `summary()` gives them all.
 #' @keywords internal
 #' @noRd
 .print_specified <- function(x, target) {
@@ -77,7 +112,7 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
       notes <- c(notes, paste0(record$status[k], " ", record$term[k], as, why))
     }
   }
-  .print_footer(notes, .methods_hint("tidy() for what the model makes of each term"))
+  .print_footer(notes, .methods_hint("summary() for what the model makes of each term"))
   invisible(x)
 }
 
@@ -86,7 +121,19 @@ tidy.ergm_formula <- function(x, ...) .tidy_specified(x)
 #' @rdname specify_terms
 #' @order 3
 #' @export
+summary.specify_terms <- function(object, ...) .plain_terms(object)
+
+#' @rdname specify_terms
+#' @order 4
+#' @export
 tidy.specify_terms <- function(x, ...) {
+  .warn_tidy_spec_deprecated()
+  .plain_terms(x)
+}
+
+#' @keywords internal
+#' @noRd
+.plain_terms <- function(x) {
   out <- as.data.frame(x)
   attr(out, "outcome") <- NULL
   attr(out, "model") <- NULL
@@ -99,7 +146,7 @@ print.specify_terms <- function(x, ...) {
   outcome <- .deparsed(attr(x, "outcome"))
   cat(nrow(x), " terms for ", .model_label(attr(x, "model")),
       if (outcome != ".") paste0(" of ", outcome), "\n", sep = "")
-  print(tidy(x), n = Inf, ...)
+  print(.plain_terms(x), n = Inf, ...)
   cat("Choose rows, and `formula()` of them gives their formula.\n")
   invisible(x)
 }

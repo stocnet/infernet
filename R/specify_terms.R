@@ -53,14 +53,14 @@
 #'   the others, since a model of all of them is collinear.
 #'   For the formula that a regression fitted, see [estimate_mrqap].
 #'
-#' @param x The table of every term.
+#' @param object,x The table of every term.
 #' @param lhs The outcome of the formula, as a name or a string. `NULL`, the
 #'   default, is the outcome the table was made for.
 #' @param ... Not used.
 #' @return The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`,
 #'   and also `"specify_terms"`, with the columns `term`, `effect`, `layer`,
-#'   and `attribute`. `print()` shows every row, and `tidy()` returns the
-#'   table as a plain tibble. `formula()` returns the formula of the chosen
+#'   and `attribute`. `print()` shows every row, and `summary()` returns the
+#'   table as a plain tibble. `tidy()` of it is deprecated. `formula()` returns the formula of the chosen
 #'   rows, as [specify_mrqap()] or [specify_ergm()] returns it.
 #' @seealso [terms_mrqap] for what each term measures, and [specify_mrqap] for
 #'   what each model makes of a formula.
@@ -164,7 +164,7 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
 }
 
 # What a model makes of one term, from the record of a formula of that term
-# alone. An MRQAP also builds the term, as `tidy()` does, so that a term the
+# alone. An MRQAP also builds the term, as `summary()` does, so that a term the
 # network cannot build is refused.
 #' @keywords internal
 #' @noRd
@@ -174,7 +174,7 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
   specify <- switch(model, mrqap = .specify_mrqap, ergm = .specify_ergm)
   tryCatch(suppressWarnings(suppressMessages({
     g <- specify(f, .data, input = "mrqap", abort = FALSE)
-    record <- if (model == "mrqap" && !identical(g[[3]], 1)) tidy.mrqap_formula(g, .data)
+    record <- if (model == "mrqap" && !identical(g[[3]], 1)) summary.mrqap_formula(g, .data)
       else .tidy_specified(g)
     record$status[record$term != .deparsed(lhs)][1]
   })), error = function(e) "refuses")

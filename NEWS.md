@@ -14,7 +14,10 @@
 
 - Added `declare_coefs()` to set coefficients 
   - Without `family =`, the family is read from the outcome in `.data`
+  - Added `declare_coefs.ergm_formula()` to set coefficients for an ergm formula
+  - Added `declare_coefs.ergm_fit()` to set coefficients for an ergm fit 
 - Added `coef.infernetMrqapCoefs()` and `coef.infernetMrqapFit()` for plain vectors
+- Renamed `tidy.mrqap_formula()` to `summary.mrqapFormula()` to table its terms
 
 ## Estimating
 

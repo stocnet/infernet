@@ -30,7 +30,7 @@
 #' aborts and suggests the nearest name.
 #'
 #' @section What each model makes of each term:
-#'   `tidy()` of the result has one row for each term of the formula, and
+#'   `summary()` of the result has one row for each term of the formula, and
 #'   fits nothing. Its `status` is what the model makes of the term:
 #'
 #'   - `"fits"`: the model fits the term as it is written;
@@ -45,7 +45,7 @@
 #'   An MRQAP warns for a term that reads the outcome's own ties, such as
 #'   `recip`, and refuses `tie()`, `indeg()`, and `outdeg()` of the outcome
 #'   layer. It drops an offset, such as goldfish's `offset(recip, coef = 0)`,
-#'   since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, `tidy()` with `.data` also builds each term and names
+#'   since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, `summary()` with `.data` also builds each term and names
 #'   its `columns`, as [estimate_mrqap()] names them.
 #'
 #' @section Reading the model a formula was written for:
@@ -113,20 +113,22 @@
 #'   for `.data`, as [specify_terms] describes.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
-#'   In `tidy()`, the network to build the columns from.
+#'   In `summary()`, the network to build the columns from.
 #' @param input The model the formula was written for: `"mrqap"`, `"dynam"`,
 #'   `"rem"`, or `"ergm"`. `NULL`, the default, reads it from the class of the
 #'   formula, such as goldfish's `"goldfishFormula"`, or else from the names in
 #'   the formula.
-#' @param x A formula returned by `specify_mrqap()`.
+#' @param object,x A formula returned by `specify_mrqap()`.
 #' @param ... Not used.
 #' @return A formula of class `c("mrqap_formula", "formula")`.
 #'   Its `input` attribute names the model it was read from, and its `record`
 #'   attribute holds what the model makes of each term.
 #'   Printing the formula lists the terms that do not fit as written and
 #'   returns the formula, invisibly.
-#'   `tidy()` returns every term as a tibble,
+#'   `summary()` returns every term as a tibble,
 #'   with the columns `term`, `status`, `as`, `reason`, and `columns`.
+#'   `tidy()` of a specification is deprecated: it gives the same table and
+#'   warns once.
 #'   Without a formula, the table of every term for `.data`, as
 #'   [specify_terms] describes.
 #' @seealso [terms_mrqap] for what each term measures, and [specify_terms]
@@ -222,14 +224,16 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
 #'   With it, a bare name that is a layer of the network stays a layer.
 #'   `specify_ergm()` needs it to write the terms that ergm reads as
 #'   `edgecov()` of a matrix, and drops them without it.
-#' @param x A formula returned by `specify_ergm()`.
+#' @param object,x A formula returned by `specify_ergm()`.
 #' @return A formula of class `c("ergm_formula", "formula")`.
 #'   Its `input` attribute names the model it was read from, and its `record`
 #'   attribute holds what the model makes of each term.
 #'   Printing the formula lists the terms that do not fit as written and
 #'   returns the formula, invisibly.
-#'   `tidy()` returns every term as a tibble,
+#'   `summary()` returns every term as a tibble,
 #'   with the columns `term`, `status`, `as`, and `reason`.
+#'   `tidy()` of a specification is deprecated: it gives the same table and
+#'   warns once.
 #'   Without a formula, the table of every term for `.data`, as
 #'   [specify_terms] describes.
 #' @seealso [terms_mrqap] for the ergm equivalent of each term, and

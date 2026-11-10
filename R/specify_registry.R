@@ -262,8 +262,8 @@
 #' @examples
 #' # Every term that suits a network, and the columns of some of them
 #' specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-#' tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-#'      manynet::ison_lawfirm)
+#' summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+#'         manynet::ison_lawfirm)
 NULL
 
 # ---- the term registry -------------------------------------------------------

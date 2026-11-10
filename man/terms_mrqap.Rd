@@ -267,8 +267,8 @@ and an MRQAP drops them (see \link{specify_mrqap}).
 \examples{
 # Every term that suits a network, and the columns of some of them
 specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-     manynet::ison_lawfirm)
+summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+        manynet::ison_lawfirm)
 }
 \references{
 Haunss, Sebastian, and James Hollway. 2023.
@@ -294,6 +294,7 @@ lists the terms that suit a network.
 
 Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
 \code{\link{specify_terms}}

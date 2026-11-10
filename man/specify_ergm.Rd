@@ -2,10 +2,13 @@
 % Please edit documentation in R/specify_formula.R, R/specify_report.R
 \name{specify_ergm}
 \alias{specify_ergm}
+\alias{summary.ergm_formula}
 \alias{tidy.ergm_formula}
 \title{Specify an ERGM from a formula written for any model}
 \usage{
 specify_ergm(formula, .data = NULL, input = NULL)
+
+\method{summary}{ergm_formula}(object, ...)
 
 \method{tidy}{ergm_formula}(x, ...)
 }
@@ -24,7 +27,7 @@ With it, a bare name that is a layer of the network stays a layer.
 formula, such as goldfish's \code{"goldfishFormula"}, or else from the names in
 the formula.}
 
-\item{x}{A formula returned by \code{specify_ergm()}.}
+\item{object, x}{A formula returned by \code{specify_ergm()}.}
 
 \item{...}{Not used.}
 }
@@ -34,8 +37,10 @@ Its \code{input} attribute names the model it was read from, and its \code{recor
 attribute holds what the model makes of each term.
 Printing the formula lists the terms that do not fit as written and
 returns the formula, invisibly.
-\code{tidy()} returns every term as a tibble,
+\code{summary()} returns every term as a tibble,
 with the columns \code{term}, \code{status}, \code{as}, and \code{reason}.
+\code{tidy()} of a specification is deprecated: it gives the same table and
+warns once.
 Without a formula, the table of every term for \code{.data}, as
 \link{specify_terms} describes.
 }
@@ -56,6 +61,11 @@ A formula aborts only where no term is left to fit.
 A name that no model knows is left for the fitting function, which then
 aborts and suggests the nearest name.
 }
+\details{
+\code{summary()} of the result gives the term table, not the statistics of
+the observed network that \code{{ergm}}'s \code{summary()} of a formula gives.
+For those, use \code{ergm::summary_formula()} of the result.
+}
 \section{Writing a formula for ergm}{
 
 A formula written for ergm is returned as it is.
@@ -74,7 +84,7 @@ fits one report of one network.
 
 \section{What each model makes of each term}{
 
-\code{tidy()} of the result has one row for each term of the formula, and
+\code{summary()} of the result has one row for each term of the formula, and
 fits nothing. Its \code{status} is what the model makes of the term:
 \itemize{
 \item \code{"fits"}: the model fits the term as it is written;
@@ -90,7 +100,7 @@ is fitted;
 An MRQAP warns for a term that reads the outcome's own ties, such as
 \code{recip}, and refuses \code{tie()}, \code{indeg()}, and \code{outdeg()} of the outcome
 layer. It drops an offset, such as goldfish's \code{offset(recip, coef = 0)},
-since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, \code{tidy()} with \code{.data} also builds each term and names
+since it estimates every coefficient; ergm keeps an ergm one. For an MRQAP, \code{summary()} with \code{.data} also builds each term and names
 its \code{columns}, as \code{\link[=estimate_mrqap]{estimate_mrqap()}} names them.
 }
 
@@ -164,7 +174,7 @@ since the network holds its nodes' attributes.
 \examples{
 # An MRQAP formula, written for ergm; with `.data`, ergm::ergm() fits it
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
-tidy(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
+summary(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
 }
 \seealso{
 \link{terms_mrqap} for the ergm equivalent of each term, and
@@ -172,6 +182,7 @@ tidy(specify_ergm(advice ~ ego(age) + same(dept) + recip + trans))
 
 Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}}
