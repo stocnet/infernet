@@ -55,11 +55,16 @@ test_that("each network test prints what it tested and its null", {
 test_that("a diffusion model and its tests print", {
   d <- play_diffusions(manynet::ison_adolescents, transmissibility = 0.3,
                        times = 5, control = list(seed = 1))
-  expect_snapshot(print(d))
+  # Not snapshots: {manynet} makes the diffusions, so their values and the
+  # column types of the table change with its version.
+  expect_output(print(d), "5 simulated SI diffusions")
+  expect_output(print(d), "Steps until every node adopted")
   f <- play_diffusions(manynet::ison_adolescents, transmissibility = 0.6,
                        times = 5, control = list(seed = 2))
-  expect_snapshot(print(test_distributions(f, d, times = 20,
-                                           control = list(seed = 1))))
+  out <- capture.output(print(test_distributions(f, d, times = 20,
+                                                 control = list(seed = 1))))
+  expect_match(out[1], "Two-sample test of two sets of simulated diffusions")
+  expect_true(any(grepl("20 permutations of the pooled diffusions", out)))
 })
 
 test_that("a specification and a control print", {

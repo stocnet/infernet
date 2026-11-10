@@ -13,6 +13,7 @@
 ## Specifying
 
 - Added `declare_coefs()` to set coefficients 
+  - The coefficients of a fit keep the random intercepts that a control turned on
   - Without `family =`, the family is read from the outcome in `.data`
   - Added `declare_coefs.ergm_formula()` to set coefficients for an ergm formula
   - Added `declare_coefs.ergm_fit()` to set coefficients for an ergm fit 
@@ -33,6 +34,10 @@
 ## Evaluating
 
 - Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
+  - Refuses fits whose shared columns, random intercepts, or fixed effects differ
+- Fixed the node names of `diagnose_outliers()` and of the random intercepts in `summary()`
+  - A reporter or node with no observed cell no longer shifts the names of the later ones
+  - The receivers of a two-mode network are named from its second mode
 - Improved `test_gof()` of an MRQAP to draw with the simulator of `simulate()`
 - Added `diagnose_outliers()`, `diagnose_changepoints()`, and `diagnose_onset()`
   - Each is a generic with `{goldfish}`'s signature `(x, ...)`

@@ -191,8 +191,10 @@ anova.infernetMrqapFit <- function(object, ..., times = 1000,
 }
 
 # Two fits are nested when the larger has every coefficient of the smaller,
-# with the same family and on the same dyads, so that the deviance that the
-# extra terms remove is a comparison of the two models and of nothing else.
+# with the same values in each shared column, the same random intercepts and
+# fixed effects, the same family, and the same dyads. `anova()` tests the
+# larger fit without its extra columns, so the comparison is with the smaller
+# fit only where that model is the smaller fit.
 #' @keywords internal
 #' @noRd
 .check_nested <- function(small, big) {
@@ -220,6 +222,40 @@ anova.infernetMrqapFit <- function(object, ..., times = 1000,
     manynet::snet_abort(
       c("The two fits are not nested.",
         x = "The larger fit has no coefficient {.val {missing}}."))
+  }
+  shared <- intersect(names(small$coefficients), names(small$pred))
+  shared <- intersect(shared, names(big$pred))
+  differ <- shared[!vapply(shared, function(v)
+    isTRUE(all.equal(small$pred[[v]], big$pred[[v]], check.attributes = FALSE)),
+    logical(1))]
+  if (length(differ) > 0) {
+    manynet::snet_abort(
+      c("The two fits are not nested.",
+        x = "The column{?s} {.val {differ}} {?has/have} different values in the two fits.",
+        i = "Fit both on the same network, with the same arguments to each shared term."))
+  }
+  effects <- function(x) {
+    slots <- c(nets = "network", sender = "sender", receiver = "receiver",
+               reporter = "reporter")
+    on <- names(x$random)[unlist(x$random)]
+    list(random = sort(unname(slots[intersect(on, names(slots))])),
+         fixed = sort(as.character(x$fixed_effects)),
+         css = isTRUE(x$css), panel = isTRUE(x$panel))
+  }
+  e_small <- effects(small)
+  e_big <- effects(big)
+  if (!identical(e_small, e_big)) {
+    describe <- function(e) {
+      parts <- c(if (length(e$random)) paste0("(1 | ", e$random, ")"),
+                 if (length(e$fixed)) paste("|", paste(e$fixed, collapse = " + ")))
+      if (length(parts) == 0) "none" else paste(parts, collapse = ", ")
+    }
+    manynet::snet_abort(
+      c("The two fits are not nested.",
+        x = "They have different random intercepts or fixed effects: {describe(e_small)} and {describe(e_big)}.",
+        i = "Give both fits the same random intercepts and fixed effects.",
+        i = if (!identical(e_small[c("css", "panel")], e_big[c("css", "panel")]))
+          "One fit is of a cognitive social structure or a panel, and the other is not."))
   }
   if (length(big$coefficients) == length(small$coefficients)) {
     manynet::snet_abort(

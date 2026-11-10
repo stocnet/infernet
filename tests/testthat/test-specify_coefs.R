@@ -93,3 +93,13 @@ test_that("declare_coefs() names what it needs", {
     "not used")
   expect_error(declare_coefs(1:3), "no method")
 })
+
+test_that("coefficients of a fit keep the random intercepts that a control turned on", {
+  net <- manynet::to_uniplex(manynet::ison_lawfirm, "friends")
+  fit <- suppressWarnings(suppressMessages(
+    estimate_mrqap(. ~ ego(age), net, times = 2,
+                   control = list(family = "binomial", random_intercept_sender = TRUE))))
+  coefs <- declare_coefs(fit)
+  expect_match(paste(deparse(attr(coefs, "spec")), collapse = ""), "(1 | sender)", fixed = TRUE)
+  expect_error(simulate(coefs, .data = net, seed = 1), "random or fixed effects")
+})

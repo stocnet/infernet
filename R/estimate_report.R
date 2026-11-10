@@ -400,8 +400,33 @@ print.infernetMrqapFit <- function(x, ..., print_b = FALSE, print_random = FALSE
 #' @noRd
 .node_names <- function(.data) {
   if (.is_list_of_graphs(.data)) return(.node_names(.data[[1]]))
-  tryCatch(manynet::node_names(manynet::as_tidygraph(.data)),
-           error = function(e) NULL)
+  tryCatch({
+    g <- manynet::as_tidygraph(.data)
+    nm <- manynet::node_names(g)
+    # A two-mode network names the nodes of its first mode, then those of its
+    # second, so a receiver's index is offset by the size of the first mode.
+    if (!is.null(nm) && manynet::is_twomode(g)) {
+      attr(nm, "n_first") <- sum(!manynet::node_is_mode(g))
+    }
+    nm
+  }, error = function(e) NULL)
+}
+
+# The name of each node that a column of the dyad-level data indexes: `sv`,
+# `rv`, or `bv`. The index is read from the label of a factor, not from its
+# code, since a node without an observed cell has no level. A receiver of a
+# two-mode network is a node of the second mode. A reporter of a two-mode CSS
+# indexes every node, in the order of the names. Without names, or with an
+# index past them, the index is returned.
+#' @keywords internal
+#' @noRd
+.node_label <- function(x, i, slot) {
+  i <- suppressWarnings(as.integer(as.character(i)))
+  nm <- x$node_names
+  if (is.null(nm)) return(i)
+  if (identical(slot, "rv")) i <- i + (attr(nm, "n_first") %||% 0L)
+  if (any(i < 1 | i > length(nm), na.rm = TRUE)) return(i)
+  as.character(nm)[i]
 }
 
 # The random intercepts of a mixed model, as `lme4::ranef()` gives them: one
@@ -420,10 +445,9 @@ print.infernetMrqapFit <- function(x, ..., print_b = FALSE, print_random = FALSE
     idx <- rownames(re[[nm]])
     who <- if (nm %in% names(slots)) slots[[nm]] else nm
     label <- idx
-    if (nm != "nv" && !is.null(names_of)) {
-      at <- suppressWarnings(as.integer(idx))
-      ok <- !is.na(at) & at >= 1 & at <= length(names_of)
-      label[ok] <- names_of[at[ok]]
+    if (nm %in% c("sv", "rv", "bv") && !is.null(names_of)) {
+      named <- .node_label(x, idx, nm)
+      if (is.character(named)) label <- ifelse(is.na(named), idx, named)
     }
     tibble::tibble(group = who, level = label,
                    intercept = as.numeric(re[[nm]][, 1]))

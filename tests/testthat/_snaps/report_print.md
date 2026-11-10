@@ -237,47 +237,6 @@
       # Controls: seed = 1
       # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1
 
-# a diffusion model and its tests print
-
-    Code
-      print(d)
-    Output
-      # 5 simulated SI diffusions
-      
-      # A tibble: 38 x 6
-           sim  time     n     S     s     I
-         <int> <int> <dbl> <int> <dbl> <int>
-       1     1     0     8     7     1     1
-       2     1     1     8     7     1     1
-       3     1     2     8     6     3     2
-       4     1     3     8     4     3     4
-       5     1     4     8     3     2     5
-       6     1     5     8     2     1     6
-       7     2     0     8     7     1     1
-       8     2     1     8     7     1     1
-       9     2     2     8     6     3     2
-      10     2     3     8     6     3     2
-      # i 28 more rows
-      
-      # Steps until every node adopted: median 9, from 7 to 10.
-      # Controls: seed = 1
-
----
-
-    Code
-      print(test_distributions(f, d, times = 20, control = list(seed = 1)))
-    Output
-      # Two-sample test of two sets of simulated diffusions
-      
-      # A tibble: 1 x 6
-        statistic null.mean null.sd p.lower p.upper signif   
-            <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-      1      37.9      63.0    54.1 0.476   0.571            
-      
-      # Null: 20 permutations of the pooled diffusions.
-      # The p-value is p.upper: only a larger statistic counts against the null.
-      # Controls: seed = 1
-
 # a specification and a control print
 
     Code

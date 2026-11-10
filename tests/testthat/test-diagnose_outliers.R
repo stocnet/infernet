@@ -48,3 +48,22 @@ test_that("diagnose_outliers() names the reporter of a CSS dyad", {
   expect_true("reporter" %in% names(out))
   expect_match(out$label[out$outlier], " by ")
 })
+
+test_that("node labels read the factor labels, not their codes", {
+  x <- list(node_names = c("a", "b", "c", "d", "e"))
+  # Reporters 2 and 5 only: the codes are 1 and 2, the labels 2 and 5.
+  expect_equal(.node_label(x, factor(c(2, 5, 5)), "bv"), c("b", "e", "e"))
+  expect_equal(.node_label(list(node_names = NULL), factor(c(2, 5)), "sv"), c(2L, 5L))
+})
+
+test_that("the receivers of a two-mode fit are named from the second mode", {
+  net <- manynet::mutate_nodes(manynet::ison_southern_women,
+                               x = seq_len(manynet::net_nodes(manynet::ison_southern_women)))
+  fit <- suppressWarnings(suppressMessages(
+    estimate_mrqap(. ~ ego(x), net, times = 2, control = list(seed = 1))))
+  out <- diagnose_outliers(fit)
+  women <- manynet::node_names(net)[!manynet::node_is_mode(net)]
+  events <- manynet::node_names(net)[manynet::node_is_mode(net)]
+  expect_true(all(out$sender %in% women))
+  expect_true(all(out$receiver %in% events))
+})

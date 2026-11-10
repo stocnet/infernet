@@ -238,11 +238,27 @@ coef.infernetMrqapFit <- function(object, ...) .plain_coefs(object$coefficients)
   stats::setNames(as.numeric(unlist(dots)), nms)
 }
 
-# The specification of a fit, as `specify_mrqap()` gave it to the fit.
+# The specification of a fit, as `specify_mrqap()` gave it to the fit, with
+# the random intercepts that a `random_intercept_*` control turned on, which
+# the formula does not hold. A set of coefficients then keeps the model that
+# was fitted, and `simulate()` refuses its random intercepts, as it refuses
+# those written in the formula.
 #' @keywords internal
 #' @noRd
 .fit_spec <- function(x) {
-  structure(x$formula, class = c("mrqap_formula", "formula"),
+  f <- x$formula
+  slots <- c(nets = "network", sender = "sender", receiver = "receiver",
+             reporter = "reporter")
+  on <- names(x$random)[unlist(x$random)]
+  on <- unname(slots[intersect(on, names(slots))])
+  written <- tryCatch(.specify(f)$random, error = function(e) character(0))
+  add <- setdiff(on, written)
+  if (length(add) > 0) {
+    rhs <- paste(c(deparse(f[[3]], width.cutoff = 500L),
+                   paste0("(1 | ", add, ")")), collapse = " + ")
+    f[[3]] <- str2lang(rhs)
+  }
+  structure(f, class = c("mrqap_formula", "formula"),
             input = "mrqap", record = x$record)
 }
 

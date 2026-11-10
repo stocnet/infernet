@@ -100,15 +100,10 @@ diagnose_outliers.infernetMrqapFit <- function(x,
 #' @noRd
 .dyad_ids <- function(x) {
   pred <- x$pred
-  name_of <- function(i) {
-    i <- as.integer(i)
-    nm <- x$node_names
-    if (is.null(nm) || any(i > length(nm), na.rm = TRUE)) return(i)
-    nm[i]
-  }
-  out <- tibble::tibble(sender = name_of(pred$sv), receiver = name_of(pred$rv))
+  out <- tibble::tibble(sender = .node_label(x, pred$sv, "sv"),
+                        receiver = .node_label(x, pred$rv, "rv"))
   if (length(unique(pred$nv)) > 1) out$network <- pred$nv
-  if (isTRUE(x$css) && !is.null(pred$bv)) out$reporter <- name_of(pred$bv)
+  if (isTRUE(x$css) && !is.null(pred$bv)) out$reporter <- .node_label(x, pred$bv, "bv")
   out
 }
 
