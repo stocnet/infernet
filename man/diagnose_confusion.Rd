@@ -4,6 +4,7 @@
 \alias{diagnose_confusion}
 \alias{diagnose_confusion.default}
 \alias{diagnose_confusion.infernetMrqapFit}
+\alias{diagnose_confusion.ergm}
 \alias{tidy.infernetConfusion}
 \alias{glance.infernetConfusion}
 \title{Diagnosing how well a model classifies ties}
@@ -14,12 +15,15 @@ diagnose_confusion(x, ...)
 
 \method{diagnose_confusion}{infernetMrqapFit}(x, threshold = 0.5, times = 1000, control = list(), ...)
 
+\method{diagnose_confusion}{ergm}(x, threshold = 0.5, times = 1000, control = list(), ...)
+
 \method{tidy}{infernetConfusion}(x, ...)
 
 \method{glance}{infernetConfusion}(x, ...)
 }
 \arguments{
-\item{x}{An \code{infernetMrqapFit} of a binary outcome, from \code{\link[=estimate_mrqap]{estimate_mrqap()}}.
+\item{x}{An \code{infernetMrqapFit} of a binary outcome, from \code{\link[=estimate_mrqap]{estimate_mrqap()}},
+or an \code{ergm} of a binary network, from \code{\link[ergm:ergm]{ergm::ergm()}}.
 For \code{print()}, \code{tidy()}, and \code{glance()}, the result of
 \code{diagnose_confusion()}.}
 
@@ -66,6 +70,8 @@ than an observed non-tie.
 
 \code{print()} shows the matrix, \code{tidy()} gives the ROC curve, and \code{glance()}
 gives the metrics in one row, after \code{{broom}}. \code{{autograph}} plots it.
+It also has a method for an \code{ergm} of a binary network, from
+\code{\link[ergm:ergm]{ergm::ergm()}}.
 }
 \details{
 The predicted probabilities are those of the observed model, which the
@@ -75,6 +81,15 @@ value below 0 or above 1, which is taken as 0 or 1.
 With \code{"confusion"} in \code{outputs}, as by default, \code{\link[=estimate_mrqap]{estimate_mrqap()}}
 keeps the result for a binary outcome as \verb{$confusion_matrix}, from 1000
 draws with the seed of the fit.
+
+For an \code{ergm} from \code{\link[ergm:ergm]{ergm::ergm()}}, the predicted probability of each
+dyad is \code{{ergm}}'s \code{predict()}: the probability of a tie, given the rest
+of the observed network. For a model without dependence terms, such as
+one of \code{edges}, \code{nodecov()}, and \code{nodematch()}, this is the probability
+of the tie under the model. For a model with dependence terms, such as
+\code{gwesp()} or \code{triangle}, it holds only where every other tie is as
+observed, so the matrix describes how well the model predicts one tie
+from the others, and a warning says so. Unobserved dyads are left out.
 }
 \examples{
 fit <- estimate_mrqap(. ~ ego(Age) + alter(Age),

@@ -29,12 +29,13 @@
 
 ## Evaluating
 
+- Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
+- Improved `test_gof()` of an MRQAP to draw with the simulator of `simulate()`
 - Added `diagnose_outliers()`, `diagnose_changepoints()`, and `diagnose_onset()`
   - Each is a generic with `{goldfish}`'s signature `(x, ...)`
   - `diagnose_outliers()` flags the dyads of an MRQAP with extreme residuals
 - Merged the two `diagnose_confusion()` methods into one for an MRQAP
-- Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
-- Improved `test_gof()` of an MRQAP to draw with the simulator of `simulate()`
+- Added `diagnose_confusion.ergm()` for a binary network
 
 ## Interpreting
 

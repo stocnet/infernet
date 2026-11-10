@@ -24,6 +24,8 @@
 #'
 #'   `print()` shows the matrix, `tidy()` gives the ROC curve, and `glance()`
 #'   gives the metrics in one row, after `{broom}`. `{autograph}` plots it.
+#'   It also has a method for an `ergm` of a binary network, from
+#'   [ergm::ergm()].
 #' @details
 #'   The predicted probabilities are those of the observed model, which the
 #'   permutations do not change. A linear probability model can predict a
@@ -32,7 +34,8 @@
 #'   With `"confusion"` in `outputs`, as by default, [estimate_mrqap()]
 #'   keeps the result for a binary outcome as `$confusion_matrix`, from 1000
 #'   draws with the seed of the fit.
-#' @param x An `infernetMrqapFit` of a binary outcome, from [estimate_mrqap()].
+#' @param x An `infernetMrqapFit` of a binary outcome, from [estimate_mrqap()],
+#'   or an `ergm` of a binary network, from [ergm::ergm()].
 #'   For `print()`, `tidy()`, and `glance()`, the result of
 #'   `diagnose_confusion()`.
 #' @param threshold The predicted probability at or above which a dyad is
@@ -66,7 +69,7 @@ diagnose_confusion <- function(x, ...) UseMethod("diagnose_confusion")
 diagnose_confusion.default <- function(x, ...) {
   manynet::snet_abort(
     c("{.fn diagnose_confusion} has no method for a {.cls {class(x)[1]}}.",
-      i = "Give it a {.cls infernetMrqapFit} of a binary outcome, from {.fn estimate_mrqap}."))
+      i = "Give it a {.cls infernetMrqapFit} of a binary outcome, from {.fn estimate_mrqap}, or an {.cls ergm} from {.fn ergm::ergm}."))
 }
 
 #' @rdname diagnose_confusion
@@ -98,6 +101,52 @@ diagnose_confusion.infernetMrqapFit <- function(x, threshold = 0.5,
     predicted_prob = prob, n_draws = times,
     seed = seed, threshold = threshold)
   .confusion_model(out, x)
+}
+
+#' @rdname diagnose_confusion
+#' @details
+#'   For an `ergm` from [ergm::ergm()], the predicted probability of each
+#'   dyad is `{ergm}`'s `predict()`: the probability of a tie, given the rest
+#'   of the observed network. For a model without dependence terms, such as
+#'   one of `edges`, `nodecov()`, and `nodematch()`, this is the probability
+#'   of the tie under the model. For a model with dependence terms, such as
+#'   `gwesp()` or `triangle`, it holds only where every other tie is as
+#'   observed, so the matrix describes how well the model predicts one tie
+#'   from the others, and a warning says so. Unobserved dyads are left out.
+#' @export
+diagnose_confusion.ergm <- function(x, threshold = 0.5, times = 1000,
+                                    control = list(), ...) {
+  .need_ergm()
+  if (ergm::is.valued(x)) {
+    manynet::snet_abort(
+      c("{.fn diagnose_confusion} needs a model of a binary outcome.",
+        i = "This ERGM is valued."))
+  }
+  independent <- ergm::is.dyad.independent(x)
+  if (!independent) {
+    manynet::snet_warn(
+      c("This ERGM has dependence terms, so each predicted probability is given the rest of the observed network.",
+        i = "The matrix shows how well the model predicts one tie from the others, not the ties of a network drawn from it."))
+  }
+  seed <- .resolve_control(control)$seed
+  if (is.null(seed)) seed <- x$control$seed
+  pred <- stats::predict(x, conditional = TRUE)
+  nw <- x$network
+  # The base generics reach {network}'s methods, which {ergm} loads.
+  directed <- isTRUE(nw$gal$directed)
+  key <- function(t, h) if (directed) paste(t, h)
+                        else paste(pmin(t, h), pmax(t, h))
+  observed <- as.matrix(nw, matrix.type = "edgelist")
+  missing <- as.matrix(is.na(nw), matrix.type = "edgelist")
+  dyads <- key(pred$tail, pred$head)
+  keep <- !dyads %in% key(missing[, 1], missing[, 2])
+  actual <- as.integer(dyads %in% key(observed[, 1], observed[, 2]))[keep]
+  out <- probabilistic_confusion_matrix(
+    actual = actual, predicted_prob = pred$p[keep], n_draws = times,
+    seed = seed, threshold = threshold)
+  out$model <- paste(if (independent) "Dyad-independent" else "Dyad-dependent",
+                     "ERGM of", deparse(stats::formula(x)[[2]]))
+  out
 }
 
 #' @keywords internal
