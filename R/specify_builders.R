@@ -246,9 +246,8 @@
 .build_dist <- function(op, ctx) {
   if (!isTRUE(.infernet_state$dist_warned)) {
     .infernet_state$dist_warned <- TRUE
-    manynet::snet_warn(
-      c("{.fn dist} is deprecated, and is now called {.fn diff}.",
-        i = "{.code diff({op$name})} gives the same absolute difference."))
+    manynet::snet_deprecated("dist", "diff",
+      why = "{.code diff({op$name})} gives the same absolute difference.")
   }
   .refuse_categorical(ctx, op)
   sides <- .side_matrices(ctx, op$name)
@@ -559,9 +558,9 @@
     if (!isTRUE(.infernet_state$type_warned)) {
       .infernet_state$type_warned <- TRUE
       side <- .arg_name(op$args$type)
-      manynet::snet_warn(
-        c("{.arg type} of {.fn indeg} and {.fn outdeg} is deprecated, and is now called {.arg node}.",
-          i = "{.code {op$fn}({op$name}, node = \"{side}\")} gives the same column."))
+      manynet::snet_deprecated("type", "node", type = "argument",
+        msg = "{.arg type} of {.fn indeg} and {.fn outdeg} is deprecated. Use {.arg node} instead.",
+        why = "{.code {op$fn}({op$name}, node = \"{side}\")} gives the same column.")
     }
     op$args$node <- op$args$type
   }

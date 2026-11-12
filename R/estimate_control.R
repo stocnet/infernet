@@ -734,14 +734,13 @@ c.mrqap_control <- function(...) {
     if (!is.null(r$values) && is.character(value) && length(value) == 1 &&
         value %in% names(r$values)) {
       new_value <- r$values[[value]]
-      manynet::snet_warn(
-        c("{.code {old} = \"{value}\"} is now {.code {r$to} = {deparse(new_value)}}.",
-          i = "The control was renamed in infernet {r$since}."))
+      manynet::snet_deprecated(old, r$to, type = "value",
+        msg = "{.code {old} = \"{value}\"} is now {.code {r$to} = {deparse(new_value)}}.",
+        why = "The control was renamed in infernet {r$since}.")
       value <- new_value
     } else {
-      manynet::snet_warn(
-        c("{.code {old}} is now called {.code {r$to}}.",
-          i = "The control was renamed in infernet {r$since}."))
+      manynet::snet_deprecated(old, r$to, type = "argument",
+        why = "The control was renamed in infernet {r$since}.")
     }
     if (r$to %in% names(out)) {
       manynet::snet_abort("{.val {r$to}} is given by more than one old name.")

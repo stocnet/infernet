@@ -98,7 +98,7 @@ QAPengine <- function(formula,
   absorb_once <- length(fixed_effects) > 0 && family == "gaussian"
   fit_fixed <- if (length(fixed_effects) > 0 && !absorb_once) fe_cols else NULL
   if (!is.null(fit_fixed))
-    thisRequires("fixest", "for fixed effects in a model that is not gaussian")
+    manynet::snet_requires("fixest", "for fixed effects in a model that is not gaussian", ask = FALSE)
   if (absorb_once) {
     # The intercept is one of the absorbed effects.
     mod <- stats::as.formula(paste(

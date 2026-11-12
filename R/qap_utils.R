@@ -757,7 +757,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
         c("Random intercepts are not available for the {.val zip} family.",
           i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
-      thisRequires("pscl", "for zero-inflated Poisson models")
+      manynet::snet_requires("pscl", "for zero-inflated Poisson models", ask = FALSE)
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
       fit$coefficients <- base_model$coefficients$count
       resid <- stats::residuals(base_model, type = "response")
@@ -779,7 +779,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
       fit$r.squared     <- summary(base_model)$r.squared
       fit$adj.r.squared <- summary(base_model)$adj.r.squared
     } else if (family == "negbin") {
-      thisRequires("MASS", "for negative binomial models")
+      manynet::snet_requires("MASS", "for negative binomial models", ask = FALSE)
       base_model <- MASS::glm.nb(mod, data = pred, start = start)
       fit$theta  <- base_model$theta
     } else {
@@ -797,7 +797,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
     }
   } else {
     if (family == "gaussian") {
-      thisRequires("lme4", "for random effects")
+      manynet::snet_requires("lme4", "for random effects", ask = FALSE)
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
       # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
@@ -805,7 +805,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
         c("Random intercepts are not available for the {.val negbin} family.",
           i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
-      thisRequires("lme4", "for random effects")
+      manynet::snet_requires("lme4", "for random effects", ask = FALSE)
       base_model <- lme4::glmer(mod, data = pred, family = family,
                                 control = lme4::glmerControl(
                                   calc.derivs = FALSE,
@@ -959,7 +959,7 @@ residualise_predictor <- function(xi, pred, main_vars,
   if (!has_random) {
     xm <- stats::lm(modx, data = pred)
   } else {
-    thisRequires("lme4", "for random effects")
+    manynet::snet_requires("lme4", "for random effects", ask = FALSE)
     # Residualising is a step towards the null distribution, not a result the
     # user reads, so a degenerate mixed fit here must not abort the whole run.
     # Crossed sender and receiver intercepts on a predictor are often singular,
