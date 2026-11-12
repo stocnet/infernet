@@ -1,10 +1,13 @@
-# Reporting the results of network models and tests ####
+# Reporting the results of network models ####
 
-#' Reporting network regression results
-#'
-#' @description
-#'   These methods report a `netreg`, the result of [estimate_mrqap()],
-#'   whether its class is `netreg_lm`, `netreg_glm`, or `netreg_css`.
+# The methods that report an `infernetMrqapFit`, which `estimate_mrqap()` in
+# `R/estimate_mrqap.R` makes, on its help page; the helpers that the methods
+# of a fit on other pages share, `.observed_model()` and `.refit_abort()`; and `other_results`, the
+# methods for the fits of other packages.
+
+#' @section Methods:
+#'   These methods report an `infernetMrqapFit` of any family, and of a
+#'   cognitive social structure or a panel.
 #'
 #'   - `print()` shows the result in three parts: a title that says what
 #'     was fitted, `tidy()` of the estimates with significance marks, and a
@@ -24,18 +27,21 @@
 #'     one row for each coefficient, and one row for the whole model.
 #'     So an MRQAP result can sit in one table beside an ERGM or a SIENA
 #'     one (see [other_results]).
-#'   - `nobs()` gives the number of dyads that the model used:
-#'     unobserved dyads, fixed ties, and the loops that the model leaves out
-#'     are not counted.
-#'   - `logLik()` and `deviance()` give the log-likelihood and the deviance
-#'     of the observed model, so `AIC()` and `BIC()` work too.
-#'   - `fitted()` and `residuals()` give one value for each dyad that the
-#'     model used, in the rows of the dyad-level data.
-#'   - `formula()` gives the formula that was fitted, after [specify_mrqap()]
-#'     read it, and `terms()` gives the terms of the columns that were fitted,
-#'     as the coefficients name them.
-#'     For the formula of chosen rows of a table of terms, see [specify_terms].
-#' @details
+#'
+#'   The other methods of a fit are on the page of the stage that uses them:
+#'   - [fitted()][diagnose_residuals] and [residuals()][diagnose_residuals],
+#'     on [diagnose_residuals], give the input of a diagnosis.
+#'   - [nobs()][evaluate_likelihood], [logLik()][evaluate_likelihood], and
+#'     [deviance()][evaluate_likelihood], on [evaluate_likelihood], compare
+#'     models, through `AIC()` and `BIC()`.
+#'   - [anova()][test_parameter], on [test_parameter], tests the terms that a
+#'     larger of two nested fits adds.
+#'   - [predict()][predict_mrqap], on [predict_mrqap], gives the outcome for
+#'     new values of the predictors.
+#'   - [formula()][predict_mrqap] and [terms()][predict_mrqap], on
+#'     [predict_mrqap], give the formula that was fitted and the columns of
+#'     its coefficients.
+#' @section P-values and the observed model:
 #'   The p-values come from the permutations. Every other method reads the
 #'   observed model, which the permutations do not change.
 #'   A permutation test gives a p-value but no standard error,
@@ -49,25 +55,22 @@
 #'   When the predictors are permuted, the intercept has no test,
 #'   and its `p.value` is `NA`.
 #'
-#'   Two methods of `{stats}` work without a method here:
-#'   `coef()` gives the estimates, and `update()` fits the model again,
-#'   with a changed formula, `times`, or `control`, from the call that the
-#'   result keeps.
+#'   `coef()` gives the estimated coefficients as a plain named vector
+#'   (see [declare_coefs]).
+#'   `update()` of `{stats}` works without a method here: it fits the model
+#'   again, with a changed formula, `times`, or `control`, from the call that
+#'   the result keeps.
 #' @section Methods left out:
-#'   - `vcov()` and `confint()`: a covariance or an interval from the observed
-#'     model would not come from the permutations, and could be read as the
-#'     basis of the permutation p-values.
+#'   - `vcov()`, `confint()`, and a `std.error` column: a covariance, an
+#'     interval, or a standard error from the observed model would not come
+#'     from the permutations, and could be read as the basis of the
+#'     permutation p-values.
+#'   - `as.data.frame()` and `as.matrix()`: `x$pred` is the dyad-level data,
+#'     and `fitted()` and `residuals()` give one value for each of its rows.
 #'   - `weights()`: a network regression uses no weights.
 #'   - `[`: a result has no rows to select. Use `$` or `[[` for an element.
 #'   - `profile()`: a permutation fit has no likelihood to profile.
-#' @section Fixed effects:
-#'   A gaussian model absorbs its fixed effects by demeaning. Its
-#'   log-likelihood and deviance are those of the model with a dummy for each
-#'   group, and `logLik()` counts the absorbed parameters in its `df`, so
-#'   that `AIC()`, `BIC()`, and `glance()` are those of that model too.
-#'   `fitted()` gives the observed values less the residuals, not the
-#'   demeaned fitted values.
-#' @param x,object A `netreg`, from [estimate_mrqap()].
+#' @param x,object An `infernetMrqapFit`, from [estimate_mrqap()].
 #' @param print_b,print_random Deprecated. `print_b = TRUE` also prints the
 #'   p-values of the coefficients, rather than of their test statistics, and
 #'   `print_random = TRUE` the random intercepts. Use `summary()`, which gives
@@ -77,13 +80,12 @@
 #' @param alternative Which permutation p-value to report:
 #'   `"two.sided"` (the default) for Pr(>=|t|),
 #'   `"less"` for Pr(<=t), or `"greater"` for Pr(>=t).
-#' @param ... For `residuals()`, passed to the `residuals()` method of the
-#'   observed model, such as `type = "pearson"` for a `glm`.
-#'   For `summary()`, passed to `tidy()`, such as `alternative = "greater"`.
-#'   Otherwise not used.
-#' @return `print()` returns `x`, invisibly.
+#' @param ... For `summary()`, passed to `tidy()`, such as
+#'   `alternative = "greater"`. Otherwise not used.
+#' @return
+#'   `print()` returns `x`, invisibly.
 #'   `tidy()`, `summary()`, and `glance()` return a tibble; the tibble of
-#'   `summary()` has the class `summary_netreg` too, for its print.
+#'   `summary()` has the class `infernetMrqapSummary` too, for its print.
 #'   `tidy()` gives the columns `term`, `estimate`, `statistic`, and
 #'   `p.value`.
 #'   `summary()` gives these columns, `p.lower` and `p.upper`, a `title` that
@@ -93,10 +95,8 @@
 #'   `reference` category, and for an interaction its `operands`.
 #'   These group the coefficients without parsing their names.
 #'   `glance()` gives the fit statistics that the model keeps.
-#'   `nobs()` gives an integer, `logLik()` a `logLik` object,
-#'   `deviance()` a number, `fitted()` and `residuals()` a numeric vector,
-#'   `formula()` a formula, and `terms()` a `terms` object.
-#' @family models
+#'   For a gaussian model with fixed effects, these are the statistics of
+#'   the model with a dummy for each group (see [evaluate_likelihood]).
 #' @examples
 #' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
 #'                             manynet::ison_hightech, times = 5)
@@ -104,11 +104,9 @@
 #' summary(css_model)
 #' tidy(css_model)
 #' glance(css_model)
-#' nobs(css_model)
-#' AIC(css_model)
-#' formula(css_model)
-#' head(fitted(css_model))
-#' @name netreg_results
+#' @name mrqap_results
+#' @rdname estimate_mrqap
+#' @aliases netreg_results
 NULL
 
 #' @importFrom generics tidy
@@ -119,12 +117,12 @@ generics::tidy
 #' @export
 generics::glance
 
-# infernet: netreg ####
+# infernet: infernetMrqapFit ####
 
-#' @rdname netreg_results
-#' @method tidy netreg
+#' @rdname estimate_mrqap
+#' @method tidy infernetMrqapFit
 #' @export
-tidy.netreg <- function(x, exponentiate = FALSE,
+tidy.infernetMrqapFit <- function(x, exponentiate = FALSE,
                         alternative = c("two.sided", "less", "greater"), ...) {
   alternative <- match.arg(alternative)
   p <- switch(alternative,
@@ -141,10 +139,10 @@ tidy.netreg <- function(x, exponentiate = FALSE,
                  p.value = as.numeric(p[2, ]))
 }
 
-#' @rdname netreg_results
+#' @rdname estimate_mrqap
 #' @export
-summary.netreg <- function(object, ...) {
-  out <- tidy.netreg(object, ...)
+summary.infernetMrqapFit <- function(object, ...) {
+  out <- tidy.infernetMrqapFit(object, ...)
   out$p.lower <- as.numeric(object$lower[2, ])
   out$p.upper <- as.numeric(object$larger[2, ])
   out <- out[c("term", "estimate", "statistic", "p.lower", "p.upper", "p.value")]
@@ -155,9 +153,9 @@ summary.netreg <- function(object, ...) {
     out <- tibble::as_tibble(c(out, list(title = .term_titles(parts)), parts))
   }
   structure(out,
-            class = c("summary_netreg", class(out)),
-            header = .netreg_header(object),
-            footer = .netreg_footer(object, null = FALSE),
+            class = c("infernetMrqapSummary", class(out)),
+            header = .mrqap_header(object),
+            footer = .mrqap_footer(object, null = FALSE),
             times = object$times,
             glance = tryCatch(glance(object), error = function(e) NULL),
             random = tryCatch(.random_intercepts(object), error = function(e) NULL),
@@ -205,9 +203,9 @@ summary.netreg <- function(object, ...) {
   out
 }
 
-#' @rdname netreg_results
 #' @export
-print.summary_netreg <- function(x, ...) {
+#' @noRd
+print.infernetMrqapSummary <- function(x, ...) {
   times <- attr(x, "times")
   # A summary that lost its attributes, such as by `[`, prints as a tibble.
   if (is.null(times)) return(NextMethod())
@@ -255,41 +253,24 @@ print.summary_netreg <- function(x, ...) {
 
 # ---- print ------------------------------------------------------------------
 
-# S3 dispatches on the most specific class, so each kind of result has its own
-# method. All of them print the same three parts (see `R/report_print.R`):
-# what was fitted, `tidy()` of the estimates, and how the null
-# distribution was made. `print.netreg()` is the fallback for a `netreg` with
-# no more specific class, such as one built by hand.
+# Every fit prints the same three parts (see `R/report_print.R`): what was
+# fitted, `tidy()` of the estimates, and how the null distribution was made.
+# The family, a CSS, and a panel change only what the header and the footer
+# say, so one method reads them from the fit.
 
-#' @rdname netreg_results
+#' @rdname estimate_mrqap
 #' @order 1
 #' @export
-print.netreg_lm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
-  .print_netreg(x, print_b = print_b, print_random = print_random)
-}
-
-#' @rdname netreg_results
-#' @order 2
-#' @export
-print.netreg_glm <- function(x, ..., print_b = FALSE, print_random = FALSE) {
-  .print_netreg(x, print_b = print_b, print_random = print_random)
-}
-
-#' @rdname netreg_results
-#' @order 4
-#' @export
-print.netreg <- function(x, ...) {
-  cat("<netreg>\n")
-  utils::str(unclass(x), max.level = 1)
-  invisible(x)
+print.infernetMrqapFit <- function(x, ..., print_b = FALSE, print_random = FALSE) {
+  .print_mrqap(x, print_b = print_b, print_random = print_random)
 }
 
 #' @keywords internal
 #' @noRd
-.print_netreg <- function(x, print_b = FALSE, print_random = FALSE) {
-  .print_title(.netreg_header(x))
-  marks <- .print_tidy(.netreg_tidy(x))
-  .print_footer(c(.netreg_footer(x), .signif_legend(marks)),
+.print_mrqap <- function(x, print_b = FALSE, print_random = FALSE) {
+  .print_title(.mrqap_header(x))
+  marks <- .print_tidy(.mrqap_tidy(x))
+  .print_footer(c(.mrqap_footer(x), .signif_legend(marks)),
                 .methods_hint("summary() for the fit and every p-value"))
   if (print_b) {
     manynet::snet_warn(
@@ -310,8 +291,8 @@ print.netreg <- function(x, ...) {
 # absorbs has no estimate, and is left out.
 #' @keywords internal
 #' @noRd
-.netreg_tidy <- function(x) {
-  tab <- tidy.netreg(x)
+.mrqap_tidy <- function(x) {
+  tab <- tidy.infernetMrqapFit(x)
   absorbed <- tab$term == "(Intercept)" & is.na(tab$estimate)
   tab[!absorbed, , drop = FALSE]
 }
@@ -330,7 +311,7 @@ print.netreg <- function(x, ...) {
 # What was fitted.
 #' @keywords internal
 #' @noRd
-.netreg_header <- function(x) {
+.mrqap_header <- function(x) {
   what <- paste0(.fit_label(x), " MRQAP of ", x$dep %||% "the outcome")
   parts <- character(0)
   if (length(x$fixed_effects) > 0) {
@@ -350,7 +331,7 @@ print.netreg <- function(x, ...) {
 # How the null distribution was made, from what, and with what controls.
 #' @keywords internal
 #' @noRd
-.netreg_footer <- function(x, null = TRUE) {
+.mrqap_footer <- function(x, null = TRUE) {
   null <- if (!null) {
     NULL
   } else if (identical(x$permute, "outcome")) {
@@ -359,7 +340,7 @@ print.netreg <- function(x, ...) {
     paste0("Null: ", format(x$times),
            " permutations of each predictor, by double semi-partialling.")
   }
-  who <- if (inherits(x, "netreg_css")) {
+  who <- if (isTRUE(x$css)) {
     "senders, receivers, and reporters alike"
   } else if (isTRUE(x$panel)) {
     "the nodes of every wave alike"
@@ -419,8 +400,33 @@ print.netreg <- function(x, ...) {
 #' @noRd
 .node_names <- function(.data) {
   if (.is_list_of_graphs(.data)) return(.node_names(.data[[1]]))
-  tryCatch(manynet::node_names(manynet::as_tidygraph(.data)),
-           error = function(e) NULL)
+  tryCatch({
+    g <- manynet::as_tidygraph(.data)
+    nm <- manynet::node_names(g)
+    # A two-mode network names the nodes of its first mode, then those of its
+    # second, so a receiver's index is offset by the size of the first mode.
+    if (!is.null(nm) && manynet::is_twomode(g)) {
+      attr(nm, "n_first") <- sum(!manynet::node_is_mode(g))
+    }
+    nm
+  }, error = function(e) NULL)
+}
+
+# The name of each node that a column of the dyad-level data indexes: `sv`,
+# `rv`, or `bv`. The index is read from the label of a factor, not from its
+# code, since a node without an observed cell has no level. A receiver of a
+# two-mode network is a node of the second mode. A reporter of a two-mode CSS
+# indexes every node, in the order of the names. Without names, or with an
+# index past them, the index is returned.
+#' @keywords internal
+#' @noRd
+.node_label <- function(x, i, slot) {
+  i <- suppressWarnings(as.integer(as.character(i)))
+  nm <- x$node_names
+  if (is.null(nm)) return(i)
+  if (identical(slot, "rv")) i <- i + (attr(nm, "n_first") %||% 0L)
+  if (any(i < 1 | i > length(nm), na.rm = TRUE)) return(i)
+  as.character(nm)[i]
 }
 
 # The random intercepts of a mixed model, as `lme4::ranef()` gives them: one
@@ -439,10 +445,9 @@ print.netreg <- function(x, ...) {
     idx <- rownames(re[[nm]])
     who <- if (nm %in% names(slots)) slots[[nm]] else nm
     label <- idx
-    if (nm != "nv" && !is.null(names_of)) {
-      at <- suppressWarnings(as.integer(idx))
-      ok <- !is.na(at) & at >= 1 & at <= length(names_of)
-      label[ok] <- names_of[at[ok]]
+    if (nm %in% c("sv", "rv", "bv") && !is.null(names_of)) {
+      named <- .node_label(x, idx, nm)
+      if (is.character(named)) label <- ifelse(is.na(named), idx, named)
     }
     tibble::tibble(group = who, level = label,
                    intercept = as.numeric(re[[nm]][, 1]))
@@ -465,20 +470,20 @@ print.netreg <- function(x, ...) {
   invisible()
 }
 
-#' @rdname netreg_results
-#' @method glance netreg
+#' @rdname estimate_mrqap
+#' @method glance infernetMrqapFit
 #' @export
-glance.netreg <- function(x, ...) {
-  tibble::tibble(family = x$family,
-                permute = x$permute,
-                times = x$times,
-                nobs = .result_nobs(x))
+glance.infernetMrqapFit <- function(x, ...) {
+  out <- if (identical(x$family, "gaussian")) .glance_lm(x) else .glance_glm(x)
+  if (isTRUE(x$css) && !is.null(x$pred$bv)) {
+    out$reporters <- length(unique(x$pred$bv))
+  }
+  out
 }
 
-#' @rdname netreg_results
-#' @method glance netreg_lm
-#' @export
-glance.netreg_lm <- function(x, ...) {
+#' @keywords internal
+#' @noRd
+.glance_lm <- function(x) {
   df <- .result_num(.result_df_residual(x))
   tibble::tibble(r.squared = .result_num(x$r.squared),
                 adj.r.squared = .result_num(x$adj.r.squared),
@@ -492,10 +497,9 @@ glance.netreg_lm <- function(x, ...) {
                 times = x$times)
 }
 
-#' @rdname netreg_results
-#' @method glance netreg_glm
-#' @export
-glance.netreg_glm <- function(x, ...) {
+#' @keywords internal
+#' @noRd
+.glance_glm <- function(x) {
   fit <- tryCatch(.observed_model(x), error = function(e) NULL)
   out <- tibble::tibble(family = x$family,
                        logLik = .result_num(as.numeric(stats::logLik(x))),
@@ -511,15 +515,6 @@ glance.netreg_glm <- function(x, ...) {
   out
 }
 
-#' @rdname netreg_results
-#' @method glance netreg_css
-#' @export
-glance.netreg_css <- function(x, ...) {
-  out <- NextMethod()
-  if (!is.null(x$pred$bv)) out$reporters <- length(unique(x$pred$bv))
-  out
-}
-
 # A fit statistic that the model does not keep, or that its fit cannot give,
 # is NA rather than an error.
 .result_num <- function(expr) {
@@ -528,10 +523,10 @@ glance.netreg_css <- function(x, ...) {
 }
 
 .result_nobs <- function(x) {
-  nobs.netreg(x)
+  nobs.infernetMrqapFit(x)
 }
 
-# The residual degrees of freedom of the observed model, less the parameters
+# The residual degrees of freedom of the observed model, less the coefficients
 # that a gaussian model absorbed by demeaning.
 .result_df_residual <- function(x) {
   df <- stats::df.residual(.observed_model(x))
@@ -540,7 +535,7 @@ glance.netreg_css <- function(x, ...) {
 }
 
 # The observed model, which a result keeps as `simple_fit` and also in
-# `base`, so that `less_mem = TRUE` still leaves one to read.
+# `base`, so that a fit without `"model"` in `outputs` still has one.
 #' @keywords internal
 #' @noRd
 .observed_model <- function(x) {
@@ -552,66 +547,6 @@ glance.netreg_css <- function(x, ...) {
         i = "Fit it again with {.fn estimate_mrqap}."))
   }
   bm
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::nobs
-nobs.netreg <- function(object, ...) {
-  # From the observed model, since {fixest} leaves out the dyads of a group
-  # with one outcome value; else every row of the dyad-level data.
-  n <- tryCatch(stats::nobs(.observed_model(object)), error = function(e) NULL)
-  if (length(n) == 1 && !is.na(n)) return(as.integer(n))
-  if (is.null(object$pred)) NA_integer_ else nrow(object$pred)
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::logLik
-logLik.netreg <- function(object, ...) {
-  bm <- .observed_model(object)
-  ll <- stats::logLik(bm)
-  # {fixest} gives no `df`, and counts its absorbed effects in `nparams`.
-  if (is.null(attr(ll, "df")) && !is.null(bm$nparams)) {
-    attr(ll, "df") <- bm$nparams
-  }
-  if (!is.null(object$fixed_df)) {
-    attr(ll, "df") <- attr(ll, "df") + object$fixed_df
-  }
-  attr(ll, "nobs") <- nobs.netreg(object)
-  class(ll) <- "logLik"
-  ll
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::deviance
-deviance.netreg <- function(object, ...) {
-  stats::deviance(.observed_model(object))
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::fitted
-fitted.netreg <- function(object, ...) {
-  .observed_model(object)
-  stats::predict(object, type = "response")
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::residuals
-residuals.netreg <- function(object, ...) {
-  unname(stats::residuals(.observed_model(object), ...))
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::formula
-formula.netreg <- function(x, ...) {
-  if (is.null(x$formula)) .refit_abort("formula")
-  x$formula
-}
-
-#' @rdname netreg_results
-#' @exportS3Method stats::terms
-terms.netreg <- function(x, ...) {
-  if (is.null(x$model_formula)) .refit_abort("terms")
-  stats::terms(x$model_formula)
 }
 
 #' @keywords internal
@@ -629,7 +564,7 @@ terms.netreg <- function(x, ...) {
 #' @description
 #'   `tidy()` and `glance()` give the results of other packages' network
 #'   models as a tibble, after `{broom}`, with the same columns as for a
-#'   `netreg` (see [netreg_results]) where they mean the same.
+#'   `infernetMrqapFit` (see [estimate_mrqap]) where they mean the same.
 #'   So an MRQAP result can sit in one table beside an ERGM or a SIENA one.
 #'   They cover:
 #'
@@ -651,9 +586,8 @@ terms.netreg <- function(x, ...) {
 #'   or the MCMC settings.
 #' @param ... Further arguments, passed to `summary()` for an `ergm`
 #'   and otherwise not used.
-#' @return `tidy()` and `glance()` return a tibble, and `print()` returns
-#'   `x`, invisibly.
-#' @family models
+#' @return `tidy()` and `glance()` return a tibble.
+#' @family estimating functions
 #' @examplesIf requireNamespace("ergm", quietly = TRUE)
 #' fit <- suppressMessages(
 #'   ergm::ergm(manynet::as_network(manynet::ison_adolescents) ~ edges))
@@ -739,8 +673,8 @@ glance.netlogit <- function(x, ...) {
   )
 }
 
-#' @rdname other_results
 #' @export
+#' @noRd
 print.netlm <- function(x, ...) {
   cat("# Fitted model results\n")
   print(tidy(x))
@@ -749,8 +683,8 @@ print.netlm <- function(x, ...) {
   invisible(x)
 }
 
-#' @rdname other_results
 #' @export
+#' @noRd
 print.netlogit <- function(x, ...) {
   cat("# Fitted model results\n")
   print(tidy(x))
@@ -847,49 +781,3 @@ glance.sienaFit <- function(x, ...) {
   data
 }
 
-# A CSS result prints as any other result, and its header and footer say how
-# many reporters it was fitted on, which a reader needs to interpret it.
-#' @rdname netreg_results
-#' @order 3
-#' @export
-print.netreg_css <- function(x, ..., print_b = FALSE, print_random = FALSE) {
-  .print_netreg(x, print_b = print_b, print_random = print_random)
-}
-
-# ---- diffusion models ---------------------------------------------------------
-
-#' @details
-#'   `print()` shows a title that says how many diffusions were simulated,
-#'   the report of each step, and a footer with the steps until
-#'   every node adopted. `summary()` gives those steps for each simulation.
-#' @rdname play_diffusions
-#' @param object,x A `diffs_model`.
-#' @export
-summary.diffs_model <- function(object, ...) {
-  fin <- (object$I != object$n) * 1
-  toa <- tapply(fin, object$sim, sum) + 1
-  tibble::tibble(sim = as.integer(names(toa)), toa = as.numeric(toa))
-}
-
-#' @rdname play_diffusions
-#' @export
-print.diffs_model <- function(x, ...) {
-  y <- as.data.frame(x)
-  y <- y[, colSums(abs(y), na.rm = TRUE) != 0 | names(y) %in% c("sim", "time"),
-         drop = FALSE]
-  y$I_new <- NULL
-  sims <- length(unique(x$sim))
-  states <- intersect(c("S", "E", "I", "R"), names(y))
-  .print_title(paste0(sims, " simulated ", paste(states, collapse = ""),
-                     " diffusion", if (sims != 1) "s"))
-  print(tibble::as_tibble(y), ...)
-  toa <- summary.diffs_model(x)$toa
-  .print_footer(c(paste0("Steps until every node adopted: median ",
-                         stats::median(toa), ", from ", min(toa), " to ",
-                         max(toa), "."),
-                  .controls_line(attr(x, "control"))),
-                .methods_hint("summary() for the steps of each simulation",
-                              "test_gof() and test_distributions() to compare",
-                              "and plot() from {autograph} for the curves"))
-  invisible(x)
-}

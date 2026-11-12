@@ -236,7 +236,7 @@
 #'   The reporter terms have no equivalent, since no other model has a
 #'   reporter. ergm's terms of the outcome's own structure, such as `gwesp()`,
 #'   and goldfish's endogenous effects, such as `cycle`, have no MRQAP term,
-#'   and an MRQAP drops them (see [specify]).
+#'   and an MRQAP drops them (see [specify_mrqap]).
 #'
 #' @references
 #'   Haunss, Sebastian, and James Hollway. 2023.
@@ -258,12 +258,12 @@
 #' @seealso [estimate_mrqap()] fits a formula of these terms; [specify_terms]
 #'   lists the terms that suit a network.
 #' @name terms_mrqap
-#' @family models
+#' @family specifying functions
 #' @examples
 #' # Every term that suits a network, and the columns of some of them
 #' specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-#' tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-#'      manynet::ison_lawfirm)
+#' summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+#'         manynet::ison_lawfirm)
 NULL
 
 # ---- the term registry -------------------------------------------------------

@@ -1,16 +1,19 @@
 # Predicting from network regressions ####
 
-#' Predicting from a network regression
+#' Predicting from a network regression, and its terms
 #'
 #' @description
 #'   `predict()` gives the predicted value of the outcome for each dyad.
 #'
-#'   - For a `netreg`, from `estimate_mrqap()`, it predicts either the dyads
+#'   - For an `infernetMrqapFit`, from `estimate_mrqap()`, it predicts either the dyads
 #'     that the model was fitted on, or the dyads of `newdata`.
 #'   - For a `netlm` or `netlogit`, from `net_regression()` in `{migraph}`
 #'     before 2.0.0, it predicts the rows of a design matrix.
+#'
+#'   `formula()` and `terms()` of an `infernetMrqapFit` give the formula that
+#'   was fitted and the columns of its coefficients.
 #' @details
-#'   Without `newdata`, the prediction for a `netreg` is the fitted value of
+#'   Without `newdata`, the prediction for an `infernetMrqapFit` is the fitted value of
 #'   each dyad of the model, with any random intercepts and absorbed fixed
 #'   effects.
 #'
@@ -20,10 +23,10 @@
 #'   model with fixed effects predicts only the dyads it was fitted on.
 #'   For a zero-inflated Poisson model, the zero-inflation part reads the same
 #'   columns as the count part.
-#' @param object A `netreg` object, as returned by `estimate_mrqap()`,
+#' @param object An `infernetMrqapFit` object, as returned by `estimate_mrqap()`,
 #'   or a `netlm` or `netlogit` object.
 #' @param newdata The dyads to predict.
-#'   For a `netreg`, `NULL` (the default) predicts the dyads that the model
+#'   For an `infernetMrqapFit`, `NULL` (the default) predicts the dyads that the model
 #'   was fitted on. Otherwise, a data frame or a matrix with a column for each
 #'   predictor, named as the coefficients are, e.g. `ego_Citations`.
 #'   A column for an interaction, e.g. `ego_Age:same_Grp`, is computed from its
@@ -39,7 +42,9 @@
 #'   model. For a gaussian model the two are the same.
 #' @param ... Not used.
 #' @return A numeric vector of predicted values, one for each dyad or row.
-#' @name predict
+#' @name predict_mrqap
+#' @aliases predict
+#' @family interpreting functions
 #' @examples
 #' networkers <- manynet::ison_networkers |>
 #'   manynet::to_subgraph(Discipline == "Sociology")
@@ -51,10 +56,10 @@
 #' predict(model1, data.frame(ego_Citations = 10, alter_Citations = 50))
 NULL
 
-#' @rdname predict
-#' @method predict netreg
+#' @rdname predict_mrqap
+#' @method predict infernetMrqapFit
 #' @export
-predict.netreg <- function(object, newdata = NULL,
+predict.infernetMrqapFit <- function(object, newdata = NULL,
                            type = c("link", "response"), ...) {
   type <- match.arg(type)
   if (is.null(newdata)) {
@@ -82,7 +87,7 @@ predict.netreg <- function(object, newdata = NULL,
          })
 }
 
-#' @rdname predict
+#' @rdname predict_mrqap
 #' @method predict netlm
 #' @export
 predict.netlm <- function(object, newdata = NULL, ...) {
@@ -97,7 +102,7 @@ predict.netlm <- function(object, newdata = NULL, ...) {
   drop(as.matrix(newdata) %*% coefs)
 }
 
-#' @rdname predict
+#' @rdname predict_mrqap
 #' @method predict netlogit
 #' @export
 predict.netlogit <- function(object, newdata = NULL,
@@ -173,4 +178,36 @@ predict.netlogit <- function(object, newdata = NULL,
   out <- do.call(cbind, cols)
   colnames(out) <- coef_names
   out
+}
+
+# The formula and the terms of a fit ####
+
+#' @section The formula and the terms of a fit:
+#'   `formula()` of a fit from [estimate_mrqap()] gives the formula that was
+#'   fitted, after [specify_mrqap()] read it, and `terms()` gives the terms
+#'   of the columns that were fitted, as the coefficients name them.
+#'   These are the columns that `newdata` needs, and that each coefficient
+#'   is the effect of.
+#'   For the formula of chosen rows of a table of terms, see [specify_terms].
+#' @param x For `formula()` and `terms()`, an `infernetMrqapFit`, from
+#'   [estimate_mrqap()].
+#' @return `formula()` of a fit gives a formula, and `terms()` a `terms`
+#'   object.
+#' @examples
+#' fit <- estimate_mrqap(advice ~ same(dept) + reports,
+#'                       manynet::ison_hightech, times = 5)
+#' formula(fit)
+#' terms(fit)
+#' @rdname predict_mrqap
+#' @exportS3Method stats::formula
+formula.infernetMrqapFit <- function(x, ...) {
+  if (is.null(x$formula)) .refit_abort("formula")
+  x$formula
+}
+
+#' @rdname predict_mrqap
+#' @exportS3Method stats::terms
+terms.infernetMrqapFit <- function(x, ...) {
+  if (is.null(x$model_formula)) .refit_abort("terms")
+  stats::terms(x$model_formula)
 }

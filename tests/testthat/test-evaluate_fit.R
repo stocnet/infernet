@@ -147,10 +147,10 @@ test_that("play_diffusions() and test_distributions() reproduce with a seed", {
 
 # ---- network regressions -----------------------------------------------------
 
-test_that("test_gof() on a netreg simulates outcomes in the model's dyads", {
+test_that("test_gof() on an MRQAP fit simulates outcomes in the model's dyads", {
   net <- qap_net_binary(n = 15)
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5, control = list(seed = 1))
-  sim <- infernet:::.netreg_simulator(fit, net)
+  sim <- infernet:::.mrqap_simulator(fit, net)
   set.seed(1)
   draws <- replicate(5, sim$draw(), simplify = FALSE)
   expect_true(all(vapply(draws, function(d) all(diag(d) == diag(sim$matrix)),
@@ -161,7 +161,7 @@ test_that("test_gof() on a netreg simulates outcomes in the model's dyads", {
   expect_true(manynet::is_directed(sim$network(draws[[1]])))
 })
 
-test_that("test_gof() on a netreg finds the dependence that an MRQAP leaves out", {
+test_that("test_gof() on an MRQAP fit finds the dependence that an MRQAP leaves out", {
   set.seed(17)
   m <- matrix(stats::rbinom(225, 1, 0.2), 15, 15)
   m[lower.tri(m)] <- t(m)[lower.tri(m)]
@@ -177,7 +177,7 @@ test_that("test_gof() on a netreg finds the dependence that an MRQAP leaves out"
   expect_true(res$directed)
 })
 
-test_that("test_gof() on a netreg takes a statistic of several values", {
+test_that("test_gof() on an MRQAP fit takes a statistic of several values", {
   net <- qap_net_count(n = 12)
   fit <- estimate_mrqap(. ~ ego(Age) + alter(Age), net, times = 5,
                         control = list(family = "poisson"))
@@ -187,7 +187,7 @@ test_that("test_gof() on a netreg takes a statistic of several values", {
   expect_true(all(res$testdist >= 0))
 })
 
-test_that("test_gof() on a netreg passes each argument of FUN by its name", {
+test_that("test_gof() on an MRQAP fit passes each argument of FUN by its name", {
   net <- qap_net_binary(n = 12)
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
   # Neither argument is the second formal of the statistic.
@@ -200,7 +200,7 @@ test_that("test_gof() on a netreg passes each argument of FUN by its name", {
   expect_error(test_gof(fit, net, stat, scale = 2, times = 5), "shift")
 })
 
-test_that("test_gof() on a netreg mirrors an undirected network", {
+test_that("test_gof() on an MRQAP fit mirrors an undirected network", {
   set.seed(6)
   m <- matrix(stats::rbinom(144, 1, 0.3), 12, 12)
   m[lower.tri(m)] <- t(m)[lower.tri(m)]
@@ -208,13 +208,13 @@ test_that("test_gof() on a netreg mirrors an undirected network", {
   net <- manynet::mutate(manynet::as_tidygraph(m), Age = stats::runif(12))
   fit <- estimate_mrqap(. ~ diff(Age), net, times = 5)
   expect_equal(fit$family, "binomial")
-  sim <- infernet:::.netreg_simulator(fit, net)
+  sim <- infernet:::.mrqap_simulator(fit, net)
   d <- sim$draw()
   expect_equal(d, t(d))
   expect_false(manynet::is_directed(sim$network(d)))
 })
 
-test_that("test_gof() on a netreg reproduces with a seed", {
+test_that("test_gof() on an MRQAP fit reproduces with a seed", {
   net <- qap_net_binary(n = 12)
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
   one <- test_gof(fit, net, netrics::net_by_reciprocity, times = 40,
@@ -224,12 +224,14 @@ test_that("test_gof() on a netreg reproduces with a seed", {
   expect_equal(one, two)
 })
 
-test_that("test_gof() on a netreg refuses what it cannot simulate", {
+test_that("test_gof() on an MRQAP fit refuses what it cannot simulate", {
   net <- qap_net_binary(n = 12)
-  lean <- estimate_mrqap(. ~ ego(Age), net, times = 5,
-                         control = list(less_mem = TRUE))
+  # A model with random intercepts draws from its observed model, which a fit
+  # keeps only with "model" in `outputs`.
+  lean <- suppressMessages(estimate_mrqap(. ~ ego(Age) + (1 | sender), net,
+                                          times = 5, outputs = "confusion"))
   expect_error(test_gof(lean, net, netrics::net_by_reciprocity, times = 5),
-               "less_mem")
+               "outputs")
   fit <- estimate_mrqap(. ~ ego(Age), net, times = 5)
   other <- qap_net_binary(n = 12, seed = 999)
   expect_error(test_gof(fit, other, netrics::net_by_reciprocity, times = 5),
@@ -245,7 +247,7 @@ test_that("test_gof() and test_distributions() name what they need", {
   expect_error(test_distributions(fake_diffs(1), sims, times = 5), "at least 2")
 })
 
-test_that("test_gof() on a netreg refuses a gaussian model", {
+test_that("test_gof() on an MRQAP fit refuses a gaussian model", {
   # A valued network of density about 0.33. A continuous draw has no zero, so
   # each would have density 1, and the test would always reject.
   set.seed(5)
@@ -259,7 +261,7 @@ test_that("test_gof() on a netreg refuses a gaussian model", {
                "cannot simulate networks from a \"gaussian\" model")
 })
 
-test_that("test_gof() on a netreg refuses a list, a panel, and a CSS", {
+test_that("test_gof() on an MRQAP fit refuses a list, a panel, and a CSS", {
   pooled <- suppressMessages(estimate_mrqap(
     . ~ ego(Age), list(qap_net_binary(n = 10), qap_net_binary(n = 10, seed = 2)),
     times = 2))

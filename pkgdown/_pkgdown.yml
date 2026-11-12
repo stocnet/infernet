@@ -59,51 +59,62 @@ articles:
       - "`articles/diversity-and-regression`"
       - "`articles/diffusion-and-learning`"
       - "`articles/modelling-with-ergms`"
+redirects:
+  - ["reference/regression.html", "reference/estimate_mrqap.html"]
+  - ["reference/netreg_results.html", "reference/estimate_mrqap.html"]
+  - ["reference/report_tests.html", "reference/test_measures.html"]
+  - ["reference/specify.html", "reference/specify_mrqap.html"]
+  - ["reference/specify_formula.html", "reference/specify_mrqap.html"]
+  - ["reference/predict.html", "reference/predict_mrqap.html"]
+# The sections follow the stages of an inference, in order
+# (see "The inferential pipeline" in .github/CONTRIBUTING.md).
+# The methods that report an object are on the page of the function that
+# makes it; the other methods of a fit are on the page of their stage.
 reference:
   - title: "Testing"
     desc: >
-      Functions for testing a network statistic against random networks,
-      networks with the same degrees, or permutations of the network,
-      and for testing the parameters and the fit of a model:
+      Functions for testing one network statistic against random networks,
+      networks with the same degrees, or permutations of the network:
     contents:
-      - starts_with("test_")
+      - test_measures
   - title: "Specifying"
     desc: >
-      The terms of an MRQAP formula and what each measures,
-      the terms that suit a network,
-      and functions for reading one formula for an MRQAP or an ERGM,
-      and for seeing what each model makes of each term:
+      Functions for reading one formula for an MRQAP or an ERGM,
+      for listing the terms that suit a network,
+      the terms of an MRQAP formula and what each measures,
+      and the coefficients of a model:
     contents:
-      - terms_mrqap
-      - specify_terms
-      - specify
-  - title: "Regressing"
+      - starts_with("specify_")
+      - starts_with("terms_")
+      - starts_with("declare_")
+  - title: "Estimating"
     desc: >
       Functions for regressing a network on nodal and dyadic covariates
       by multiple regression quadratic assignment procedure (MRQAP),
-      with random or fixed effects, missing data, panels, and cognitive social structures:
+      with random or fixed effects, missing data, panels, and cognitive social structures,
+      the controls of a model,
+      and the tidy results of other network models:
     contents:
-      - starts_with("control_")
       - starts_with("estimate_")
-  - title: "Diffusing"
+      - starts_with("control_")
+      - other_results
+  - title: "Evaluating"
     desc: >
-      Functions for simulating many diffusions on a network,
-      to test a model of diffusion against:
-    contents:
-      - play_diffusions
-  - title: "Diagnosing"
-    desc: >
-      Functions for diagnosing model results:
+      Functions for diagnosing issues with a fitted model and its residuals,
+      for testing its fit against its simulations,
+      for testing its coefficients,
+      and for comparing models by their likelihood:
     contents:
       - starts_with("diagnose_")
-      - starts_with("predict")
-  - title: "Reporting"
+      - test_fit
+      - test_parameter
+      - starts_with("evaluate_")
+  - title: "Interpreting"
     desc: >
-      Functions for reporting and reading the results of regressions and tests,
-      for tidying the results of other network models beside them,
-      for predicting from a regression,
-      and for diagnosing how well it classifies ties:
+      Functions for predicting from a model and reading its terms,
+      for simulating networks from a model,
+      and for simulating many diffusions on a network:
     contents:
-      - netreg_results
-      - report_tests
-      - other_results
+      - starts_with("predict")
+      - starts_with("simulate")
+      - starts_with("play_")

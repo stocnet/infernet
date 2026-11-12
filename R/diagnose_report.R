@@ -1,10 +1,11 @@
 # Reporting a diagnosis of a fitted model ####
 
 # The methods of the result of `diagnose_confusion()`, which
-# `R/diagnose_confusion.R` makes.
+# `R/diagnose_confusion.R` makes; and `fitted()` and `residuals()` of an
+# `infernetMrqapFit`, which a diagnosis reads.
 
-#' @rdname diagnose_confusion
 #' @export
+#' @noRd
 print.infernetConfusion <- function(x, ...) {
   .print_title(c(paste("Confusion matrix",
                        if (!is.null(x$model)) paste("of a", .lower_first(x$model))),
@@ -54,4 +55,47 @@ glance.infernetConfusion <- function(x, ...) {
                  threshold.accuracy = num(x$threshold_accuracy),
                  nobs = as.integer(num(x$n)),
                  draws = as.integer(num(x$n_draws)))
+}
+
+# ---- fitted values and residuals --------------------------------------------
+
+#' The fitted values and residuals of a network regression
+#'
+#' @description
+#'   `fitted()` and `residuals()` give one value for each dyad that a model
+#'   from [estimate_mrqap()] used, in the rows of the dyad-level data,
+#'   `x$pred`. They are the input of a diagnosis, such as
+#'   [diagnose_outliers()], which reads the Pearson residuals.
+#'
+#'   They read the observed model, which the permutations do not change.
+#'   For the predicted values of new dyads, see [predict_mrqap].
+#' @section Fixed effects:
+#'   A gaussian model absorbs its fixed effects by demeaning.
+#'   `fitted()` gives the observed values less the residuals, not the
+#'   demeaned fitted values.
+#' @param object An `infernetMrqapFit`, from [estimate_mrqap()].
+#' @param ... For `residuals()`, passed to the `residuals()` method of the
+#'   observed model, such as `type = "pearson"` for a `glm`.
+#'   Not used by `fitted()`.
+#' @return A numeric vector, with one value for each dyad that the model used.
+#' @family evaluating functions
+#' @examples
+#' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
+#'                             manynet::ison_hightech, times = 5)
+#' head(fitted(css_model))
+#' head(residuals(css_model, type = "pearson"))
+#' @name diagnose_residuals
+NULL
+
+#' @rdname diagnose_residuals
+#' @exportS3Method stats::fitted
+fitted.infernetMrqapFit <- function(object, ...) {
+  .observed_model(object)
+  stats::predict(object, type = "response")
+}
+
+#' @rdname diagnose_residuals
+#' @exportS3Method stats::residuals
+residuals.infernetMrqapFit <- function(object, ...) {
+  unname(stats::residuals(.observed_model(object), ...))
 }

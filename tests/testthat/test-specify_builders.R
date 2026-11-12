@@ -13,7 +13,7 @@ table_of <- function(formula, .data = formula_net(), ...) {
 }
 
 layer_of <- function(layer, .data = formula_net()) {
-  m <- manynet::as_matrix(manynet::to_uniplex(manynet::as_tidygraph(.data),
+  m <- manynet::as_matrix(manynet::to_layer(manynet::as_tidygraph(.data),
                                               layer = layer))
   unname(m)
 }
@@ -45,7 +45,7 @@ test_that("same() is 1 where the sender and receiver share a category", {
 # receiver's other ties that come from nodes like the sender.
 test_that("same() on a two-mode network is the share of the other ties", {
   g <- functional_nets()$twomode
-  y <- unname(manynet::as_matrix(manynet::to_uniplex(g, "a")))
+  y <- unname(manynet::as_matrix(manynet::to_layer(g, "a")))
   grp <- c("p", "q", "p", "q")
   want <- matrix(0, nrow(y), ncol(y))
   for (i in seq_len(nrow(y))) for (j in seq_len(ncol(y))) {
@@ -238,7 +238,7 @@ test_that("recip() and exchange() are the transpose of the layer", {
 test_that("recip() and exchange() give 0/1 with weighted = FALSE, and values with TRUE", {
   g <- qap_net_gaussian(n = 10)
   g <- manynet::mutate_ties(g, w2 = abs(manynet::tie_attribute(g, "weight")))
-  w2 <- unname(t(manynet::as_matrix(manynet::to_uniplex(g, "w2"))))
+  w2 <- unname(t(manynet::as_matrix(manynet::to_layer(g, "w2"))))
   m <- terms_of(weight ~ recip(w2, weighted = FALSE) + exchange(w2), g)
   expect_equal(unname(m[["recip_w2"]]), (w2 > 0) * 1)
   # Without weighted =, the values are as stored.
@@ -400,7 +400,7 @@ test_that("the layer terms fit a CSS under both permutation schemes", {
       estimate_mrqap(advice ~ recip(friends) + indeg(friends) + same(dept),
                      manynet::ison_hightech, times = 5,
                      control = list(seed = 1, permute = permute)))
-    expect_s3_class(fit, "netreg_css")
+    expect_true(fit$css)
     expect_named(fit$coefficients,
                  c("(Intercept)", "recip_friends", "indeg_friends", "same_dept"))
   }
@@ -412,7 +412,7 @@ test_that("the new terms fit a dyadic network under both permutation schemes", {
       estimate_mrqap(a ~ recip(b) + indeg(b) + same(grp, diff = TRUE) + tertius(b, x),
                      formula_net(), times = 5,
                      control = list(seed = 1, permute = permute)))
-    expect_s3_class(fit, "netreg")
+    expect_s3_class(fit, "infernetMrqapFit")
     expect_false(anyNA(fit$coefficients))
   }
 })
@@ -594,7 +594,7 @@ test_that("a term that cannot be built says what it needs", {
 test_that("same() on a multiplex two-mode network reads the outcome's ties", {
   g <- functional_nets()$twomode
   multiplex <- terms_of(a ~ same(grp), g)$same_grp
-  uniplex <- terms_of(a ~ same(grp), manynet::to_uniplex(g, "a"))$same_grp
+  uniplex <- terms_of(a ~ same(grp), manynet::to_layer(g, "a"))$same_grp
   expect_equal(dim(multiplex), c(4L, 3L))
   expect_equal(multiplex, uniplex, ignore_attr = TRUE)
 })

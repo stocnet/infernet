@@ -112,7 +112,7 @@
   v
 }
 
-# The number of parameters the fixed effects absorb, which the residual degrees
+# The number of coefficients the fixed effects absorb, which the residual degrees
 # of freedom lose. Two crossed effects lose one level for each connected set of
 # their groups after the first, as a sender and a receiver that never share a
 # dyad would. A third effect, as in a cognitive social structure, is taken to

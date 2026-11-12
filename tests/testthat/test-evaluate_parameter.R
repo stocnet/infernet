@@ -162,7 +162,7 @@ test_that("test_parameter() and test_time() refuse what they cannot test", {
                                          times = 5))
   expect_error(test_time(two), "two fitted waves")
   css <- fit
-  class(css) <- c("netreg_css", class(fit))
+  css$css <- TRUE
   expect_error(test_parameter(css, "ego_Age"), "cognitive")
   rnd <- fit
   rnd$random <- c(sender = TRUE)
@@ -173,4 +173,52 @@ test_that("test_parameter() and test_time() refuse what they cannot test", {
   fe <- bin
   fe$fixed_effects <- "sender"
   expect_error(test_parameter(fe, "ego_Age"), "fixed effects")
+})
+
+# ---- anova of two nested fits --------------------------------------------------
+
+test_that("anova() of two nested fits is test_parameter() of the extra terms", {
+  set.seed(5)
+  net <- param_net()
+  small <- param_fit(net, . ~ ego(Age))
+  big <- param_fit(net, . ~ ego(Age) + alter(B) + ego(Grp))
+  out <- anova(small, big, times = 19, control = list(seed = 3))
+  direct <- test_parameter(big, c("alter_B", "ego_Grp"), times = 19,
+                           control = list(seed = 3))
+  expect_s3_class(out, "network_test")
+  expect_equal(out$terms, direct$terms)
+  expect_equal(out$testval, direct$testval)
+  expect_equal(out$pgteobs, direct$pgteobs)
+  # The order of the two fits does not matter.
+  swapped <- anova(big, small, times = 19, control = list(seed = 3))
+  expect_equal(swapped$pgteobs, out$pgteobs)
+})
+
+test_that("anova() refuses fits that are not nested", {
+  set.seed(6)
+  net <- param_net()
+  a <- param_fit(net, . ~ ego(Age))
+  b <- param_fit(net, . ~ alter(B))
+  expect_error(anova(a, b, times = 5), "not nested")
+  expect_error(anova(a, times = 5), "two nested fits")
+  expect_error(anova(a, a, times = 5), "same coefficients")
+  other <- param_fit(param_net(), . ~ ego(Age) + alter(B))
+  expect_error(anova(a, other, times = 5), "same dyads")
+  logit <- param_fit(param_net(family = "binomial"), . ~ ego(Age) + alter(B),
+                     family = "binomial")
+  expect_error(anova(a, logit, times = 5), "different families")
+})
+
+test_that("anova() refuses fits whose shared columns or effects differ", {
+  set.seed(7)
+  net <- param_net()
+  a <- param_fit(net, . ~ ego(Age))
+  # The same outcome and dyads, but another age: ego_Age differs.
+  moved <- manynet::mutate_nodes(net, Age = rev(Age))
+  b <- param_fit(moved, . ~ ego(Age) + alter(B))
+  expect_error(anova(a, b, times = 5), "different values")
+  # The same columns, but only the smaller fit has fixed effects.
+  fixed <- param_fit(net, . ~ ego(Age) | receiver)
+  big <- param_fit(net, . ~ ego(Age) + same(Grp))
+  expect_error(anova(fixed, big, times = 5), "random intercepts or fixed effects")
 })

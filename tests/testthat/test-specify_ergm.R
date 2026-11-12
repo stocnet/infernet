@@ -11,7 +11,7 @@ built_of <- function(formula, .data = formula_net()) {
 }
 
 layer_matrix <- function(layer, .data = formula_net()) {
-  unname(manynet::as_matrix(manynet::to_uniplex(manynet::as_tidygraph(.data),
+  unname(manynet::as_matrix(manynet::to_layer(manynet::as_tidygraph(.data),
                                                 layer = layer)))
 }
 
@@ -188,7 +188,9 @@ test_that("ergm counts what infernet builds with levels =", {
   built <- suppressMessages(convertToMatrixList(f, net, advise = FALSE)$mydata)
   y <- built[[1]]
   ours <- vapply(built[-1], function(m) sum(m * y), numeric(1))
-  stats <- summary(suppressMessages(specify_ergm(f, net)))
+  # summary() of the result is the term table, so ergm's statistics come from
+  # summary_formula()
+  stats <- ergm::summary_formula(suppressMessages(specify_ergm(f, net)))
   expect_equal(unname(stats[-1]), unname(ours))
 })
 

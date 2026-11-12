@@ -15,6 +15,10 @@ description: >
 library(manynet)
 library(autograph)
 library(infernet)
+# {infernet} only suggests {lme4}, which the random intercepts need.
+# Naming it here lets `learnr::run_tutorial()` offer to install it at the start,
+# because an exercise cannot install a package itself.
+requireNamespace("lme4", quietly = TRUE)
 ```
 
 ```{r setup, include = FALSE, purl=FALSE, eval=TRUE}
@@ -50,7 +54,7 @@ learnr::random_phrases_add(language = "en",
                                       "Bravo!",
                                       "Super!"),
                            encouragement = "Bon effort")
-marvel_friends <- to_unsigned(to_uniplex(fict_marvel, "relationship"), keep = "positive")
+marvel_friends <- to_unsigned(to_layer(fict_marvel, "relationship"), keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
 ```
@@ -95,7 +99,7 @@ and can be seen in the following chunk in order:
 ```
 
 ```{r friends-hint-1, purl = FALSE}
-to_uniplex(____, "relationship")
+to_layer(____, "relationship")
 ```
 
 ```{r friends-hint-2, purl = FALSE}
@@ -115,14 +119,15 @@ to_subgraph(____, Appearances >= mean(Appearances))
 ```
 
 ```{r friends-hint-5, purl = FALSE}
-marvel_friends <- to_unsigned(ison_marvel_relationships, keep = "positive")
+marvel_friends <- to_layer(fict_marvel, "relationship")
+marvel_friends <- to_unsigned(marvel_friends, keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
 marvel_friends
 ```
 
 ```{r friends-solution}
-marvel_friends <- to_uniplex(fict_marvel, "relationship")
+marvel_friends <- to_layer(fict_marvel, "relationship")
 marvel_friends <- to_unsigned(marvel_friends, keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
@@ -485,7 +490,7 @@ Let's try a `r gloss("QAP","qap")` test that runs this over a succession of perm
 just as we did with random graphs.
 Plot the results for gender and power according to the random and permutation baselines.
 
-```{r testperm, exercise=TRUE, exercise.setup = "rando-solution", purl = FALSE, exercise.timelimit = 120, fig.width=9}
+```{r testperm, exercise=TRUE, purl = FALSE, exercise.timelimit = 120, fig.width=9}
 
 ```
 
@@ -820,7 +825,7 @@ So far each model has used its default controls.
 Its result goes to the `control =` argument of `estimate_mrqap()`.
 The most useful controls are:
 
-- `family`: `"auto"` reads it from the outcome (`"binomial"` for a binary outcome, otherwise `"gaussian"`).
+- `family`: `NULL`, the default, reads it from the outcome (`"binomial"` for a binary outcome, `"poisson"` for a count, otherwise `"gaussian"`).
   The message counts here might also be fitted as `"poisson"` or `"negbin"`.
 - `permute`: `"predictor"` (Dekker's double semi-partialling, the default) or `"outcome"`.
 - `seed`: a number, so that the same permutations, and so the same p-values, come back each time.
@@ -985,7 +990,7 @@ and a `| sender` fixed effect as ergm's `sender` term,
 and each term that the other model cannot fit is dropped and named.
 Give the network as well,
 so that a categorical attribute is written as a categorical term.
-`tidy()` of the result has one row for each term,
+`summary()` of the result has one row for each term,
 with what the other model makes of it.
 
 Rewrite a model of `ison_networkers` for ergm, and check each term.
@@ -997,7 +1002,7 @@ Then do the same, without the network, for a model of `ison_hightech`.
 
 ```{r specify-hint, purl = FALSE}
 ergm_formula <- specify_ergm(____, ison_networkers)
-tidy(ergm_formula)
+summary(ergm_formula)
 ```
 
 ```{r specify-solution}
@@ -1005,8 +1010,8 @@ ergm_formula <- specify_ergm(weight ~ diff(Citations) + same(Discipline, diff = 
                                mix(Discipline, levels = "Sociology -> Anthropology") | sender, 
                              ison_networkers)
 ergm_formula
-tidy(ergm_formula)
-tidy(specify_ergm(advice ~ tie(friends) + same(dept) + reporter(level) + reporter_ego))
+summary(ergm_formula)
+summary(specify_ergm(advice ~ tie(friends) + same(dept) + reporter(level) + reporter_ego))
 ```
 
 The result is an ordinary formula,
@@ -1020,7 +1025,7 @@ question("Why does `specify_ergm()` drop `reporter_ego`?",
   answer("Because ergm fits one report of a network, so it has no reporter.",
          correct = TRUE),
   answer("Because `reporter_ego` reads the outcome's own ties.",
-         message = "`reporter_ego` describes the reporter, not the ties. The reason is in the `reason` column of `tidy()`."),
+         message = "`reporter_ego` describes the reporter, not the ties. The reason is in the `reason` column of `summary()`."),
   answer("Because ergm cannot fit any dyadic term.",
          message = "ergm fits many dyadic terms, such as `absdiff()` and `edgecov()`."),
   allow_retry = TRUE

@@ -1,8 +1,8 @@
 # The results are built by hand, so that each field is known and small.
-# The fits through estimate_mrqap(), and the methods of a netreg, are in the
+# The fits through estimate_mrqap(), and the methods of an MRQAP fit, are in the
 # last blocks.
 
-fake_netreg <- function(family = "gaussian", permute = "predictor") {
+fake_mrqap <- function(family = "gaussian", permute = "predictor") {
   y <- c(1.2, 0.4, 2.8, 1.9, 3.1, 0.7, 2.2, 1.5)
   z <- c(0.5, 0.1, 1.6, 0.9, 1.8, 0.2, 1.0, 0.8)
   fit <- stats::lm(y ~ z)
@@ -15,11 +15,11 @@ fake_netreg <- function(family = "gaussian", permute = "predictor") {
     r.squared = 0.6, adj.r.squared = 0.55,
     simple_fit = fit, family = family, permute = permute, times = 20,
     pred = data.frame(y = y, z = z)),
-    class = c("netreg_lm", "netreg"))
+    class = c("infernetMrqapFit", "netreg"))
 }
 
-test_that("tidy() reads a netreg's t-based p-values", {
-  x <- fake_netreg()
+test_that("tidy() reads an MRQAP fit's t-based p-values", {
+  x <- fake_mrqap()
   out <- tidy(x)
   expect_named(out, c("term", "estimate", "statistic", "p.value"))
   expect_equal(out$term, c("(Intercept)", "ego_x"))
@@ -28,45 +28,44 @@ test_that("tidy() reads a netreg's t-based p-values", {
   expect_equal(tidy(x, alternative = "less")$p.value, c(NA, 0.95))
 })
 
-test_that("tidy() exponentiates a netreg, and warns on a gaussian one", {
-  x <- fake_netreg()
+test_that("tidy() exponentiates an MRQAP fit, and warns on a gaussian one", {
+  x <- fake_mrqap()
   expect_warning(out <- tidy(x, exponentiate = TRUE), "gaussian")
   expect_equal(out$estimate, exp(c(0.1, 1.5)))
   x$family <- "binomial"
   expect_no_warning(tidy(x, exponentiate = TRUE))
 })
 
-test_that("glance() gives the fit of a netreg_lm", {
-  out <- glance(fake_netreg())
+test_that("glance() gives the fit of a gaussian MRQAP", {
+  out <- glance(fake_mrqap())
   expect_equal(nrow(out), 1)
   expect_equal(out$r.squared, 0.6)
   expect_equal(out$nobs, 8)
-  expect_equal(out$AIC, stats::AIC(fake_netreg()$simple_fit))
+  expect_equal(out$AIC, stats::AIC(fake_mrqap()$simple_fit))
 })
 
-test_that("glance() gives NA where a netreg keeps no fit", {
-  x <- fake_netreg()
+test_that("glance() gives NA where an MRQAP fit keeps no fit", {
+  x <- fake_mrqap()
   x$simple_fit <- NULL
   out <- glance(x)
   expect_true(is.na(out$AIC))
   expect_true(is.na(out$sigma))
 })
 
-test_that("glance() of a netreg_glm reads its glm fit", {
-  x <- fake_netreg(family = "binomial")
+test_that("glance() of a binomial fit reads its glm fit", {
+  x <- fake_mrqap(family = "binomial")
   y <- c(1, 0, 1, 1, 0, 0, 1, 0)
   z <- c(0.5, 0.1, 1.6, 0.9, 1.8, 0.2, 1.0, 0.8)
   x$simple_fit <- stats::glm(y ~ z, family = stats::binomial)
-  class(x) <- c("netreg_glm", "netreg")
   out <- glance(x)
   expect_equal(out$deviance, stats::deviance(x$simple_fit))
   expect_equal(out$family, "binomial")
 })
 
-test_that("glance() of a netreg_css counts the reporters", {
-  x <- fake_netreg()
+test_that("glance() of a CSS fit counts the reporters", {
+  x <- fake_mrqap()
   x$pred$bv <- rep(1:4, 2)
-  class(x) <- c("netreg_css", "netreg_lm", "netreg")
+  x$css <- TRUE
   out <- glance(x)
   expect_equal(out$reporters, 4)
   expect_equal(out$r.squared, 0.6)
@@ -196,7 +195,7 @@ test_that("the test family and the regression share the word testdist", {
 
 test_that("tidy() and glance() read an ergm fit", {
   skip_if_not_installed("ergm")
-  g <- manynet::as_network(manynet::to_uniplex(formula_net(), "a"))
+  g <- manynet::as_network(manynet::to_layer(formula_net(), "a"))
   fit <- suppressMessages(ergm::ergm(g ~ edges + nodematch("grp")))
   out <- tidy(fit, conf.int = TRUE, conf.level = 0.9)
   expect_named(out, c("term", "estimate", "std.error", "mcmc.error",
@@ -247,7 +246,7 @@ test_that("tidy() of a netlogit gives its null interval and its odds ratios", {
   expect_equal(out$conf.high, exp(c(0.5, 1)))
 })
 
-# ---- the methods of a netreg ----------------------------------------------------
+# ---- the methods of an MRQAP fit ----------------------------------------------------
 #
 # Each method reads the observed model, so each must give the value of the
 # equivalent standard fit on the same dyad-level data, from
@@ -257,26 +256,20 @@ FORM_M <- weight ~ ego(Age) + alter(Age) + sim(Age)
 FORM_MB <- . ~ ego(Age) + alter(Age) + sim(Age)
 
 # ---- gaussian and glm -------------------------------------------------------
+# `nobs()`, `logLik()`, and `deviance()` are tested in test-evaluate_report.R,
+# `fitted()` and `residuals()` in test-diagnose_report.R, and `formula()` and
+# `terms()` in test-specify_report.R.
 
-test_that("a gaussian fit gives the accessors of lm()", {
+test_that("a gaussian fit gives the coefficients and sigma of lm()", {
   g <- qap_net_gaussian()
   ref <- qap_reference_data(FORM_M, g)
   lm_fit <- stats::lm(ref$formula, data = ref$pred)
   fit <- estimate_mrqap(FORM_M, g, times = 5, control = list(seed = 1))
-
   expect_equal(unname(stats::coef(fit)), unname(stats::coef(lm_fit)))
-  expect_equal(stats::nobs(fit), stats::nobs(lm_fit))
-  expect_equal(stats::logLik(fit), stats::logLik(lm_fit), ignore_attr = "class")
-  expect_equal(attr(stats::logLik(fit), "df"), attr(stats::logLik(lm_fit), "df"))
-  expect_equal(stats::AIC(fit), stats::AIC(lm_fit))
-  expect_equal(stats::BIC(fit), stats::BIC(lm_fit))
-  expect_equal(stats::deviance(fit), stats::deviance(lm_fit))
-  expect_equal(stats::fitted(fit), unname(stats::fitted(lm_fit)))
-  expect_equal(stats::residuals(fit), unname(stats::residuals(lm_fit)))
   expect_equal(glance(fit)$sigma, stats::sigma(lm_fit))
 })
 
-test_that("a binomial and a poisson fit give the accessors of glm()", {
+test_that("a binomial and a poisson fit give the coefficients of glm()", {
   cases <- list(binomial = list(g = qap_net_binary(), family = "binomial"),
                 poisson  = list(g = qap_net_count(),  family = "poisson"))
   for (case in cases) {
@@ -286,93 +279,29 @@ test_that("a binomial and a poisson fit give the accessors of glm()", {
     fit <- estimate_mrqap(FORM_MB, case$g, times = 5,
                           control = list(seed = 1, family = case$family))
     expect_equal(unname(stats::coef(fit)), unname(stats::coef(glm_fit)))
-    expect_equal(stats::nobs(fit), stats::nobs(glm_fit))
-    expect_equal(stats::logLik(fit), stats::logLik(glm_fit), ignore_attr = "class")
-    expect_equal(stats::AIC(fit), stats::AIC(glm_fit))
-    expect_equal(stats::deviance(fit), stats::deviance(glm_fit))
-    expect_equal(stats::fitted(fit), unname(stats::fitted(glm_fit)))
-    expect_equal(stats::residuals(fit), unname(stats::residuals(glm_fit)))
-    expect_equal(stats::residuals(fit, type = "pearson"),
-                 unname(stats::residuals(glm_fit, type = "pearson")))
   }
 })
 
-# ---- fixed effects and fixed ties -------------------------------------------
-
-test_that("gaussian fixed effects give the likelihood of lm() with a dummy for each group", {
+test_that("glance() of gaussian fixed effects is that of lm() with a dummy for each group", {
   g <- qap_net_gaussian()
   ref <- qap_reference_data(weight ~ diff(Age) + same(Grp), g)
   dummies <- stats::lm(weight ~ diff_Age + same_Grp + factor(sv) + factor(rv),
                        data = ref$pred)
   fit <- estimate_mrqap(weight ~ diff(Age) + same(Grp) | sender + receiver, g,
                         times = 5, control = list(seed = 1))
-  expect_equal(stats::nobs(fit), stats::nobs(dummies))
-  expect_equal(stats::logLik(fit), stats::logLik(dummies), ignore_attr = "class")
-  expect_equal(attr(stats::logLik(fit), "df"), attr(stats::logLik(dummies), "df"))
-  expect_equal(stats::AIC(fit), stats::AIC(dummies))
-  expect_equal(stats::deviance(fit), stats::deviance(dummies))
-  expect_equal(stats::residuals(fit), unname(stats::residuals(dummies)))
-  expect_equal(stats::fitted(fit), unname(stats::fitted(dummies)))
   expect_equal(glance(fit)$df.residual, stats::df.residual(dummies))
   expect_equal(glance(fit)$sigma, stats::sigma(dummies))
   expect_equal(glance(fit)$AIC, stats::AIC(dummies))
 })
 
-test_that("nobs() leaves out the fixed ties, and glance() agrees", {
+test_that("glance() counts the dyads that nobs() counts", {
   g <- fixed_net()
   fit <- suppressWarnings(estimate_mrqap(. ~ ego(Age), g, times = 5,
                                          control = list(seed = 1)))
-  n <- as.numeric(manynet::net_nodes(g))
-  expect_equal(fit$missing$fixed_ties, 6)
-  expect_equal(stats::nobs(fit), n * (n - 1) - 6)
-  expect_equal(stats::nobs(fit), fit$missing$used)
   expect_equal(glance(fit)$nobs, stats::nobs(fit))
 })
 
-# ---- less_mem ------------------------------------------------------------------
-
-test_that("the methods read the observed model when less_mem leaves out simple_fit", {
-  g <- qap_net_gaussian()
-  full <- estimate_mrqap(FORM_M, g, times = 5, control = list(seed = 1))
-  lean <- estimate_mrqap(FORM_M, g, times = 5,
-                         control = list(seed = 1, less_mem = TRUE))
-  expect_null(lean$simple_fit)
-  expect_equal(stats::nobs(lean), stats::nobs(full))
-  expect_equal(stats::logLik(lean), stats::logLik(full))
-  expect_equal(stats::fitted(lean), stats::fitted(full))
-  expect_equal(stats::residuals(lean), stats::residuals(full))
-})
-
-test_that("a result without an observed model or a formula says how to get one", {
-  fit <- estimate_mrqap(FORM_M, qap_net_gaussian(), times = 5,
-                        control = list(seed = 1))
-  fit$simple_fit <- NULL
-  fit$base$base_model <- NULL
-  expect_error(stats::logLik(fit), "keeps no observed model")
-  expect_true(is.na(stats::nobs(fit)) || stats::nobs(fit) == nrow(fit$pred))
-  fit$formula <- NULL
-  fit$model_formula <- NULL
-  expect_error(stats::formula(fit), "earlier version")
-  expect_error(stats::terms(fit), "earlier version")
-})
-
-# ---- formula, terms, and update -----------------------------------------------
-
-test_that("formula() gives the formula as read, and terms() the fitted columns", {
-  g <- qap_net_gaussian()
-  ref <- qap_reference_data(FORM_M, g)
-  fit <- estimate_mrqap(FORM_M, g, times = 5, control = list(seed = 1))
-  expect_equal(stats::formula(fit), FORM_M, ignore_attr = TRUE)
-  expect_s3_class(stats::formula(fit), "formula")
-  expect_null(attr(stats::formula(fit), "record"))
-  tt <- stats::terms(fit)
-  expect_s3_class(tt, "terms")
-  expect_equal(attr(tt, "term.labels"), c("ego_Age", "alter_Age", "sim_Age"))
-  mf <- stats::model.frame(tt, data = fit$pred)
-  expect_equal(nrow(mf), stats::nobs(fit))
-  expect_equal(unname(stats::coef(stats::lm(tt, data = fit$pred))),
-               unname(stats::coef(fit)))
-})
+# ---- update -------------------------------------------------------------------
 
 test_that("update() fits the model again with a changed formula or times", {
   g <- qap_net_gaussian()
@@ -394,7 +323,7 @@ test_that("tidy() gives the generics columns, and summary() adds the term table"
   expect_named(tidy(fit), c("term", "estimate", "statistic", "p.value"))
   out <- summary(fit)
   expect_s3_class(out, "tbl_df")
-  expect_s3_class(out, "summary_netreg")
+  expect_s3_class(out, "infernetMrqapSummary")
   expect_named(out, c("term", "estimate", "statistic", "p.lower", "p.upper",
                       "p.value", "title", "effect", "layer", "attribute",
                       "category", "reference", "operands"))

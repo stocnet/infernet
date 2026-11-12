@@ -87,7 +87,7 @@ test_that("`. ~` takes the outcome from the network's focal layer", {
     estimate_mrqap(. ~ ego(age) + friends, ht, times = 5,
                    control = list(seed = 1)))
   expect_equal(fit$dep, "advice")
-  expect_s3_class(fit, "netreg_css")
+  expect_true(fit$css)
   # The message says where the outcome came from.
   old <- options(snet_verbosity = "verbose")
   on.exit(options(old), add = TRUE)

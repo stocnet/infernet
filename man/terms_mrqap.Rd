@@ -261,14 +261,14 @@ formula. ergm's \code{edges} is the intercept, which an MRQAP always has.
 The reporter terms have no equivalent, since no other model has a
 reporter. ergm's terms of the outcome's own structure, such as \code{gwesp()},
 and goldfish's endogenous effects, such as \code{cycle}, have no MRQAP term,
-and an MRQAP drops them (see \link{specify}).
+and an MRQAP drops them (see \link{specify_mrqap}).
 }
 
 \examples{
 # Every term that suits a network, and the columns of some of them
 specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-     manynet::ison_lawfirm)
+summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+        manynet::ison_lawfirm)
 }
 \references{
 Haunss, Sebastian, and James Hollway. 2023.
@@ -292,17 +292,11 @@ Computational Aspects."
 \code{\link[=estimate_mrqap]{estimate_mrqap()}} fits a formula of these terms; \link{specify_terms}
 lists the terms that suit a network.
 
-Other models:
-\code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.netreg_lm]{print.netreg_lm()}},
-\code{\link{regression}},
-\code{\link{specify}},
-\code{\link{specify_terms}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+Other specifying functions:
+\code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
+\code{\link[=specify_ergm]{specify_ergm()}},
+\code{\link[=specify_mrqap]{specify_mrqap()}},
+\code{\link{specify_terms}}
 }
-\concept{models}
+\concept{specifying functions}

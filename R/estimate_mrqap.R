@@ -171,6 +171,18 @@
 #'   `recip()`, `tertius()`, and `tertius_diff()` without a layer read the
 #'   outcome, and warn.
 #'
+#' @section Initial values:
+#'   A set of coefficients from [declare_coefs()], or an earlier fit, gives the
+#'   initial values of the observed model.
+#'   Only an estimator that iterates uses them: `stats::glm()` for a
+#'   `"binomial"` or `"poisson"` model, and `MASS::glm.nb()` for `"negbin"`.
+#'   A converged estimate does not depend on them, and the permutations do not
+#'   use them.
+#'   A `"gaussian"` model, a `"zip"` model, and a model with random or fixed
+#'   effects do not use them, and say so, as does a set with a value that is
+#'   not stated.
+#'   Each column of the model needs one value, named as its coefficient.
+#'
 #' @param formula A formula describing the model.  The left-hand side is the
 #'   dependent network: a layer, a tie attribute such as `weight`, or `.` for
 #'   the network's focal layer or the whole network.
@@ -210,6 +222,11 @@
 #'
 #'   A bar outside parentheses absorbs fixed effects, as in `{fixest}`:
 #'   `y ~ x | sender + receiver` (see the section on fixed effects).
+#'
+#'   In place of a formula, `formula` can also be a set of coefficients from
+#'   [declare_coefs()], or an earlier fit. The model then fits their
+#'   specification, with their family where `control` names none, and takes
+#'   their values as initial values (see the section on initial values).
 #' @param .data A manynet-consistent network (see
 #'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
 #'   supplied the model is fit jointly; graphs missing any predictor are
@@ -219,16 +236,29 @@
 #' @param control The controls of the model, as the result of
 #'   [control_mrqap()] or a named list of its arguments, such as
 #'   `list(family = "poisson", seed = 1)`. A control that is not named keeps
-#'   its default, or the value set with `control_mrqap(..., persist = TRUE)`.
+#'   its default, or the value set with [set_control_computation()].
 #'   See [control_mrqap()] for each control, its default, and the
 #'   names it converts from other models and earlier versions.
 #'   The result records the controls that it used as `control`.
-#' @return An object of class `netreg`, with a more specific class in front:
-#'   `netreg_lm` for a gaussian model and `netreg_glm` for any other family.
-#'   A cognitive social structure also puts `netreg_css` first, so
-#'   `c("netreg_css", "netreg_glm", "netreg")` for a binomial CSS model.
-#'   A method can be written for any of these, and falls back to the next.
-#'   Among its elements:
+#' @param outputs The optional parts of the result, as a character vector
+#'   of any of:
+#'   - `"model"`, the observed model object, as `simple_fit`, which
+#'     [simulate()] and [test_gof()] draw from where a model has random or
+#'     fixed effects, or a `"negbin"` or `"zip"` family;
+#'   - `"confusion"`, the probabilistic confusion matrix of a binary outcome,
+#'     as `confusion_matrix`;
+#'   - `"draws"`, the coefficient of each permutation, as `draws`.
+#'
+#'   The default, `c("model", "confusion")`, keeps what a result kept before
+#'   infernet 0.7.0. Leave out `"model"` and `"confusion"` to save memory on a
+#'   large network: every method still reads the baseline fit in `base`, and
+#'   [diagnose_confusion()] makes the confusion matrix again.
+#' @return An object of class `c("infernetMrqapFit", "netreg")`.
+#'   `netreg` is kept for `{autograph}` and `{migraph}` in infernet 0.7.x,
+#'   and goes in 0.8.0.
+#'   The family, a cognitive social structure, and a panel are not classes,
+#'   but the elements `family`, `css`, and `panel`.
+#'   It always has these elements:
 #'   - `coefficients` and `obs`, the estimates and the observed test
 #'     statistics of the model;
 #'   - `lower`, `larger`, and `abs`, the share of permutations whose
@@ -240,7 +270,9 @@
 #'     `permute = "predictor"` each column comes from its own set of
 #'     permutations, so rows pair columns only by position, and the intercept
 #'     column is `NA`. A permutation that failed leaves its row `NA`.
-#'   - `panel`, whether the network was fitted as a panel of its waves.
+#'   - `family`, the family that was fitted; `css`, whether the outcome is a
+#'     cognitive social structure; and `panel`, whether the network was
+#'     fitted as a panel of its waves.
 #'   - `missing`, a list of the treatment of unobserved dyads, the number of
 #'     dyads the model could use (`possible`) and did use (`used`), the number
 #'     unobserved on each variable (`unobserved`), the number of fixed ties left
@@ -259,22 +291,32 @@
 #'   - `call`, `formula`, and `model_formula`: the call, the formula as
 #'     [specify_mrqap()] read it, and the formula of the columns that were
 #'     fitted. `update()`, `formula()`, and `terms()` read them
-#'     (see [netreg_results]).
-#'   - `fixed_df`, the number of parameters that a gaussian model absorbed by
-#'     demeaning, or `NULL`.
-#'
-#'   When the outcome is binary -- either `family = "binomial"` or
-#'   `"gaussian"` with a 0/1 dependent -- a probabilistic confusion matrix is
-#'   attached as `$confusion_matrix`; for the gaussian-binary case the linear
-#'   probability fitted values are clamped to 0/1 before sampling.
-#'   [diagnose_confusion()] gives it again with another threshold or number
-#'   of draws.
+#'     (see [estimate_mrqap]).
+#'   - `fixed_df`, the number of coefficients that a gaussian model absorbed
+#'     by demeaning, or `NULL`.
 #'   - `node_names`, the names of the nodes, which name the random
-#'     intercepts; `control`, the controls as the fit resolved them; and
+#'     intercepts; `control`, the controls as the fit resolved them;
+#'     `outputs`, the optional parts that it keeps; and
 #'     `record`, what [specify_mrqap()] made of each term. `print()` and
 #'     `summary()` read them.
-#' @name regression
-#' @family models
+#'   - `dims` and `twomode`, the dimensions of the outcome matrix and whether
+#'     the network is two-mode, which [simulate()] reads without the network;
+#'     they are `NULL` for a list of networks or a panel.
+#'   - `start`, the initial values that the estimator used, or `NULL`.
+#'
+#'   Each value of `outputs` adds one element:
+#'   - `"model"` adds `simple_fit`, the observed `lm`, `glm`, or other model
+#'     object.
+#'   - `"confusion"` adds `confusion_matrix` where the outcome is binary,
+#'     either with `family = "binomial"` or with `"gaussian"` and a 0/1
+#'     outcome. It is the result of [diagnose_confusion()] with 1000 draws and
+#'     the seed of the fit. For the gaussian case the linear probability
+#'     fitted values are clamped to 0/1 before the draws.
+#'   - `"draws"` adds `draws`, the permuted coefficients, as a matrix with
+#'     the rows and columns of `testdist`.
+#' @name estimate_mrqap
+#' @aliases regression
+#' @family estimating functions
 #' @references
 #'   Krackhardt, David. 1987.
 #'   "Cognitive Social Structures."
@@ -320,14 +362,30 @@
 #' css_reporter <- estimate_mrqap(
 #'   advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
 #'   manynet::ison_hightech, times = 5)
+#' # A fit, refitted from the initial values of an earlier fit
+#' counts <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 5,
+#'                          control = list(family = "poisson"))
+#' again <- estimate_mrqap(counts, ison_algebra, times = 5)
 #' @export
 estimate_mrqap <- function(formula,
                            .data,
                            times   = 1000,
-                           control = list()) {
+                           control = list(),
+                           outputs = c("model", "confusion")) {
 
   call <- match.call()
+  # A set of coefficients or a fit gives its specification, and its values as
+  # the initial values of an estimator that iterates.
+  start <- .read_start(formula)
+  formula <- start$formula
   ctrl <- .resolve_control(control)
+  if (is.null(ctrl$family) && !is.null(start$family)) {
+    ctrl$family <- start$family
+    manynet::snet_info(
+      "Fitting a {.val {ctrl$family}} model, the family of the coefficients.")
+  }
+  outputs <- .check_outputs(outputs, c("model", "confusion", "draws"))
+  if (isTRUE(ctrl$less_mem)) outputs <- setdiff(outputs, "model")
   # A formula written for another model is read as an MRQAP reads it, and the
   # terms it cannot fit are dropped and named.
   formula <- specify_mrqap(formula, .data)
@@ -370,8 +428,8 @@ estimate_mrqap <- function(formula,
   # Each of these is resolved from the data rather than stated by the user, so
   # each is reported. A defaulted family or a fallback that nobody sees is a
   # model the user cannot describe in a paper.
-  if (identical(ctrl$family, "auto")) {
-    ctrl$family <- if (.is_binary_outcome(matlist[[dep]])) "binomial" else "gaussian"
+  if (is.null(ctrl$family)) {
+    ctrl$family <- .auto_family(matlist[[dep]])
     manynet::snet_info(
       "Treating the outcome as {.val {ctrl$family}}, from its values.")
   }
@@ -386,8 +444,10 @@ estimate_mrqap <- function(formula,
     manynet::snet_info("Reading the network as {.val {direction}}.")
   }
   if (is.null(ctrl$loops)) {
-    ctrl$loops <- isTRUE(manynet::is_complex(first_graph))
+    ctrl$loops <- isTRUE(manynet::is_looped(first_graph))
   }
+
+  start <- .use_start(start$values, ctrl, spec)
 
   fit <- QAPengine(
     formula   = formula,
@@ -410,10 +470,11 @@ estimate_mrqap <- function(formula,
     missing  = ctrl$missing,
     panel    = panel,
     fixed_effects = spec$fixed,
-    less_mem = ctrl$less_mem
+    outputs  = outputs,
+    start    = start
   )
 
-  if (user_requested_gaussian_binary) {
+  if (user_requested_gaussian_binary && "confusion" %in% outputs) {
     fit$confusion_matrix <- .lpm_confusion(fit, seed = ctrl$seed)
   }
   fit$terms <- .coef_terms(names(fit$coefficients), terms)
@@ -425,16 +486,93 @@ estimate_mrqap <- function(formula,
   # What a print says of the fit: the network as `{manynet}` describes it,
   # the controls as resolved, and what the reading of the formula changed.
   fit$node_names <- .node_names(.data)
+  # What `simulate()` needs to place a draw without the network.
+  if (!panel && !is.list(matlist[[dep]])) {
+    fit$dims <- dim(matlist[[dep]])[1:2]
+    fit$twomode <- isTRUE(manynet::is_twomode(first_graph))
+  }
+  fit$start <- fit$base$start
   # As used: a permutation of the predictors falls back to the outcome where
   # the engine cannot residualise them.
   ctrl$permute <- fit$permute
   fit$control <- ctrl
   fit$record <- record
+  fit$outputs <- outputs
   if (!is.null(fit$confusion_matrix)) {
     fit$confusion_matrix <- .confusion_model(fit$confusion_matrix, fit)
   }
 
   fit
+}
+
+# The first argument of `estimate_mrqap()`: a formula, a specification, a set
+# of coefficients from `declare_coefs()`, or a fit. The last two give their
+# specification, their values, and their family.
+#' @keywords internal
+#' @noRd
+.read_start <- function(x) {
+  if (inherits(x, "infernetMrqapFit")) x <- declare_coefs(x)
+  if (inherits(x, "infernetMrqapCoefs")) {
+    spec <- attr(x, "spec")
+    if (is.null(spec)) {
+      manynet::snet_abort("The coefficients have no specification to fit.")
+    }
+    return(list(formula = spec, values = stats::coef(x), family = attr(x, "family")))
+  }
+  list(formula = x, values = NULL, family = NULL)
+}
+
+# Initial values matter only to an estimator that iterates: `glm()` for a
+# binomial or a poisson model, and `MASS::glm.nb()`. A converged estimate does
+# not depend on them. Every other estimator says that it does not use them.
+#' @keywords internal
+#' @noRd
+.use_start <- function(values, ctrl, spec) {
+  if (is.null(values)) return(NULL)
+  random <- any(unlist(ctrl[c("random_intercept_nets", "random_intercept_sender",
+                              "random_intercept_receiver",
+                              "random_intercept_reporter")]))
+  why <- if (length(spec$fixed) > 0) {
+    "a model with fixed effects is fitted by {.pkg fixest}"
+  } else if (random) {
+    "a model with random intercepts is fitted by {.pkg lme4}"
+  } else if (identical(ctrl$family, "gaussian")) {
+    "a gaussian model is fitted by least squares, which does not iterate"
+  } else if (identical(ctrl$family, "zip")) {
+    "a zero-inflated model needs initial values for its zero part too"
+  }
+  if (!is.null(why)) {
+    manynet::snet_info("The initial values are not used: {why}.")
+    return(NULL)
+  }
+  if (anyNA(values)) {
+    unstated <- names(values)[is.na(values)]
+    manynet::snet_info(
+      "The initial values are not used: {.val {unstated}} {?is/are} not stated.")
+    return(NULL)
+  }
+  values
+}
+
+# The optional parts of a result, checked as every `estimate_*()` checks
+# them: a character vector of the values that the estimator knows, in any
+# order, with each named once. `character(0)` keeps none.
+#' @keywords internal
+#' @noRd
+.check_outputs <- function(outputs, choices) {
+  if (is.null(outputs)) return(character(0))
+  if (!is.character(outputs) || anyNA(outputs)) {
+    manynet::snet_abort(
+      c("{.arg outputs} must be a character vector.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unknown <- setdiff(outputs, choices)
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("{.arg outputs} has {length(unknown)} unknown value{?s}: {.val {unknown}}.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unique(outputs)
 }
 
 # ---- permutation schemes and missing data --------------------------------------
@@ -620,7 +758,7 @@ convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE,
 #' @keywords internal
 #' @noRd
 .prepare_panel <- function(formula, .data) {
-  waves <- manynet::to_waves(.data)
+  waves <- manynet::to_times(.data)
   n_waves <- length(waves)
   mls <- lapply(seq(2, n_waves), function(t) {
     convertToMatrixList(formula, waves[[t]], advise = FALSE, pooled = TRUE,

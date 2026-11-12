@@ -31,7 +31,8 @@ QAPengine <- function(formula,
                       missing   = "available",
                       panel     = FALSE,
                       fixed_effects = character(0),
-                      less_mem  = FALSE) {
+                      outputs   = c("model", "confusion"),
+                      start     = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
 
@@ -97,7 +98,7 @@ QAPengine <- function(formula,
   absorb_once <- length(fixed_effects) > 0 && family == "gaussian"
   fit_fixed <- if (length(fixed_effects) > 0 && !absorb_once) fe_cols else NULL
   if (!is.null(fit_fixed))
-    thisRequires("fixest", "for fixed effects in a model that is not gaussian")
+    manynet::snet_requires("fixest", "for fixed effects in a model that is not gaussian", ask = FALSE)
   if (absorb_once) {
     # The intercept is one of the absorbed effects.
     mod <- stats::as.formula(paste(
@@ -200,7 +201,8 @@ QAPengine <- function(formula,
                             main_vars    = main,
                             has_random   = has_random,
                             fixed_effects = fit_fixed,
-                            fixed_df     = fixed_df)
+                            fixed_df     = fixed_df,
+                            start        = start)
   .check_estimable(fit$base$coefficients, pred)
   if (!is.null(fit_fixed)) {
     removed <- nrow(pred) - stats::nobs(fit$base$base_model)
@@ -264,6 +266,10 @@ QAPengine <- function(formula,
     fit$abs      <- agg$abs
     fit$testdist <- .as_testdist(agg$testdist, names(fit$base$coefficients),
                                  times)
+    if ("draws" %in% outputs) {
+      fit$draws <- .as_testdist(agg$coefdist, names(fit$base$coefficients),
+                                times)
+    }
 
   } else if (permute == "predictor") {
     n_coefs <- length(fit$base$coefficients)
@@ -275,6 +281,7 @@ QAPengine <- function(formula,
     # columns only by its position. The intercept is not permuted at all, and
     # its column stays NA, as its p-values do.
     fit$testdist <- .as_testdist(NULL, names(fit$base$coefficients), times)
+    if ("draws" %in% outputs) fit$draws <- fit$testdist
 
     for (xi in main) {
       test_val <- if (!large) matlist[[xi]] else matlist[[xi]][[1]]
@@ -306,6 +313,10 @@ QAPengine <- function(formula,
       fit$abs[, xi]    <- agg$abs
       draws <- as.vector(agg$testdist)
       fit$testdist[seq_along(draws), xi] <- draws
+      if ("draws" %in% outputs) {
+        coefs <- as.vector(agg$coefdist)
+        fit$draws[seq_along(coefs), xi] <- coefs
+      }
     }
   }
 
@@ -331,9 +342,9 @@ QAPengine <- function(formula,
                "theta", "zi_coefficients")) {
     if (!is.null(fit$base[[el]])) fit[[el]] <- fit$base[[el]]
   }
-  if (!less_mem) fit$simple_fit <- fit$base$base_model
+  if ("model" %in% outputs) fit$simple_fit <- fit$base$base_model
 
-  if (family == "binomial") {
+  if (family == "binomial" && "confusion" %in% outputs) {
     # From the model rather than from `pred`, since {fixest} leaves out the
     # dyads of a group with one outcome value.
     bm <- fit$base$base_model
@@ -355,7 +366,7 @@ QAPengine <- function(formula,
   fit$robust_se <- use_robust_errors
   fit$random    <- requested[names(slots)]
   fit$fixed_effects <- fixed_effects
-  # The parameters that a gaussian model absorbed by demeaning, which its
+  # The coefficients that a gaussian model absorbed by demeaning, which its
   # baseline fit does not count, so that `logLik()` can.
   fit$fixed_df  <- fixed_df
   fit$pred      <- pred_observed
@@ -368,14 +379,12 @@ QAPengine <- function(formula,
                         fixed_nodes = fixed)
 
 
-  # Most specific first, so that a method can be written at any level and S3
-  # falls back to the next. Every result is a `netreg`. Its family splits it
-  # into linear and generalised, which is where printing differs. A CSS puts
-  # `netreg_css` in front, so that a CSS method can take over and still fall
-  # back to the family's. The names say what the result is, not the procedure
-  # that produced it, as the function names do.
-  family_class <- if (family == "gaussian") "netreg_lm" else "netreg_glm"
-  class(fit) <- c(if (css) "netreg_css", family_class, "netreg")
+  # The class names the model, not the family: an eha model is a glm too, so
+  # a class for each family would cover two models. The family, a CSS, and a
+  # panel are fields. `netreg` stays second in 0.7.x, for `{autograph}`'s
+  # `plot.netreg()` and `{migraph}`'s shims, and goes in 0.8.0.
+  fit$css <- isTRUE(css)
+  class(fit) <- c("infernetMrqapFit", "netreg")
   fit
 }
 

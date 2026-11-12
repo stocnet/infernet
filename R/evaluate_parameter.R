@@ -1,19 +1,23 @@
-# Tests of parameters ####
+# Tests of a model's coefficients ####
 
-#' Tests of a model's parameters
+#' Tests of a model's coefficients
 #' @name test_parameter
 #' @description
-#'   These generics test hypotheses about the parameters of a fitted model:
+#'   These generics test hypotheses about the coefficients of a fitted model:
 #'
-#'   - `test_parameter()` asks whether one or more parameters have the values
-#'   that a hypothesis gives them.
-#'   - `test_time()` asks whether parameters are constant over time.
+#'   - `test_parameter()` asks whether one or more coefficients have the
+#'   values that a hypothesis gives them.
+#'   - `test_time()` asks whether coefficients are constant over time.
 #'
-#'   Each has a method for a `netreg`, from `estimate_mrqap()`.
+#'   `test_parameter()` keeps its name, which `{goldfish}` and `{RSiena}`
+#'   share: a hypothesis is about a parameter of the model, and the value
+#'   that is estimated or stated for it is a coefficient.
+#'
+#'   Each has a method for an `infernetMrqapFit`, from `estimate_mrqap()`.
 #'   `{infernet}` holds the generics so that other packages can register
 #'   methods for their own models on them.
 #' @details
-#'   For a `netreg`, both tests compare a model in which the tested
+#'   For an `infernetMrqapFit`, both tests compare a model in which the tested
 #'   coefficients are free with one in which they are fixed.
 #'   The statistic is the deviance that freeing them removes:
 #'   the residual sum of squares of a gaussian model, and the deviance of a
@@ -69,7 +73,7 @@
 #'   masks the others.
 #'   Call `infernet::test_parameter()`, `RSiena::test_parameter()`, or
 #'   `goldfish::test_parameter()` to choose.
-#' @param x A fitted model, such as a `netreg` from `estimate_mrqap()`.
+#' @param x A fitted model, such as an `infernetMrqapFit` from `estimate_mrqap()`.
 #' @param terms The names of the coefficients to test, as the model prints
 #'   them, such as `"ego_Age"`.
 #'   A name that is not a coefficient selects every coefficient that starts
@@ -81,10 +85,11 @@
 #' @param times The number of permutations.
 #' @param control A list of controls, or the result of `control_mrqap()`.
 #'   The tests read `seed`, `strategy`, `ncores`, and `groups`, and the
-#'   controls set with `control_mrqap(..., persist = TRUE)` where these are
+#'   controls set with [set_control_computation()] where these are
 #'   not named.
-#' @param ... Arguments for a method. Not used by the methods for a `netreg`.
-#' @return For a `netreg`, a `network_test`, with the statistic, the
+#' @param ... Arguments for a method. Not used by the methods for an
+#'   `infernetMrqapFit`. For `anova()`, the second fit.
+#' @return For an `infernetMrqapFit`, a `network_test`, with the statistic, the
 #'   permutation distribution, and the p-value as `pgteobs`.
 #'   It also holds the tested coefficients as `terms`, the tested values as
 #'   `value`, and the number of permutations left out because the model did
@@ -94,7 +99,7 @@
 #'   "Sensitivity of MRQAP Tests to Collinearity and Autocorrelation Conditions."
 #'   _Psychometrika_ 72(4): 563-581.
 #'   \doi{10.1007/s11336-007-9016-1}
-#' @family models
+#' @family evaluating functions
 #' @examples
 #' fit <- estimate_mrqap(. ~ ego(Grp) + alter(Age), ison_adolescents |>
 #'   mutate_nodes(Grp = rep(c("a", "b", "c"), length.out = 8),
@@ -109,12 +114,12 @@ test_parameter <- function(x, ...) UseMethod("test_parameter")
 test_parameter.default <- function(x, ...) {
   manynet::snet_abort(
     c("{.fn test_parameter} has no method for a {.cls {class(x)[1]}}.",
-      i = "Give it a {.cls netreg} from {.fn estimate_mrqap}."))
+      i = "Give it a {.cls infernetMrqapFit} from {.fn estimate_mrqap}."))
 }
 
 #' @rdname test_parameter
 #' @export
-test_parameter.netreg <- function(x, terms, value = 0, ..., times = 1000,
+test_parameter.infernetMrqapFit <- function(x, terms, value = 0, ..., times = 1000,
                                   control = list()) {
   .check_joint_fit(x, "test_parameter")
   main <- .main_columns(x)
@@ -140,6 +145,125 @@ test_parameter.netreg <- function(x, terms, value = 0, ..., times = 1000,
               times, control, test = "Parameter")
 }
 
+# ---- anova of two nested fits, on the test_parameter page ------------------------------------------------
+
+#' @section Comparing two nested fits:
+#'   `anova()` of two fits from [estimate_mrqap()] asks whether the terms that
+#'   the larger model adds to the smaller one, together, explain more than
+#'   chance. It calls `test_parameter()` on the larger model, with the
+#'   coefficients that the smaller one does not have, so the test is the
+#'   joint double semi-partialling above.
+#'
+#'   The two fits must be nested: the same family, the same dyads, and every
+#'   coefficient of the smaller model in the larger one.
+#'   Fit both on the same network, with the same controls.
+#'   The order of the two fits does not matter, and `anova()` also returns a
+#'   `network_test`.
+#' @param object For `anova()`, an `infernetMrqapFit` from [estimate_mrqap()];
+#'   give the other fit in `...`.
+#' @examples
+#' net <- ison_adolescents |>
+#'   mutate_nodes(Grp = rep(c("a", "b", "c"), length.out = 8), Age = 12:19)
+#' small <- estimate_mrqap(. ~ alter(Age), net, times = 20)
+#' big <- estimate_mrqap(. ~ alter(Age) + ego(Grp), net, times = 20)
+#' anova(small, big, times = 50, control = list(seed = 1))
+#' @rdname test_parameter
+#' @exportS3Method stats::anova
+anova.infernetMrqapFit <- function(object, ..., times = 1000,
+                                   control = list()) {
+  fits <- list(...)
+  if (length(fits) != 1 || !inherits(fits[[1]], "infernetMrqapFit")) {
+    manynet::snet_abort(
+      c("{.fn anova} compares two nested fits from {.fn estimate_mrqap}.",
+        i = "Give it a smaller and a larger fit, as {.code anova(small, big)}.",
+        i = "To test terms of one fit, use {.fn test_parameter}."))
+  }
+  small <- object
+  big <- fits[[1]]
+  if (length(small$coefficients) > length(big$coefficients)) {
+    swap <- small
+    small <- big
+    big <- swap
+  }
+  .check_nested(small, big)
+  extra <- setdiff(names(big$coefficients), names(small$coefficients))
+  test_parameter(big, terms = extra, times = times, control = control)
+}
+
+# Two fits are nested when the larger has every coefficient of the smaller,
+# with the same values in each shared column, the same random intercepts and
+# fixed effects, the same family, and the same dyads. `anova()` tests the
+# larger fit without its extra columns, so the comparison is with the smaller
+# fit only where that model is the smaller fit.
+#' @keywords internal
+#' @noRd
+.check_nested <- function(small, big) {
+  if (!identical(small$family, big$family)) {
+    manynet::snet_abort(
+      "The two fits have different families: {.val {small$family}} and {.val {big$family}}.")
+  }
+  if (!identical(small$dep, big$dep)) {
+    manynet::snet_abort(
+      "The two fits have different outcomes: {.val {small$dep}} and {.val {big$dep}}.")
+  }
+  same_dyads <- !is.null(small$pred) && !is.null(big$pred) &&
+    nrow(small$pred) == nrow(big$pred) &&
+    all(vapply(intersect(c(.structural_vars(), small$dep),
+                         intersect(names(small$pred), names(big$pred))),
+               function(v) isTRUE(all.equal(small$pred[[v]], big$pred[[v]])),
+               logical(1)))
+  if (!same_dyads) {
+    manynet::snet_abort(
+      c("The two fits do not use the same dyads.",
+        i = "Fit both on the same network: a term with unobserved values leaves out dyads in one model only."))
+  }
+  missing <- setdiff(names(small$coefficients), names(big$coefficients))
+  if (length(missing) > 0) {
+    manynet::snet_abort(
+      c("The two fits are not nested.",
+        x = "The larger fit has no coefficient {.val {missing}}."))
+  }
+  shared <- intersect(names(small$coefficients), names(small$pred))
+  shared <- intersect(shared, names(big$pred))
+  differ <- shared[!vapply(shared, function(v)
+    isTRUE(all.equal(small$pred[[v]], big$pred[[v]], check.attributes = FALSE)),
+    logical(1))]
+  if (length(differ) > 0) {
+    manynet::snet_abort(
+      c("The two fits are not nested.",
+        x = "The column{?s} {.val {differ}} {?has/have} different values in the two fits.",
+        i = "Fit both on the same network, with the same arguments to each shared term."))
+  }
+  effects <- function(x) {
+    slots <- c(nets = "network", sender = "sender", receiver = "receiver",
+               reporter = "reporter")
+    on <- names(x$random)[unlist(x$random)]
+    list(random = sort(unname(slots[intersect(on, names(slots))])),
+         fixed = sort(as.character(x$fixed_effects)),
+         css = isTRUE(x$css), panel = isTRUE(x$panel))
+  }
+  e_small <- effects(small)
+  e_big <- effects(big)
+  if (!identical(e_small, e_big)) {
+    describe <- function(e) {
+      parts <- c(if (length(e$random)) paste0("(1 | ", e$random, ")"),
+                 if (length(e$fixed)) paste("|", paste(e$fixed, collapse = " + ")))
+      if (length(parts) == 0) "none" else paste(parts, collapse = ", ")
+    }
+    manynet::snet_abort(
+      c("The two fits are not nested.",
+        x = "They have different random intercepts or fixed effects: {describe(e_small)} and {describe(e_big)}.",
+        i = "Give both fits the same random intercepts and fixed effects.",
+        i = if (!identical(e_small[c("css", "panel")], e_big[c("css", "panel")]))
+          "One fit is of a cognitive social structure or a panel, and the other is not."))
+  }
+  if (length(big$coefficients) == length(small$coefficients)) {
+    manynet::snet_abort(
+      "The two fits have the same coefficients, so there is nothing to test.")
+  }
+  invisible(TRUE)
+}
+
 #' @rdname test_parameter
 #' @export
 test_time <- function(x, ...) UseMethod("test_time")
@@ -149,12 +273,12 @@ test_time <- function(x, ...) UseMethod("test_time")
 test_time.default <- function(x, ...) {
   manynet::snet_abort(
     c("{.fn test_time} has no method for a {.cls {class(x)[1]}}.",
-      i = "Give it a {.cls netreg} from {.fn estimate_mrqap}, fitted on a longitudinal network."))
+      i = "Give it a {.cls infernetMrqapFit} from {.fn estimate_mrqap}, fitted on a longitudinal network."))
 }
 
 #' @rdname test_parameter
 #' @export
-test_time.netreg <- function(x, terms = NULL, ..., times = 1000,
+test_time.infernetMrqapFit <- function(x, terms = NULL, ..., times = 1000,
                              control = list()) {
   .check_joint_fit(x, "test_time")
   if (!isTRUE(x$panel)) {
@@ -202,7 +326,7 @@ test_time.netreg <- function(x, terms = NULL, ..., times = 1000,
 #' @keywords internal
 #' @noRd
 .check_joint_fit <- function(x, fn) {
-  if (inherits(x, "netreg_css")) {
+  if (isTRUE(x$css)) {
     manynet::snet_abort(
       "{.fn {fn}} cannot yet test a model of a cognitive social structure.")
   }

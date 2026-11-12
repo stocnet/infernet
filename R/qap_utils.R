@@ -662,7 +662,7 @@ HC3 <- function(X, e) {
 # "(Intercept)", which double semi-partialling leaves untested and printing
 # marks, so the intercept is kept as `NA` rather than dropped.
 #
-# `fixed_df` is the number of parameters that a gaussian model absorbed before
+# `fixed_df` is the number of coefficients that a gaussian model absorbed before
 # it reached `lm()`. The fit of the demeaned variables does not know of them,
 # so its residual degrees of freedom are too many, and each t-statistic is
 # rescaled to what the model with the fixed effects gives. The rescaling is the
@@ -710,8 +710,11 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
                           use_robust_errors = FALSE,
                           main_vars = NULL,
                           has_random = FALSE,
-                          fixed_effects = NULL) {
+                          fixed_effects = NULL,
+                          start = NULL) {
   fit <- list()
+  start <- .match_start(start, mod)
+  fit$start <- start
   dep_var <- all.vars(mod)[1]
   nx  <- length(main_vars)
 
@@ -754,7 +757,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
         c("Random intercepts are not available for the {.val zip} family.",
           i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
-      thisRequires("pscl", "for zero-inflated Poisson models")
+      manynet::snet_requires("pscl", "for zero-inflated Poisson models", ask = FALSE)
       base_model <- pscl::zeroinfl(mod, data = pred, dist = "poisson")
       fit$coefficients <- base_model$coefficients$count
       resid <- stats::residuals(base_model, type = "response")
@@ -776,11 +779,12 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
       fit$r.squared     <- summary(base_model)$r.squared
       fit$adj.r.squared <- summary(base_model)$adj.r.squared
     } else if (family == "negbin") {
-      thisRequires("MASS", "for negative binomial models")
-      base_model <- MASS::glm.nb(mod, data = pred)
+      manynet::snet_requires("MASS", "for negative binomial models", ask = FALSE)
+      base_model <- MASS::glm.nb(mod, data = pred, start = start)
       fit$theta  <- base_model$theta
     } else {
-      base_model <- stats::glm(mod, data = pred, family = family)
+      base_model <- stats::glm(mod, data = pred, family = family,
+                               start = start)
     }
     fit$coefficients <- base_model$coefficients
     resid <- stats::residuals(base_model)
@@ -793,7 +797,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
     }
   } else {
     if (family == "gaussian") {
-      thisRequires("lme4", "for random effects")
+      manynet::snet_requires("lme4", "for random effects", ask = FALSE)
       base_model <- lme4::lmer(mod, data = pred)
     } else if (family == "negbin") {
       # The mixed variant needs {glmmTMB}, which is on feature/glmmtmb-mixed.
@@ -801,7 +805,7 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
         c("Random intercepts are not available for the {.val negbin} family.",
           i = "Drop the random intercepts, or use {.val poisson}."))
     } else {
-      thisRequires("lme4", "for random effects")
+      manynet::snet_requires("lme4", "for random effects", ask = FALSE)
       base_model <- lme4::glmer(mod, data = pred, family = family,
                                 control = lme4::glmerControl(
                                   calc.derivs = FALSE,
@@ -831,6 +835,33 @@ fit_qap_model <- function(..., fixed_effects = NULL, fixed_df = NULL) {
 }
 
 
+# Initial values in the order of the model's columns, which `glm()` reads by
+# position. A name that is no column aborts. A column without a value is not
+# stated, so the initial values are not used.
+#' @keywords internal
+#' @noRd
+.match_start <- function(start, mod) {
+  if (is.null(start)) return(NULL)
+  tt <- stats::terms(mod)
+  cols <- gsub("`", "", attr(tt, "term.labels"), fixed = TRUE)
+  if (attr(tt, "intercept") == 1) cols <- c("(Intercept)", cols)
+  unknown <- setdiff(names(start), cols)
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("The initial values must be named for the columns of the model.",
+        x = "No column named {.val {unknown}}.",
+        i = "The columns are {.val {cols}}."))
+  }
+  unstated <- setdiff(cols, names(start))
+  if (length(unstated) > 0) {
+    manynet::snet_info(
+      "The initial values are not used: {.val {unstated}} {?is/are} not stated.")
+    return(NULL)
+  }
+  start[cols]
+}
+
+
 # ---- permutation comparison -------------------------------------------------
 
 #' @keywords internal
@@ -846,11 +877,13 @@ compare_perm_to_baseline <- function(perm_coefs, perm_t, base_fit,
     out$larger <- pres >= bres
     out$abs    <- abs(pres) >= abs(bres)
     out$t      <- perm_t
+    out$b      <- perm_coefs
   } else {
     out$lower  <- (pres <= bres)[, xi]
     out$larger <- (pres >= bres)[, xi]
     out$abs    <- (abs(pres) >= abs(bres))[, xi]
     out$t      <- perm_t[xi]
+    out$b      <- perm_coefs[xi]
   }
   return(out)
 }
@@ -885,7 +918,9 @@ aggregate_perm_results <- function(results, times) {
     # The permuted test statistics themselves, one row per permutation that
     # succeeded. The three p-values above are read from this; keeping it lets a
     # plot draw the null distribution they were read from.
-    testdist = do.call(rbind, lapply(results, function(r) r$t))
+    testdist = do.call(rbind, lapply(results, function(r) r$t)),
+    # The permuted coefficients, which `outputs = "draws"` keeps.
+    coefdist = do.call(rbind, lapply(results, function(r) r$b))
   )
 }
 
@@ -924,7 +959,7 @@ residualise_predictor <- function(xi, pred, main_vars,
   if (!has_random) {
     xm <- stats::lm(modx, data = pred)
   } else {
-    thisRequires("lme4", "for random effects")
+    manynet::snet_requires("lme4", "for random effects", ask = FALSE)
     # Residualising is a step towards the null distribution, not a result the
     # user reads, so a degenerate mixed fit here must not abort the whole run.
     # Crossed sender and receiver intercepts on a predictor are often singular,

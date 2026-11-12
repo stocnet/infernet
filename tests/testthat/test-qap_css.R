@@ -7,7 +7,7 @@ test_that("the engine fits a CSS and counts its observations", {
   n <- 8
   fit <- QAPengine(ties ~ cov, css_fixture(n), css = TRUE,
                    family = "binomial", times = 20, seed = 1)
-  expect_s3_class(fit, "netreg_css")
+  expect_true(fit$css)
   expect_named(fit$coefficients, c("(Intercept)", "cov"))
   # Every cell of every reporter's report, less the diagonals.
   expect_equal(nrow(fit$pred), n * n * n - n * n)
@@ -95,8 +95,8 @@ test_that("a CSS layer is detected and fitted as one", {
   fit <- suppressMessages(
     estimate_mrqap(FORM_HT, manynet::ison_hightech, times = 10,
                    control = list(seed = 1)))
-  expect_s3_class(fit, "netreg")
-  expect_s3_class(fit, "netreg_css")
+  expect_s3_class(fit, "infernetMrqapFit")
+  expect_true(fit$css)
   expect_named(fit$coefficients,
                c("(Intercept)", "ego_age", "alter_age", "same_dept", "reports"))
   # 21 reporters, each describing the 21 x 20 ordered dyads.
@@ -126,7 +126,7 @@ test_that("a layer that is not a CSS is the outcome of a dyadic model", {
   fit <- suppressMessages(
     estimate_mrqap(reports ~ ego(age) + alter(age), HT, times = 5,
                    control = list(seed = 1)))
-  expect_false(inherits(fit, "netreg_css"))
+  expect_false(fit$css)
   expect_equal(nrow(fit$pred), 10 * 9)
 })
 
@@ -391,13 +391,13 @@ test_that("a list of CSS networks is pooled", {
   fit <- suppressMessages(
     estimate_mrqap(advice ~ ego(age) + friends, list(HT, HT), times = 5,
                    control = list(seed = 1)))
-  expect_s3_class(fit, "netreg_css")
+  expect_true(fit$css)
   expect_equal(nrow(fit$pred), 2 * 10 * 10 * 9)
 })
 
 test_that("a CSS cannot be pooled with a network that is not one", {
-  dyadic <- manynet::to_uniplex(HT, "reports")
-  css    <- manynet::to_uniplex(HT, "advice")
+  dyadic <- manynet::to_layer(HT, "reports")
+  css    <- manynet::to_layer(HT, "advice")
   expect_error(
     estimate_mrqap(. ~ ego(age), list(css, dyadic), times = 5),
     "Cannot pool")

@@ -128,13 +128,13 @@ specify_mrqap(advice ~ edges + mutual + nodematch("dept") + edgecov("friends"))
 specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 ```
 
-`tidy()` of a specification gives one row for each term,
+`summary()` of a specification gives one row for each term,
 with what the model makes of it on a network:
 
 ```{r specify-tidy, warning = FALSE}
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
-tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+summary(spec, ison_hightech)[, c("term", "status", "reason")]
 ```
 
 With a network as `.data`, `specify_ergm()` also gives the matrices

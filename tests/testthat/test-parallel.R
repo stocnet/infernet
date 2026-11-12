@@ -15,7 +15,7 @@ skip_on_cran()
 # ---- sequential references -----------------------------------------------------
 
 FORM_PAR <- weight ~ ego(Age) + alter(Age) + sim(Age)
-marvel <- manynet::to_uniplex(manynet::fict_marvel, "relationship") |>
+marvel <- manynet::to_layer(manynet::fict_marvel, "relationship") |>
   manynet::to_giant() |> manynet::to_unsigned() |>
   manynet::to_subgraph(PowerOrigin == "Human")
 set.seed(16)
@@ -38,6 +38,10 @@ sequential <- list(
                  times = 40, control = list(seed = 3)),
   parameter = test_parameter(param_fit, "ego_Grp", times = 20,
                              control = list(seed = 3)))
+sim_spec <- specify_mrqap(. ~ ego(Age))
+sim_matrices <- function(nets) lapply(nets, manynet::as_matrix)
+sequential$simulate <- sim_matrices(
+  simulate(binary_fit, nsim = 4, seed = 8, .data = binary_net))
 sequential$distributions <- test_distributions(
   sequential$diffusions, sequential$diffusions, times = 10,
   control = list(seed = 2))
@@ -86,7 +90,7 @@ test_that("play_diffusions() and test_distributions() agree on two workers", {
                sequential$distributions)
 })
 
-test_that("test_gof() on a netreg gives the same p-value on two workers", {
+test_that("test_gof() on an MRQAP fit gives the same p-value on two workers", {
   expect_equal(test_gof(binary_fit, binary_net, netrics::net_by_reciprocity,
                         times = 40, control = list(seed = 3)),
                sequential$gof)
@@ -96,6 +100,39 @@ test_that("test_parameter() gives the same p-value on two workers", {
   expect_equal(test_parameter(param_fit, "ego_Grp", times = 20,
                               control = list(seed = 3)),
                sequential$parameter)
+})
+
+test_that("simulate() gives the same networks on two workers, by every route", {
+  expect_identical(
+    sim_matrices(simulate(binary_fit, nsim = 4, seed = 8, .data = binary_net)),
+    sequential$simulate)
+  expect_identical(
+    sim_matrices(simulate(declare_coefs(binary_fit), nsim = 4, seed = 8,
+                          .data = binary_net)),
+    sequential$simulate)
+  expect_identical(
+    sim_matrices(simulate(sim_spec, nsim = 4, seed = 8, .data = binary_net,
+                          coefs = coef(binary_fit), family = "binomial")),
+    sequential$simulate)
+})
+
+test_that("a seed that persists gives the same draws on two workers", {
+  old <- set_control_computation(seed = 99)
+  on.exit(options(snet_computation = old), add = TRUE)
+  par <- estimate_mrqap(FORM_PAR, qap_net_gaussian(), times = 30)
+  expect_equal(par$testdist, sequential$mrqap$testdist)
+  expect_equal(par$lower, sequential$mrqap$lower)
+  expect_equal(par$control$seed, 99)
+  set_control_computation(seed = 1)
+  expect_equal(test_permutation(marvel, netrics::net_by_heterophily,
+                                attribute = "Attractive", times = 20)$testdist,
+               sequential$permutation$testdist)
+  diffusions <- play_diffusions(diffusion_net, transmissibility = 0.4,
+                                times = 20)
+  # The record says that the seed came from the option, so only it differs.
+  expect_equal(diffusions, sequential$diffusions, ignore_attr = "control")
+  expect_equal(attr(diffusions, "control")$seed, 1)
+  expect_identical(future::plan(), two_workers)
 })
 
 # `ncores` starts its own plan, and so stops the user's workers and starts them

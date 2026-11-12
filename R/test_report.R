@@ -1,10 +1,9 @@
-# infernet: network_test ####
+# Reporting network tests ####
 
-#' Reporting network test results
-#' @name report_tests
-#' @family tests
-#' @family reports
-#' @description
+# The methods of a `network_test`, which every `test_*()` function makes, on
+# the help page of `test_measures`.
+
+#' @section Methods:
 #'   These methods report a `network_test`, the result of
 #'   [test_random()], [test_configuration()], [test_permutation()],
 #'   [test_gof()], [test_distributions()], [test_parameter()], and
@@ -18,10 +17,14 @@
 #'     upper tail is a p-value, and only it is marked.
 #'   - `tidy()` and `glance()` give the same as a tibble of one row, after
 #'     `{broom}`.
+#'   - `summary()` gives the observed statistic, quantiles of the null
+#'     distribution, and the two p-values, as a tibble of class
+#'     `infernetTestSummary`, with one row for each statistic.
 #' @param x A `network_test`.
-#' @param max.length,digits Not used.
-#' @param ... Not used.
-#' @return `print()` returns `x`, invisibly.
+#' @return
+#'   `summary()` gives a tibble with the `statistic`, a column for each
+#'   quantile of the null distribution, such as `null.2.5%`, and `p.lower` and
+#'   `p.upper`.
 #'   `tidy()` and `glance()` give one row with the observed statistic,
 #'   the mean and standard deviation of the null distribution,
 #'   and the share of the null distribution at or below (`p.lower`)
@@ -32,11 +35,14 @@
 #' @examples
 #' qaptest <- test_permutation(manynet::ison_adolescents,
 #'                             netrics::net_by_density, times = 20)
-#' print(qaptest)
+#' qaptest
 #' tidy(qaptest)
+#' summary(qaptest)
+#' @name report_tests
+#' @rdname test_measures
 NULL
 
-#' @rdname report_tests
+#' @rdname test_measures
 #' @method tidy network_test
 #' @export
 tidy.network_test <- function(x, ...) {
@@ -50,15 +56,52 @@ tidy.network_test <- function(x, ...) {
                  times = if (is.null(x$times)) x$reps else x$times)
 }
 
-#' @rdname report_tests
+#' @rdname test_measures
+#' @param object A `network_test`.
+#' @param probs For `summary()`, the probabilities of the quantiles of the null distribution.
+#' @export
+summary.network_test <- function(object, probs = c(0.025, 0.5, 0.975), ...) {
+  null <- as.matrix(object$testdist)
+  stat <- as.numeric(object$testval)
+  # A test of one statistic has one column of draws; a test of several, such
+  # as of a vector-valued measure, has one column for each.
+  if (ncol(null) != length(stat)) null <- matrix(as.numeric(null), ncol = 1)
+  q <- t(apply(null, 2, stats::quantile, probs = probs, na.rm = TRUE,
+               names = FALSE))
+  if (length(probs) == 1) q <- t(q)
+  colnames(q) <- paste0("null.", 100 * probs, "%")
+  out <- tibble::as_tibble(c(
+    list(statistic = stat[seq_len(nrow(q))]),
+    as.list(as.data.frame(q, check.names = FALSE)),
+    list(p.lower = rep_len(as.numeric(object$plteobs), nrow(q)),
+         p.upper = rep_len(as.numeric(object$pgteobs), nrow(q)))))
+  structure(out, class = c("infernetTestSummary", class(out)),
+            header = .test_header(object),
+            times = if (is.null(object$times)) object$reps else object$times,
+            draws = sum(!is.na(null[, 1])))
+}
+
+#' @export
+#' @noRd
+print.infernetTestSummary <- function(x, ...) {
+  # A summary that lost its attributes, such as by `[`, prints as a tibble.
+  if (is.null(attr(x, "header"))) return(NextMethod())
+  .print_title(attr(x, "header"))
+  print(tibble::as_tibble(unclass(x)[names(x)]))
+  .print_footer(paste0("Quantiles of the null distribution, from ",
+                       attr(x, "draws"), " draws."))
+  invisible(x)
+}
+
+#' @rdname test_measures
 #' @method glance network_test
 #' @export
 glance.network_test <- function(x, ...) {
   tidy.network_test(x, ...)
 }
 
-#' @rdname report_tests
 #' @export
+#' @noRd
 print.network_test <- function(x, ...,
                                max.length = 6,
                                digits = 3){

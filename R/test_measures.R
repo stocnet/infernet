@@ -19,7 +19,7 @@
 #'   so a measure can read the times of adoption.
 #'   For a null that rewires the network, see `netdiffuseR::struct_test()`.
 #'   
-#' @inheritParams regression
+#' @inheritParams estimate_mrqap
 #' @param control The controls of the simulations, as the result of
 #'   [control_mrqap()] or a named list of its arguments, such as
 #'   `list(ncores = 4, seed = 1)`.
@@ -28,7 +28,7 @@
 #'   whole.
 #'   `ncores` is generally useful only when `times` > 1000.
 #'   A control that is not named keeps its default, or the value set with
-#'   `control_mrqap(..., persist = TRUE)`, and the result records the controls
+#'   [set_control_computation()], and the result records the controls
 #'   that it used as `control`.
 #'   See [control_mrqap()] for each control and its default.
 #' @references
@@ -37,10 +37,10 @@
 #'   When Permutations Are Randomly Drawn."
 #'   _Statistical Applications in Genetics and Molecular Biology_ 9(1): 39.
 #'   \doi{10.2202/1544-6115.1585}.
-#' @family models
+#' @family testing functions
 #' @param FUN A graph-level statistic function to test.
-#' @param ... Additional arguments to be passed on to FUN,
-#'   e.g. the name of the attribute.
+#' @param ... For a `test_*()` function, more arguments for `FUN`,
+#'   such as the name of the attribute. For a method, not used.
 #' @return A `network_test`, which `print()`, `tidy()`, and `glance()` report.
 #'   It holds the observed statistic in `testval`, the statistics of the
 #'   simulations in `testdist`, and the p-values of the observed statistic:
@@ -55,9 +55,9 @@
 NULL
 
 #' @rdname test_measures
-#' @importFrom manynet generate_random bind_node_attributes is_directed is_complex
+#' @importFrom manynet generate_random bind_node_attributes is_directed is_looped
 #' @examples 
-#' marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+#' marvel_friends <- fict_marvel |> to_layer("relationship") |> 
 #'   to_unsigned() |> to_giant() |> 
 #'   to_subgraph(PowerOrigin == "Human")
 #' (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
@@ -78,7 +78,7 @@ test_random <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               cmode = "edges",
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
@@ -91,6 +91,17 @@ test_random <- function(.data, FUN, ...,
 
 #' @rdname test_measures
 #' @importFrom manynet generate_configuration
+#' @examples
+#' # In a two-mode network with repeated ties, such as texts and the terms
+#' # they use, each draw keeps the number of tokens in each text and the
+#' # number of times each term is used, and so is a shuffled text.
+#' # Project inside the statistic to test the co-occurrence of the terms
+#' # against such shuffled texts.
+#' tokens <- manynet::as_igraph(data.frame(
+#'   from = c("A","A","A","A","B","B","B","C","C","C","C"),
+#'   to = c("w","w","x","y","x","x","z","y","z","z","w")), twomode = TRUE)
+#' (configtest <- test_configuration(tokens,
+#'    function(g) net_by_transitivity(to_mode(g, 2)), times = 100))
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
@@ -106,7 +117,7 @@ test_configuration <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               cmode = "edges",
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
@@ -138,7 +149,7 @@ test_permutation <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
               times = times,

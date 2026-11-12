@@ -1,4 +1,4 @@
-# `predict()` of a `netreg` gives, without `newdata`, the fitted values of the
+# `predict()` of an `infernetMrqapFit` gives, without `newdata`, the fitted values of the
 # equivalent standard fit on the same dyads, and with `newdata`, the values
 # from the coefficients. Each family is checked against its standard fit.
 
@@ -118,4 +118,32 @@ test_that("a netlm and a netlogit from migraph predict from their design matrix"
   expect_equal(predict(logit_res, x), drop(x %*% b))
   expect_equal(predict(logit_res, x, type = "response"), stats::plogis(drop(x %*% b)))
   expect_error(predict(lm_res), "newdata")
+})
+
+# `formula()` and `terms()` of an MRQAP fit.
+
+FORM_TERMS <- weight ~ ego(Age) + alter(Age) + sim(Age)
+
+test_that("formula() gives the formula as read, and terms() the fitted columns", {
+  g <- qap_net_gaussian()
+  fit <- estimate_mrqap(FORM_TERMS, g, times = 5, control = list(seed = 1))
+  expect_equal(stats::formula(fit), FORM_TERMS, ignore_attr = TRUE)
+  expect_s3_class(stats::formula(fit), "formula")
+  expect_null(attr(stats::formula(fit), "record"))
+  tt <- stats::terms(fit)
+  expect_s3_class(tt, "terms")
+  expect_equal(attr(tt, "term.labels"), c("ego_Age", "alter_Age", "sim_Age"))
+  mf <- stats::model.frame(tt, data = fit$pred)
+  expect_equal(nrow(mf), stats::nobs(fit))
+  expect_equal(unname(stats::coef(stats::lm(tt, data = fit$pred))),
+               unname(stats::coef(fit)))
+})
+
+test_that("a result without a formula says how to get one", {
+  fit <- estimate_mrqap(FORM_TERMS, qap_net_gaussian(), times = 5,
+                        control = list(seed = 1))
+  fit$formula <- NULL
+  fit$model_formula <- NULL
+  expect_error(stats::formula(fit), "earlier version")
+  expect_error(stats::terms(fit), "earlier version")
 })
