@@ -990,7 +990,7 @@ and a `| sender` fixed effect as ergm's `sender` term,
 and each term that the other model cannot fit is dropped and named.
 Give the network as well,
 so that a categorical attribute is written as a categorical term.
-`tidy()` of the result has one row for each term,
+`summary()` of the result has one row for each term,
 with what the other model makes of it.
 
 Rewrite a model of `ison_networkers` for ergm, and check each term.
@@ -1002,7 +1002,7 @@ Then do the same, without the network, for a model of `ison_hightech`.
 
 ```{r specify-hint, purl = FALSE}
 ergm_formula <- specify_ergm(____, ison_networkers)
-tidy(ergm_formula)
+summary(ergm_formula)
 ```
 
 ```{r specify-solution}
@@ -1010,8 +1010,8 @@ ergm_formula <- specify_ergm(weight ~ diff(Citations) + same(Discipline, diff = 
                                mix(Discipline, levels = "Sociology -> Anthropology") | sender, 
                              ison_networkers)
 ergm_formula
-tidy(ergm_formula)
-tidy(specify_ergm(advice ~ tie(friends) + same(dept) + reporter(level) + reporter_ego))
+summary(ergm_formula)
+summary(specify_ergm(advice ~ tie(friends) + same(dept) + reporter(level) + reporter_ego))
 ```
 
 The result is an ordinary formula,
@@ -1025,7 +1025,7 @@ question("Why does `specify_ergm()` drop `reporter_ego`?",
   answer("Because ergm fits one report of a network, so it has no reporter.",
          correct = TRUE),
   answer("Because `reporter_ego` reads the outcome's own ties.",
-         message = "`reporter_ego` describes the reporter, not the ties. The reason is in the `reason` column of `tidy()`."),
+         message = "`reporter_ego` describes the reporter, not the ties. The reason is in the `reason` column of `summary()`."),
   answer("Because ergm cannot fit any dyadic term.",
          message = "ergm fits many dyadic terms, such as `absdiff()` and `edgecov()`."),
   allow_retry = TRUE

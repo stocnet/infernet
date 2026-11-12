@@ -56,6 +56,9 @@
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
 - Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
+- Improved the "Modelling with ERGMs" tutorial
+  - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
+  - Interprets `gwesp` and `gwdegree`, with the disagreement on `gwdegree` and the effect of its decay
 
 # infernet 0.6.2
 
