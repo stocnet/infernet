@@ -15,7 +15,7 @@ skip_on_cran()
 # ---- sequential references -----------------------------------------------------
 
 FORM_PAR <- weight ~ ego(Age) + alter(Age) + sim(Age)
-marvel <- manynet::to_uniplex(manynet::fict_marvel, "relationship") |>
+marvel <- manynet::to_layer(manynet::fict_marvel, "relationship") |>
   manynet::to_giant() |> manynet::to_unsigned() |>
   manynet::to_subgraph(PowerOrigin == "Human")
 set.seed(16)

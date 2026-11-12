@@ -55,9 +55,9 @@
 NULL
 
 #' @rdname test_measures
-#' @importFrom manynet generate_random bind_node_attributes is_directed is_complex
+#' @importFrom manynet generate_random bind_node_attributes is_directed is_looped
 #' @examples 
-#' marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+#' marvel_friends <- fict_marvel |> to_layer("relationship") |> 
 #'   to_unsigned() |> to_giant() |> 
 #'   to_subgraph(PowerOrigin == "Human")
 #' (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
@@ -78,7 +78,7 @@ test_random <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               cmode = "edges",
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
@@ -117,7 +117,7 @@ test_configuration <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               cmode = "edges",
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
@@ -149,7 +149,7 @@ test_permutation <- function(.data, FUN, ...,
               testval = obsd,
               testdist = simd,
               directed = manynet::is_directed(.data),
-              loops = manynet::is_complex(.data),
+              loops = manynet::is_looped(.data),
               plteobs = .perm_p(sum(simd <= obsd), length(simd)),
               pgteobs = .perm_p(sum(simd >= obsd), length(simd)),
               times = times,

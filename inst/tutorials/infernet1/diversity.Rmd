@@ -54,7 +54,7 @@ learnr::random_phrases_add(language = "en",
                                       "Bravo!",
                                       "Super!"),
                            encouragement = "Bon effort")
-marvel_friends <- to_unsigned(to_uniplex(fict_marvel, "relationship"), keep = "positive")
+marvel_friends <- to_unsigned(to_layer(fict_marvel, "relationship"), keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
 ```
@@ -99,7 +99,7 @@ and can be seen in the following chunk in order:
 ```
 
 ```{r friends-hint-1, purl = FALSE}
-to_uniplex(____, "relationship")
+to_layer(____, "relationship")
 ```
 
 ```{r friends-hint-2, purl = FALSE}
@@ -119,7 +119,7 @@ to_subgraph(____, Appearances >= mean(Appearances))
 ```
 
 ```{r friends-hint-5, purl = FALSE}
-marvel_friends <- to_uniplex(fict_marvel, "relationship")
+marvel_friends <- to_layer(fict_marvel, "relationship")
 marvel_friends <- to_unsigned(marvel_friends, keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
@@ -127,7 +127,7 @@ marvel_friends
 ```
 
 ```{r friends-solution}
-marvel_friends <- to_uniplex(fict_marvel, "relationship")
+marvel_friends <- to_layer(fict_marvel, "relationship")
 marvel_friends <- to_unsigned(marvel_friends, keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))

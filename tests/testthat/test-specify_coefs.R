@@ -95,7 +95,7 @@ test_that("declare_coefs() names what it needs", {
 })
 
 test_that("coefficients of a fit keep the random intercepts that a control turned on", {
-  net <- manynet::to_uniplex(manynet::ison_lawfirm, "friends")
+  net <- manynet::to_layer(manynet::ison_lawfirm, "friends")
   fit <- suppressWarnings(suppressMessages(
     estimate_mrqap(. ~ ego(age), net, times = 2,
                    control = list(family = "binomial", random_intercept_sender = TRUE))))

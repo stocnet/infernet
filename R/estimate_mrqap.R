@@ -444,7 +444,7 @@ estimate_mrqap <- function(formula,
     manynet::snet_info("Reading the network as {.val {direction}}.")
   }
   if (is.null(ctrl$loops)) {
-    ctrl$loops <- isTRUE(manynet::is_complex(first_graph))
+    ctrl$loops <- isTRUE(manynet::is_looped(first_graph))
   }
 
   start <- .use_start(start$values, ctrl, spec)

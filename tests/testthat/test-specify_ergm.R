@@ -11,7 +11,7 @@ built_of <- function(formula, .data = formula_net()) {
 }
 
 layer_matrix <- function(layer, .data = formula_net()) {
-  unname(manynet::as_matrix(manynet::to_uniplex(manynet::as_tidygraph(.data),
+  unname(manynet::as_matrix(manynet::to_layer(manynet::as_tidygraph(.data),
                                                 layer = layer)))
 }
 

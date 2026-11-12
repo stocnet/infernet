@@ -18,7 +18,7 @@ Language: en-GB
 Encoding: UTF-8
 Depends: 
     R (>= 4.1.0),
-    manynet (>= 2.4.0),
+    manynet (>= 2.5.0),
     netrics (>= 1.0.1)
 Authors@R: 
     c(person(given = "James",

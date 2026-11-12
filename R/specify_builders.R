@@ -351,7 +351,7 @@
 #' @keywords internal
 #' @noRd
 .layer_matrix <- function(ctx, layer) {
-  manynet::as_matrix(manynet::to_uniplex(ctx$net, layer = layer))
+  manynet::as_matrix(manynet::to_layer(ctx$net, layer = layer))
 }
 
 # Applies `f` to a matrix, or to each report of a CSS array.

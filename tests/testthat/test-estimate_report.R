@@ -195,7 +195,7 @@ test_that("the test family and the regression share the word testdist", {
 
 test_that("tidy() and glance() read an ergm fit", {
   skip_if_not_installed("ergm")
-  g <- manynet::as_network(manynet::to_uniplex(formula_net(), "a"))
+  g <- manynet::as_network(manynet::to_layer(formula_net(), "a"))
   fit <- suppressMessages(ergm::ergm(g ~ edges + nodematch("grp")))
   out <- tidy(fit, conf.int = TRUE, conf.level = 0.9)
   expect_named(out, c("term", "estimate", "std.error", "mcmc.error",

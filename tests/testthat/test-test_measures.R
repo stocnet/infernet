@@ -1,7 +1,7 @@
 # Making sure the tests family of functions works as intended.
 # Ported from {migraph}, which these functions supersede.
 
-marvel_friends <- manynet::to_uniplex(manynet::fict_marvel, "relationship") |>
+marvel_friends <- manynet::to_layer(manynet::fict_marvel, "relationship") |>
   manynet::to_giant() |> manynet::to_unsigned() |>
   manynet::to_subgraph(PowerOrigin == "Human")
 

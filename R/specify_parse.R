@@ -374,7 +374,7 @@
   if (!is.null(previous)) {
     previous <- manynet::as_tidygraph(previous)
     previous <- manynet::as_matrix(
-      if (!is.na(out$layer)) manynet::to_uniplex(previous, layer = out$layer) else previous)
+      if (!is.na(out$layer)) manynet::to_layer(previous, layer = out$layer) else previous)
   }
   list(
     previous      = previous,
@@ -439,7 +439,7 @@
       label <- focal
     }
   }
-  outcome <- if (!is.na(layer)) manynet::to_uniplex(net, layer = layer) else net
+  outcome <- if (!is.na(layer)) manynet::to_layer(net, layer = layer) else net
   DV <- manynet::as_matrix(outcome)
   if (is.list(DV)) {
     manynet::snet_abort(

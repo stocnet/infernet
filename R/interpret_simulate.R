@@ -407,7 +407,7 @@ simulate.mrqap_formula <- function(object, nsim = 1,
   dep <- parsed$dependent
   data_vars <- intersect(parsed$all_data_vars, names(matlist))
   directed <- manynet::is_directed(net)
-  loops <- isTRUE(manynet::is_complex(net))
+  loops <- isTRUE(manynet::is_looped(net))
   vec <- .vectorise_matlist(.qap_shape(FALSE), matlist, dep, data_vars, NULL,
                             loops, directed, FALSE,
                             attr(matlist[[dep]], "fixed"))

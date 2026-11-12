@@ -396,8 +396,8 @@ test_that("a list of CSS networks is pooled", {
 })
 
 test_that("a CSS cannot be pooled with a network that is not one", {
-  dyadic <- manynet::to_uniplex(HT, "reports")
-  css    <- manynet::to_uniplex(HT, "advice")
+  dyadic <- manynet::to_layer(HT, "reports")
+  css    <- manynet::to_layer(HT, "advice")
   expect_error(
     estimate_mrqap(. ~ ego(age), list(css, dyadic), times = 5),
     "Cannot pool")

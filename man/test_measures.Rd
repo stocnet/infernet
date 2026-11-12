@@ -119,7 +119,7 @@ distribution, and the two p-values, as a tibble of class
 }
 
 \examples{
-marvel_friends <- fict_marvel |> to_uniplex("relationship") |> 
+marvel_friends <- fict_marvel |> to_layer("relationship") |> 
   to_unsigned() |> to_giant() |> 
   to_subgraph(PowerOrigin == "Human")
 (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
