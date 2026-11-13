@@ -59,6 +59,7 @@
 - Improved the "Modelling with ERGMs" tutorial
   - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
   - Interprets `gwesp` and `gwdegree`, with the disagreement on `gwdegree` and the effect of its decay
+- Moved the "Modelling with ERGMs" tutorial to `infernet4`
 
 # infernet 0.6.2
 
