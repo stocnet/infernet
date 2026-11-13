@@ -12,7 +12,8 @@
 #'
 #' @description
 #' Without a formula, or with `.` as its whole right-hand side, as in
-#' `advice ~ .`, [specify_mrqap()] and [specify_ergm()] return a table of
+#' `advice ~ .`, [specify_mrqap()], [specify_ergm()], and [specify_saom()]
+#' return a table of
 #' every term that the model can take for `.data`, as `RSiena::getEffects()`
 #' does for a Siena data object. Each term is written out for the network's
 #' layers and node attributes, such as `ego(age)`, `same(dept)`,
@@ -57,11 +58,13 @@
 #' @param lhs The outcome of the formula, as a name or a string. `NULL`, the
 #'   default, is the outcome the table was made for.
 #' @param ... Not used.
-#' @return The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`,
-#'   and also `"specify_terms"`, with the columns `term`, `effect`, `layer`,
-#'   and `attribute`. `print()` shows every row, and `summary()` returns the
+#' @return The table is a tibble of class `"mrqap_terms"`, `"ergm_terms"`,
+#'   or `"saom_terms"`, and also `"specify_terms"`, with the columns `term`,
+#'   `effect`, `layer`, and `attribute`. For RSiena, the column `as` gives the
+#'   RSiena effect of each term. `print()` shows every row, and `summary()` returns the
 #'   table as a plain tibble. `tidy()` of it is deprecated. `formula()` returns the formula of the chosen
-#'   rows, as [specify_mrqap()] or [specify_ergm()] returns it.
+#'   rows, as [specify_mrqap()], [specify_ergm()], or [specify_saom()]
+#'   returns it.
 #' @seealso [terms_mrqap] for what each term measures, and [specify_mrqap] for
 #'   what each model makes of a formula.
 #' @name specify_terms
@@ -90,7 +93,8 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
   terms <- .one_of_each(x)
   f <- eval(call("~", lhs, str2lang(paste(terms, collapse = " + "))))
   environment(f) <- globalenv()
-  specify <- switch(attr(x, "model"), mrqap = specify_mrqap, ergm = specify_ergm)
+  specify <- switch(attr(x, "model"), mrqap = specify_mrqap, ergm = specify_ergm,
+                    saom = specify_saom)
   specify(f, attr(x, "data"), input = "mrqap")
 }
 
@@ -139,6 +143,11 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
   # does in an MRQAP of one network, so the model cannot test it either.
   rows <- rows[!status %in% c("drops", "refuses", "warns"), , drop = FALSE]
   rownames(rows) <- NULL
+  # RSiena names each term differently, so the table also gives its effect.
+  if (model == "saom") {
+    rows$as <- vapply(rows$term, .saom_as, "", lhs = lhs, .data = .data,
+                      USE.NAMES = FALSE)
+  }
   out <- tibble::as_tibble(rows)
   structure(out, class = c(paste0(model, "_terms"), "specify_terms", class(out)),
             outcome = lhs, model = model, data = .data)
@@ -171,7 +180,8 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
 .term_status <- function(term, lhs, .data, model) {
   f <- eval(call("~", lhs, str2lang(term)))
   environment(f) <- globalenv()
-  specify <- switch(model, mrqap = .specify_mrqap, ergm = .specify_ergm)
+  specify <- switch(model, mrqap = .specify_mrqap, ergm = .specify_ergm,
+                    saom = function(...) .specify_saom(..., build = FALSE))
   tryCatch(suppressWarnings(suppressMessages({
     g <- specify(f, .data, input = "mrqap", abort = FALSE)
     record <- if (model == "mrqap" && !identical(g[[3]], 1)) summary.mrqap_formula(g, .data)
@@ -322,4 +332,20 @@ formula.specify_terms <- function(x, lhs = NULL, ...) {
                       ego = logical(0), alter = logical(0))
   }
   out
+}
+
+# The RSiena effect of one term, from the record of a formula of it alone.
+#' @keywords internal
+#' @noRd
+.saom_as <- function(term, lhs, .data) {
+  f <- eval(call("~", lhs, str2lang(term)))
+  environment(f) <- globalenv()
+  record <- tryCatch(suppressWarnings(suppressMessages(
+    .tidy_specified(.specify_saom(f, .data, input = "mrqap", abort = FALSE, build = FALSE)))),
+    error = function(e) NULL)
+  row <- if (!is.null(record)) {
+    record[record$term %in% c(term, .deparsed(str2lang(term))), , drop = FALSE]
+  }
+  if (is.null(row) || nrow(row) == 0) return(NA_character_)
+  if (is.na(row$as[1])) term else row$as[1]
 }

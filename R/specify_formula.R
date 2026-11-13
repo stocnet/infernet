@@ -15,7 +15,8 @@
 #' `specify_mrqap()` reads a formula, whichever model it was written for, and
 #' returns the formula that [estimate_mrqap()] fits from it.
 #' `estimate_mrqap()` calls it on every formula.
-#' [specify_ergm()] reads the same formulas for `ergm::ergm()`, and
+#' [specify_ergm()] reads the same formulas for `ergm::ergm()`,
+#' [specify_saom()] for `RSiena::siena()`, and
 #' `{goldfish}`'s own `specify_dynam()` for a DyNAM or REM.
 #'
 #' A term with an equivalent in the model is rewritten as that term.
@@ -55,9 +56,14 @@
 #'
 #'   - `"ergm"` where a term is named only in ergm, such as `edges`,
 #'     `mutual`, or `nodematch("x")`;
+#'   - `"saom"` where an effect is named only in RSiena, such as `transTrip`,
+#'     `inPop`, or `egoX(sex)`;
 #'   - `"dynam"` where a term is named only in goldfish, such as `inertia` or
 #'     `trans`;
 #'   - `"mrqap"` otherwise.
+#'
+#'   A `sienaEffects` object of `{RSiena}` is read as the formula of the
+#'   evaluation effects it includes for its first dependent network.
 #'
 #'   The model that was read is reported. Where a formula mixes ergm's names
 #'   with goldfish's, it is read as an ergm formula, and goldfish's names in it
@@ -108,14 +114,15 @@
 #'   table of nodes, as in `ego(actors$floor)`, which is read as `ego(floor)`,
 #'   since the network holds its nodes' attributes.
 #'
-#' @param formula A formula written for an MRQAP, goldfish, or ergm.
+#' @param formula A formula written for an MRQAP, goldfish, ergm, or RSiena,
+#'   or a `sienaEffects` object.
 #'   Without it, or with `.` as its right-hand side, the table of every term
 #'   for `.data`, as [specify_terms] describes.
 #' @param .data Optionally, the network the formula is for.
 #'   With it, a bare name that is a layer of the network stays a layer.
 #'   In `summary()`, the network to build the columns from.
 #' @param input The model the formula was written for: `"mrqap"`, `"dynam"`,
-#'   `"rem"`, or `"ergm"`. `NULL`, the default, reads it from the class of the
+#'   `"rem"`, `"ergm"`, or `"saom"`. `NULL`, the default, reads it from the class of the
 #'   formula, such as goldfish's `"goldfishFormula"`, or else from the names in
 #'   the formula.
 #' @param object,x A formula returned by `specify_mrqap()`.
@@ -155,6 +162,7 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
 #' @noRd
 .specify_mrqap <- function(formula, .data = NULL, input = NULL, abort = TRUE) {
   if (inherits(formula, "mrqap_formula")) return(formula)
+  formula <- .read_siena_effects(formula)
   read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
   record <- rbind(read$record, .offset_rows(read, "mrqap"))
   labels <- read$labels
@@ -162,7 +170,7 @@ specify_mrqap <- function(formula, .data = NULL, input = NULL) {
   native <- labels %in% read$native
   record <- rbind(record, .record_row(
     labels[native], rep("", sum(native)), rep("drops", sum(native)),
-    vapply(labels[native], .ergm_native_reason, "", USE.NAMES = FALSE)))
+    vapply(labels[native], .native_reason, "", input = read$input, USE.NAMES = FALSE)))
   labels <- labels[!native]
 
   lhs <- .network_lhs(read)
@@ -255,6 +263,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
 #' @noRd
 .specify_ergm <- function(formula, .data = NULL, input = NULL, abort = TRUE) {
   if (inherits(formula, "ergm_formula")) return(formula)
+  formula <- .read_siena_effects(formula)
   .ergm_one_network(.data)
   read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
   # A formula written for ergm is already one.
@@ -265,6 +274,13 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   record <- rbind(read$record, .offset_rows(read, "ergm"))
   native <- intersect(read$labels, read$native)
   labels <- setdiff(read$labels, native)
+  # An RSiena effect that ergm does not have is dropped, where an ergm term is kept.
+  if (read$input == "saom" && length(native) > 0) {
+    record <- rbind(record, .record_row(
+      native, rep("", length(native)), rep("drops", length(native)),
+      vapply(native, .native_reason, "", input = "saom", USE.NAMES = FALSE)))
+    native <- character(0)
+  }
   record <- rbind(record, .interpreted_dynam(labels, read$input, "ergm"))
 
   lhs <- .network_lhs(read)
@@ -380,6 +396,189 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   invisible()
 }
 
+#' Specify a SAOM from a formula written for any model
+#'
+#' @description
+#' `specify_saom()` reads a formula, whichever model it was written for, and
+#' writes each term as the `{RSiena}` effect of a stochastic actor-oriented
+#' model (SAOM). With the network, it returns the `sienaEffects` object that
+#' `RSiena::siena()` fits, with the `sienadata` object it is for.
+#' [specify_mrqap()] and [specify_ergm()] read the same formulas for their
+#' models, and also read a `sienaEffects` object.
+#'
+#' A term with an equivalent in RSiena is rewritten as that effect.
+#' A term RSiena cannot fit is dropped and named, so that the rest of the
+#' model still fits. Rewritten terms are reported with `manynet::snet_info()`,
+#' which is silent unless `options(snet_verbosity = "verbose")`, and dropped
+#' terms are reported in one warning.
+#'
+#' @section Writing a formula for RSiena:
+#'   Each effect is written as its RSiena short name, with the covariate or
+#'   network it reads as its argument: `ego(sex)` is `egoX(sex)`,
+#'   `same(sex)` is `sameX(sex)`, `diff(age)` is `absDiffX(age)`, a layer
+#'   such as `primary` is `X(primary)`, and `trans` is `transTrip`.
+#'   [terms_mrqap] gives the effect for each term. A formula written in
+#'   RSiena's short names, such as `friends ~ recip + transTrip + inPop +
+#'   egoX(sex)`, is read as one written for RSiena, and an effect that has no
+#'   equivalent in the other models, such as `inPop`, is kept as it is.
+#'   `density` is always added, as the outdegree effect that every SAOM of a
+#'   network has. Every other evaluation effect is in the model only if the
+#'   formula names it: `recip`, which RSiena includes by default, is left out
+#'   where the formula does not name it, and a message says so.
+#'   A random intercept, a fixed effect, a reporter term, `global()`, and
+#'   (for now) an interaction are dropped. Add an interaction to the result
+#'   with `RSiena::includeInteraction()`.
+#'
+#' @section The data and the dependent variables:
+#'   With `.data`, the network is coerced with `manynet::as_siena()`.
+#'   The left-hand side of the formula names the dependent network, which
+#'   must be a layer of the network, or `.` for its focal layer. A list of
+#'   formulas names several dependent networks, one for each formula.
+#'   Only these layers are dependent variables: every other layer becomes a
+#'   dyadic covariate, and every node attribute a covariate, constant or
+#'   changing across the waves. A dependent behaviour is not yet written here;
+#'   for one, build the effects with `RSiena::getEffects()`.
+#'   Each effect is checked against the effects that RSiena has for the data,
+#'   and a name that it does not have aborts with the nearest name.
+#'   The model is then fitted with `RSiena::siena()` of the data and the
+#'   effects, as in the last example. `siena()` writes an output file in the
+#'   working directory, named after its data argument, unless
+#'   `control_out = RSiena::set_output_saom(outputName = )` names another.
+#'
+#' @inheritSection specify_mrqap What each model makes of each term
+#' @inheritSection specify_mrqap Reading the model a formula was written for
+#' @inheritParams specify_mrqap
+#' @param formula A formula written for an MRQAP, goldfish, ergm, or RSiena,
+#'   a list of such formulas, one for each dependent network, or a
+#'   `sienaEffects` object.
+#'   Without it, or with `.` as its right-hand side, the table of every term
+#'   for `.data`, as [specify_terms] describes, with the RSiena effect of each
+#'   in its column `as`.
+#' @param .data Optionally, the network the formula is for, with at least two
+#'   waves. With it, the result is a `sienaEffects` object, which needs
+#'   `{RSiena}`. Without it, the result is a formula, and RSiena is not needed.
+#' @param object A formula returned by `specify_saom()`.
+#' @return Without `.data`, a formula of class `c("saom_formula", "formula")`,
+#'   or a list of them. Its `input` attribute names the model it was read from,
+#'   and its `record` attribute holds what RSiena makes of each term.
+#'   `summary()` returns every term as a tibble,
+#'   with the columns `term`, `status`, `as`, and `reason`.
+#'
+#'   With `.data`, the `sienaEffects` object of `RSiena::getEffects()`, with
+#'   the effects of the formula included. Its attribute `data` holds the
+#'   `sienadata` object, `formula` the SAOM formula, or the list of them,
+#'   and `record` what RSiena makes of each term.
+#'
+#'   Without a formula, the table of every term for `.data`, as
+#'   [specify_terms] describes.
+#' @seealso [terms_mrqap] for the RSiena effect of each term, and
+#'   [specify_terms] for the terms that suit a network.
+#' @order 1
+#' @family specifying functions
+#' @examples
+#' # An MRQAP formula, written for RSiena
+#' specify_saom(friends ~ recip + trans + ego(sex) + same(sex) + primary)
+#' # The terms that RSiena can take for a network
+#' specify_saom(friends ~ ., manynet::ison_classmates)
+#' @examplesIf requireNamespace("RSiena", quietly = TRUE)
+#' # The effects object that RSiena::siena() fits
+#' eff <- specify_saom(friends ~ recip + trans + ego(sex) + same(sex),
+#'                     manynet::ison_classmates)
+#' data <- attr(eff, "data")
+#' \donttest{
+#' fit <- RSiena::siena(data, eff, batch = TRUE, silent = TRUE,
+#'   control_algo = RSiena::set_algorithm_saom(nsub = 1, n3 = 50, seed = 1),
+#'   control_out = RSiena::set_output_saom(outputName = file.path(tempdir(), "classmates")))
+#' }
+#' @export
+specify_saom <- function(formula, .data = NULL, input = NULL) {
+  if (.wants_term_table(formula, .data)) {
+    return(.every_term_table(.data, .table_lhs(formula), "saom"))
+  }
+  if (is.list(formula) && !inherits(formula, c("formula", "sienaEffects"))) {
+    specs <- lapply(formula, .specify_saom, .data = .data, input = input, build = FALSE)
+    if (is.null(.data)) return(specs)
+    return(.saom_effects(specs, .data))
+  }
+  .specify_saom(formula, .data, input)
+}
+
+# Writes the formula for RSiena, and with the network and `build`, makes its
+# effects object. The table of every term reads only the formula.
+#' @keywords internal
+#' @noRd
+.specify_saom <- function(formula, .data = NULL, input = NULL, abort = TRUE,
+                          build = TRUE) {
+  formula <- .read_siena_effects(formula)
+  if (inherits(formula, "saom_formula")) {
+    return(if (build && !is.null(.data)) .saom_effects(list(formula), .data) else formula)
+  }
+  read <- .read_node_tables(.read_dynam_degree(.read_formula(formula, .data, input)))
+  # A formula written for RSiena is already one, with `density` added.
+  if (read$input == "saom") {
+    if (!"density" %in% attr(stats::terms(formula), "term.labels")) {
+      manynet::snet_info("Adding {.code density}, the outdegree effect that every SAOM of a network has.")
+      formula <- stats::update(formula, ~ density + .)
+    }
+    out <- structure(formula, class = c("saom_formula", "formula"), input = "saom",
+                     record = .complete_record(.no_record(), read, "saom"))
+    return(if (build && !is.null(.data)) .saom_effects(list(out), .data) else out)
+  }
+  record <- rbind(read$record, .offset_rows(read, "saom"))
+  native <- intersect(read$labels, read$native)
+  labels <- setdiff(read$labels, native)
+  # An ergm term that has no infernet equivalent has no RSiena one either.
+  if (read$input != "saom" && length(native) > 0) {
+    record <- rbind(record, .record_row(
+      native, rep("", length(native)), rep("drops", length(native)),
+      rep("is an ergm term, which RSiena does not have", length(native))))
+    native <- character(0)
+  }
+  record <- rbind(record, .interpreted_dynam(labels, read$input, "saom"))
+  lhs <- .network_lhs(read)
+  ctx <- c(read$ctx, list(lhs = .deparsed(lhs), env = read$env, input = read$input))
+
+  effects <- character(0)
+  write <- function(term, x) {
+    # A term rewritten on reading is recorded once, as written.
+    if (term %in% names(read$renamed)) {
+      term <- read$renamed[[term]]
+      record <<- record[record$term != term, , drop = FALSE]
+    }
+    if (is.character(x)) {
+      record <<- rbind(record, .record_row(term, "", "drops", x))
+      return(invisible())
+    }
+    if (!identical(x$label, term) || !is.null(x$note)) {
+      record <<- rbind(record, .record_row(term, x$label, "adapted",
+                                           if (is.null(x$note)) "" else x$note))
+    }
+    effects <<- c(effects, x$label)
+  }
+  if (length(labels) > 0) {
+    spec_formula <- eval(call("~", lhs, str2lang(paste(labels, collapse = " + "))))
+    environment(spec_formula) <- read$env
+    spec <- .resolve_bare_terms(.specify(spec_formula), read$ctx)
+    for (term in spec$terms) {
+      x <- .saom_term(term, ctx)
+      write(x$label, if (is.null(x$reason)) x$effect else x$reason)
+    }
+  }
+  for (lab in native) write(lab, .saom_native(lab))
+  for (bar in read$bars) {
+    record <- rbind(record, .record_row(paste0("(", bar, ")"), "", "drops",
+                                      "is a random intercept, which a SAOM does not fit"))
+  }
+  record <- rbind(record, .fixed_rows(read$fixed, "saom"))
+  if (!any(c("density", "edges") %in% record$term)) {
+    manynet::snet_info("Adding {.code density}, the outdegree effect that every SAOM of a network has.")
+  }
+  out <- .finish_formula(lhs, unique(c("density", effects)), character(0), record,
+                         read, "saom", abort = abort)
+  if (!build || is.null(.data)) return(out)
+  .saom_effects(list(out), .data)
+}
+
 # The columns that an MRQAP builds for each term the formula keeps, named as
 # `estimate_mrqap()` names them. A term whose matrix cannot be built, such as
 # `tie()` of the outcome layer, is refused, with the reason the builder gives.
@@ -456,6 +655,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   labels <- labels[!grepl("|", labels, fixed = TRUE)]
   read <- list(labels = labels, native = character(0), record = .no_record())
   if (input == "ergm") read <- .read_ergm_terms(labels, ctx)
+  if (input == "saom") read <- .read_saom_terms(labels, ctx)
   env <- environment(formula)
   c(read, list(lhs = formula[[2]], bars = bars, fixed = split$fixed,
                offsets = offsets, input = input, ctx = ctx,
@@ -584,7 +784,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
 
 #' @keywords internal
 #' @noRd
-.formula_inputs <- function() c("mrqap", "dynam", "rem", "ergm")
+.formula_inputs <- function() c("mrqap", "dynam", "rem", "ergm", "saom")
 
 # The model a formula was written for: as stated, from its class, or from a
 # name that only one model has. A name that is also a layer is the layer.
@@ -605,15 +805,20 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
   if (length(classed) > 0) return(classed[1])
   used <- setdiff(.formula_names(formula[[3]]), ctx$tie_names)
   ergm_only <- intersect(used, setdiff(names(.ergm_terms()), names(.formula_terms())))
+  saom_only <- intersect(used, setdiff(names(.saom_terms()),
+                                       c(names(.formula_terms()), names(.ergm_terms()))))
   dynam_only <- intersect(used, names(.dynam_terms()))
   # On a panel, a term that reads the previous wave is an MRQAP term too.
   if (isTRUE(ctx$panel)) {
     lagged <- names(Filter(function(e) isTRUE(e$panel), .formula_terms()))
     dynam_only <- setdiff(dynam_only, lagged)
   }
-  input <- if (length(ergm_only)) "ergm" else if (length(dynam_only)) "dynam" else "mrqap"
+  # A name that both ergm and RSiena have, such as `density`, is no clue of
+  # either where the formula has a name that only RSiena has.
+  input <- if (length(saom_only) && all(ergm_only %in% names(.saom_terms()))) "saom"
+    else if (length(ergm_only)) "ergm" else if (length(dynam_only)) "dynam" else "mrqap"
   if (input != "mrqap") {
-    clue <- c(ergm_only, dynam_only)[1]
+    clue <- switch(input, saom = saom_only, c(ergm_only, dynam_only))[1]
     manynet::snet_info(
       "Reading the formula as one written for {.val {input}}, from {.code {clue}}.")
   }
@@ -670,7 +875,7 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
 #' @keywords internal
 #' @noRd
 .model_label <- function(target) {
-  c(mrqap = "an MRQAP", dynam = "goldfish", ergm = "ergm")[[target]]
+  c(mrqap = "an MRQAP", dynam = "goldfish", ergm = "ergm", saom = "RSiena")[[target]]
 }
 
 # Every term of the formula has a row in the record. A term that was not
@@ -788,7 +993,9 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
       .record_row(term, ifelse(node, fixed, ""), ifelse(node, "adapted", "drops"),
                   ifelse(node, "is ergm's fixed effect for each node",
                          "is a fixed effect, which ergm does not fit"))
-    })
+    },
+    saom = .record_row(term, rep("", length(fixed)), rep("drops", length(fixed)),
+                       rep("is a fixed effect, which a SAOM does not fit", length(fixed))))
 }
 
 # Rewritten and differently read terms are information, one line each, since
@@ -1029,28 +1236,34 @@ specify_ergm <- function(formula, .data = NULL, input = NULL) {
                         length(fixed)), fixed))
 }
 
-# Why an MRQAP cannot fit an ergm term that has no infernet equivalent.
+# Why another model cannot fit an ergm term, or an RSiena effect, that has
+# no infernet equivalent.
 #' @keywords internal
 #' @noRd
-.ergm_native_reason <- function(label) {
-  ergm <- .ergm_terms()
+.native_reason <- function(label, input = "ergm") {
+  readers <- if (identical(input, "saom")) .saom_terms() else .ergm_terms()
   for (expr in .flatten_interaction(str2lang(label))) {
     fn <- if (is.call(expr)) as.character(expr[[1]]) else as.character(expr)
-    reader <- ergm[[fn]]
+    reader <- readers[[fn]]
     if (is.function(reader)) reader <- reader(expr)
     if (is.character(reader)) return(reader)
   }
   "has no MRQAP equivalent"
 }
 
-# Rewrites each ergm term as the infernet terms it becomes. A term that becomes
-# two, such as `nodecov()`, can stand alone but not in an interaction. A term
-# without an equivalent stays as it is, and is listed in `native`. A name
-# that ergm does not have is left for the writer to read.
 #' @keywords internal
 #' @noRd
-.read_ergm_terms <- function(labels, ctx) {
-  ergm <- .ergm_terms()
+.read_ergm_terms <- function(labels, ctx) .read_native_terms(labels, ctx, .ergm_terms())
+
+# Rewrites each term of another model, ergm's or RSiena's, as the infernet
+# terms it becomes, with that model's `readers`. A term that becomes
+# two, such as `nodecov()`, can stand alone but not in an interaction. A term
+# without an equivalent stays as it is, and is listed in `native`. A name
+# that the model does not have is left for the writer to read.
+#' @keywords internal
+#' @noRd
+.read_native_terms <- function(labels, ctx, readers) {
+  ergm <- readers
   out <- character(0)
   native <- character(0)
   record <- .no_record()

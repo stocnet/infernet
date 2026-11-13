@@ -22,15 +22,18 @@ default, is the outcome the table was made for.}
 \item{object, x}{The table of every term.}
 }
 \value{
-The table is a tibble of class \code{"mrqap_terms"} or \code{"ergm_terms"},
-and also \code{"specify_terms"}, with the columns \code{term}, \code{effect}, \code{layer},
-and \code{attribute}. \code{print()} shows every row, and \code{summary()} returns the
+The table is a tibble of class \code{"mrqap_terms"}, \code{"ergm_terms"},
+or \code{"saom_terms"}, and also \code{"specify_terms"}, with the columns \code{term},
+\code{effect}, \code{layer}, and \code{attribute}. For RSiena, the column \code{as} gives the
+RSiena effect of each term. \code{print()} shows every row, and \code{summary()} returns the
 table as a plain tibble. \code{tidy()} of it is deprecated. \code{formula()} returns the formula of the chosen
-rows, as \code{\link[=specify_mrqap]{specify_mrqap()}} or \code{\link[=specify_ergm]{specify_ergm()}} returns it.
+rows, as \code{\link[=specify_mrqap]{specify_mrqap()}}, \code{\link[=specify_ergm]{specify_ergm()}}, or \code{\link[=specify_saom]{specify_saom()}}
+returns it.
 }
 \description{
 Without a formula, or with \code{.} as its whole right-hand side, as in
-\code{advice ~ .}, \code{\link[=specify_mrqap]{specify_mrqap()}} and \code{\link[=specify_ergm]{specify_ergm()}} return a table of
+\code{advice ~ .}, \code{\link[=specify_mrqap]{specify_mrqap()}}, \code{\link[=specify_ergm]{specify_ergm()}}, and \code{\link[=specify_saom]{specify_saom()}}
+return a table of
 every term that the model can take for \code{.data}, as \code{RSiena::getEffects()}
 does for a Siena data object. Each term is written out for the network's
 layers and node attributes, such as \code{ego(age)}, \code{same(dept)},
@@ -93,6 +96,7 @@ Other specifying functions:
 \code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
+\code{\link[=specify_saom]{specify_saom()}},
 \code{\link{terms_mrqap}}
 }
 \concept{specifying functions}

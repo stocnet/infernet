@@ -13,6 +13,9 @@ print.mrqap_formula <- function(x, ...) .print_specified(x, "mrqap")
 #' @export
 print.ergm_formula <- function(x, ...) .print_specified(x, "ergm")
 
+#' @export
+print.saom_formula <- function(x, ...) .print_specified(x, "saom")
+
 #' @rdname specify_mrqap
 #' @order 2
 #' @examples
@@ -55,6 +58,13 @@ tidy.ergm_formula <- function(x, ...) {
   summary.ergm_formula(x, ...)
 }
 
+#' @rdname specify_saom
+#' @order 2
+#' @examples
+#' summary(specify_saom(friends ~ recip + trans + ego(sex) + tie(primary)))
+#' @export
+summary.saom_formula <- function(object, ...) .tidy_specified(object)
+
 # `tidy()` of a specification warns once in a session, as a deprecation does.
 #' @keywords internal
 #' @noRd
@@ -96,7 +106,8 @@ tidy.ergm_formula <- function(x, ...) {
 .print_specified <- function(x, target) {
   record <- attr(x, "record")
   input <- attr(x, "input")
-  what <- c(mrqap = "An MRQAP formula", ergm = "An ergm formula")[[target]]
+  what <- c(mrqap = "An MRQAP formula", ergm = "An ergm formula",
+            saom = "A SAOM formula")[[target]]
   if (!is.null(input) && !identical(input, target)) {
     what <- paste(what, "read from a formula for", .model_label(input))
   }

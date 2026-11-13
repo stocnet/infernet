@@ -89,6 +89,7 @@ Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
 \code{\link[=specify_ergm]{specify_ergm()}},
 \code{\link[=specify_mrqap]{specify_mrqap()}},
+\code{\link[=specify_saom]{specify_saom()}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}}
 }

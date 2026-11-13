@@ -43,6 +43,7 @@ Suggests:
     lme4,
     MASS,
     pscl,
+    RSiena,
     testthat (>= 3.0.0)
 Config/Needs/build:
     roxygen2,

@@ -19,6 +19,10 @@
   - Added `declare_coefs.ergm_fit()` to set coefficients for an ergm fit 
 - Added `coef.infernetMrqapCoefs()` and `coef.infernetMrqapFit()` for plain vectors
 - Renamed `tidy.mrqap_formula()` to `summary.mrqapFormula()` to table its terms
+- Added `specify_saom()` to write a formula for `RSiena::siena()`
+  - Each term becomes its RSiena effect, such as `ego(sex)` as `egoX(sex)`
+  - With `.data`, returns the `sienaEffects` object, with the `sienadata` as its `data`
+- Improved `specify_mrqap()` and `specify_ergm()` to read RSiena formulas and `sienaEffects` objects
 
 ## Estimating
 

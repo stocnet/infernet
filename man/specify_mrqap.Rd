@@ -15,7 +15,8 @@ specify_mrqap(formula, .data = NULL, input = NULL)
 \method{tidy}{mrqap_formula}(x, .data = NULL, ...)
 }
 \arguments{
-\item{formula}{A formula written for an MRQAP, goldfish, or ergm.
+\item{formula}{A formula written for an MRQAP, goldfish, ergm, or RSiena,
+or a \code{sienaEffects} object.
 Without it, or with \code{.} as its right-hand side, the table of every term
 for \code{.data}, as \link{specify_terms} describes.}
 
@@ -24,7 +25,7 @@ With it, a bare name that is a layer of the network stays a layer.
 In \code{summary()}, the network to build the columns from.}
 
 \item{input}{The model the formula was written for: \code{"mrqap"}, \code{"dynam"},
-\code{"rem"}, or \code{"ergm"}. \code{NULL}, the default, reads it from the class of the
+\code{"rem"}, \code{"ergm"}, or \code{"saom"}. \code{NULL}, the default, reads it from the class of the
 formula, such as goldfish's \code{"goldfishFormula"}, or else from the names in
 the formula.}
 
@@ -49,7 +50,8 @@ Without a formula, the table of every term for \code{.data}, as
 \code{specify_mrqap()} reads a formula, whichever model it was written for, and
 returns the formula that \code{\link[=estimate_mrqap]{estimate_mrqap()}} fits from it.
 \code{estimate_mrqap()} calls it on every formula.
-\code{\link[=specify_ergm]{specify_ergm()}} reads the same formulas for \code{ergm::ergm()}, and
+\code{\link[=specify_ergm]{specify_ergm()}} reads the same formulas for \code{ergm::ergm()},
+\code{\link[=specify_saom]{specify_saom()}} for \code{RSiena::siena()}, and
 \code{{goldfish}}'s own \code{specify_dynam()} for a DyNAM or REM.
 
 A term with an equivalent in the model is rewritten as that term.
@@ -93,10 +95,15 @@ names in the formula:
 \itemize{
 \item \code{"ergm"} where a term is named only in ergm, such as \code{edges},
 \code{mutual}, or \code{nodematch("x")};
+\item \code{"saom"} where an effect is named only in RSiena, such as \code{transTrip},
+\code{inPop}, or \code{egoX(sex)};
 \item \code{"dynam"} where a term is named only in goldfish, such as \code{inertia} or
 \code{trans};
 \item \code{"mrqap"} otherwise.
 }
+
+A \code{sienaEffects} object of \code{{RSiena}} is read as the formula of the
+evaluation effects it includes for its first dependent network.
 
 The model that was read is reported. Where a formula mixes ergm's names
 with goldfish's, it is read as an ergm formula, and goldfish's names in it
@@ -172,6 +179,7 @@ Other specifying functions:
 \code{\link[=declare_coefs]{declare_coefs()}},
 \code{\link{declare_coefs_ergm}},
 \code{\link[=specify_ergm]{specify_ergm()}},
+\code{\link[=specify_saom]{specify_saom()}},
 \code{\link{specify_terms}},
 \code{\link{terms_mrqap}}
 }
