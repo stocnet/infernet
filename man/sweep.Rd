@@ -48,7 +48,7 @@ A control that is not named keeps its default, or the value set with
 node attribute. Give several sets of opinions in \code{vary} instead, as
 \code{vary = list(opinions = list(...))}.}
 
-\item{object, x}{A \code{diffusionSweep} or an \code{opinionSweep}.}
+\item{object}{A \code{diffusionSweep} or an \code{opinionSweep}.}
 }
 \value{
 A table with a column first for each argument in \code{vary}, and the

@@ -246,7 +246,7 @@ sweep_opinion <- function(.data, opinions, ..., vary, times = 5,
 # Reporting sweeps ####
 
 #' @rdname sweep
-#' @param object,x A `diffusionSweep` or an `opinionSweep`.
+#' @param object A `diffusionSweep` or an `opinionSweep`.
 #' @export
 summary.diffusionSweep <- function(object, ...) {
   vary <- attr(object, "vary")
