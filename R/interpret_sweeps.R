@@ -142,6 +142,7 @@ sweep_opinion <- function(.data, opinions, ..., vary, times = 5,
   }
   out <- out[!vapply(out, is.null, logical(1))]
   attr(out, "vary") <- names(settings$labels)
+  attr(out, "names_of_vary") <- settings$names
   attr(out, "control") <- ctrl
   out
 }
@@ -154,6 +155,7 @@ sweep_opinion <- function(.data, opinions, ..., vary, times = 5,
   class(out) <- c(class, setdiff(class(out), class))
   attr(out, "vary") <- attr(runs, "vary")
   attr(out, "control") <- attr(runs, "control")
+  attr(out, "names_of_vary") <- attr(runs, "names_of_vary")
   attr(out, "mode") <- manynet::node_is_mode(.data)
   out
 }
@@ -202,6 +204,11 @@ sweep_opinion <- function(.data, opinions, ..., vary, times = 5,
     manynet::snet_abort("Each argument in {.arg vary} needs at least one value.")
   }
   labels <- mapply(.vary_labels, values, names(values), SIMPLIFY = FALSE)
+  # a longer name for a column that counts, rather than names, its settings
+  counted <- vapply(names(values), function(a) a == "seeds" &&
+                      is.numeric(labels[[a]]) &&
+                      !all(vapply(values[[a]], length, integer(1)) == 1),
+                    logical(1))
   # every combination, with the first argument changing fastest
   grid <- expand.grid(lapply(values, seq_along), KEEP.OUT.ATTRS = FALSE)
   list(args = lapply(seq_len(nrow(grid)), function(s)
@@ -209,7 +216,8 @@ sweep_opinion <- function(.data, opinions, ..., vary, times = 5,
            values[[a]][[grid[s, a]]]), names(values))),
        labels = tibble::as_tibble(lapply(stats::setNames(names(values),
                                                          names(values)),
-                                         function(a) labels[[a]][grid[[a]]])))
+                                         function(a) labels[[a]][grid[[a]]])),
+       names = c(seeds = "number of seeds")[names(values)[counted]])
 }
 
 # A label for each value of an argument in `vary`: its name, where the values
@@ -270,47 +278,83 @@ summary.opinionSweep <- function(object, ...) {
   out
 }
 
-#' @export
-#' @noRd
-print.diffusionSweep <- function(x, ...) {
-  runs <- summary.diffusionSweep(x)
-  .print_sweep(x, runs, "diffusions", list(
-    infected = function(r) mean(r$infected),
-    complete = function(r) mean(!is.na(r$toa)),
-    toa = function(r) if (all(is.na(r$toa))) NA_real_ else mean(r$toa, na.rm = TRUE)),
-    paste("For each setting: the mean share infected, the share of runs",
-          "in which every node adopted, and their mean steps until then."), ...)
-}
-
-#' @export
-#' @noRd
-print.opinionSweep <- function(x, ...) {
-  runs <- summary.opinionSweep(x)
-  .print_sweep(x, runs, "opinion dynamics", list(
-    clusters = function(r) mean(r$clusters),
-    consensus = function(r) mean(r$consensus),
-    spread = function(r) mean(r$spread),
-    settled = function(r) mean(r$settled)),
-    paste("For each setting: the mean number of clusters at the end, and the",
-          "share of runs that reach a consensus or settle."), ...)
-}
-
-# Prints a title, the mean of each of `stats` for each setting, and a footer.
+# What `print()` reports of each kind of sweep: what its runs are, a note on
+# its table, and the statistics of the table, each a function of the runs of
+# one setting.
 #' @keywords internal
 #' @noRd
-.print_sweep <- function(x, runs, what, stats, note, ...) {
+.sweep_report <- function(x) {
+  if (inherits(x, "diffusionSweep")) {
+    list(runs = summary.diffusionSweep(x), what = "diffusions",
+         note = paste("For each setting: the mean share infected, the share of runs",
+                      "in which every node adopted, and their mean steps until then."),
+         stats = list(
+           infected = function(r) mean(r$infected),
+           complete = function(r) mean(!is.na(r$toa)),
+           toa = function(r) if (all(is.na(r$toa))) NA_real_ else
+             mean(r$toa, na.rm = TRUE)))
+  } else {
+    list(runs = summary.opinionSweep(x), what = "opinion dynamics",
+         note = paste("For each setting: the mean number of clusters at the end, and the",
+                      "share of runs that reach a consensus or settle."),
+         stats = list(
+           clusters = function(r) mean(r$clusters),
+           consensus = function(r) mean(r$consensus),
+           spread = function(r) mean(r$spread),
+           settled = function(r) mean(r$settled)))
+  }
+}
+
+# The mean of each statistic for each setting of a sweep.
+#' @keywords internal
+#' @noRd
+.sweep_means <- function(x, report = .sweep_report(x)) {
   vary <- attr(x, "vary")
+  runs <- report$runs
   groups <- interaction(runs[vary], drop = TRUE, lex.order = TRUE)
   first <- !duplicated(groups)
-  .print_title(paste0(nrow(runs), " simulated ", what, " over ", sum(first),
-                      " setting", if (sum(first) != 1) "s", " of ",
-                      paste(vary, collapse = " and ")))
   means <- runs[first, vary, drop = FALSE]
   parts <- split(runs, groups)[as.character(groups[first])]
-  for (s in names(stats)) means[[s]] <- vapply(parts, stats[[s]], numeric(1))
-  print(tibble::as_tibble(means), ...)
-  .print_footer(c(note, .controls_line(attr(x, "control"))),
+  for (s in names(report$stats)) {
+    means[[s]] <- vapply(parts, report$stats[[s]], numeric(1))
+  }
+  tibble::as_tibble(means)
+}
+
+#' @export
+#' @noRd
+print.diffusionSweep <- function(x, ...) .print_sweep(x, ...)
+
+#' @export
+#' @noRd
+print.opinionSweep <- function(x, ...) .print_sweep(x, ...)
+
+# Prints a title, the mean of each statistic for each setting, and a footer.
+#' @keywords internal
+#' @noRd
+.print_sweep <- function(x, ...) {
+  report <- .sweep_report(x)
+  vary <- attr(x, "vary")
+  means <- .sweep_means(x, report)
+  .print_title(paste0(nrow(report$runs), " simulated ", report$what, " over ",
+                      nrow(means), " setting", if (nrow(means) != 1) "s", " of ",
+                      paste(vary, collapse = " and ")))
+  print(means, ...)
+  .print_footer(c(report$note, .controls_line(attr(x, "control"))),
                 .methods_hint("summary() for each run",
-                              "and plot() from {autograph} for the curve"))
+                              "and plot() from {autograph} for the bars"))
   invisible(x)
+}
+
+# A sweep in an R Markdown document or a learnr tutorial shows its table of
+# means for each setting. Without these methods, `{rmarkdown}` printed it as
+# a data frame, with every step of every run.
+#' @exportS3Method knitr::knit_print
+knit_print.diffusionSweep <- function(x, ...) {
+  knitr::knit_print(as.data.frame(.sweep_means(x)), ...)
+}
+
+#' @exportS3Method knitr::knit_print
+knit_print.opinionSweep <- function(x, ...) {
+  knitr::knit_print(as.data.frame(.sweep_means(x)), ...)
 }

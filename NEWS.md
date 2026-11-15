@@ -62,8 +62,24 @@
 
 ## Tutorials
 
+- Fixed simulations in a learnr tutorial failing from the second exercise
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
   - Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
+- Renamed the "Diffusion and Learning" tutorial to "Diffusion and Contagion"
+  - Compares independent cascades with thresholds, and finds wide bridges
+  - Tests contagion models against the adoption times of `ison_physicians`
+  - Draws the simulated diffusions as a band around the observed diffusion
+  - Adds `background` as the innovation rate of the Bass model
+  - Adds own states, a voter model, `direction`, and a diffusion on a panel
+  - Compares a complex contagion on clustered and random networks (Centola 2010)
+  - Compares clustered and spread seeds, and finds the tipping point of a committed minority
+  - Sorts network interventions into the four strategies of Valente (2012)
+  - Measures thresholds and adopter categories in `ison_physicians` (Valente 1995)
+  - Compares exposure through contacts and through structural equivalents (Burt 1987)
+  - Corrects the reproduction number, the terms for simple and complex contagion, and four quizzes
+  - Uses `threshold=` and `onset=`, the new names in `{manynet}` 2.5.0
+  - Adds a note for analysts on what the models assume
+  - Moved its learning models to a new "Opinion and Learning" tutorial
 - Improved the "Modelling with ERGMs" tutorial
   - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
   - Interprets `gwesp` and `gwdegree`, with the disagreement on `gwdegree` and the effect of its decay

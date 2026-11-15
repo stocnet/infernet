@@ -32,8 +32,8 @@ navbar:
       menu:
       - text: Diversity and Regression
         href: articles/diversity-and-regression.html
-      - text: Diffusion and Learning
-        href: articles/diffusion-and-learning.html
+      - text: Diffusion and Contagion
+        href: articles/diffusion-and-contagion.html
       - text: Modelling with ERGMs
         href: articles/modelling-with-ergms.html
     news:
@@ -57,7 +57,7 @@ articles:
       for the full interactive experience.
     contents:
       - "`articles/diversity-and-regression`"
-      - "`articles/diffusion-and-learning`"
+      - "`articles/diffusion-and-contagion`"
       - "`articles/modelling-with-ergms`"
 redirects:
   - ["reference/regression.html", "reference/estimate_mrqap.html"]

@@ -70,19 +70,23 @@ By the end of this tutorial, you will be able to:
 - [ ] &nbsp; understand the role of network structure on diffusion
 - [ ] &nbsp; understand threshold models
 - [ ] &nbsp; tell independent cascades from thresholds, and find wide bridges
+- [ ] &nbsp; explain why a complex contagion spreads further in a clustered network
 - [ ] &nbsp; understand the role of seeds for network intervention
+- [ ] &nbsp; find the tipping point of a committed minority
 - [ ] &nbsp; understand compartmental models
 - [ ] &nbsp; understand the role of vaccination strategies
 - [ ] &nbsp; write a model of your own, with its own states, transitions, and ties
 - [ ] &nbsp; play a diffusion on a network that changes over time
 - [ ] &nbsp; test whether two diffusion models differ, and whether a model fits an observed diffusion
+- [ ] &nbsp; measure exposure, thresholds, and adopter categories in an observed diffusion
 
-## Influence cascade models
+## Simple contagion
 
-The simplest kind of diffusion process is an independent cascading model,
-where any contact with the attribute (disease or innovation) 
-is enough to cause infection/adoption.
-If the network is connected, the attribute will 'cascade' across the network
+The simplest kind of diffusion process is a `r gloss("simple contagion")`,
+where one contact with the contagion (a disease, an idea, an innovation)
+is enough to pass it on.
+By default, `play_diffusion()` also passes it on for sure, at the next step.
+If the network is connected, the contagion will 'cascade' across the network
 until all nodes are 'infected'/have adopted.
 
 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdXdqOXNjemNnZnhzOG50aTdlZzgzbWt2dTlmbGt4aGswNGRjdjd4eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/11IuynebQzNpjq/giphy.gif" alt="salt cascade gif" width = "500"/>
@@ -106,9 +110,9 @@ graphr(lat)
 Ok, great! That's made a nice little lattice network.
 Next we want to play a diffusion process _on_ this network.
 To do this, we need to run `play_diffusion()`.
-This function plays a simple contagion process on a network,
+By default, this function plays a simple contagion process on a network,
 where any contact with an infected/adopter node
-is enough to cause susceptible nodes to adopt/become infected by the following timepoint.
+is enough to cause susceptible nodes to adopt/become infected by the following step.
 The function returns a network object that contains information about how the diffusion played out.
 Then we can investigate the diffusion process by extracting this information
 using `as_changelist()` and `as_diffusion()`.
@@ -123,12 +127,20 @@ lat_w_diff <- play_diffusion(lat)
 
 The changelist presents a list of the events at each time point.
 In the event variable, the 'I' indicates that these are all infection/adoption events.
-Where 't' is 0, that means that these are the seeds producing the starting condition
+Where 'time' is 0, that means that these are the seeds producing the starting condition
 for the diffusion.
 The diffusion summary shows the number of nodes that don't
 (yet) have the attribute (S for susceptible, but can also be non-adopter) 
-and those that do have the attribute (I for infected, or adopter) at each time point (t).
+and those that do have the attribute (I for infected, or adopter) at each time point (time).
 We can see a steady growth here, except for a slower initialisation and winding down.
+
+It helps to know what the model assumes, because every result in this tutorial rests on it.
+Time moves in discrete steps, like the ticks of a clock.
+At each step, all the nodes update at once, from the states at the start of that step.
+So a node infected at step 3 can infect its neighbours only from step 4.
+The nodes do not plan ahead,
+and the ties stay the same however the diffusion goes:
+nobody avoids a sick friend here.
 
 ### Visualising cascades
 
@@ -145,16 +157,16 @@ This plot effectively visualises what we observed from the print out of the
 The red line traces the proportion of infected;
 the blue line the (inverse) proportion of susceptible nodes in the network.
 The grey histogram in the plot shows how many nodes are newly 'infected' at each
-time point, or the so-called 'force of infection' ($F = \beta I$).
+time point, which epidemiologists call the _incidence_.
 
 But maybe we want to also/instead view the diffusion on the actual network.
-Here we can use all the three main graphing techniques offered in `{autograph}`.
+Here we can use all three of the main graphing techniques offered in `{autograph}`.
 First, `graphr()` will graph a static network where the nodes are coloured
 according to how far through the diffusion process the node adopted.
 Note also that any seeds are indicated with a triangle.
 
 ```{r graphrlat, fig.width=9}
-graphr(lat_w_diff, node_size = 0.3)
+graphr(lat_w_diff, node_size = 6)
 ```
 
 Second, `graphs()` visualises the stages of the diffusion on the network.
@@ -176,11 +188,8 @@ how the attribute is diffusing across the network!
 Note that if you run this code in the console, you get a calming progress bar;
 in the tutorial you will just need to be patient.
 
-> NB: It is not currently working (for diffusions) at the moment,
-but a refactoring soon will fix this and other related bugs.
-
 ```{r graphtlat, purl = FALSE, fig.width=9}
-# grapht(lat_w_diff, node_size = 10)
+grapht(lat_w_diff, node_size = 10)
 ```
 
 ### Varying network structure
@@ -200,6 +209,7 @@ see the difference the structure makes.
 + `generate_smallworld()`: Generates a small-world structure following the lattice rewiring model.
 
 ```{r otherstructures, purl = FALSE, fig.width=9}
+set.seed(1)
 graphr(play_diffusion(create_ring(32, width = 2)))
 graphr(play_diffusion(generate_random(32, 0.15)))
 graphr(play_diffusion(generate_scalefree(32, 0.025)))
@@ -215,6 +225,7 @@ But there is an easier way.
 Play these same diffusions again, this time nesting the call within `net_by_infection_complete()`.
 
 ```{r completeinfection, purl = FALSE, fig.width=9}
+set.seed(1)
 net_by_infection_complete(play_diffusion(create_ring(32, width = 2)))
 net_by_infection_complete(play_diffusion(generate_random(32, 0.15)))
 net_by_infection_complete(play_diffusion(generate_scalefree(32, 0.025)))
@@ -224,6 +235,13 @@ net_by_infection_complete(play_diffusion(generate_smallworld(32, 0.025)))
 ::: {.callout}
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
+
+A word of caution before we crown a winner, though:
+these four networks have the same number of nodes, but not the same number of ties.
+Check with `net_ties()`.
+A network with more ties gives a contagion more paths,
+so part of what we see is density, not only structure.
+Can you find arguments that give each network about 64 ties?
 
 ### Free play: US States
 
@@ -242,6 +260,10 @@ or only some nodes have higher thresholds?
 This is known as a `r gloss("linear threshold", "LTM")` model,
 where if infection/influence on a node through some (potentially weighted) network
 exceeds some threshold, then they will adopt/become infected.
+What counts as 'infection through the network'?
+An unweighted tie counts each infected contact once,
+a weighted tie adds its weight,
+and the layers of a multiplex network are combined first.
 
 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3luZjc1aWhnYnhwNG9zazkzcjA2c2hiYzBjZXVlaTlvZnh6MHl2OCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/2zowpb8JizmCRHq0PR/giphy.gif" alt="morgan freeman breaking point gif" width = "500"/>
 
@@ -252,20 +274,31 @@ illustrate the impact of rising thresholds on network diffusion.
 Remember that a ring network is similar to a lattice network,
 but typically thinner (use `width = 2`) and is connected at each end.
 That it is connected at each end should ensure that the diffusion completes, right?
-Let's see what the results are if you play four different diffusions:
+Let's see what the results are for three sets of seeds,
+each with a threshold of 1 and of 2:
 
-- `seeds = 1, thresholds = 1`
-- `seeds = 1, thresholds = 2`
-- `seeds = 1:2, thresholds = 2`
-- `seeds = c(1,16), thresholds = 2`
+- one seed, `1`
+- two seeds next to one another, `1:2`
+- two seeds far apart, `c(1, 16)`
+
+Rather than play each diffusion by hand,
+give `sweep_diffusion()` the settings to try with `vary`.
+It plays every combination of them,
+and `plot()` shows the share of the ring infected for each.
+A named list gives each set of seeds a name for the plot.
+These diffusions are deterministic, so every run of a setting gives the same result.
 
 ```{r complex, fig.width=9}
 rg <- create_ring(32, width = 2)
-plot(play_diffusion(rg, seeds = 1, thresholds = 1))
-plot(play_diffusion(rg, seeds = 1, thresholds = 2))
-plot(play_diffusion(rg, seeds = 1:2, thresholds = 2))
-plot(play_diffusion(rg, seeds = c(1,16), thresholds = 2))
+rising <- sweep_diffusion(rg,
+                          vary = list(seeds = list(one = 1, adjacent = 1:2,
+                                                   apart = c(1, 16)),
+                                      threshold = c(1, 2)))
+plot(rising)
 ```
+
+To see one of these diffusions step by step, play it on its own,
+as in `plot(play_diffusion(rg, seeds = 1:2, threshold = 2))`.
 
 ::: {.callout}
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
@@ -273,8 +306,11 @@ plot(play_diffusion(rg, seeds = c(1,16), thresholds = 2))
 
 Whereas a threshold of one will result in complete infection,
 a threshold of two will not lead to any diffusion process unless
-there are two seeds and they are both in another nodes neighbourhood.
+there are two seeds and they are both in another node's neighbourhood.
 Note also that the nodes need to be adjacent to overcome the higher threshold.
+A contagion that needs two or more contacts like this is a
+`r gloss("complex contagion")`:
+the contacts must reinforce one another.
 
 ### Varying degrees
 
@@ -283,23 +319,32 @@ But many typical social networks include some variation in degree.
 A threshold of 2 would be easy to surpass for particularly well connected nodes,
 but impossible for pendants.
 Let's see what happens when we use this threshold on a scale-free network instead.
+Try three sets of seeds with `vary`: one seed, three seeds,
+and the node with the most ties together with its neighbours.
 
+
+Hold on. With one seed and a threshold of 2, nothing can happen on _any_ network:
+no node can ever have two infected neighbours.
+So the other sets of seeds are necessary.
 
 ::: {.callout}
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
 
-That's because a scale-free network includes many nodes with only one or two ties,
+A scale-free network includes many nodes with only one or two ties,
 and a few very high degree nodes that act as critical brokers to the rest of the network.
 
-### Complex thresholds
+### Fractional thresholds
 
 Let's try again, but this time we're going to specify the threshold
 as a proportion of contacts that should be infected before the node 
 will become infected.
-This is sometimes called a fractional threshold model or complex diffusion.
-Try thresholds of 0.1, 0.25, and 0.5 on two seeds and 10 steps
-on the scale-free networks we have been using here.
+This is a fractional threshold model.
+Careful: a fractional threshold is not always a complex contagion.
+A threshold of 0.1 on a node with five contacts needs only one of them.
+Make one scale-free network, so that only the threshold changes.
+Then use `vary` to try thresholds from 0.1 to 0.5,
+each on the same two seeds for 10 steps.
 
 
 ::: {.callout}
@@ -329,7 +374,7 @@ lotr_resist <- fict_lotr |> mutate_nodes(resistance = dplyr::case_when(Race == "
                                                    Race == "Hobbit" ~ 3,
                                                    Race == "Human" ~ 1,
                                                    Race == "Maiar" ~ 6))
-graphs(play_diffusion(lotr_resist, thresholds = "resistance"))
+graphs(play_diffusion(lotr_resist, threshold = "resistance"))
 ```
 
 Fun! Now how would you interpret what is going on here?
@@ -340,7 +385,7 @@ Can you rewrite the code above so that fractional thresholds are used?
 
 ## Independent cascades
 
-The cascades and thresholds above share one gate.
+The simple contagions and thresholds above share one gate.
 A node is either over its threshold or not,
 and once it is over its threshold it adopts with one fixed chance,
 the `transmissibility`.
@@ -349,6 +394,7 @@ and a node with five infected neighbours have the same chance to adopt.
 
 In an `r gloss("independent cascade", "cascade")` model,
 each infected neighbour instead gives the node its own, independent chance.
+Think of it as a raffle: every infected friend hands you another ticket.
 With a chance $p$ for each of $k$ infected neighbours,
 the node adopts with probability $1 - (1 - p)^k$.
 More infected neighbours give more chances,
@@ -381,10 +427,11 @@ gate <- data.frame(from = "S", to = "I", rate = -log(1 - p),
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
 
-Note that `transmissibility = 0.1` with `thresholds = 1`
+Note that `transmissibility = 0.1` with `threshold = 1`
 gives the same model as the `gate` table.
 The arguments after `...` in `play_diffusion()` are shortcuts
 that write such a table for you.
+So you have been writing transition tables all along, without knowing it.
 
 ### Wide bridges
 
@@ -392,16 +439,19 @@ So a simple contagion, whether a cascade or a gate with a threshold of 1,
 can cross any tie.
 A complex contagion needs several infected neighbours,
 so it crosses from one group to another only where many ties join them.
-Centola and Macy (2007) call such places _wide bridges_.
-The `{netrics}` package measures them:
+Such places are called _wide bridges_.
+We can use the following functions to identify them:
 
-- `tie_by_width()` counts the ties that join the neighbourhoods at the two ends of each tie.
-A tie with a width of 1 is a long tie: a simple contagion can cross it, but a complex contagion cannot.
+- `tie_by_width()` counts the ties that join the neighbourhoods at both ends of each tie.
+- `tie_is_long()` marks the `r gloss("long ties", "long tie")`:
+the ties whose two ends have no common neighbour.
+A simple contagion can cross a long tie, but a complex contagion cannot.
 - `node_by_contagion()` measures how far a complex contagion travels
-when it starts from the neighbourhood of each node (Guilbeault and Centola 2021).
+when it starts from the neighbourhood of each node.
 
 ```{r widebridges, fig.width=9}
 tie_by_width(ison_adolescents)
+tie_is_long(ison_adolescents)
 node_by_contagion(ison_adolescents, threshold = 2)
 node_by_degree(ison_adolescents)
 ```
@@ -410,11 +460,61 @@ node_by_degree(ison_adolescents)
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
 
+### Clustered or random?
+
+Long ties make a network small: they give short paths between distant nodes.
+So a random network, which has many long ties, spreads a simple contagion fast.
+Centola (2010) asked whether this is also true for a behaviour
+that people adopt only when several of their contacts have adopted it.
+In an online experiment, he put people into a clustered network or a random network,
+where each person had the same number of contacts.
+The behaviour spread further and faster in the clustered network.
+
+Make a clustered ring where each node has six neighbours,
+and a random network with the same degrees, from `generate_configuration()`.
+Seed node 1 and its neighbours in each network.
+Then play a simple contagion (`threshold = 1`)
+and a complex contagion (`threshold = 3`, half of the neighbours)
+on each network for 60 steps, with `vary = list(threshold = c(1, 3))`.
+For each threshold, `play_diffusions()` prints how far the contagion gets (`infected`),
+whether it reaches every node (`complete`),
+and how many steps that takes (`toa`, `NA` where it never does).
+
+```{r clustered, fig.width=9}
+clustered <- create_ring(64, width = 3)
+set.seed(1)
+random <- generate_configuration(clustered)
+net_by_transitivity(clustered)
+net_by_transitivity(random)
+```
+
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+So the structure that is best for spreading information
+is not always the structure that is best for spreading behaviour.
+Gossip loves a small world; a new habit prefers a tight neighbourhood.
+A costly, risky, or contested behaviour
+is usually a complex contagion.
+
 ## Make it start
 
 Let's say that you have developed an exciting new policy and
 you are keen to maximise how quickly and thoroughly it is adopted.
 We are interested here in `r gloss("network intervention", "intervention")`.
+Network interventions are of four kinds:
+
+- _identification_ chooses particular nodes, such as opinion leaders, as seeds;
+- _segmentation_ chooses groups of nodes, and seeds whole groups;
+- _induction_ makes the nodes pass the innovation on, for example by word of mouth;
+- _alteration_ changes the network itself, by adding or removing nodes or ties.
+
+In this section, we try identification and segmentation through the seeds,
+and induction through the global prevalence and through outside sources.
+In the next section, vaccination is a form of alteration:
+it takes nodes out of the paths of the contagion.
 
 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbm9rc2trbGd5b2tzZ2d4cDNqeGVvNzJ3ZjhvMHhmdDF3c2ljcDZ5ZSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/5nsiFjdgylfK3csZ5T/giphy.gif" alt="flamethrower gif" width = "500"/>
 
@@ -426,6 +526,8 @@ it should diffuse throughout the whole network.
 To see whether this is true, 
 try seeding the innovation at the first and sixteenth (middle) node 
 and see whether the result is any different.
+`vary` plays one diffusion for each set of seeds,
+and `toa` gives the steps until every node is infected.
 
 
 ::: {.callout}
@@ -439,7 +541,8 @@ but doesn't really conclude that much faster.
 
 But what if we seed the network at three different places?
 Here we can use `node_is_random()` to randomly select some nodes to seed.
-Try it with four randomly-selected nodes and see what you get.
+Try it with four randomly-selected nodes,
+and compare them with the four seeds next to one another.
 
 
 ::: {.callout}
@@ -452,8 +555,12 @@ is a crucial question in network intervention studies.
 
 Now let's see whether where the infection is seeded matters
 when the network has a different structure.
-Here let's play and plot two diffusion on the lattice network,
-one with the first node as seed and again one on the middle.
+Here let's play two diffusions on the lattice network,
+one seeded in a corner (node 1) and one seeded in the middle (node 14).
+On a ring every node is alike, but on a lattice a corner node has
+fewer neighbours, and is further from the others,
+than a node in the middle.
+`layout_snap = TRUE` draws the lattice as its rows and columns.
 
 
 ::: {.callout}
@@ -461,8 +568,9 @@ one with the first node as seed and again one on the middle.
 :::
 
 Let's try one more network type, this time the scale-free network.
-Play and plot the results over ten steps for node 10,
-random, maximum, and minimum nodes as seeds.
+Play the diffusions over ten steps for node 10,
+random, maximum, and minimum nodes as seeds,
+and compare how many steps each takes to reach every node.
 
 Similar to the previous examples, we will be using the following functions within the seed argument:
 
@@ -485,6 +593,26 @@ sf |>
 ::: {.callout}
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
+
+### Seeding a complex contagion
+
+So far the seeds have started a simple contagion.
+For a complex contagion, Centola (2021) recommends that we put the seeds
+in one neighbourhood, so that they reinforce one another,
+and not spread them across the network.
+Play a contagion with `threshold = 2` on the ring of 32 nodes,
+once with the four seeds next to one another (`1:4`)
+and once with the four seeds spread around the ring (`c(1, 9, 17, 25)`).
+Use `vary` to play both at once.
+
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+Compare this with the simple contagion that we seeded at random above:
+for a simple contagion, spread seeds help;
+for a complex contagion, they can stop it.
 
 ### Other strategies
 
@@ -514,15 +642,61 @@ but are also attuned to common practice irrespective of whether direct colleague
 have adopted the innovation.
 
 ```{r prevalence, fig.width=9}
-plot(play_diffusion(ison_lawfirm, thresholds = 2, prevalence = 0.005),
+plot(play_diffusion(ison_lawfirm, threshold = 2, prevalence = 0.005),
      all_steps = FALSE)
 ```
+
+### A committed minority
+
+How many rebels does it take to change a convention?
+Centola and colleagues (2018) asked groups of people to agree on a name,
+and then added a `r gloss("committed minority", "zealot")`
+that always used a different name.
+The group changed to the new name only when the minority
+was larger than about a quarter of the group: a `r gloss("tipping point")`.
+
+A threshold model shows where such a tipping point comes from.
+Let each of 100 people see what all the others do (`create_filled(100)`),
+and let each change when a share of the others, its `resistance`, has changed.
+Here the resistances are drawn at random, between 0.2 and 0.3.
+The seeds are the committed minority.
+
+`net_by_tipping()` finds the smallest share of seeds that brings everyone over.
+To see the whole curve, `sweep_diffusion()` plays a diffusion
+for each of several settings, with `vary`.
+Here each setting is a different set of seeds:
+the first 10 people, the first 12, and so on up to the first 30.
+Then `plot()` shows the share of the group that changes for each setting.
+
+```{r tipping, fig.width=9}
+set.seed(1)
+group <- create_filled(100) |>
+  mutate_nodes(resistance = runif(100, 0.2, 0.3))
+net_by_tipping(group, threshold = "resistance")
+minorities <- lapply(seq(10, 30, 2), seq_len)
+plot(sweep_diffusion(group, threshold = "resistance",
+                     vary = list(seeds = minorities)))
+```
+
+Now let the resistances vary more, between 0 and 0.5.
+Does the group need a larger or a smaller minority?
+
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+Note that in this model a person who changes never changes back,
+but in the experiment of Centola and colleagues they could.
+Try `net_by_tipping()` and the same minorities on `create_ring(100, width = 5)`,
+where the seeds are next to one another:
+does the network still need a quarter?
 
 ### Innovation from outside
 
 Some nodes adopt with no contact at all:
 they hear of the innovation from a journal, an advert, or a salesperson.
-In the Bass (1969) model of the diffusion of new products,
+In the Bass model of the diffusion of new products,
 this is the coefficient of innovation,
 and the contagion between adopters is the coefficient of imitation.
 In `play_diffusion()`, the `background` argument is the chance
@@ -565,7 +739,7 @@ and `control = list(ncores = 4)` runs them across four cores,
 with the same results as on one core for the same seed.
 Try this out with the `ison_lawfirm` network, 10 steps, 5 times,
 and with a `transmissibility` parameter set to 0.5
-to indicate that in only 1/2 cases is contagion successful.
+so that each contact passes the contagion on with a chance of 1 in 2 at each step.
 
 ```{r diffusions, fig.width=9}
 plot(play_diffusions(ison_lawfirm, transmissibility = 0.5, times = 5, steps = 10))
@@ -588,6 +762,12 @@ specify the `recovery` argument.
 Let's try a rate of recovery of 0.20,
 which means that it'll take an infected node on average
 5 steps (days?) to recover.
+Why 5?
+`recovery`, like `transmissibility` and the other rates below,
+is a chance at each step.
+A chance of $p$ at each step gives a mean wait of $1/p$ steps, here $1/0.2 = 5$.
+The chance does not grow with the time that a node has been infected,
+so some nodes recover at once and a few stay infected for a long time.
 
 
 What we see in these kinds of models is typically a spike in infections
@@ -631,35 +811,50 @@ plot(play_diffusions(ison_lawfirm, recovery = 0.2, waning = 0.05, times = 100))
 
 Lastly, we'll consider a compartment for nodes that have been Exposed
 but are not yet infectious.
-This kind of an incubation period is due to some `latency` ($\sigma$).
-This should also be specified as a proportion,
-but note that this is inverted internally.
-This means that a latency of 0 means that exposure immediately renders the node infectious.
-A latency of 0.75 means that it will take the node approximately 4 days (1/1-0.75 = 1/0.25 = 4) to become infectious.
+This latent period is set by `onset` ($\sigma$):
+the chance that an exposed node becomes infectious at each step.
+It works just like `recovery`:
+an `onset` of 0.25 means that it will take the node about 4 steps (1/0.25 = 4) to become infectious,
+and the default `onset` of 1 means that exposure immediately makes the node infectious,
+with no E compartment at all.
 Play a single diffusion so that you can see what's going on in a particular run.
 
 
 ## Make it stop
 
-In this section, we are interested in how to most effectively _halt_ 
+In this section, we are interested in how to most effectively _halt_
 a diffusion process.
+Most of these strategies are an _alteration_:
+they take nodes or ties out of the paths that the contagion can take.
 
 <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3N3JsNWhvMjM2amkwMnhqZ2ltb2h2c3Zha3dwOGx1dHZnbngzNTQxZyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/LbvdcrbTOk6eK1kQ6u/giphy.gif" alt="biden stop gif" width = "500"/>
 
-An attribute's reproduction number, or $R_0$, is a measure of the rate of infection
-or how quickly that attribute will reproduce period over period.
-It is calculated as $R_0 = \min\left(\frac{T}{1/L}, \bar{k}\right)$,
-i.e. the transmissibility (proportion of susceptible nodes that are infected at each time period) over the average recovery or infection length (average length of time nodes remain infected).  
+The basic reproduction number, or $R_0$, is the number of nodes
+that one typical infected node passes the contagion on to,
+when all the other nodes are still susceptible.
+On a network, it has two parts (see `?net_by_reproduction`):
+$$R_0 = T \kappa$$
+
+- $T$ is the chance that an infected node infects a susceptible contact before it recovers.
+It grows with `transmissibility` and shrinks with `recovery`.
+- $\kappa$ is the mean _excess degree_: how many other contacts a node has
+when we reach it along a tie.
+It is larger than the mean degree where degrees are unequal,
+because a tie is more likely to lead to a node with many ties.
+That's why hubs matter so much for epidemics.
 
 It can be interpreted as follows:
-- Where $R_0$ > 1, the 'disease' will 'infect' more and more nodes in the network.  
-- Where $R_0$ < 1, the 'disease' will not sustain itself and eventually die out.  
-- Where $R_0$ = 1, the 'disease' will continue as endemic, if conditions allow.  
+
+- Where $R_0$ > 1, each case makes more than one new case, so an outbreak can grow.
+- Where $R_0$ < 1, each case makes less than one new case, so the outbreak dies out.
+- $R_0$ = 1 is the tipping point between the two, the _epidemic threshold_.
 
 So how can we establish the $R_0$ here?
-We can use `net_by_reproduction()`.
+We can use `net_by_reproduction()`,
+which estimates both parts from a played diffusion.
 
 ```{r r0, fig.width=9}
+set.seed(1)
 rd_diff <- play_diffusion(ison_lawfirm, transmissibility = 0.25, recovery = 0.05)
 plot(rd_diff)
 # R-nought
@@ -671,11 +866,10 @@ net_by_infection_total(rd_diff)
 <span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
 :::
 
-Ok, so there's (probably: you may have slightly different results) a danger here.
-The relationship between the reproduction number and the observed infection
-should be clear.
-The $R_0$ is over 1 and the 'disease' seems to burn through the network
+Ok, so there's a danger here.
+The $R_0$ is well over 1, and the 'disease' burns through the network,
 infecting almost everyone.
+(Without `set.seed()` your results may vary a little, but not by much.)
 How can we try to resist or halt such a disease?
 
 ::: {.callout}
@@ -730,6 +924,7 @@ through hooking up and, I have it on authority, it all starts with Mark Sloan.
 
 ## Models of your own
 
+Time to take the stabilisers off.
 So far each diffusion has started from seeds,
 used the states S, E, I, and R,
 and played on a network that does not change.
@@ -764,6 +959,7 @@ Not every model is a contagion that spreads from I to S.
 In a `r gloss("voter model", "voter")`,
 each node copies the state of a random neighbour,
 so both states can spread, and either can win.
+It is the model of the friend who agrees with whoever they spoke to last.
 The `irps_blogs` network holds 1490 US political blogs in 2004
 and the links between them, and each blog has a political `Leaning`.
 Write a table of two transitions, one in each direction.
@@ -793,7 +989,8 @@ a tie from one blog to another is a link on the first blog.
 `"out"` counts the ties that it sends to infected nodes,
 and `"all"` counts both.
 Play a simple contagion from the first five blogs for 10 steps in each direction,
-and compare the share of the blogs that it reaches with `net_by_infection_total()`.
+20 times each, with `vary`,
+and compare the share of the blogs that it reaches.
 
 
 ::: {.callout}
@@ -825,7 +1022,7 @@ so a pupil can catch something from a friend that they did not have at the start
 ## Testing diffusions
 
 So far we have played diffusions to see what different models do.
-But often we want to infer something from them:
+Playing is fun, but often we want to infer something from them:
 do two models make different diffusions,
 and does a model make diffusions like the one we observed?
 Because each simulation varies,
@@ -847,7 +1044,7 @@ are shuffled between the two sets, a `r gloss("permutation")` test.
 simple <- play_diffusions(ison_lawfirm, transmissibility = 0.5, steps = 10,
                           times = 100, control = list(seed = 1))
 complex <- play_diffusions(ison_lawfirm, transmissibility = 0.5, steps = 10,
-                           thresholds = 2, times = 100, control = list(seed = 2))
+                           threshold = 2, times = 100, control = list(seed = 2))
 plot(simple)
 plot(complex)
 (diff_test <- test_distributions(simple, complex, times = 500))
@@ -860,8 +1057,8 @@ plot(diff_test)
 
 ### Does a model fit what we observed?
 
-Now let us test models against a diffusion that was really observed.
-Coleman, Katz and Menzel (1966) followed the adoption of a new drug,
+Enough toy networks: let us test models against a diffusion that was really observed.
+The Medical Innovation study followed the adoption of a new drug,
 tetracycline, by the doctors of four towns in the US Midwest.
 `ison_physicians` holds the advice, discussion, and friendship ties between them,
 and the month in which each doctor first prescribed the drug, in `adoption`.
@@ -900,7 +1097,7 @@ with a chance of 0.2.
 start <- mutate_nodes(doctors, diffusion = ifelse(adoption == 1, "I", "S"))
 simple_docs <- play_diffusions(start, transmissibility = 0.06, steps = 17,
                                times = 100, control = list(seed = 1))
-complex_docs <- play_diffusions(start, transmissibility = 0.2, thresholds = 2,
+complex_docs <- play_diffusions(start, transmissibility = 0.2, threshold = 2,
                                 steps = 17, times = 100, control = list(seed = 1))
 ```
 
@@ -951,7 +1148,127 @@ Use more simulations (`times`) for a more precise and more powerful test.
 `test_gof()` also works on network regressions from `estimate_mrqap()`,
 which the "Diversity and Regression" tutorial introduces.
 
-## Learning models
+## Thresholds in observed data
+
+The models above simulate thresholds.
+But can we see them in real data?
+We can measure them in an observed diffusion.
+A node's `r gloss("exposure")` is the share of its contacts that have adopted.
+Its threshold is its exposure when it adopted.
+Let us measure both for the doctors of `ison_physicians`,
+with the `observed` diffusion from the section above.
+
+### Exposure at adoption
+
+`node_by_adopt_threshold()` gives the share of each doctor's contacts
+that had adopted before the doctor did.
+The ties have directions: a doctor asks another for advice, for example.
+Here we count the ties in both directions, with `direction = "all"`.
+The first adopters are the seeds, so they have no threshold (`NA`),
+and the doctors who did not adopt have an infinite threshold.
+The thresholds are a node measure, so `plot()` draws their distribution,
+as it does for degree, and leaves out the `NA` and infinite thresholds.
+
+```{r thresholds, fig.width=9}
+thresholds <- node_by_adopt_threshold(observed, direction = "all")
+adopted <- is.finite(thresholds) & !is.na(thresholds)
+summary(thresholds[adopted])
+```
+
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+### Early in the system, early in the network
+
+We can also sort adopters into categories by the time of their adoption,
+relative to the whole system.
+`node_in_adopter()` gives these `r gloss("adopter categories", "adopter category")`.
+We can compare them with the thresholds,
+which are relative to each adopter's own network.
+Cross the two with `table()`,
+with a threshold over 0.25 as a high threshold.
+The 30 doctors whose month is not known are not `active`,
+so they get no category (`NA`), and they do not count as anyone's contacts.
+
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+So an early adopter is not always an innovator.
+An early adopter with a high threshold adopted early because their contacts did,
+and a laggard with a low threshold may be the innovator of a late group.
+
+### Contacts or equivalents?
+
+Burt (1987) analysed these data again.
+He argued that a doctor adopts when the doctors in the same position adopt,
+the doctors that are `r gloss("structurally equivalent", "structeq")` to them,
+more than when their contacts adopt.
+Doctors in the same position compete,
+so they watch what the others do: keeping up with the Joneses, MD.
+
+Let us compare the two for the advice ties of the doctors whose month is known.
+A doctor who did not adopt gets the month 19.
+`to_influence()` divides each row of the network by its sum,
+so multiplying it by the months gives the mean month of each doctor's contacts.
+`to_proximity()` gives how alike two doctors' ties are,
+so the same product gives a mean month of the doctors in the same position.
+
+```{r burt, fig.width=9}
+known <- ison_physicians |>
+  filter_nodes(adoption != 99) |>
+  mutate_nodes(month = ifelse(adoption == 98, 19, adoption))
+advice <- to_layer(known, "advice")
+month <- node_attribute(advice, "month")
+contacts <- as_matrix(to_influence(advice)) %*% month
+equivalents <- as_matrix(to_influence(to_proximity(advice, "jaccard"))) %*% month
+asks <- node_by_outdeg(advice) > 0
+cor(month[asks], contacts[asks])
+cor(month[asks], equivalents[asks])
+```
+
+::: {.callout}
+<span class="callout-label">**Try it yourself**:</span> This section includes an interactive quiz in the live tutorial — run `run_tute()` at the R console to try it.
+:::
+
+Neither correlation is large.
+Burt used a different measure of equivalence and of time,
+and Van den Bulte and Lilien (2001) showed that much of the effect of either
+goes away when the marketing of the drug is taken into account.
+Try the `"friendship"` and `"discussion"` layers,
+or another measure of similarity in `to_proximity()`.
+
+## Summary
+
+The structure of a network shapes how far and how fast a diffusion spreads:
+
+- A simple contagion needs only one infected contact, so it can cross any tie, 
+and long ties carry it quickly across a random or small-world network.
+- A complex contagion needs several contacts that have adopted,
+so it spreads further in a clustered network,
+and it crosses from one group to another only on wide bridges.
+- Where the seeds go also matters:
+spread seeds help a simple contagion,
+but a complex contagion needs its seeds together in one neighbourhood,
+and a committed minority tips a group only once it passes a tipping point.
+- Compartmental models add recovery, waning immunity, and a latent period,
+and an epidemic stops once enough nodes are immune to pass the herd immunity threshold.
+- Finally, we can write models of our own,
+test whether two models differ or whether a model fits an observed diffusion,
+and measure exposure, thresholds, and adopter categories in observed data.
+As the doctors showed, a pattern that looks like contagion
+can also come from outside the network.
+
+### Glossary
+
+Here are some of the terms that we have covered in this module:
+
+`r print_glossary()`
+
+### Next: Opinion and Learning
 
 The three strategies for hindering contagion mentioned earlier
 usually rely on nodes' voluntary participation:
@@ -964,9 +1281,3 @@ but opinions that move towards the opinions of others.
 The "Opinion and Learning" tutorial plays these learning models with `play_opinion()`:
 DeGroot learning, stubbornness, bounded confidence,
 and the nodes with the most influence.
-
-## Glossary
-
-Here are some of the terms that we have covered in this module:
-
-`r print_glossary()`
