@@ -114,7 +114,10 @@ test_that("only the left-hand side is a dependent variable", {
   data <- attr(eff, "data")
   expect_identical(names(data$depvars), "friends")
   expect_true("alcohol" %in% names(data$vCovars))
-  expect_true("primary" %in% names(data$dyvCovars))
+  # "primary" has ties at the first wave only, so `manynet::as_siena()`
+  # makes it a constant dyadic covariate, not a varying one
+  expect_true("primary" %in% names(data$dycCovars))
+  expect_false("primary" %in% names(data$depvars))
 })
 
 test_that("a list of formulas makes several dependent networks", {

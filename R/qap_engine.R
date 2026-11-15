@@ -379,7 +379,7 @@ QAPengine <- function(formula,
                         fixed_nodes = fixed)
 
 
-  # The class names the model, not the family: an eha model is a glm too, so
+  # The class names the model, not the family: a nem model is a glm too, so
   # a class for each family would cover two models. The family, a CSS, and a
   # panel are fields. `netreg` stays second in 0.7.x, for `{autograph}`'s
   # `plot.netreg()` and `{migraph}`'s shims, and goes in 0.8.0.

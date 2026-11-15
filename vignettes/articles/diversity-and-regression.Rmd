@@ -12,6 +12,10 @@ description: >
 library(manynet)
 library(autograph)
 library(infernet)
+# {infernet} only suggests {lme4}, which the random intercepts need.
+# Naming it here lets `learnr::run_tutorial()` offer to install it at the start,
+# because an exercise cannot install a package itself.
+requireNamespace("lme4", quietly = TRUE)
 ```
 
 ```{r setup, include = FALSE, purl=FALSE, eval=TRUE}
@@ -46,7 +50,7 @@ learnr::random_phrases_add(language = "en",
                                       "Bravo!",
                                       "Super!"),
                            encouragement = "Bon effort")
-marvel_friends <- to_unsigned(to_uniplex(fict_marvel, "relationship"), keep = "positive")
+marvel_friends <- to_unsigned(to_layer(fict_marvel, "relationship"), keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
 ```
@@ -518,7 +522,7 @@ and a `| sender` fixed effect as ergm's `sender` term,
 and each term that the other model cannot fit is dropped and named.
 Give the network as well,
 so that a categorical attribute is written as a categorical term.
-`tidy()` of the result has one row for each term,
+`summary()` of the result has one row for each term,
 with what the other model makes of it.
 
 Rewrite a model of `ison_networkers` for ergm, and check each term.

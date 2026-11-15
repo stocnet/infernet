@@ -560,7 +560,7 @@ needs one method and no new test.
 `{RSiena}` and `{goldfish}` export generics with the same name and signature,
 `test_gof(object, ...)`, so keep the signature: put `observed` and any other
 argument in the method, not in the generic.
-Until the packages share one generic (D17 of the roadmap), the package that
+Until the packages share one generic, the package that
 is attached last masks the others; `infernet::test_gof()` always reaches this one.
 The same holds for `test_parameter(x, ...)` and `test_time(x, ...)`, in
 [R/evaluate_parameter.R](../R/evaluate_parameter.R): their first argument is `x`,
@@ -788,14 +788,14 @@ talkative every stocnet package is.
 #### Shared model API
 
 Every `estimate_*()` function, here and in `{goldfish}`, shares one API,
-decided on 6 and 7 November 2026 for 0.7.0 (D21–D27 of the roadmap).
-`estimate_mrqap()` is its first user and `estimate_eha()` its second.
+decided on 6 and 7 November 2026 for 0.7.0.
+`estimate_mrqap()` is its first user and `estimate_nem()` its second.
 `{goldfish}` changes in lockstep: it imports infernet and registers its methods on infernet's generics.
 
-- **Classes.** A fit is `infernet<Model>Fit`, as `infernetMrqapFit` and `infernetEhaFit`,
+- **Classes.** A fit is `infernet<Model>Fit`, as `infernetMrqapFit` and `infernetNemFit`,
   with `infernetMrqapSummary`, `infernetMrqapSpec`, and `infernetMrqapCoefs` beside it.
   Dispatch on the model, never on the family: put the family, a CSS, or a panel in a field
-  (`x$family`, `x$css`, `x$panel`), since an eha model is a glm too.
+  (`x$family`, `x$css`, `x$panel`), since a nem model is a glm too.
   In 0.7.x a fit keeps `netreg` as its second class, for `{autograph}` and `{migraph}`.
   `netlm` and `netlogit` are `{migraph}`'s old classes, which we read but never make.
 - **Computation controls.** `seed`, `ncores`, and `strategy` are the only controls that persist.

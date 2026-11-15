@@ -55,15 +55,19 @@
   - The routes give the same networks for one seed, sequentially and in parallel
   - The result is a list of networks of the class of `.data`, or `stocnet`
 - Added `[` for a `diffs_model`, so that a subset of its rows still prints
+- Added `sweep_diffusion()` and `sweep_opinion()` to play models for each setting
+  - e.g. `vary = list(transmissibility = c(0.1, 0.5))`
+  - `sweep_diffusion()` returns `.diffusionSweep`, with share infected and steps until all adopt
+  - `sweep_opinion()` returns `.opinionSweep`, with opinion clusters, consensus, and spread at the end
 
 ## Tutorials
 
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
-- Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
+  - Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
 - Improved the "Modelling with ERGMs" tutorial
   - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
   - Interprets `gwesp` and `gwdegree`, with the disagreement on `gwdegree` and the effect of its decay
-- Moved the "Modelling with ERGMs" tutorial to `infernet4`
+  - Moved tutorial to `infernet4`
 
 # infernet 0.6.2
 

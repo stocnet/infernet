@@ -113,8 +113,10 @@ reference:
     desc: >
       Functions for predicting from a model and reading its terms,
       for simulating networks from a model,
-      and for simulating many diffusions on a network:
+      for simulating many diffusions on a network,
+      and for sweeping a diffusion or an opinion dynamic over its settings:
     contents:
       - starts_with("predict")
       - starts_with("simulate")
       - starts_with("play_")
+      - starts_with("sweep")

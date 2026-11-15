@@ -34,6 +34,8 @@
 #' @examples
 #' play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
 #'                 control = list(seed = 1))
+#' @seealso [sweep_diffusion()] to play a diffusion for each of several
+#'   settings, and to see how the result changes with them.
 #' @export
 play_diffusions <- function(.data, ..., times = 5, control = list()) {
   dots <- list(...)
@@ -54,13 +56,8 @@ play_diffusions <- function(.data, ..., times = 5, control = list()) {
   old_plan <- setup_future_plan(ctrl$strategy, ctrl$ncores)
   on.exit(restore_future_plan(old_plan), add = TRUE)
   out <- future.apply::future_lapply(seq_len(times), function(j) {
-    diff <- manynet::as_diffusion(do.call(manynet::play_diffusion,
-                                          c(list(.data), args)))
-    # `manynet::as_diffusion()` returns a 0-row report when nothing spreads
-    # beyond the seeds.
-    if (nrow(diff) == 0) return(NULL)
-    diff <- as.data.frame(diff)
-    names(diff)[names(diff) == "t"] <- "time"
+    diff <- .play_report(.data, args)
+    if (is.null(diff)) return(NULL)
     data.frame(sim = j, diff)
   }, future.seed = TRUE)
 
@@ -75,6 +72,20 @@ play_diffusions <- function(.data, ..., times = 5, control = list()) {
   out <- .make_diffs_model(.bind_reports(out), .data)
   attr(out, "control") <- ctrl
   out
+}
+
+# One run of `manynet::play_diffusion()`, as a data frame of its report, or
+# NULL where `manynet::as_diffusion()` returns a 0-row report, because nothing
+# spread beyond the seeds.
+#' @keywords internal
+#' @noRd
+.play_report <- function(.data, args) {
+  diff <- manynet::as_diffusion(do.call(manynet::play_diffusion,
+                                        c(list(.data), args)))
+  if (nrow(diff) == 0) return(NULL)
+  diff <- as.data.frame(diff)
+  names(diff)[names(diff) == "t"] <- "time"
+  diff
 }
 
 # The runs may report different columns, such as `S_new` on one network and

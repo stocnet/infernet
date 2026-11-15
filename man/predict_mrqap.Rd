@@ -103,6 +103,7 @@ terms(fit)
 \seealso{
 Other interpreting functions:
 \code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link{simulate_mrqap}}
+\code{\link{simulate_mrqap}},
+\code{\link{sweep}}
 }
 \concept{interpreting functions}

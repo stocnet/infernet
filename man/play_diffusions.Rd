@@ -62,8 +62,12 @@ play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
                 control = list(seed = 1))
 }
 \seealso{
+\code{\link[=sweep_diffusion]{sweep_diffusion()}} to play a diffusion for each of several
+settings, and to see how the result changes with them.
+
 Other interpreting functions:
 \code{\link{predict_mrqap}},
-\code{\link{simulate_mrqap}}
+\code{\link{simulate_mrqap}},
+\code{\link{sweep}}
 }
 \concept{interpreting functions}
