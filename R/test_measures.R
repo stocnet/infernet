@@ -61,8 +61,7 @@ NULL
 #'   to_unsigned() |> to_giant() |> 
 #'   to_subgraph(PowerOrigin == "Human")
 #' (cugtest <- test_random(marvel_friends, net_by_heterophily, attribute = "Attractive",
-#'    times = 200))
-#' # plot(cugtest)
+#'    times = 50))
 #' @export
 test_random <- function(.data, FUN, ..., 
                         times = 1000, 
@@ -101,7 +100,7 @@ test_random <- function(.data, FUN, ...,
 #'   from = c("A","A","A","A","B","B","B","C","C","C","C"),
 #'   to = c("w","w","x","y","x","x","z","y","z","z","w")), twomode = TRUE)
 #' (configtest <- test_configuration(tokens,
-#'    function(g) net_by_transitivity(to_mode(g, 2)), times = 100))
+#'    function(g) net_by_transitivity(to_mode(g, 2)), times = 50))
 #' @export
 test_configuration <- function(.data, FUN, ..., 
                         times = 1000, 
@@ -129,11 +128,6 @@ test_configuration <- function(.data, FUN, ...,
 }
 
 #' @rdname test_measures
-#' @examples 
-#' # (qaptest <- test_permutation(marvel_friends, 
-#' #                 net_by_heterophily, attribute = "Attractive",
-#' #                 times = 200))
-#' # plot(qaptest)
 #' @export
 test_permutation <- function(.data, FUN, ..., 
                              times = 1000, 

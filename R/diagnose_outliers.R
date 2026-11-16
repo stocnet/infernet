@@ -58,7 +58,8 @@ diagnose_outliers <- function(x, ...) UseMethod("diagnose_outliers")
 #' @rdname diagnose_outliers
 #' @export
 diagnose_outliers.default <- function(x, ...) {
-  .no_diagnose_method("diagnose_outliers", x)
+  .no_diagnose_method("diagnose_outliers", x,
+                      hint = "Give it a {.cls infernetMrqapFit} from {.fn estimate_mrqap}.")
 }
 
 #' @rdname diagnose_outliers

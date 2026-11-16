@@ -22,13 +22,11 @@ diagnose_onset(x, ...)
 \item{...}{Arguments for a method.}
 }
 \value{
-The diagnosis that the method of the model gives.
+The diagnosis that the method for the class of \code{x} gives.
+The default method gives an error.
 }
 \description{
 These generics diagnose a model of a sequence of events or of waves.
-\code{{infernet}} holds them, so that \code{{goldfish}} and other packages register
-methods for their own fits on the same generics, and a user calls one
-function for any model.
 \itemize{
 \item \code{diagnose_changepoints()} finds where the fit of a model of a sequence
 changes.
@@ -36,8 +34,17 @@ changes.
 information about its coefficients.
 }
 
-\code{{infernet}} has no method for them yet. \code{{goldfish}} has methods for
-its fits.
+\code{{infernet}} holds these generics so that \code{{goldfish}} and \code{{RSiena}}
+can share them.
+Each package can then register a method for its own fits,
+such as a \code{{goldfish}} model of relational events or
+an \code{{RSiena}} model of network panel waves,
+and a user calls the same function for each model.
+The two generics take \code{{goldfish}}'s signature, \verb{(x, ...)},
+as \code{diagnose_outliers()} does.
+
+\code{{infernet}} itself has no method for these generics yet,
+so the default method gives an error that names the class of \code{x}.
 }
 \seealso{
 Other evaluating functions:
