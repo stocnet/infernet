@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
 <li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul>
 </li>
@@ -78,6 +79,29 @@ Hollway</h4>
 
     
     
+<style>
+html { font-size: 115%; }
+.callout {
+  border-left: 3px solid #5775B1;
+  padding: 0.1em 1em;
+  margin: 1.2em 0;
+}
+.callout-label { color: #5775B1; }
+.page-toc { font-style: italic; }
+.page-toc-link { color: #5775B1; cursor: pointer; text-decoration: underline; }
+.tutorialTitle { color: #5775B1 !important; }
+#tutorial-topic .nav-link { color: #5775B1 !important; }
+.section a:not(.btn) { color: #5775B1; }
+.section a:not(.btn):hover { color: #465E8E; }
+.btn-tutorial-run,
+.btn-tutorial-run:hover,
+.btn-tutorial-run:focus,
+.btn-tutorial-run:active {
+  background-color: #5775B1;
+  border-color: #5775B1;
+  color: #fff;
+}
+</style>
 <div class="callout">
 <p><span class="callout-label"><strong>Static preview</strong>:</span>
 This is a static, read-only preview of the “Diversity and Regression”
@@ -388,7 +412,7 @@ hypothesis)</li>
 researchers send more emails to those of the same discipline
 (disciplinary homophily hypothesis)</li>
 </ul>
-<p><code><a href="../reference/regression.html">estimate_mrqap()</a></code> fits a
+<p><code><a href="../reference/estimate_mrqap.html">estimate_mrqap()</a></code> fits a
 <abbr><dfn title="A multiple regression quadratic assignment procedure (MRQAP) is a regression model for network data using a permutation test.">
 MRQAP </dfn></abbr> model from a formula. The left-hand side names the
 ties to explain, here the <code>weight</code> of each tie, and the
@@ -414,7 +438,9 @@ difference instead.</li>
 <code>ego(Discipline)</code> and <code>alter(Discipline)</code> are
 the sender’s and the receiver’s discipline. A categorical attribute gets
 one 0/1 column for each category, less the first category (here
-Anthropology), which is the <em>reference</em>.</li>
+Anthropology), which is the
+<abbr><dfn title="The reference category is the category of a categorical variable left out of a model, with which the coefficients of the other categories are compared.">
+reference </dfn></abbr>.</li>
 <li>
 <code>same(Discipline)</code> is 1 where the sender and the receiver
 share a discipline. This is
@@ -492,9 +518,10 @@ receive many more. The ties of one sender are then not independent of
 one another, and a model that ignores this may mistake a busy sender for
 an effect of their attributes. There are two ways to account for each
 node’s own level of activity and popularity.</p>
-<p><strong><em>Fixed effects</em></strong> absorb a separate intercept
-for each sender and each receiver. Write them after a bare bar at the
-end of the formula, as in <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>:
+<p><strong><abbr><dfn title="A fixed effect is a separate intercept for each group, such as each sender, that absorbs every difference between the groups.">
+Fixed effects </dfn></abbr></strong> absorb a separate intercept for
+each sender and each receiver. Write them after a bare bar at the end of
+the formula, as in <a href="https://lrberge.github.io/fixest/" class="external-link">fixest</a>:
 <code>| sender + receiver</code>. Because these intercepts absorb
 everything about a sender or a receiver, a term that does not vary
 within them, such as <code>ego(Citations)</code> or
@@ -504,9 +531,10 @@ receiver, can stay. The model then reports a ‘within’ R-squared, the
 share of the variance within senders and receivers that it explains.</p>
 <p>Fit a model of citation difference and discipline homophily with
 sender and receiver fixed effects.</p>
-<p><strong><em>Random intercepts</em></strong> instead treat each
-sender’s and each receiver’s intercept as drawn from a normal
-distribution, as in <a href="https://github.com/lme4/lme4/" class="external-link">lme4</a>. Write each one in parentheses:
+<p><strong><abbr><dfn title="A random intercept is an intercept for each group, such as each sender, drawn from a common normal distribution.">
+Random intercepts </dfn></abbr></strong> instead treat each sender’s and
+each receiver’s intercept as drawn from a normal distribution, as in
+<a href="https://github.com/lme4/lme4/" class="external-link">lme4</a>. Write each one in parentheses:
 <code>(1 | sender) + (1 | receiver)</code>. Random intercepts keep the
 nodal terms in the model, but each permutation now fits a mixed model,
 which takes longer. Here we use <code>times = 100</code>.</p>
@@ -522,13 +550,14 @@ This section includes an interactive quiz in the live tutorial — run
 <p>So far each model has used its default controls.
 <code><a href="../reference/control_mrqap.html">control_mrqap()</a></code> shows them all, and checks any that you
 change. Its result goes to the <code>control =</code> argument of
-<code><a href="../reference/regression.html">estimate_mrqap()</a></code>. The most useful controls are:</p>
+<code><a href="../reference/estimate_mrqap.html">estimate_mrqap()</a></code>. The most useful controls are:</p>
 <ul>
 <li>
-<code>family</code>: <code>"auto"</code> reads it from the outcome
-(<code>"binomial"</code> for a binary outcome, otherwise
-<code>"gaussian"</code>). The message counts here might also be fitted
-as <code>"poisson"</code> or <code>"negbin"</code>.</li>
+<code>family</code>: <code>NULL</code>, the default, reads it from
+the outcome (<code>"binomial"</code> for a binary outcome,
+<code>"poisson"</code> for a count, otherwise <code>"gaussian"</code>).
+The message counts here might also be fitted as <code>"poisson"</code>
+or <code>"negbin"</code>.</li>
 <li>
 <code>permute</code>: <code>"predictor"</code> (Dekker’s double
 semi-partialling, the default) or <code>"outcome"</code>.</li>
@@ -547,7 +576,7 @@ nodes, with 1,000 or more permutations. Elsewhere, starting the workers
 costs more time than it saves. For such a model, outside this tutorial,
 you would write, for example:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">tie</span><span class="op">(</span><span class="va">friends</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">reporter</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/estimate_mrqap.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">tie</span><span class="op">(</span><span class="va">friends</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">dept</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">reporter</span><span class="op">)</span>,</span>
 <span>               <span class="va">ison_hightech</span>, times <span class="op">=</span> <span class="fl">2000</span>,</span>
 <span>               control <span class="op">=</span> <span class="fu"><a href="../reference/control_mrqap.html">control_mrqap</a></span><span class="op">(</span>ncores <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1234</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="callout">
@@ -565,13 +594,14 @@ multiplex </dfn></abbr> network has several, called layers, and one
 layer can explain another. <code>ison_hightech</code> holds Krackhardt’s
 (1987) data on 21 managers of a high-tech company. Every manager
 reported who goes to whom for advice, and who is friends with whom. Each
-of those layers is a <em>cognitive social structure</em> (CSS): 21
-reports of the whole network, one from each manager. The
-<code>reports</code> layer is the formal reporting structure, which is
-the same for everyone.</p>
+of those layers is a
+<abbr><dfn title="A cognitive social structure (CSS) is a set of reports of the same network, one from each respondent, of the ties they perceive among all the nodes.">
+cognitive social structure </dfn></abbr> (CSS): 21 reports of the whole
+network, one from each manager. The <code>reports</code> layer is the
+formal reporting structure, which is the same for everyone.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ison_hightech</span></span></code></pre></div>
-<p><code><a href="../reference/regression.html">estimate_mrqap()</a></code> detects a CSS and fits every reported
+<p><code><a href="../reference/estimate_mrqap.html">estimate_mrqap()</a></code> detects a CSS and fits every reported
 <abbr><dfn title="A dyad is a pair of nodes and the ties between them.">
 dyad </dfn></abbr>, one for each sender, receiver, and reporter: 21 x 20
 x 21 = 8,820 observations. A permutation relabels senders, receivers,
@@ -597,8 +627,9 @@ sender’s number of reports, and being in the same department. Advice
 ties are binary, so this is a logistic model of 8,820 observations, and
 we use <code>times = 50</code> with a seed.</p>
 <p>A report about one’s own ties can differ from a report about the ties
-of others. The <em>reporter</em> terms describe who made each
-report:</p>
+of others. The
+<abbr><dfn title="A reporter is the respondent whose report of the network a tie in a cognitive social structure comes from.">
+reporter </dfn></abbr> terms describe who made each report:</p>
 <ul>
 <li>
 <code>reporter(level)</code> is the reporter’s level in the
@@ -628,7 +659,7 @@ This section includes an interactive quiz in the live tutorial — run
 <h2 id="moving-a-formula">Moving a formula<a class="anchor" aria-label="anchor" href="#moving-a-formula"></a>
 </h2>
 <p>The same formula can describe other models of the same network.
-<code><a href="../reference/specify.html">specify_ergm()</a></code> rewrites an MRQAP formula for
+<code><a href="../reference/specify_ergm.html">specify_ergm()</a></code> rewrites an MRQAP formula for
 <a href="https://statnet.org" class="external-link">ergm</a>, and <a href="https://stocnet.github.io/goldfish/" class="external-link">goldfish</a>’s own
 <code>specify_dynam()</code> for a DyNAM. Each term that has an
 equivalent is rewritten, such as <code>diff(Citations)</code> as
@@ -636,8 +667,8 @@ equivalent is rewritten, such as <code>diff(Citations)</code> as
 effect as ergm’s <code>sender</code> term, and each term that the other
 model cannot fit is dropped and named. Give the network as well, so that
 a categorical attribute is written as a categorical term.
-<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of the result has one row for each term, with what
-the other model makes of it.</p>
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> of the result has one row for each term, with
+what the other model makes of it.</p>
 <p>Rewrite a model of <code>ison_networkers</code> for ergm, and check
 each term. Then do the same, without the network, for a model of
 <code>ison_hightech</code>.</p>
@@ -674,6 +705,14 @@ Alter
 </dt>
 <dd>
 An alter is a node connected to a focal node (ego).
+</dd>
+<dt>
+Cognitive Social Structure
+</dt>
+<dd>
+A cognitive social structure (CSS) is a set of reports of the same
+network, one from each respondent, of the ties they perceive among all
+the nodes.
 </dd>
 <dt>
 Community
@@ -720,6 +759,13 @@ Ego
 </dt>
 <dd>
 An ego is a focal node in a network.
+</dd>
+<dt>
+Fixed Effect
+</dt>
+<dd>
+A fixed effect is a separate intercept for each group, such as each
+sender, that absorbs every difference between the groups.
 </dd>
 <dt>
 Heterogeneity
@@ -779,6 +825,28 @@ Random
 <dd>
 A random network is one where ties are placed among nodes according to
 some probability distribution.
+</dd>
+<dt>
+Random Intercept
+</dt>
+<dd>
+A random intercept is an intercept for each group, such as each sender,
+drawn from a common normal distribution.
+</dd>
+<dt>
+Reference Category
+</dt>
+<dd>
+The reference category is the category of a categorical variable left
+out of a model, with which the coefficients of the other categories are
+compared.
+</dd>
+<dt>
+Reporter
+</dt>
+<dd>
+A reporter is the respondent whose report of the network a tie in a
+cognitive social structure comes from.
 </dd>
 <dt>
 Richness

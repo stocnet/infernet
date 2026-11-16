@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,7 +20,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">News</a></li>
@@ -45,8 +46,8 @@
 <div class="section level2">
 <h2 id="project-overview">Project overview<a class="anchor" aria-label="anchor" href="#project-overview"></a></h2>
 <p><code>infernet</code> is an R package (part of the <a href="https://github.com/stocnet" class="external-link">stocnet</a> ecosystem) providing the <em>inferential layer</em> for network analysis: conditional uniform graph (CUG) and quadratic assignment procedure (QAP) tests of network statistics, and multiple regression QAP (MRQAP). It combines a formula front end with a range of estimator range, missing-data handling, and treatments for multimodal, multilevel, and cognitive social structure networks. It builds on <a href="https://stocnet.github.io/manynet/" class="external-link">manynet</a> (network classes and coercion) and <a href="https://stocnet.github.io/netrics/" class="external-link">netrics</a> (measures), so its functions accept matrices, edgelists, <a href="https://r.igraph.org/" class="external-link">igraph</a>, <a href="https://statnet.org/" class="external-link">network</a>, <a href="https://tidygraph.data-imaginist.com" class="external-link">tidygraph</a>, or <code>stocnet</code> objects, and one-mode or two-mode networks alike. Plotting results belongs in <a href="https://stocnet.github.io/autograph/" class="external-link">autograph</a>.</p>
-<p>Full package documentation — common dev commands, file organization, the <code><a href="reference/regression.html">estimate_mrqap()</a></code> pipeline, function body and parallelism conventions, console messaging, dependency practice, test conventions, <code>NEWS.md</code> conventions, and branching/CI — lives in <a href="CONTRIBUTING.html">.github/CONTRIBUTING.md</a>. Read it before adding or restructuring functions, or when you need the exact <code>devtools</code>/testing commands for this repo.</p>
-<p>Note that from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> 2.0.0, its <code>net_regression()</code>, <code>test_*()</code> family, <code><a href="reference/play_diffusions.html">play_diffusions()</a></code>, <code>test_distribution()</code>, and <code><a href="reference/test_fit.html">test_fit()</a></code> are shims that call <a href="https://stocnet.github.io/infernet/">infernet</a> (<code>net_regression()</code> calls <code><a href="reference/regression.html">estimate_mrqap()</a></code>), and warn once that they are deprecated. Make a fix here; <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> needs no port.</p>
+<p>Full package documentation — common dev commands, file organization, the <code><a href="reference/estimate_mrqap.html">estimate_mrqap()</a></code> pipeline, function body and parallelism conventions, console messaging, dependency practice, test conventions, <code>NEWS.md</code> conventions, and branching/CI — lives in <a href="CONTRIBUTING.html">.github/CONTRIBUTING.md</a>. Read it before adding or restructuring functions, or when you need the exact <code>devtools</code>/testing commands for this repo.</p>
+<p>Note that from <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> 2.0.0, its <code>net_regression()</code>, <code>test_*()</code> family, <code><a href="reference/play_diffusions.html">play_diffusions()</a></code>, <code>test_distribution()</code>, and <code><a href="reference/test_fit.html">test_fit()</a></code> are shims that call <a href="https://stocnet.github.io/infernet/">infernet</a> (<code>net_regression()</code> calls <code><a href="reference/estimate_mrqap.html">estimate_mrqap()</a></code>), and warn once that they are deprecated. Make a fix here; <a href="https://stocnet.github.io/migraph/" class="external-link">migraph</a> needs no port.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-make-changes">Where to make changes<a class="anchor" aria-label="anchor" href="#where-to-make-changes"></a></h2>

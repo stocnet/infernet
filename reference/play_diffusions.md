@@ -10,7 +10,7 @@ to compare an observed diffusion with it, or to
 to compare it with another model.
 
 Runs in which nothing spreads beyond the seeds return no report from
-[`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/coerce_graph.html),
+[`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/make_play.html),
 and are dropped with a warning.
 
 ## Usage
@@ -22,7 +22,7 @@ play_diffusions(.data, ..., times = 5, control = list())
 summary(object, ...)
 
 # S3 method for class 'diffs_model'
-print(x, ...)
+x[i, j, drop = FALSE]
 ```
 
 ## Arguments
@@ -52,18 +52,23 @@ print(x, ...)
   `seed`, and leaves the other controls alone. The same seed gives the
   same diffusions sequentially and in parallel. A control that is not
   named keeps its default, or the value set with
-  `control_mrqap(..., persist = TRUE)`. The result records the controls
-  that it used in its attribute `control`.
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md).
+  The result records the controls that it used in its attribute
+  `control`.
 
 - object, x:
 
   A `diffs_model`.
 
+- i, j, drop:
+
+  As for a tibble.
+
 ## Value
 
 A `diffs_model`: a tibble with one row for each step of each run, the
 run in `sim`, the step in `time`, and the counts of
-[`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/coerce_graph.html).
+[`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/make_play.html).
 [`summary()`](https://rdrr.io/r/base/summary.html) gives the time of
 adoption, the number of steps until every node is infected, for each
 run. [`print()`](https://rdrr.io/r/base/print.html) returns `x`,
@@ -79,18 +84,14 @@ each simulation.
 
 ## See also
 
-Other models:
-[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
-[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
-[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+[`sweep_diffusion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+to play a diffusion for each of several settings, and to see how the
+result changes with them.
+
+Other interpreting functions:
+[`predict_mrqap`](https://stocnet.github.io/infernet/reference/predict_mrqap.md),
+[`simulate_mrqap`](https://stocnet.github.io/infernet/reference/simulate_mrqap.md),
+[`sweep`](https://stocnet.github.io/infernet/reference/sweep.md)
 
 ## Examples
 
@@ -99,21 +100,21 @@ play_diffusions(ison_adolescents, transmissibility = 0.3, times = 5,
                 control = list(seed = 1))
 #> # 5 simulated SI diffusions
 #> 
-#> # A tibble: 38 × 6
+#> # A tibble: 42 × 6
 #>      sim  time     n     S     s     I
-#>    <int> <dbl> <dbl> <dbl> <dbl> <int>
+#>    <int> <int> <dbl> <int> <dbl> <int>
 #>  1     1     0     8     7     1     1
 #>  2     1     1     8     7     1     1
-#>  3     1     2     8     6     3     2
-#>  4     1     3     8     4     3     4
-#>  5     1     4     8     3     2     5
-#>  6     1     5     8     2     1     6
-#>  7     2     0     8     7     1     1
-#>  8     2     1     8     7     1     1
-#>  9     2     2     8     6     3     2
-#> 10     2     3     8     6     3     2
-#> # ℹ 28 more rows
+#>  3     1     2     8     7     1     1
+#>  4     1     3     8     7     1     1
+#>  5     1     4     8     7     1     1
+#>  6     1     5     8     6     3     2
+#>  7     1     6     8     6     3     2
+#>  8     1     7     8     5     3     3
+#>  9     1     8     8     4     3     4
+#> 10     2     0     8     7     1     1
+#> # ℹ 32 more rows
 #> 
-#> # Steps until every node adopted: median 9, from 7 to 10.
+#> # Steps until every node adopted: median 10, from 8 to 10.
 #> # Controls: seed = 1
 ```

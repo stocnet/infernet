@@ -1,9 +1,9 @@
 # Diagnosing how well a model classifies ties
 
 `diagnose_confusion()` compares the ties that a model of a binary
-outcome predicts with the ties that were observed. It has a method for a
-`netreg` from
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md):
+outcome predicts with the ties that were observed. It has a method for
+an `infernetMrqapFit` from
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md):
 a logistic model, or a linear model of a 0/1 outcome, read as a linear
 probability model.
 
@@ -28,7 +28,9 @@ probability model.
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) gives the ROC
 curve, and
 [`glance()`](https://generics.r-lib.org/reference/glance.html) gives the
-metrics in one row, after `{broom}`. `{autograph}` plots it.
+metrics in one row, after `{broom}`. `{autograph}` plots it. It also has
+a method for an `ergm` of a binary network, from
+[`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html).
 
 ## Usage
 
@@ -38,14 +40,11 @@ diagnose_confusion(x, ...)
 # Default S3 method
 diagnose_confusion(x, ...)
 
-# S3 method for class 'netreg_glm'
+# S3 method for class 'infernetMrqapFit'
 diagnose_confusion(x, threshold = 0.5, times = 1000, control = list(), ...)
 
-# S3 method for class 'netreg_lm'
+# S3 method for class 'ergm'
 diagnose_confusion(x, threshold = 0.5, times = 1000, control = list(), ...)
-
-# S3 method for class 'infernetConfusion'
-print(x, ...)
 
 # S3 method for class 'infernetConfusion'
 tidy(x, ...)
@@ -58,9 +57,11 @@ glance(x, ...)
 
 - x:
 
-  A `netreg` of a binary outcome, from
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
-  For [`print()`](https://rdrr.io/r/base/print.html),
+  An `infernetMrqapFit` of a binary outcome, from
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md),
+  or an `ergm` of a binary network, from
+  [`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html). For
+  [`print()`](https://rdrr.io/r/base/print.html),
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
   [`glance()`](https://generics.r-lib.org/reference/glance.html), the
   result of `diagnose_confusion()`.
@@ -102,23 +103,31 @@ The predicted probabilities are those of the observed model, which the
 permutations do not change. A linear probability model can predict a
 value below 0 or above 1, which is taken as 0 or 1.
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+With `"confusion"` in `outputs`, as by default,
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 keeps the result for a binary outcome as `$confusion_matrix`, from 1000
 draws with the seed of the fit.
 
+For an `ergm` from
+[`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html), the predicted
+probability of each dyad is `{ergm}`'s
+[`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md):
+the probability of a tie, given the rest of the observed network. For a
+model without dependence terms, such as one of `edges`, `nodecov()`, and
+`nodematch()`, this is the probability of the tie under the model. For a
+model with dependence terms, such as `gwesp()` or `triangle`, it holds
+only where every other tie is as observed, so the matrix describes how
+well the model predicts one tie from the others, and a warning says so.
+Unobserved dyads are left out.
+
 ## See also
 
-Other models:
-[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
+Other evaluating functions:
+[`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md),
+[`diagnose_residuals`](https://stocnet.github.io/infernet/reference/diagnose_residuals.md),
+[`diagnose_time`](https://stocnet.github.io/infernet/reference/diagnose_time.md),
+[`evaluate_likelihood`](https://stocnet.github.io/infernet/reference/evaluate_likelihood.md),
 [`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
 [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 
 ## Examples

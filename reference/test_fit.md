@@ -11,8 +11,8 @@ or whether two models make the same data:
     [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
     compares an observed diffusion with the simulated diffusions;
 
-  - a `netreg`, from
-    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+  - an `infernetMrqapFit`, from
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md),
     simulates outcome networks from the fitted model and compares a
     network statistic, `FUN`, on each with the statistic on the observed
     network.
@@ -37,7 +37,7 @@ test_gof(object, observed, ...)
 # S3 method for class 'diffs_model'
 test_gof(object, observed, ...)
 
-# S3 method for class 'netreg'
+# S3 method for class 'infernetMrqapFit'
 test_gof(object, observed, FUN, ..., times = 1000, control = list())
 
 test_distributions(object1, object2, ...)
@@ -55,33 +55,33 @@ test_distributions(object1, object2, times = 1000, control = list(), ...)
 
   A model to simulate from: a `diffs_model`, from
   [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-  or a `netreg`, from
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
+  or an `infernetMrqapFit`, from
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
   For `test_distributions()`, `object1` and `object2` are two
   `diffs_model` objects.
 
 - ...:
 
-  For a `netreg`, additional arguments to be passed on to `FUN`. Other
-  methods do not use them.
+  For an `infernetMrqapFit`, additional arguments to be passed on to
+  `FUN`. Other methods do not use them.
 
 - observed:
 
   The observed data. For a `diffs_model`, a `diff_model` from
-  [`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/coerce_graph.html),
+  [`manynet::as_diffusion()`](https://stocnet.github.io/manynet/reference/make_play.html),
   or a network with a diffusion record from
   [`manynet::play_diffusion()`](https://stocnet.github.io/manynet/reference/make_play.html).
-  For a `netreg`, the network that the model was fitted on.
+  For an `infernetMrqapFit`, the network that the model was fitted on.
 
 - FUN:
 
-  For a `netreg`, a function of a network that returns a number or a
-  vector of numbers, such as
+  For an `infernetMrqapFit`, a function of a network that returns a
+  number or a vector of numbers, such as
   [`netrics::net_by_transitivity()`](https://stocnet.github.io/netrics/reference/measure_closure.html).
 
 - times:
 
-  For a `netreg`, the number of outcomes to simulate. For
+  For an `infernetMrqapFit`, the number of outcomes to simulate. For
   `test_distributions()`, the number of permutations. A `diffs_model`
   brings its own simulations.
 
@@ -94,8 +94,9 @@ test_distributions(object1, object2, times = 1000, control = list(), ...)
   `seed`, and leaves the other controls alone, so that the controls of a
   model can be given to a test whole. `ncores` is generally useful only
   when `times` \> 1000. A control that is not named keeps its default,
-  or the value set with `control_mrqap(..., persist = TRUE)`, and the
-  result records the controls that it used as `control`. See
+  or the value set with
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
+  and the result records the controls that it used as `control`. See
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
   for each control and its default.
 
@@ -156,21 +157,26 @@ simulations, or no p-value can be below 0.05.
 
 ## Network regressions
 
-The `netreg` method draws each simulated outcome from the fitted model
-with [`stats::simulate()`](https://rdrr.io/r/stats/simulate.html), in
-the dyads that the model used. The other cells keep their observed
-values: the diagonal, the fixed ties, and the cells that the model left
-out. An unobserved cell is an absent tie in both the observed and the
-simulated networks, so they do not differ there. An undirected network
-is mirrored, and the simulated network takes the node attributes of the
-observed one.
+The `infernetMrqapFit` method draws each simulated outcome from the
+fitted model in the dyads that the model used, as
+[`simulate()`](https://rdrr.io/r/stats/simulate.html) of the fit does
+(see
+[simulate_mrqap](https://stocnet.github.io/infernet/reference/simulate_mrqap.md)),
+so a seed gives the same networks to both. The other cells keep their
+observed values: the diagonal, the fixed ties, and the cells that the
+model left out. An unobserved cell is an absent tie in both the observed
+and the simulated networks, so they do not differ there. An undirected
+network is mirrored, and the simulated network takes the node attributes
+of the observed one.
 
-The model needs its `simple_fit`, so a model fitted with
-`less_mem = TRUE` cannot be tested. A list of networks, a panel, and a
-cognitive social structure cannot be tested yet. Nor can a `gaussian`
-model: its draws are continuous, so every dyad of a draw would hold a
-tie, and the test would always reject. Fit a family whose outcomes are
-ties or counts.
+A `"binomial"` or `"poisson"` model without random or fixed effects
+draws from its coefficients. Any other model draws with
+[`stats::simulate()`](https://rdrr.io/r/stats/simulate.html) of its
+`simple_fit`, so such a model fitted without `"model"` in `outputs`
+cannot be tested. A list of networks, a panel, and a cognitive social
+structure cannot be tested yet. Nor can a `gaussian` model: its draws
+are continuous, so every dyad of a draw would hold a tie, and the test
+would always reject. Fit a family whose outcomes are ties or counts.
 
 An MRQAP models each dyad apart from the others. A statistic of the
 dependence between dyads, such as transitivity or reciprocity, shows
@@ -181,8 +187,9 @@ what that misses.
 `{RSiena}` and `{goldfish}` export `test_gof()` generics with the same
 signature, for their own fitted models. If more than one of these
 packages is attached, the one attached last masks the others. Call
-`infernet::test_gof()`, `RSiena::test_gof()`, or `goldfish::test_gof()`
-to choose.
+`infernet::test_gof()`,
+[`RSiena::test_gof()`](https://rdrr.io/pkg/RSiena/man/test_gof.html), or
+`goldfish::test_gof()` to choose.
 
 ## References
 
@@ -197,17 +204,12 @@ stochastic actor-oriented models". *Methodological Innovations* 12(3).
 
 ## See also
 
-Other models:
-[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
+Other evaluating functions:
 [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
-[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md),
+[`diagnose_residuals`](https://stocnet.github.io/infernet/reference/diagnose_residuals.md),
+[`diagnose_time`](https://stocnet.github.io/infernet/reference/diagnose_time.md),
+[`evaluate_likelihood`](https://stocnet.github.io/infernet/reference/evaluate_likelihood.md),
 [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 
 ## Examples
@@ -223,7 +225,7 @@ test_distributions(fast, slow, times = 50)
 #> # A tibble: 1 × 6
 #>   statistic null.mean null.sd p.lower p.upper signif   
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-#> 1      48.0      9.56    5.44 1       0.0196  *        
+#> 1      76.7      9.09    5.44 1       0.0196  *        
 #> 
 #> # Null: 50 permutations of the pooled diffusions.
 #> # The p-value is p.upper: only a larger statistic counts against the null.
@@ -238,7 +240,7 @@ test_gof(slow, obs)
 #> # A tibble: 1 × 6
 #>   statistic null.mean null.sd p.lower p.upper signif   
 #>       <dbl>     <dbl>   <dbl> <chr>   <chr>   <noquote>
-#> 1      50.6      47.1    53.8 0.636   0.455            
+#> 1      11.5      75.3    66.7 0.273   0.818            
 #> 
 #> # Null: 20 simulations of the model; 10 estimate the mean and covariance.
 #> # The p-value is p.upper: only a larger statistic counts against the null.

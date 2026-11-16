@@ -281,7 +281,7 @@ Let’s use both the continuous `Citations` and the categorical
 - $`H_2`$: researchers send more emails to those of the same discipline
   (disciplinary homophily hypothesis)
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 fits a MRQAP model from a formula. The left-hand side names the ties to
 explain, here the `weight` of each tie, and the right-hand side lists
 the terms that might explain them:
@@ -295,7 +295,7 @@ the terms that might explain them:
 - `ego(Discipline)` and `alter(Discipline)` are the sender’s and the
   receiver’s discipline. A categorical attribute gets one 0/1 column for
   each category, less the first category (here Anthropology), which is
-  the *reference*.
+  the reference .
 - `same(Discipline)` is 1 where the sender and the receiver share a
   discipline. This is $`H_2`$.
 
@@ -365,7 +365,7 @@ another, and a model that ignores this may mistake a busy sender for an
 effect of their attributes. There are two ways to account for each
 node’s own level of activity and popularity.
 
-***Fixed effects*** absorb a separate intercept for each sender and each
+**Fixed effects** absorb a separate intercept for each sender and each
 receiver. Write them after a bare bar at the end of the formula, as in
 [fixest](https://lrberge.github.io/fixest/): `| sender + receiver`.
 Because these intercepts absorb everything about a sender or a receiver,
@@ -378,7 +378,7 @@ variance within senders and receivers that it explains.
 Fit a model of citation difference and discipline homophily with sender
 and receiver fixed effects.
 
-***Random intercepts*** instead treat each sender’s and each receiver’s
+**Random intercepts** instead treat each sender’s and each receiver’s
 intercept as drawn from a normal distribution, as in
 [lme4](https://github.com/lme4/lme4/). Write each one in parentheses:
 `(1 | sender) + (1 | receiver)`. Random intercepts keep the nodal terms
@@ -394,12 +394,13 @@ So far each model has used its default controls.
 [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
 shows them all, and checks any that you change. Its result goes to the
 `control =` argument of
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
 The most useful controls are:
 
-- `family`: `"auto"` reads it from the outcome (`"binomial"` for a
-  binary outcome, otherwise `"gaussian"`). The message counts here might
-  also be fitted as `"poisson"` or `"negbin"`.
+- `family`: `NULL`, the default, reads it from the outcome (`"binomial"`
+  for a binary outcome, `"poisson"` for a count, otherwise
+  `"gaussian"`). The message counts here might also be fitted as
+  `"poisson"` or `"negbin"`.
 - `permute`: `"predictor"` (Dekker’s double semi-partialling, the
   default) or `"outcome"`.
 - `seed`: a number, so that the same permutations, and so the same
@@ -431,17 +432,17 @@ The networks so far have had one kind of tie. A multiplex network has
 several, called layers, and one layer can explain another.
 `ison_hightech` holds Krackhardt’s (1987) data on 21 managers of a
 high-tech company. Every manager reported who goes to whom for advice,
-and who is friends with whom. Each of those layers is a *cognitive
-social structure* (CSS): 21 reports of the whole network, one from each
-manager. The `reports` layer is the formal reporting structure, which is
-the same for everyone.
+and who is friends with whom. Each of those layers is a cognitive social
+structure (CSS): 21 reports of the whole network, one from each manager.
+The `reports` layer is the formal reporting structure, which is the same
+for everyone.
 
 ``` r
 
 ison_hightech
 ```
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 detects a CSS and fits every reported dyad , one for each sender,
 receiver, and reporter: 21 x 20 x 21 = 8,820 observations. A permutation
 relabels senders, receivers, and reporters together. These terms read
@@ -465,7 +466,7 @@ ties are binary, so this is a logistic model of 8,820 observations, and
 we use `times = 50` with a seed.
 
 A report about one’s own ties can differ from a report about the ties of
-others. The *reporter* terms describe who made each report:
+others. The reporter terms describe who made each report:
 
 - `reporter(level)` is the reporter’s level in the hierarchy, the same
   over their whole report.
@@ -487,7 +488,7 @@ live tutorial — run `run_tute()` at the R console to try it.
 ## Moving a formula
 
 The same formula can describe other models of the same network.
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
 rewrites an MRQAP formula for [ergm](https://statnet.org), and
 [goldfish](https://stocnet.github.io/goldfish/)’s own `specify_dynam()`
 for a DyNAM. Each term that has an equivalent is rewritten, such as
@@ -495,8 +496,8 @@ for a DyNAM. Each term that has an equivalent is rewritten, such as
 effect as ergm’s `sender` term, and each term that the other model
 cannot fit is dropped and named. Give the network as well, so that a
 categorical attribute is written as a categorical term.
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) of the result
-has one row for each term, with what the other model makes of it.
+[`summary()`](https://rdrr.io/r/base/summary.html) of the result has one
+row for each term, with what the other model makes of it.
 
 Rewrite a model of `ison_networkers` for ergm, and check each term. Then
 do the same, without the network, for a model of `ison_hightech`.
@@ -528,6 +529,9 @@ each sender?
 Here are some of the terms that we have covered in this module:
 
 - Alter : An alter is a node connected to a focal node (ego).
+- Cognitive Social Structure : A cognitive social structure (CSS) is a
+  set of reports of the same network, one from each respondent, of the
+  ties they perceive among all the nodes.
 - Community : A community is a set of nodes more densely connected to
   one another than to other nodes in the network.
 - Configuration : A configuration network is one where the degree
@@ -540,6 +544,8 @@ Here are some of the terms that we have covered in this module:
   direction, from a sender to a receiver.
 - Dyad : A dyad is a pair of nodes and the ties between them.
 - Ego : An ego is a focal node in a network.
+- Fixed Effect : A fixed effect is a separate intercept for each group,
+  such as each sender, that absorbs every difference between the groups.
 - Heterogeneity : A measure of how varied the nodes in a network are.
 - Heterophily : A tendency for nodes to connect to dissimilar nodes.
 - Homophily : A tendency for nodes to connect to similar nodes.
@@ -554,6 +560,13 @@ Here are some of the terms that we have covered in this module:
   network data.
 - Random : A random network is one where ties are placed among nodes
   according to some probability distribution.
+- Random Intercept : A random intercept is an intercept for each group,
+  such as each sender, drawn from a common normal distribution.
+- Reference Category : The reference category is the category of a
+  categorical variable left out of a model, with which the coefficients
+  of the other categories are compared.
+- Reporter : A reporter is the respondent whose report of the network a
+  tie in a cognitive social structure comes from.
 - Richness : A measure of how many different types of nodes are in a
   network.
 - Undirected : An undirected or line network is one in which tie

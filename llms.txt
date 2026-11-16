@@ -23,12 +23,12 @@ The package has five families of functions:
   [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md).
 - **Specification** of a formula that one model can read and another can
   fit:
-  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
   and
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md).
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md).
 - **Regression** of a network on nodal and dyadic covariates, by
   multiple regression quadratic assignment procedure (MRQAP):
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   and
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md).
 - **Diffusion**, simulated many times, to test a model of diffusion
@@ -37,7 +37,7 @@ The package has five families of functions:
 - **Results**, as tidy data frames:
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
   [`glance()`](https://generics.r-lib.org/reference/glance.html), and
-  [`predict()`](https://stocnet.github.io/infernet/reference/predict.md).
+  [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md).
 
 Every function accepts the networks that
 [manynet](https://stocnet.github.io/manynet/) reads: matrices,
@@ -64,7 +64,7 @@ the other jobs to its neighbours:
 - [`{goldfish}`](https://stocnet.github.io/goldfish/) and
   [`{ergm}`](https://statnet.org) fit the models that a formula can move
   to, with
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
   here and `specify_dynam()` in
   [goldfish](https://stocnet.github.io/goldfish/).
 - [`{migraph}`](https://stocnet.github.io/migraph/) holds the book and
@@ -153,15 +153,15 @@ specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 #> # adapted trans -> ttriple
 ```
 
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) of a
-specification gives one row for each term, with what the model makes of
-it on a network:
+[`summary()`](https://rdrr.io/r/base/summary.html) of a specification
+gives one row for each term, with what the model makes of it on a
+network:
 
 ``` r
 
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
-tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+summary(spec, ison_hightech)[, c("term", "status", "reason")]
 #> # A tibble: 4 x 3
 #>   term           status reason                                                  
 #>   <chr>          <chr>  <chr>                                                   
@@ -172,14 +172,14 @@ tidy(spec, ison_hightech)[, c("term", "status", "reason")]
 ```
 
 With a network as `.data`,
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
 also gives the matrices of the terms that ergm has no name for, so that
 [`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html) can fit the
 formula that it returns.
 
 ## Regression
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 fits a regression to a network, and permutes the nodes to find the
 p-value of each coefficient. By default it uses Dekker, Krackhardt, and
 Snijders’ (2007) double semi-partialling, which permutes the residuals
@@ -236,7 +236,7 @@ estimate_mrqap(weight ~ sim(Citations) | sender + receiver,
 
 A cognitive social structure (CSS) records each person’s report of the
 whole network.
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 reads a CSS from the network itself, and fits one observation for each
 sender, receiver, and reporter. The `reporter` terms describe the person
 who made the report:
@@ -328,7 +328,7 @@ glance(model)[, c("r.squared", "nobs", "permute", "times")]
 #> 1    0.0674   272 predictor   200
 ```
 
-[`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
+[`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
 gives the fitted value of each dyad, or of new data:
 
 ``` r
@@ -344,18 +344,20 @@ diffusion with [`plot()`](https://rdrr.io/r/graphics/plot.default.html).
 ## Learn more
 
 The [website](https://stocnet.github.io/infernet/) has a page for every
-function, and there are three tutorials:
+function, and there are four tutorials:
 
 - “Diversity and Regression” moves from univariate tests to network
   regression.
-- “Diffusion and Learning” simulates diffusions and tests their fit.
+- “Diffusion and Contagion” simulates diffusions and tests their fit.
+- “Opinion and Learning” plays how opinions move towards consensus or
+  apart.
 - “Modelling with ERGMs” fits, interprets, and checks exponential random
   graph models with [ergm](https://statnet.org).
 
 To run them interactively, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
-`migraph::run_tute("ERGMs")`.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`,
+`migraph::run_tute("opinion")`, or `migraph::run_tute("ERGMs")`.
 
 ## Design principles
 
@@ -366,7 +368,7 @@ To run them interactively, install
   few arguments. For example,
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md)
   is named for the null distribution it draws, and
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   follows the `estimate_*()` verb of
   [goldfish](https://stocnet.github.io/goldfish/).
 - **Pleasant predictability**: users can guess a function’s behaviour
@@ -374,7 +376,7 @@ To run them interactively, install
   network, a statistic, and a number of `times`.
 - **Graceful inclusivity**: functions accept whatever network users
   bring and return something they can use. For example,
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   works on any network that
   [manynet](https://stocnet.github.io/manynet/) can convert, one-mode or
   two-mode, and keeps missing data missing.
@@ -420,115 +422,140 @@ and the Rate of Change in Institutional Complexes” (PANARCHIC).
 
 ## Testing
 
-Functions for testing a network statistic against random networks,
-networks with the same degrees, or permutations of the network, and for
-testing the parameters and the fit of a model:
+Functions for testing one network statistic against random networks,
+networks with the same degrees, or permutations of the network:
 
-- [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
-  [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md)
-  : Tests of model fit
 - [`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md)
   [`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md)
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md)
+  [`tidy(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/test_measures.md)
+  [`summary(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/test_measures.md)
+  [`glance(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/test_measures.md)
   : Tests of network measures
-- [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
-  [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
-  : Tests of a model's parameters
 
 ## Specifying
 
-The terms of an MRQAP formula and what each measures, the terms that
-suit a network, and functions for reading one formula for an MRQAP or an
-ERGM, and for seeing what each model makes of each term:
+Functions for reading one formula for an MRQAP or an ERGM, for listing
+the terms that suit a network, the terms of an MRQAP formula and what
+each measures, and the coefficients of a model:
 
-- [`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
-  : Terms of an MRQAP formula
+- [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
+  [`summary(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
+  [`tidy(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
+  : Specify an ERGM from a formula written for any model
+- [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  [`summary(`*`<mrqap_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  [`tidy(`*`<mrqap_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  : Specify an MRQAP from a formula written for any model
+- [`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md)
+  [`summary(`*`<saom_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify_saom.md)
+  : Specify a SAOM from a formula written for any model
 - [`formula(`*`<specify_terms>`*`)`](https://stocnet.github.io/infernet/reference/specify_terms.md)
+  [`summary(`*`<specify_terms>`*`)`](https://stocnet.github.io/infernet/reference/specify_terms.md)
   [`tidy(`*`<specify_terms>`*`)`](https://stocnet.github.io/infernet/reference/specify_terms.md)
   : The terms that suit a network
-- [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
-  [`tidy(`*`<mrqap_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify.md)
-  [`tidy(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/specify.md)
-  : Specify a model from a formula written for many models
+- [`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
+  : Terms of an MRQAP formula
+- [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  [`coef(`*`<infernetMrqapCoefs>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  [`coef(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  : Declare the coefficients of a model
+- [`declare_coefs(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`declare_coefs(`*`<ergm>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`coef(`*`<infernetErgmCoefs>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`simulate(`*`<infernetErgmCoefs>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  : Declare the coefficients of an ERGM
 
-## Regressing
+## Estimating
 
 Functions for regressing a network on nodal and dyadic covariates by
 multiple regression quadratic assignment procedure (MRQAP), with random
-or fixed effects, missing data, panels, and cognitive social structures:
+or fixed effects, missing data, panels, and cognitive social structures,
+the controls of a model, and the tidy results of other network models:
 
-- [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
-  [`print(`*`<mrqap_control>`*`)`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
-  : Controls for an MRQAP
-- [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+- [`print(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  [`tidy(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  [`summary(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  [`glance(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   : Regression for network data
-
-## Diffusing
-
-Functions for simulating many diffusions on a network, to test a model
-of diffusion against:
-
-- [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
-  [`summary(`*`<diffs_model>`*`)`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
-  [`print(`*`<diffs_model>`*`)`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
-  : Simulating many diffusions
-
-## Diagnosing
-
-Functions for diagnosing model results:
-
-- [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`print(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`tidy(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  [`glance(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
-  : Diagnosing how well a model classifies ties
-- [`predict(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
-  [`predict(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
-  [`predict(`*`<netlogit>`*`)`](https://stocnet.github.io/infernet/reference/predict.md)
-  : Predicting from a network regression
-
-## Reporting
-
-Functions for reporting and reading the results of regressions and
-tests, for tidying the results of other network models beside them, for
-predicting from a regression, and for diagnosing how well it classifies
-ties:
-
-- [`print(`*`<netreg_lm>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`print(`*`<netreg_glm>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`print(`*`<netreg_css>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`print(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`tidy(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`summary(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`print(`*`<summary_netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`glance(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`glance(`*`<netreg_lm>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`glance(`*`<netreg_glm>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`glance(`*`<netreg_css>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`nobs(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`logLik(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`deviance(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`fitted(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`residuals(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`formula(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  [`terms(`*`<netreg>`*`)`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  : Reporting network regression results
-- [`tidy(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/report_tests.md)
-  [`glance(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/report_tests.md)
-  [`print(`*`<network_test>`*`)`](https://stocnet.github.io/infernet/reference/report_tests.md)
-  : Reporting network test results
+- [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  [`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  [`c(`*`<mrqap_control>`*`)`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  : Computation controls for the session or for one call
+- [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md)
+  : Controls for an MRQAP
 - [`tidy(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`tidy(`*`<netlogit>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`glance(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`glance(`*`<netlogit>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
-  [`print(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
-  [`print(`*`<netlogit>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`tidy(`*`<ergm>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`glance(`*`<ergm>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`tidy(`*`<sienaFit>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   [`glance(`*`<sienaFit>`*`)`](https://stocnet.github.io/infernet/reference/other_results.md)
   : Tidying the results of other network models
+
+## Evaluating
+
+Functions for diagnosing issues with a fitted model and its residuals,
+for testing its fit against its simulations, for testing its
+coefficients, and for comparing models by their likelihood:
+
+- [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`tidy(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  [`glance(`*`<infernetConfusion>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  : Diagnosing how well a model classifies ties
+- [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md)
+  : Finding the outliers of a fitted model
+- [`fitted(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_residuals.md)
+  [`residuals(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/diagnose_residuals.md)
+  : The fitted values and residuals of a network regression
+- [`diagnose_changepoints()`](https://stocnet.github.io/infernet/reference/diagnose_time.md)
+  [`diagnose_onset()`](https://stocnet.github.io/infernet/reference/diagnose_time.md)
+  : Diagnosing a model of a sequence over time
+- [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  : Tests of model fit
+- [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+  [`anova(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+  [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+  : Tests of a model's coefficients
+- [`nobs(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/evaluate_likelihood.md)
+  [`logLik(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/evaluate_likelihood.md)
+  [`deviance(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/evaluate_likelihood.md)
+  : Comparing network regressions by their likelihood
+
+## Interpreting
+
+Functions for predicting from a model and reading its terms, for
+simulating networks from a model, for simulating many diffusions on a
+network, and for sweeping a diffusion or an opinion dynamic over its
+settings:
+
+- [`predict(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+  [`predict(`*`<netlm>`*`)`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+  [`predict(`*`<netlogit>`*`)`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+  [`formula(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+  [`terms(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+  : Predicting from a network regression, and its terms
+- [`declare_coefs(`*`<ergm_formula>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`declare_coefs(`*`<ergm>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`coef(`*`<infernetErgmCoefs>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  [`simulate(`*`<infernetErgmCoefs>`*`)`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+  : Declare the coefficients of an ERGM
+- [`simulate(`*`<infernetMrqapFit>`*`)`](https://stocnet.github.io/infernet/reference/simulate_mrqap.md)
+  [`simulate(`*`<infernetMrqapCoefs>`*`)`](https://stocnet.github.io/infernet/reference/simulate_mrqap.md)
+  [`simulate(`*`<mrqap_formula>`*`)`](https://stocnet.github.io/infernet/reference/simulate_mrqap.md)
+  : Simulate networks from an MRQAP
+- [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
+  [`summary(`*`<diffs_model>`*`)`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
+  [`` `[`( ``*`<diffs_model>`*`)`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
+  : Simulating many diffusions
+- [`sweep_diffusion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+  [`sweep_opinion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+  [`summary(`*`<diffusionSweep>`*`)`](https://stocnet.github.io/infernet/reference/sweep.md)
+  [`summary(`*`<opinionSweep>`*`)`](https://stocnet.github.io/infernet/reference/sweep.md)
+  : Sweeping a diffusion or an opinion dynamic over its settings
 
 # Articles
 
@@ -537,8 +564,9 @@ ties:
 Static, read-only versions of the interactive `learnr` tutorials bundled
 with the package. To run them, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
-`migraph::run_tute("ERGMs")` for the full interactive experience.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`,
+`migraph::run_tute("opinion")`, or `migraph::run_tute("ERGMs")` for the
+full interactive experience.
 
 - [Diversity and
   Regression](https://stocnet.github.io/infernet/articles/diversity-and-regression.md):
@@ -549,12 +577,23 @@ with the package. To run them, install
   procedures).
 
 - [Diffusion and
-  Learning](https://stocnet.github.io/infernet/articles/diffusion-and-learning.md):
+  Contagion](https://stocnet.github.io/infernet/articles/diffusion-and-contagion.md):
 
   In this tutorial you will learn how to simulate and investigate simple
   and complex diffusion or contagion on empirical or generated network
-  structures, including more compartmental models and learning models,
-  and how to test whether a model fits an observed diffusion.
+  structures, including independent cascades, compartmental models, and
+  models of your own, and how to test whether a model fits an observed
+  diffusion.
+
+- [Opinion and
+  Learning](https://stocnet.github.io/infernet/articles/opinion-and-learning.md):
+
+  In this tutorial you will learn how to simulate how opinions change
+  when people listen to those they are tied to, whether the opinions
+  reach a consensus, how stubbornness, bounded confidence, and repulsion
+  keep disagreement alive, which nodes have the most influence on where
+  opinions end, and what that means for the wisdom of crowds and for
+  misinformation.
 
 - [Modelling with
   ERGMs](https://stocnet.github.io/infernet/articles/modelling-with-ergms.md):

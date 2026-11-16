@@ -86,10 +86,16 @@ are several triangles.
 An ERG model is run from the [ergm](https://statnet.org) package with
 the following syntax: `ergm(dependentnetwork ~ term1 + term2 + ...)`
 
-This is a similar syntax to running regressions and other models in R.
-We begin a simple model of just one term estimating the number of
-edges/ties. This is called a Bernoulli or Erdos-Renyi model. We assign
-it to keep the results as an object:
+This is a similar syntax to running regressions and other models in R. A
+formula written for another model can be moved to ergm with
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
+from [infernet](https://stocnet.github.io/infernet/). For example,
+`specify_ergm(friends ~ same(dept) + ego(age), .data = net)` writes the
+MRQAP terms as `nodematch("dept")` and `nodeocov("age")`, and names any
+term that ergm cannot fit. In this tutorial we write ergm’s terms
+directly. We begin a simple model of just one term estimating the number
+of edges/ties. This is called a Bernoulli or Erdos-Renyi model. We
+assign it to keep the results as an object:
 
 ``` r
 
@@ -260,30 +266,34 @@ depends critically on “where you are on the curve”.
 This means we need to calculate predicted probabilities of $`Y`$ at
 specific values of key predictors. In our simple Bernoulli model, we’re
 modelling only the number of edges, and so we only need to condition our
-predicted probabilities on this one variable. We can calculate the
-probability of a tie forming between any two actors as follows,
-indicating the addition of a tie by increasing the edges count by 1
-(later there is an example of how to do this for more complex models
-with multiple variables). However, we can also obtain this information
-by using the handy
-[`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
-function. We can simply pass data on our independent variables, either
-in-sample, out-of-sample, or totally-made-up, to
-[`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
-and see what probability of a 1 would be predicted by the model.
+predicted probabilities on this one variable. The function that turns
+log-odds into a probability is the inverse logit, \\\Pr(Y=1) =
+\exp(\eta)/(1+\exp(\eta))\\, which R gives as
+[`plogis()`](https://rdrr.io/r/stats/Logistic.html). Here \\\eta\\ is
+the sum of the coefficients of the terms that adding the tie would
+change, each multiplied by how much it would change them. Adding any tie
+adds one edge, so in the Bernoulli model \\\eta\\ is the edges
+coefficient alone.
+
+[`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+does this for every pair of nodes at once. For each pair, it gives the
+probability of a tie between them, given the rest of the observed
+network. With `output = "matrix"`, it gives these probabilities as a
+matrix. For an undirected network such as this one, each pair appears
+once, in the upper triangle: the diagonal is 0 and the lower triangle is
+`NA`.
 
 ``` r
 
-exp(coef(flom.bern)) / (1 + exp(coef(flom.bern)))
-adj <- predict(flom.bern, output = "matrix")
-adj[is.na(adj)] <- 1
-adj * t(adj)
+plogis(coef(flom.bern))
+probs <- predict(flom.bern, output = "matrix")
+probs[1:4, 1:4]
 ```
 
 We can see here an estimated probability of a tie forming between any
-two actors of 0.1666667. Wait, where have we seen this number before?
-This is the same number that we obtained for the density of the network
-(0.1666667).
+two actors of 0.1666667, the same for every pair. Wait, where have we
+seen this number before? This is the same number that we obtained for
+the density of the network (0.1666667).
 
 ### Summary
 
@@ -394,28 +404,76 @@ output may differ slightly.
 
 ``` r
 
-flom.mark1 <- ergm(flomarriage ~ edges + triangle) 
 # Add verbose=T to watch for the convergence test p-value and 
 # log-likelihood improvement to go down!
+flom.mark1 <- ergm(flomarriage ~ edges + triangle,
+                   control = control.ergm(seed = 1)) 
 plot(flom.mark1)
 tidy(flom.mark1)
 glance(flom.mark1)
 ```
 
-First, the console output reports that the estimation procedure has
-converged on stable estimates with 99% confidence (p-value \< 0.0001).
-You can also visually check convergence by plotting the model object. In
-the plot, we see that the log-likelihood stabilises over time,
-indicating convergence.
+`ergm()` now estimates in iterations. In each iteration, it simulates
+many networks from the current coefficients, and moves the coefficients
+so that the mean statistics of the simulated networks come closer to the
+statistics of the observed network. At the end of each iteration, the
+console output gives a convergence test, for example “Convergence test
+p-value: \< 0.0001. Converged with 99% confidence.” This test asks
+whether the mean simulated statistics are close enough to the observed
+ones, so here a *small* p-value is good: it means that the estimates are
+stable. If the test fails, `ergm()` starts another iteration, up to
+`MCMLE.maxit`.
+
+The plot shows the statistics of the networks simulated in the last
+iteration, less the observed statistics. Each line should move around
+zero, with no trend, and cover the same range in its first half and its
+second half.
+
+### MCMC diagnostics
+
+`mcmc.diagnostics()` gives these checks as numbers too:
+
+``` r
+
+mcmc.diagnostics(flom.mark1)
+```
+
+Read its output in three parts:
+
+1.  **Are the sample statistics different from the observed?** The
+    `diff.` row gives the mean difference for each statistic, and the
+    test gives a p-value for each statistic and for all together
+    (`Omni`). Here a *large* p-value is good: the simulated networks are
+    centred on the observed network.
+2.  **Autocorrelation.** The correlation of each statistic with itself
+    at later lags should be small already at the first lag. A large
+    value means that the chain moves slowly, so the sample holds less
+    information than its size suggests. Increase `MCMC.interval` in
+    `control.ergm()` if so.
+3.  **Geweke diagnostics.** These compare the first 10% of the chain
+    with the last 50%. A small p-value means that the chain still
+    drifts. Increase `MCMC.burnin` if so.
+
+The plots show the trace and the density of each statistic. A trace
+should look like noise around a level, and a density should have one
+peak.
+
+You do not need to know how MCMC works to use these checks. If you want
+to know more, Chi Feng’s [MCMC Interactive
+Gallery](https://chi-feng.github.io/mcmc-demo/app.html#HamiltonianMC,banana)
+shows how different samplers move. Its “Random Walk Metropolis Hastings”
+sampler is the kind that `ergm()` uses, though in `ergm()` each step
+adds or removes a tie in a network.
+
+**Try it yourself**: This section includes an interactive quiz in the
+live tutorial — run `run_tute()` at the R console to try it.
 
 ### Interpretation
 
 How do we interpret the coefficients now that the model is more complex?
-First, we can (seemingly) ignore the edges/intercept now, even if
-significant, as it will just be counterbalancing the other effects in
-the model. In the results, we see that the MCML estimate for triangles
-is not statistically significant. But if we try and interpret it anyway,
-for the practice, we see that we cannot completely ignore the edges
+In the results, we see that the MCML estimate for triangles is not
+statistically significant. But if we try and interpret it anyway, for
+the practice, we see that we cannot completely ignore the edges
 coefficient, *because* it is part of the story of when and where ties
 form. For endogenous effects relating to the structure of the network,
 the coefficients need to be interpreted *with* the coefficient of the
@@ -433,16 +491,19 @@ tie, etc. So it depends…:
   Triangle x 2 and so on.
 
 So we need to think about working out the probabilities based on the
-tie’s context:
+tie’s context. [`plogis()`](https://rdrr.io/r/stats/Logistic.html) gives
+the probability for a tie that would close one or two triangles, and
+[`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
+gives the probability for each pair of families, from the number of
+triangles that a tie between them would close in the observed network:
 
 ``` r
 
-# for edges + triangle
-exp(coef(flom.mark1)[[1]] + coef(flom.mark1)[[2]])/(1 + exp(coef(flom.mark1)[[1]] + coef(flom.mark1)[[2]]))
-# for edges + 2 triangles
-exp(coef(flom.mark1)[[1]] + 2*coef(flom.mark1)[[2]])/(1 + exp(coef(flom.mark1)[[1]] + 2*coef(flom.mark1)[[2]]))
+b <- coef(flom.mark1)
+plogis(b[["edges"]] + 1 * b[["triangle"]]) # a tie that closes one triangle
+plogis(b[["edges"]] + 2 * b[["triangle"]]) # a tie that closes two triangles
 probs <- predict(flom.mark1, output = "matrix")
-probs["Barbadori","Ridolfi"]
+probs["Barbadori","Ridolfi"] # each pair is in the upper triangle
 probs["Albizzi","Tornabuoni"]
 ```
 
@@ -560,12 +621,14 @@ above:
 magn.mark1 <- ergm(magnolia ~ edges + triangle)
 ```
 
-Did you get an error? That’s because in the process of trying to fit
-this model, the algorithm heads off into simulating networks much denser
-and clustered than the observed network. This is a big problem, and such
-a clear indicator of degeneracy that the algorithm cuts off to avoid
-heading off into areas that would cause memory issues. Degeneracy is a
-feature of how well the suggested model compares to the observed network
+We do not run this here, since it takes a long time before it fails. If
+you run it yourself, `ergm()` stops with an error. That’s because in the
+process of trying to fit this model, the algorithm heads off into
+simulating networks much denser and clustered than the observed network.
+This is a big problem, and such a clear indicator of degeneracy that the
+algorithm cuts off to avoid heading off into areas that would cause
+memory issues. Degeneracy is a feature of how well the suggested model
+compares to the observed network
 
 If you have a degenerate model, there is some ‘witchcraft’ (art +
 science) that can be done to tweak the way the simulations are
@@ -575,9 +638,9 @@ model is specified.
 
 A good rule of thumb, if facing such an issue, is to:
 
-1.  make sure you include degree- or centrality-based effects in
-    addition to closure-based effects like triangles;
-2.  use geometrically weighted or alternating forms of both centrality
+1.  make sure you include degree-based effects in addition to
+    closure-based effects like triangles;
+2.  use geometrically weighted or alternating forms of both degree
     (`gwdegree`) and closure/triangle (`gwesp`) effects.
 
 So let’s try that now:
@@ -589,22 +652,99 @@ magn.str <- ergm(magnolia ~ edges + gwdegree(0.25, fixed = T) +
 plot(magn.str)
 ```
 
-Excellent, now we’re getting somewhere! It converged, not bad.
-Everything is highly significant, and both gwdeg and gwesp are positive.
-A positive gwdegree effect generally means that preferential attachment
-is operating. A positive gwesp effect generally means that there is
-closure. By fixing the alpha for each at 0.25, we’re saying that
-successive contributions to the statistic matter less though (which
-helps us avoid suuper dense networks, etc.)
+Excellent, now we’re getting somewhere! It converged. Check the signs of
+the gwdegree and gwesp coefficients in `tidy(magn.str)`.
 
-But we don’t want to just see whether there is an aggregation of ties
-around particular nodes (positive gwdegree) and collections of ties
-(positive gwesp), we want to know whether e.g. this is really
-preferential attachment – an endogenous effect – or could it be just
-that the ties are collating around particular nodes because of their
-attributes. That’s why we also need to model these as a multivariate
-model together with these possibly confounding variables/alternative
-explanations.
+Take care when you interpret these two terms, since researchers do not
+agree on how to read them.
+
+- **gwesp**: a positive coefficient is usually read as closure: a tie is
+  more likely where the two nodes already share partners. The decay
+  (here 0.25, fixed) makes each additional shared partner add less than
+  the one before, so the first shared partner matters most.
+- **gwdegree**: its sign is often read the wrong way round. The
+  statistic grows with the number of nodes that have *any* ties, more
+  than with the number of ties of the nodes with many. With decay
+  $`\alpha`$, a new tie adds $`(1 - e^{-\alpha})^d`$ to the statistic
+  for each endpoint that has degree $`d`$ before the tie. A tie to an
+  isolate adds 1, and a tie to a node with many ties adds almost
+  nothing.
+  - A *positive* coefficient makes ties to nodes with few ties more
+    likely, so the degrees are more even than the density alone gives,
+    with fewer isolates. This is the opposite of preferential
+    attachment.
+  - A *negative* coefficient makes ties to nodes that already have ties
+    more likely, so the degrees are more spread out than the density
+    alone gives, which is centralisation or popularity.
+  - The decay changes how strong the effect is, not its sign. With a
+    small decay such as 0.25, the term acts almost only on isolates and
+    on nodes with one tie. With a decay near 1 or 2, it acts across all
+    the lower degrees, and the effect on the spread of degrees is
+    largest. With a large decay, each tie adds almost 1 whatever the
+    degrees, so the term comes close to the edges term and says little
+    about the spread.
+
+  The coefficient is conditional on the other terms in the model, and a
+  cross-sectional network cannot show the process that made it (see
+  Hunter 2007, and Levy 2016).
+- Both terms depend on the edges coefficient, as triangles did above, so
+  the probability of a tie comes from all three together.
+
+**Try it yourself**: This section includes an interactive quiz in the
+live tutorial — run `run_tute()` at the R console to try it.
+
+To see what the sign does, we can simulate networks from gwdegree alone.
+We start from a random network with 50 nodes and 122 ties, and use
+`constraints = ~edges` to keep the number of ties fixed, so that only
+the way the ties are spread over the nodes can change. We use a decay of
+1.5 here, because the effect on the spread of degrees is easier to see
+with this decay than with 0.25. We then simulate 100 networks each with
+a negative, a zero, and a positive gwdegree coefficient, and plot one of
+each.
+
+``` r
+
+set.seed(1234)
+start <- as_network(generate_random(50, 122))
+gw.sims <- lapply(c(-2, 0, 2), function(theta)
+  simulate(start ~ gwdegree(1.5, fixed = TRUE), coef = theta,
+           constraints = ~edges, nsim = 100))
+names(gw.sims) <- c("negative", "null", "positive")
+graphr(gw.sims$negative[[100]], labels = FALSE, isolates = "keep") + ggtitle("Negative (-2)") +
+  graphr(gw.sims$null[[100]], labels = FALSE, isolates = "keep") + ggtitle("Null (0)") +
+  graphr(gw.sims$positive[[100]], labels = FALSE, isolates = "keep") + ggtitle("Positive (+2)")
+```
+
+One network of each can mislead, so let’s compare the mean number of
+nodes with each degree over all 100 simulations of each coefficient.
+
+``` r
+
+gw.degs <- sapply(gw.sims, function(sims)
+  rowMeans(sapply(sims, function(x) tabulate(as.numeric(node_by_deg(x)) + 1, 21))))
+matplot(0:20, gw.degs, type = "b", lty = 1, pch = c(17, 15, 16),
+        col = c("firebrick", "grey50", "steelblue"),
+        xlab = "Degree", ylab = "Mean number of nodes")
+legend("topright", legend = colnames(gw.degs), pch = c(17, 15, 16),
+       col = c("firebrick", "grey50", "steelblue"), lty = 1)
+```
+
+All three sets of networks have the same number of ties, but the ties
+are spread over the nodes differently. With a negative coefficient, the
+distribution is flat and has a long tail: there are more isolates and
+nodes with one tie, *and* more nodes with ten ties or more. This is
+centralisation. With a positive coefficient, most nodes have between
+three and six ties, and almost no node has fewer than two or more than
+nine. Try the same simulation with a decay of 0.25: you will see that
+the curves then differ mostly at degrees 0 and 1, and hardly at all in
+the tail.
+
+But we don’t want to just see whether ties are spread evenly over the
+nodes (positive gwdegree) and collect among nodes with shared partners
+(positive gwesp), we want to know whether these are endogenous effects,
+or whether the ties follow particular nodes because of their attributes.
+That’s why we also need to model these as a multivariate model together
+with these possibly confounding variables/alternative explanations.
 
 ``` r
 
@@ -618,14 +758,16 @@ interval) In practice it might take more trial and error to find this
 solution…
 
 So now we have a final model for (the main component of the) Magnolia
-high school. What does the model say? Everything is significant and
-positive, suggesting that all this matters. But that there are still
-significant effects for gwdegree and gwesp, even as we control for
-grade, race, and sex homophily, suggests that these statistically
-significant effects may represent endogenous effects over and beyond
-what can be explained by the other variables and indicating that there
-may be such network mechanisms as ties collecting around already popular
-nodes or joining two-paths operating here.
+high school. What does the model say? Students tend to tie to others in
+the same grade, of the same race, and of the same sex. The gwesp
+coefficient stays positive with these controls, so shared partners make
+a tie more likely beyond what shared attributes explain: this is
+consistent with closure. The gwdegree coefficient is positive too. By
+the reading above, ties are spread more evenly over the students than
+the density and the other terms alone give, not collected around a few
+popular students. With a decay of 0.25, this mostly means fewer isolates
+and fewer students with only one tie than the other terms give. Neither
+coefficient shows by itself the process that made the network.
 
 Now that you have a fitted model, let’s see how well it fits:
 
@@ -650,10 +792,10 @@ graphr(magnolia, node_color = "Grade", node_size = 0.2, labels = FALSE) +
 
 Note: if all else fails, simulated networks can help diagnose problems
 
-Task 3: Run an ERGM on the Florentine business network with terms
-capturing centrality, cohesion, and the influence of monadic (nodal) and
-dyadic covariates all at once. Check convergence and fit and interpret
-the results.
+Now it is your turn. Run an ERGM on the Florentine business network with
+terms capturing the spread of degrees, closure, and the influence of
+monadic (nodal) and dyadic covariates all at once. Check convergence and
+fit and interpret the results.
 
 ``` r
 
@@ -663,11 +805,10 @@ tidy(flob)
 glance(flob)
 ```
 
-What can we tell from this? Model convergence: Convergence test p-value:
-0.0080. Converged with 99% confidence. Edges (-), gwesp (+), and
-marriage (+) were statistically significant. The probability of seeing a
-tie is much higher when nodes are already connected through a marriage
-tie!
+What can we tell from this? First check the convergence test in the
+console output, and `plot(flob)`. Then read the signs and the p-values
+in `tidy(flob)`. Is a business tie more likely between families that are
+already connected through a marriage tie?
 
 ### Let’s analyse GOF
 

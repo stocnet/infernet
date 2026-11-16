@@ -2,14 +2,16 @@
 
 Without a formula, or with `.` as its whole right-hand side, as in
 `advice ~ .`,
-[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
 and
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md)
 return a table of every term that the model can take for `.data`, as
-`RSiena::getEffects()` does for a Siena data object. Each term is
-written out for the network's layers and node attributes, such as
-`ego(age)`, `same(dept)`, `tie(friends)`, and
-`indeg(friends, node = 'ego')`. Choose rows with `[` or
+[`RSiena::getEffects()`](https://rdrr.io/pkg/RSiena/man/make_specification.html)
+does for a Siena data object. Each term is written out for the network's
+layers and node attributes, such as `ego(age)`, `same(dept)`,
+`tie(friends)`, and `indeg(friends, node = 'ego')`. Choose rows with `[`
+or
 [`dplyr::filter()`](https://dplyr.tidyverse.org/reference/filter.html),
 and [`formula()`](https://rdrr.io/r/stats/formula.html) of the rows
 gives the formula of those terms.
@@ -23,14 +25,13 @@ says what each term measures.
 formula(x, lhs = NULL, ...)
 
 # S3 method for class 'specify_terms'
+summary(object, ...)
+
+# S3 method for class 'specify_terms'
 tidy(x, ...)
 ```
 
 ## Arguments
-
-- x:
-
-  The table of every term.
 
 - lhs:
 
@@ -41,18 +42,26 @@ tidy(x, ...)
 
   Not used.
 
+- object, x:
+
+  The table of every term.
+
 ## Value
 
-The table is a tibble of class `"mrqap_terms"` or `"ergm_terms"`, and
-also `"specify_terms"`, with the columns `term`, `effect`, `layer`, and
-`attribute`. [`print()`](https://rdrr.io/r/base/print.html) shows every
-row, and [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
-returns the table as a plain tibble.
-[`formula()`](https://rdrr.io/r/stats/formula.html) returns the formula
-of the chosen rows, as
-[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+The table is a tibble of class `"mrqap_terms"`, `"ergm_terms"`, or
+`"saom_terms"`, and also `"specify_terms"`, with the columns `term`,
+`effect`, `layer`, and `attribute`. For RSiena, the column `as` gives
+the RSiena effect of each term.
+[`print()`](https://rdrr.io/r/base/print.html) shows every row, and
+[`summary()`](https://rdrr.io/r/base/summary.html) returns the table as
+a plain tibble.
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) of it is
+deprecated. [`formula()`](https://rdrr.io/r/stats/formula.html) returns
+the formula of the chosen rows, as
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
 or
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md)
 returns it.
 
 ## Which terms are listed
@@ -88,34 +97,29 @@ layer, the terms are for its first layer, and a message says so.
 the formula of their terms, read by the same `specify_*()` function, for
 the same outcome or for `lhs`. What the model makes of each term is in
 the record of that formula, as
-[specify](https://stocnet.github.io/infernet/reference/specify.md)
+[specify_mrqap](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
 describes. Some terms measure the same thing in different ways:
 `same(x)`, `same(x, diff = TRUE)`, and `mix(x)`, and `diff(x)` and
 `sim(x)`. Of each such set,
 [`formula()`](https://rdrr.io/r/stats/formula.html) keeps the first row,
 and a message names the others, since a model of all of them is
 collinear. For the formula that a regression fitted, see
-[netreg_results](https://stocnet.github.io/infernet/reference/netreg_results.md).
+[estimate_mrqap](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
 
 ## See also
 
 [terms_mrqap](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
 for what each term measures, and
-[specify](https://stocnet.github.io/infernet/reference/specify.md) for
-what each model makes of a formula.
+[specify_mrqap](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+for what each model makes of a formula.
 
-Other models:
-[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
-[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
-[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+Other specifying functions:
+[`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md),
+[`declare_coefs_ergm`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
+[`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md),
+[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md)
 
 ## Examples
 

@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
 <li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul>
 </li>
@@ -78,6 +79,29 @@ Hollway, inspired by ERGM package vignettes</h4>
 
     
     
+<style>
+html { font-size: 115%; }
+.callout {
+  border-left: 3px solid #5775B1;
+  padding: 0.1em 1em;
+  margin: 1.2em 0;
+}
+.callout-label { color: #5775B1; }
+.page-toc { font-style: italic; }
+.page-toc-link { color: #5775B1; cursor: pointer; text-decoration: underline; }
+.tutorialTitle { color: #5775B1 !important; }
+#tutorial-topic .nav-link { color: #5775B1 !important; }
+.section a:not(.btn) { color: #5775B1; }
+.section a:not(.btn):hover { color: #465E8E; }
+.btn-tutorial-run,
+.btn-tutorial-run:hover,
+.btn-tutorial-run:focus,
+.btn-tutorial-run:active {
+  background-color: #5775B1;
+  border-color: #5775B1;
+  color: #fff;
+}
+</style>
 <div class="callout">
 <p><span class="callout-label"><strong>Static preview</strong>:</span>
 This is a static, read-only preview of the “Modelling with ERGMs”
@@ -161,9 +185,15 @@ there are several triangles.</p>
 following syntax:
 <code>ergm(dependentnetwork ~ term1 + term2 + ...)</code></p>
 <p>This is a similar syntax to running regressions and other models in
-R. We begin a simple model of just one term estimating the number of
-edges/ties. This is called a Bernoulli or Erdos-Renyi model. We assign
-it to keep the results as an object:</p>
+R. A formula written for another model can be moved to ergm with
+<code><a href="../reference/specify_ergm.html">specify_ergm()</a></code> from <a href="https://stocnet.github.io/infernet/">infernet</a>. For example,
+<code>specify_ergm(friends ~ same(dept) + ego(age), .data = net)</code>
+writes the MRQAP terms as <code>nodematch("dept")</code> and
+<code>nodeocov("age")</code>, and names any term that ergm cannot fit.
+In this tutorial we write ergm’s terms directly. We begin a simple model
+of just one term estimating the number of edges/ties. This is called a
+Bernoulli or Erdos-Renyi model. We assign it to keep the results as an
+object:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">flom.bern</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">flomarriage</span> <span class="op">~</span> <span class="va">edges</span><span class="op">)</span>  </span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">flom.bern</span><span class="op">)</span> <span class="co"># To return the estimated coefficients, with p-values etc.</span></span>
@@ -352,24 +382,27 @@ curve”.</p>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>
 at specific values of key predictors. In our simple Bernoulli model,
 we’re modelling only the number of edges, and so we only need to
-condition our predicted probabilities on this one variable. We can
-calculate the probability of a tie forming between any two actors as
-follows, indicating the addition of a tie by increasing the edges count
-by 1 (later there is an example of how to do this for more complex
-models with multiple variables). However, we can also obtain this
-information by using the handy <code><a href="../reference/predict.html">predict()</a></code> function. We can
-simply pass data on our independent variables, either in-sample,
-out-of-sample, or totally-made-up, to <code><a href="../reference/predict.html">predict()</a></code> and see
-what probability of a 1 would be predicted by the model.</p>
+condition our predicted probabilities on this one variable. The function
+that turns log-odds into a probability is the inverse logit, \(\Pr(Y=1)
+= \exp(\eta)/(1+\exp(\eta))\), which R gives as <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis()</a></code>.
+Here \(\eta\) is the sum of the coefficients of the terms that adding
+the tie would change, each multiplied by how much it would change them.
+Adding any tie adds one edge, so in the Bernoulli model \(\eta\) is the
+edges coefficient alone.</p>
+<p><code><a href="../reference/predict_mrqap.html">predict()</a></code> does this for every pair of nodes at once. For
+each pair, it gives the probability of a tie between them, given the
+rest of the observed network. With <code>output = "matrix"</code>, it
+gives these probabilities as a matrix. For an undirected network such as
+this one, each pair appears once, in the upper triangle: the diagonal is
+0 and the lower triangle is <code>NA</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.bern</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.bern</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">adj</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict.html">predict</a></span><span class="op">(</span><span class="va">flom.bern</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
-<span><span class="va">adj</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">adj</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span><span class="va">adj</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">adj</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.bern</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_mrqap.html">predict</a></span><span class="op">(</span><span class="va">flom.bern</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
+<span><span class="va">probs</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">]</span></span></code></pre></div>
 <p>We can see here an estimated probability of a tie forming between any
-two actors of 0.1666667. Wait, where have we seen this number before?
-This is the same number that we obtained for the density of the network
-(0.1666667).</p>
+two actors of 0.1666667, the same for every pair. Wait, where have we
+seen this number before? This is the same number that we obtained for
+the density of the network (0.1666667).</p>
 </div>
 <div class="section level3">
 <h3 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
@@ -475,26 +508,75 @@ completed <code>triangle</code>s. Because this model involves broader
 dependencies, the estimation draws on MCMC and is thus stochastic. This
 means that your output may differ slightly.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">flom.mark1</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">flomarriage</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="va">triangle</span><span class="op">)</span> </span>
-<span><span class="co"># Add verbose=T to watch for the convergence test p-value and </span></span>
+<code class="sourceCode R"><span><span class="co"># Add verbose=T to watch for the convergence test p-value and </span></span>
 <span><span class="co"># log-likelihood improvement to go down!</span></span>
+<span><span class="va">flom.mark1</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">flomarriage</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="va">triangle</span>,</span>
+<span>                   control <span class="op">=</span> <span class="fu">control.ergm</span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> </span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span></span></code></pre></div>
-<p>First, the console output reports that the estimation procedure has
-converged on stable estimates with 99% confidence (p-value &lt; 0.0001).
-You can also visually check convergence by plotting the model object. In
-the plot, we see that the log-likelihood stabilises over time,
-indicating convergence.</p>
+<p><code>ergm()</code> now estimates in iterations. In each iteration,
+it simulates many networks from the current coefficients, and moves the
+coefficients so that the mean statistics of the simulated networks come
+closer to the statistics of the observed network. At the end of each
+iteration, the console output gives a convergence test, for example
+“Convergence test p-value: &lt; 0.0001. Converged with 99% confidence.”
+This test asks whether the mean simulated statistics are close enough to
+the observed ones, so here a <em>small</em> p-value is good: it means
+that the estimates are stable. If the test fails, <code>ergm()</code>
+starts another iteration, up to <code>MCMLE.maxit</code>.</p>
+<p>The plot shows the statistics of the networks simulated in the last
+iteration, less the observed statistics. Each line should move around
+zero, with no trend, and cover the same range in its first half and its
+second half.</p>
+</div>
+<div class="section level3">
+<h3 id="mcmc-diagnostics">MCMC diagnostics<a class="anchor" aria-label="anchor" href="#mcmc-diagnostics"></a>
+</h3>
+<p><code>mcmc.diagnostics()</code> gives these checks as numbers
+too:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">mcmc.diagnostics</span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span></span></code></pre></div>
+<p>Read its output in three parts:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Are the sample statistics different from the
+observed?</strong> The <code>diff.</code> row gives the mean difference
+for each statistic, and the test gives a p-value for each statistic and
+for all together (<code>Omni</code>). Here a <em>large</em> p-value is
+good: the simulated networks are centred on the observed network.</li>
+<li>
+<strong>Autocorrelation.</strong> The correlation of each statistic
+with itself at later lags should be small already at the first lag. A
+large value means that the chain moves slowly, so the sample holds less
+information than its size suggests. Increase <code>MCMC.interval</code>
+in <code>control.ergm()</code> if so.</li>
+<li>
+<strong>Geweke diagnostics.</strong> These compare the first 10% of
+the chain with the last 50%. A small p-value means that the chain still
+drifts. Increase <code>MCMC.burnin</code> if so.</li>
+</ol>
+<p>The plots show the trace and the density of each statistic. A trace
+should look like noise around a level, and a density should have one
+peak.</p>
+<p>You do not need to know how MCMC works to use these checks. If you
+want to know more, Chi Feng’s <a href="https://chi-feng.github.io/mcmc-demo/app.html#HamiltonianMC,banana" class="external-link">MCMC
+Interactive Gallery</a> shows how different samplers move. Its “Random
+Walk Metropolis Hastings” sampler is the kind that <code>ergm()</code>
+uses, though in <code>ergm()</code> each step adds or removes a tie in a
+network.</p>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
 </h3>
 <p>How do we interpret the coefficients now that the model is more
-complex? First, we can (seemingly) ignore the edges/intercept now, even
-if significant, as it will just be counterbalancing the other effects in
-the model. In the results, we see that the MCML estimate for triangles
-is not statistically significant. But if we try and interpret it anyway,
+complex? In the results, we see that the MCML estimate for triangles is
+not statistically significant. But if we try and interpret it anyway,
 for the practice, we see that we cannot completely ignore the edges
 coefficient, <em>because</em> it is part of the story of when and where
 ties form. For endogenous effects relating to the structure of the
@@ -515,14 +597,16 @@ Triangle<br>
 Triangle x 2 and so on.</li>
 </ul>
 <p>So we need to think about working out the probabilities based on the
-tie’s context:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># for edges + triangle</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">/</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co"># for edges + 2 triangles</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fl">2</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">/</span><span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fl">2</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict.html">predict</a></span><span class="op">(</span><span class="va">flom.mark1</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
-<span><span class="va">probs</span><span class="op">[</span><span class="st">"Barbadori"</span>,<span class="st">"Ridolfi"</span><span class="op">]</span></span>
+tie’s context. <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis()</a></code> gives the probability for a tie
+that would close one or two triangles, and <code><a href="../reference/predict_mrqap.html">predict()</a></code> gives
+the probability for each pair of families, from the number of triangles
+that a tie between them would close in the observed network:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">flom.mark1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="va">b</span><span class="op">[[</span><span class="st">"edges"</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span> <span class="op">*</span> <span class="va">b</span><span class="op">[[</span><span class="st">"triangle"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="co"># a tie that closes one triangle</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="va">b</span><span class="op">[[</span><span class="st">"edges"</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">b</span><span class="op">[[</span><span class="st">"triangle"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="co"># a tie that closes two triangles</span></span>
+<span><span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/predict_mrqap.html">predict</a></span><span class="op">(</span><span class="va">flom.mark1</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
+<span><span class="va">probs</span><span class="op">[</span><span class="st">"Barbadori"</span>,<span class="st">"Ridolfi"</span><span class="op">]</span> <span class="co"># each pair is in the upper triangle</span></span>
 <span><span class="va">probs</span><span class="op">[</span><span class="st">"Albizzi"</span>,<span class="st">"Tornabuoni"</span><span class="op">]</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -532,7 +616,7 @@ tie’s context:</p>
 two things are independent) Let’s test for all the normal structural
 features. We want to check fit against auxiliary statistics because we
 want to know if we might be missing anything.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">flom.mark1.gof</span> <span class="op">&lt;-</span> <span class="fu">gof</span><span class="op">(</span><span class="va">flom.mark1</span>,  GOF <span class="op">=</span> <span class="op">~</span> <span class="va">degree</span> <span class="op">+</span> <span class="va">espartners</span><span class="op">)</span></span>
 <span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">flom.bern.gof</span>, statistic <span class="op">=</span> <span class="st">"deg"</span><span class="op">)</span><span class="op">/</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">flom.mark1.gof</span>, statistic <span class="op">=</span> <span class="st">"deg"</span><span class="op">)</span><span class="op">)</span> <span class="op">|</span> </span>
@@ -563,7 +647,7 @@ networks can be considerably more difficult to model. Let’s try and
 model a larger, more complex network, <code>faux.magnolia.high</code>
 from the <a href="https://statnet.org" class="external-link">ergm</a> package. Load it, call up the
 documentation, and visualise the giant component.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ?faux.magnolia.high</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">'faux.magnolia.high'</span><span class="op">)</span></span>
 <span><span class="va">faux.magnolia.high</span></span>
@@ -574,7 +658,7 @@ documentation, and visualise the giant component.</p>
 <p>So we now have 1461 vertices and 974 edges We also have four
 attributes: grade, race, sex and vertex.names Let’s pick up where we
 left off, with fitting a covariate-based model:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.covr1</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">magnolia</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Grade'</span>, diff <span class="op">=</span> <span class="cn">T</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>                     <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Race'</span>, diff <span class="op">=</span> <span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">magn.covr1</span><span class="op">)</span> </span></code></pre></div>
@@ -584,7 +668,7 @@ left off, with fitting a covariate-based model:</p>
 </h3>
 <p>Note that the nodematch coefficients for Other and Hispanic are
 estimated as -Inf. Why is this?</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">magnolia</span> <span class="op">%v%</span> <span class="st">'Race'</span><span class="op">)</span> <span class="co"># Frequencies of race    </span></span>
 <span><span class="fu">mixingmatrix</span><span class="op">(</span><span class="va">magnolia</span>, <span class="st">"Race"</span><span class="op">)</span>  </span></code></pre></div>
 <p>Looks like there are some of every race, what’s the problem? Ah, so
@@ -593,7 +677,7 @@ and these students form no homophilous (within-group) ties. Same with
 “Hispanic” students. The empty cells are what produce the
 <code>-Inf</code> estimates. To avoid this, you can remove this category
 from the <code>nodematch()</code> call.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.covr2</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">magnolia</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Grade'</span>, diff <span class="op">=</span> <span class="cn">T</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>                     <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Race'</span>, diff <span class="op">=</span> <span class="cn">T</span>, keep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>,<span class="fl">4</span>,<span class="fl">6</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>  </span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">magn.covr2</span><span class="op">)</span></span></code></pre></div>
@@ -622,15 +706,16 @@ see papers in e.g. <em>Social Networks</em> v.29 and <em>J Stat
 Software</em> v. 24.</p>
 <p>Now let’s try to fit a triangle model like with the Florentine
 dataset above:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.mark1</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">magnolia</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="va">triangle</span><span class="op">)</span></span></code></pre></div>
-<p>Did you get an error? That’s because in the process of trying to fit
-this model, the algorithm heads off into simulating networks much denser
-and clustered than the observed network. This is a big problem, and such
-a clear indicator of degeneracy that the algorithm cuts off to avoid
-heading off into areas that would cause memory issues. Degeneracy is a
-feature of how well the suggested model compares to the observed
-network</p>
+<p>We do not run this here, since it takes a long time before it fails.
+If you run it yourself, <code>ergm()</code> stops with an error. That’s
+because in the process of trying to fit this model, the algorithm heads
+off into simulating networks much denser and clustered than the observed
+network. This is a big problem, and such a clear indicator of degeneracy
+that the algorithm cuts off to avoid heading off into areas that would
+cause memory issues. Degeneracy is a feature of how well the suggested
+model compares to the observed network</p>
 <p>If you have a degenerate model, there is some ‘witchcraft’ (art +
 science) that can be done to tweak the way the simulations are
 generated, and I can offer some assistance with that if you show me your
@@ -638,33 +723,111 @@ generated, and I can offer some assistance with that if you show me your
 of how the model is specified.</p>
 <p>A good rule of thumb, if facing such an issue, is to:</p>
 <ol style="list-style-type: lower-alpha">
-<li>make sure you include degree- or centrality-based effects in
-addition to closure-based effects like triangles;</li>
-<li>use geometrically weighted or alternating forms of both centrality
+<li>make sure you include degree-based effects in addition to
+closure-based effects like triangles;</li>
+<li>use geometrically weighted or alternating forms of both degree
 (<code>gwdegree</code>) and closure/triangle (<code>gwesp</code>)
 effects.</li>
 </ol>
 <p>So let’s try that now:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.str</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">magnolia</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="fu">gwdegree</span><span class="op">(</span><span class="fl">0.25</span>, fixed <span class="op">=</span> <span class="cn">T</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>                     <span class="fu">gwesp</span><span class="op">(</span><span class="fl">0.25</span>, fixed <span class="op">=</span> <span class="cn">T</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">magn.str</span><span class="op">)</span></span></code></pre></div>
-<p>Excellent, now we’re getting somewhere! It converged, not bad.
-Everything is highly significant, and both gwdeg and gwesp are positive.
-A positive gwdegree effect generally means that preferential attachment
-is operating. A positive gwesp effect generally means that there is
-closure. By fixing the alpha for each at 0.25, we’re saying that
-successive contributions to the statistic matter less though (which
-helps us avoid suuper dense networks, etc.)</p>
-<p>But we don’t want to just see whether there is an aggregation of ties
-around particular nodes (positive gwdegree) and collections of ties
-(positive gwesp), we want to know whether e.g. this is really
-preferential attachment – an endogenous effect – or could it be just
-that the ties are collating around particular nodes because of their
-attributes. That’s why we also need to model these as a multivariate
-model together with these possibly confounding variables/alternative
-explanations.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<p>Excellent, now we’re getting somewhere! It converged. Check the signs
+of the gwdegree and gwesp coefficients in
+<code>tidy(magn.str)</code>.</p>
+<p>Take care when you interpret these two terms, since researchers do
+not agree on how to read them.</p>
+<ul>
+<li>
+<strong>gwesp</strong>: a positive coefficient is usually read as
+closure: a tie is more likely where the two nodes already share
+partners. The decay (here 0.25, fixed) makes each additional shared
+partner add less than the one before, so the first shared partner
+matters most.</li>
+<li>
+<strong>gwdegree</strong>: its sign is often read the wrong way
+round. The statistic grows with the number of nodes that have
+<em>any</em> ties, more than with the number of ties of the nodes with
+many. With decay
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>,
+a new tie adds
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><mi>α</mi></mrow></msup><msup><mo stretchy="false" form="postfix">)</mo><mi>d</mi></msup></mrow><annotation encoding="application/x-tex">(1 - e^{-\alpha})^d</annotation></semantics></math>
+to the statistic for each endpoint that has degree
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>
+before the tie. A tie to an isolate adds 1, and a tie to a node with
+many ties adds almost nothing.
+<ul>
+<li>A <em>positive</em> coefficient makes ties to nodes with few ties
+more likely, so the degrees are more even than the density alone gives,
+with fewer isolates. This is the opposite of preferential
+attachment.</li>
+<li>A <em>negative</em> coefficient makes ties to nodes that already
+have ties more likely, so the degrees are more spread out than the
+density alone gives, which is centralisation or popularity.</li>
+<li>The decay changes how strong the effect is, not its sign. With a
+small decay such as 0.25, the term acts almost only on isolates and on
+nodes with one tie. With a decay near 1 or 2, it acts across all the
+lower degrees, and the effect on the spread of degrees is largest. With
+a large decay, each tie adds almost 1 whatever the degrees, so the term
+comes close to the edges term and says little about the spread.</li>
+</ul>
+The coefficient is conditional on the other terms in the model, and a
+cross-sectional network cannot show the process that made it (see Hunter
+2007, and Levy 2016).</li>
+<li>Both terms depend on the edges coefficient, as triangles did above,
+so the probability of a tie comes from all three together.</li>
+</ul>
+<div class="callout">
+<p><span class="callout-label"><strong>Try it yourself</strong>:</span>
+This section includes an interactive quiz in the live tutorial — run
+<code>run_tute()</code> at the R console to try it.</p>
+</div>
+<p>To see what the sign does, we can simulate networks from gwdegree
+alone. We start from a random network with 50 nodes and 122 ties, and
+use <code>constraints = ~edges</code> to keep the number of ties fixed,
+so that only the way the ties are spread over the nodes can change. We
+use a decay of 1.5 here, because the effect on the spread of degrees is
+easier to see with this decay than with 0.25. We then simulate 100
+networks each with a negative, a zero, and a positive gwdegree
+coefficient, and plot one of each.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1234</span><span class="op">)</span></span>
+<span><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">as_network</a></span><span class="op">(</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/make_random.html" class="external-link">generate_random</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">122</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">gw.sims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">start</span> <span class="op">~</span> <span class="fu">gwdegree</span><span class="op">(</span><span class="fl">1.5</span>, fixed <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, coef <span class="op">=</span> <span class="va">theta</span>,</span>
+<span>           constraints <span class="op">=</span> <span class="op">~</span><span class="va">edges</span>, nsim <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">gw.sims</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"negative"</span>, <span class="st">"null"</span>, <span class="st">"positive"</span><span class="op">)</span></span>
+<span><span class="fu">graphr</span><span class="op">(</span><span class="va">gw.sims</span><span class="op">$</span><span class="va">negative</span><span class="op">[[</span><span class="fl">100</span><span class="op">]</span><span class="op">]</span>, labels <span class="op">=</span> <span class="cn">FALSE</span>, isolates <span class="op">=</span> <span class="st">"keep"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ggtitle</span><span class="op">(</span><span class="st">"Negative (-2)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">graphr</span><span class="op">(</span><span class="va">gw.sims</span><span class="op">$</span><span class="va">null</span><span class="op">[[</span><span class="fl">100</span><span class="op">]</span><span class="op">]</span>, labels <span class="op">=</span> <span class="cn">FALSE</span>, isolates <span class="op">=</span> <span class="st">"keep"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ggtitle</span><span class="op">(</span><span class="st">"Null (0)"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">graphr</span><span class="op">(</span><span class="va">gw.sims</span><span class="op">$</span><span class="va">positive</span><span class="op">[[</span><span class="fl">100</span><span class="op">]</span><span class="op">]</span>, labels <span class="op">=</span> <span class="cn">FALSE</span>, isolates <span class="op">=</span> <span class="st">"keep"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ggtitle</span><span class="op">(</span><span class="st">"Positive (+2)"</span><span class="op">)</span></span></code></pre></div>
+<p>One network of each can mislead, so let’s compare the mean number of
+nodes with each degree over all 100 simulations of each coefficient.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gw.degs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">gw.sims</span>, <span class="kw">function</span><span class="op">(</span><span class="va">sims</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">sims</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/tabulate.html" class="external-link">tabulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://stocnet.github.io/netrics/reference/measure_central_degree.html" class="external-link">node_by_deg</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span>, <span class="fl">21</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/matplot.html" class="external-link">matplot</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">20</span>, <span class="va">gw.degs</span>, type <span class="op">=</span> <span class="st">"b"</span>, lty <span class="op">=</span> <span class="fl">1</span>, pch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">17</span>, <span class="fl">15</span>, <span class="fl">16</span><span class="op">)</span>,</span>
+<span>        col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"firebrick"</span>, <span class="st">"grey50"</span>, <span class="st">"steelblue"</span><span class="op">)</span>,</span>
+<span>        xlab <span class="op">=</span> <span class="st">"Degree"</span>, ylab <span class="op">=</span> <span class="st">"Mean number of nodes"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topright"</span>, legend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">gw.degs</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">17</span>, <span class="fl">15</span>, <span class="fl">16</span><span class="op">)</span>,</span>
+<span>       col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"firebrick"</span>, <span class="st">"grey50"</span>, <span class="st">"steelblue"</span><span class="op">)</span>, lty <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p>All three sets of networks have the same number of ties, but the ties
+are spread over the nodes differently. With a negative coefficient, the
+distribution is flat and has a long tail: there are more isolates and
+nodes with one tie, <em>and</em> more nodes with ten ties or more. This
+is centralisation. With a positive coefficient, most nodes have between
+three and six ties, and almost no node has fewer than two or more than
+nine. Try the same simulation with a decay of 0.25: you will see that
+the curves then differ mostly at degrees 0 and 1, and hardly at all in
+the tail.</p>
+<p>But we don’t want to just see whether ties are spread evenly over the
+nodes (positive gwdegree) and collect among nodes with shared partners
+(positive gwesp), we want to know whether these are endogenous effects,
+or whether the ties follow particular nodes because of their attributes.
+That’s why we also need to model these as a multivariate model together
+with these possibly confounding variables/alternative explanations.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.attr</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">magnolia</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="fu">gwesp</span><span class="op">(</span><span class="fl">0.25</span>,fixed<span class="op">=</span><span class="cn">T</span><span class="op">)</span> <span class="op">+</span> <span class="fu">gwdegree</span><span class="op">(</span><span class="fl">0.25</span>,fixed<span class="op">=</span><span class="cn">T</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>                     <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Grade'</span><span class="op">)</span> <span class="op">+</span>   <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Race'</span><span class="op">)</span> <span class="op">+</span> <span class="fu">nodematch</span><span class="op">(</span><span class="st">'Sex'</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">magn.attr</span><span class="op">)</span></span></code></pre></div>
@@ -672,22 +835,24 @@ explanations.</p>
 interval) In practice it might take more trial and error to find this
 solution…</p>
 <p>So now we have a final model for (the main component of the) Magnolia
-high school. What does the model say? Everything is significant and
-positive, suggesting that all this matters. But that there are still
-significant effects for gwdegree and gwesp, even as we control for
-grade, race, and sex homophily, suggests that these statistically
-significant effects may represent endogenous effects over and beyond
-what can be explained by the other variables and indicating that there
-may be such network mechanisms as ties collecting around already popular
-nodes or joining two-paths operating here.</p>
+high school. What does the model say? Students tend to tie to others in
+the same grade, of the same race, and of the same sex. The gwesp
+coefficient stays positive with these controls, so shared partners make
+a tie more likely beyond what shared attributes explain: this is
+consistent with closure. The gwdegree coefficient is positive too. By
+the reading above, ties are spread more evenly over the students than
+the density and the other terms alone give, not collected around a few
+popular students. With a decay of 0.25, this mostly means fewer isolates
+and fewer students with only one tie than the other terms give. Neither
+coefficient shows by itself the process that made the network.</p>
 <p>Now that you have a fitted model, let’s see how well it fits:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.attr.gof</span> <span class="op">&lt;-</span> <span class="fu">gof</span><span class="op">(</span><span class="va">magn.attr</span>,  GOF <span class="op">=</span> <span class="op">~</span> <span class="va">degree</span> <span class="op">+</span> <span class="va">distance</span> <span class="op">+</span> <span class="va">triadcensus</span> <span class="op">+</span> <span class="va">espartners</span> <span class="op">-</span> <span class="va">model</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">magn.attr.gof</span>, statistic <span class="op">=</span> <span class="st">"deg"</span><span class="op">)</span></span></code></pre></div>
 <p>Looks ok, though there’s still some over and underestimation, so
 there’s room for improvement… Let’s also compare a simulated network
 with the observed network</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">magn.sim1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">magn.attr</span><span class="op">)</span></span>
 <span><span class="fu">graphr</span><span class="op">(</span><span class="va">magnolia</span>, node_color <span class="op">=</span> <span class="st">"Grade"</span>, node_size <span class="op">=</span> <span class="fl">0.2</span>, labels <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="fu">ggtitle</span><span class="op">(</span><span class="st">"Observed"</span><span class="op">)</span> <span class="op">+</span></span>
@@ -695,25 +860,24 @@ with the observed network</p>
 <span>  <span class="fu">ggtitle</span><span class="op">(</span><span class="st">"Simulated"</span><span class="op">)</span></span></code></pre></div>
 <p>Note: if all else fails, simulated networks can help diagnose
 problems</p>
-<p>Task 3: Run an ERGM on the Florentine business network with terms
-capturing centrality, cohesion, and the influence of monadic (nodal) and
-dyadic covariates all at once. Check convergence and fit and interpret
-the results.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<p>Now it is your turn. Run an ERGM on the Florentine business network
+with terms capturing the spread of degrees, closure, and the influence
+of monadic (nodal) and dyadic covariates all at once. Check convergence
+and fit and interpret the results.</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">flob</span> <span class="op">&lt;-</span> <span class="fu">ergm</span><span class="op">(</span><span class="va">flobusiness</span> <span class="op">~</span> <span class="va">edges</span> <span class="op">+</span> <span class="fu">gwdegree</span><span class="op">(</span><span class="fl">0.25</span>, fixed <span class="op">=</span> <span class="cn">T</span><span class="op">)</span> <span class="op">+</span> <span class="fu">gwesp</span><span class="op">(</span><span class="fl">0.25</span>, fixed <span class="op">=</span> <span class="cn">T</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>       <span class="fu">nodecov</span><span class="op">(</span><span class="st">'wealth'</span><span class="op">)</span> <span class="op">+</span> <span class="fu">dyadcov</span><span class="op">(</span><span class="va">flomarriage</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">flob</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">flob</span><span class="op">)</span></span></code></pre></div>
-<p>What can we tell from this? Model convergence: Convergence test
-p-value: 0.0080. Converged with 99% confidence. Edges (-), gwesp (+),
-and marriage (+) were statistically significant. The probability of
-seeing a tie is much higher when nodes are already connected through a
-marriage tie!</p>
+<p>What can we tell from this? First check the convergence test in the
+console output, and <code>plot(flob)</code>. Then read the signs and the
+p-values in <code>tidy(flob)</code>. Is a business tie more likely
+between families that are already connected through a marriage tie?</p>
 </div>
 <div class="section level3">
 <h3 id="lets-analyse-gof">Let’s analyse GOF<a class="anchor" aria-label="anchor" href="#lets-analyse-gof"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="op">(</span><span class="va">flob.gof</span> <span class="op">&lt;-</span> <span class="fu">gof</span><span class="op">(</span><span class="va">flob</span>,  GOF <span class="op">=</span> <span class="op">~</span> <span class="va">degree</span> <span class="op">+</span> <span class="va">triadcensus</span> <span class="op">+</span> <span class="va">espartners</span> <span class="op">-</span> <span class="va">model</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">flob.gof</span><span class="op">)</span></span></code></pre></div>
 </div>

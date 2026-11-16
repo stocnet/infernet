@@ -35,7 +35,7 @@ For a null that rewires the network, see netdiffuseR::struct_test().
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,7 +48,8 @@ For a null that rewires the network, see netdiffuseR::struct_test().
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
@@ -64,7 +65,7 @@ For a null that rewires the network, see netdiffuseR::struct_test().
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Tests of network measures</h1>
-      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/test_measures.R" class="external-link"><code>R/test_measures.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/test_measures.R" class="external-link"><code>R/test_measures.R</code></a>, <a href="https://github.com/stocnet/infernet/blob/main/R/test_report.R" class="external-link"><code>R/test_report.R</code></a></small>
       <div class="d-none name"><code>test_measures.Rd</code></div>
     </div>
 
@@ -89,7 +90,16 @@ For a null that rewires the network, see <code>netdiffuseR::struct_test()</code>
 <span></span>
 <span><span class="fu">test_configuration</span><span class="op">(</span><span class="va">.data</span>, <span class="va">FUN</span>, <span class="va">...</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">test_permutation</span><span class="op">(</span><span class="va">.data</span>, <span class="va">FUN</span>, <span class="va">...</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">test_permutation</span><span class="op">(</span><span class="va">.data</span>, <span class="va">FUN</span>, <span class="va">...</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'network_test'</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'network_test'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">object</span>, probs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.025</span>, <span class="fl">0.5</span>, <span class="fl">0.975</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'network_test'</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -108,8 +118,8 @@ dropped with a warning.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments to be passed on to FUN,
-e.g. the name of the attribute.</p></dd>
+<dd><p>For a <code>test_*()</code> function, more arguments for <code>FUN</code>,
+such as the name of the attribute. For a method, not used.</p></dd>
 
 
 <dt id="arg-times">times<a class="anchor" aria-label="anchor" href="#arg-times"></a></dt>
@@ -126,9 +136,21 @@ controls alone, so that the controls of a model can be given to a test
 whole.
 <code>ncores</code> is generally useful only when <code>times</code> &gt; 1000.
 A control that is not named keeps its default, or the value set with
-<code>control_mrqap(..., persist = TRUE)</code>, and the result records the controls
+<code><a href="control_computation.html">set_control_computation()</a></code>, and the result records the controls
 that it used as <code>control</code>.
 See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each control and its default.</p></dd>
+
+
+<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
+<dd><p>A <code>network_test</code>.</p></dd>
+
+
+<dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
+<dd><p>A <code>network_test</code>.</p></dd>
+
+
+<dt id="arg-probs">probs<a class="anchor" aria-label="anchor" href="#arg-probs"></a></dt>
+<dd><p>For <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, the probabilities of the quantiles of the null distribution.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -144,7 +166,36 @@ the observed network is one more draw (Phipson and Smyth 2010).
 So a p-value is never 0, and the smallest is \(1 / (B + 1)\).
 It also holds the number of simulations as <code>times</code>, the name of the
 statistic as <code>statistic</code>, and the controls that the test used as <code>control</code>.</p>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> gives a tibble with the <code>statistic</code>, a column for each
+quantile of the null distribution, such as <code>null.2.5%</code>, and <code>p.lower</code> and
+<code>p.upper</code>.
+<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> give one row with the observed statistic,
+the mean and standard deviation of the null distribution,
+and the share of the null distribution at or below (<code>p.lower</code>)
+and at or above (<code>p.upper</code>) the observed statistic.
+For <code><a href="test_fit.html">test_gof()</a></code> and <code><a href="test_fit.html">test_distributions()</a></code>, the statistic is a distance,
+the null distribution is that of the reference simulations,
+and <code>p.upper</code> is the p-value.</p>
     </div>
+    <div class="section level2">
+    <h2 id="methods">Methods<a class="anchor" aria-label="anchor" href="#methods"></a></h2>
+
+
+<p>These methods report a <code>network_test</code>, the result of
+<code>test_random()</code>, <code>test_configuration()</code>, <code>test_permutation()</code>,
+<code><a href="test_fit.html">test_gof()</a></code>, <code><a href="test_fit.html">test_distributions()</a></code>, <code><a href="test_parameter.html">test_parameter()</a></code>, and
+<code><a href="test_parameter.html">test_time()</a></code>.</p><ul><li><p><code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows a title that says what was tested, a blank line,
+<code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> of the result, and a footer that says how the null
+distribution was made and the controls that differ from the default.
+For a test whose statistic is a distance, from <code><a href="test_fit.html">test_gof()</a></code>,
+<code><a href="test_fit.html">test_distributions()</a></code>, <code><a href="test_parameter.html">test_parameter()</a></code>, or <code><a href="test_parameter.html">test_time()</a></code>, only the
+upper tail is a p-value, and only it is marked.</p></li>
+<li><p><code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> give the same as a tibble of one row, after
+<code>{broom}</code>.</p></li>
+<li><p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> gives the observed statistic, quantiles of the null
+distribution, and the two p-values, as a tibble of class
+<code>infernetTestSummary</code>, with one row for each statistic.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Phipson, Belinda, and Gordon K. Smyth. 2010.
@@ -154,42 +205,65 @@ When Permutations Are Randomly Drawn."
 <a href="https://doi.org/10.2202/1544-6115.1585" class="external-link">doi:10.2202/1544-6115.1585</a>
 .</p>
     </div>
-    <div class="section level2">
-    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other models:
-<code><a href="control_mrqap.html">control_mrqap()</a></code>,
-<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
-<code><a href="other_results.html">other_results</a></code>,
-<code><a href="play_diffusions.html">play_diffusions()</a></code>,
-<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
-<code><a href="regression.html">regression</a></code>,
-<code><a href="specify.html">specify</a></code>,
-<code><a href="specify_terms.html">specify_terms</a></code>,
-<code><a href="terms_mrqap.html">terms_mrqap</a></code>,
-<code><a href="test_fit.html">test_fit</a></code>,
-<code><a href="test_parameter.html">test_parameter()</a></code></p></div>
-    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">marvel_friends</span> <span class="op">&lt;-</span> <span class="va">fict_marvel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_plexity.html" class="external-link">to_uniplex</a></span><span class="op">(</span><span class="st">"relationship"</span><span class="op">)</span> <span class="op">|&gt;</span> </span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">marvel_friends</span> <span class="op">&lt;-</span> <span class="va">fict_marvel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_layers.html" class="external-link">to_layer</a></span><span class="op">(</span><span class="st">"relationship"</span><span class="op">)</span> <span class="op">|&gt;</span> </span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_weight.html" class="external-link">to_unsigned</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_scope.html" class="external-link">to_giant</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span></span>
 <span class="r-in"><span>  <span class="fu">to_subgraph</span><span class="op">(</span><span class="va">PowerOrigin</span> <span class="op">==</span> <span class="st">"Human"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">(</span><span class="va">cugtest</span> <span class="op">&lt;-</span> <span class="fu">test_random</span><span class="op">(</span><span class="va">marvel_friends</span>, <span class="va">net_by_heterophily</span>, attribute <span class="op">=</span> <span class="st">"Attractive"</span>,</span></span>
-<span class="r-in"><span>   times <span class="op">=</span> <span class="fl">200</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   times <span class="op">=</span> <span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # CUG test of net_by_heterophily()</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>    -<span style="color: #BB0000;">0.857</span>    -<span style="color: #BB0000;">0.612</span>  0.091<span style="text-decoration: underline;">6</span> 0.00995 0.995  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>    -<span style="color: #BB0000;">0.857</span>    -<span style="color: #BB0000;">0.616</span>  0.076<span style="text-decoration: underline;">6</span> 0.0196  1      </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 200 random networks with the same size and density.</span>
-<span class="r-in"><span><span class="co"># plot(cugtest)</span></span></span>
-<span class="r-in"><span><span class="co"># (qaptest &lt;- test_permutation(marvel_friends, </span></span></span>
-<span class="r-in"><span><span class="co">#                 net_by_heterophily, attribute = "Attractive",</span></span></span>
-<span class="r-in"><span><span class="co">#                 times = 200))</span></span></span>
-<span class="r-in"><span><span class="co"># plot(qaptest)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 50 random networks with the same size and density.</span>
+<span class="r-in"><span><span class="co"># In a two-mode network with repeated ties, such as texts and the terms</span></span></span>
+<span class="r-in"><span><span class="co"># they use, each draw keeps the number of tokens in each text and the</span></span></span>
+<span class="r-in"><span><span class="co"># number of times each term is used, and so is a shuffled text.</span></span></span>
+<span class="r-in"><span><span class="co"># Project inside the statistic to test the co-occurrence of the terms</span></span></span>
+<span class="r-in"><span><span class="co"># against such shuffled texts.</span></span></span>
+<span class="r-in"><span><span class="va">tokens</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">as_igraph</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>,<span class="st">"A"</span>,<span class="st">"A"</span>,<span class="st">"A"</span>,<span class="st">"B"</span>,<span class="st">"B"</span>,<span class="st">"B"</span>,<span class="st">"C"</span>,<span class="st">"C"</span>,<span class="st">"C"</span>,<span class="st">"C"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"w"</span>,<span class="st">"w"</span>,<span class="st">"x"</span>,<span class="st">"y"</span>,<span class="st">"x"</span>,<span class="st">"x"</span>,<span class="st">"z"</span>,<span class="st">"y"</span>,<span class="st">"z"</span>,<span class="st">"z"</span>,<span class="st">"w"</span><span class="op">)</span><span class="op">)</span>, twomode <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">(</span><span class="va">configtest</span> <span class="op">&lt;-</span> <span class="fu">test_configuration</span><span class="op">(</span><span class="va">tokens</span>,</span></span>
+<span class="r-in"><span>   <span class="kw">function</span><span class="op">(</span><span class="va">g</span><span class="op">)</span> <span class="fu"><a href="https://stocnet.github.io/netrics/reference/measure_closure.html" class="external-link">net_by_transitivity</a></span><span class="op">(</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/modif_project.html" class="external-link">to_mode</a></span><span class="op">(</span><span class="va">g</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, times <span class="op">=</span> <span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Configuration test of a statistic</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>         1     0.879   0.200 1       0.667  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 50 random networks with the same degrees.</span>
+<span class="r-in"><span><span class="va">qaptest</span> <span class="op">&lt;-</span> <span class="fu">test_permutation</span><span class="op">(</span><span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_adolescents.html" class="external-link">ison_adolescents</a></span>,</span></span>
+<span class="r-in"><span>                            <span class="fu">netrics</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/netrics/reference/measure_cohesion.html" class="external-link">net_by_density</a></span>, times <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">qaptest</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # QAP test of netrics::net_by_density()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     0.357     0.357       0 1       1      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 20 permutations of the node labels.</span>
+<span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">qaptest</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   method statistic null.mean null.sd p.lower p.upper times</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> QAP        0.357     0.357       0       1       1    20</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">qaptest</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # QAP test of netrics::net_by_density()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   statistic `null.2.5%` `null.50%` `null.97.5%` p.lower p.upper</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     0.357       0.357      0.357        0.357       1       1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Quantiles of the null distribution, from 20 draws.</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

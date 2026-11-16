@@ -6,7 +6,7 @@ data simulated from a model.
 It is a generic, with a method for each kind of model:
 a diffs_model, from play_diffusions(), compares an observed
 diffusion with the simulated diffusions;
-a netreg, from estimate_mrqap(), simulates outcome networks from
+an infernetMrqapFit, from estimate_mrqap(), simulates outcome networks from
 the fitted model and compares a network statistic, FUN, on each
 with the statistic on the observed network.
 
@@ -22,7 +22,7 @@ data simulated from a model.
 It is a generic, with a method for each kind of model:
 a diffs_model, from play_diffusions(), compares an observed
 diffusion with the simulated diffusions;
-a netreg, from estimate_mrqap(), simulates outcome networks from
+an infernetMrqapFit, from estimate_mrqap(), simulates outcome networks from
 the fitted model and compares a network statistic, FUN, on each
 with the statistic on the observed network.
 
@@ -39,7 +39,7 @@ statistic is assumed to follow."><meta property="og:image" content="https://stoc
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,7 +52,8 @@ statistic is assumed to follow."><meta property="og:image" content="https://stoc
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
@@ -68,7 +69,7 @@ statistic is assumed to follow."><meta property="og:image" content="https://stoc
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Tests of model fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/test_fit.R" class="external-link"><code>R/test_fit.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/evaluate_fit.R" class="external-link"><code>R/evaluate_fit.R</code></a></small>
       <div class="d-none name"><code>test_fit.Rd</code></div>
     </div>
 
@@ -78,7 +79,7 @@ or whether two models make the same data:</p><ul><li><p><code>test_gof()</code> 
 data simulated from a model.
 It is a generic, with a method for each kind of model:</p><ul><li><p>a <code>diffs_model</code>, from <code><a href="play_diffusions.html">play_diffusions()</a></code>, compares an observed
 diffusion with the simulated diffusions;</p></li>
-<li><p>a <code>netreg</code>, from <code><a href="regression.html">estimate_mrqap()</a></code>, simulates outcome networks from
+<li><p>an <code>infernetMrqapFit</code>, from <code><a href="estimate_mrqap.html">estimate_mrqap()</a></code>, simulates outcome networks from
 the fitted model and compares a network statistic, <code>FUN</code>, on each
 with the statistic on the observed network.</p></li>
 </ul></li>
@@ -101,7 +102,7 @@ statistic is assumed to follow.</p>
 <span><span class="co"># S3 method for class 'diffs_model'</span></span>
 <span><span class="fu">test_gof</span><span class="op">(</span><span class="va">object</span>, <span class="va">observed</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># S3 method for class 'netreg'</span></span>
+<span><span class="co"># S3 method for class 'infernetMrqapFit'</span></span>
 <span><span class="fu">test_gof</span><span class="op">(</span><span class="va">object</span>, <span class="va">observed</span>, <span class="va">FUN</span>, <span class="va">...</span>, times <span class="op">=</span> <span class="fl">1000</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">test_distributions</span><span class="op">(</span><span class="va">object1</span>, <span class="va">object2</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -119,31 +120,31 @@ statistic is assumed to follow.</p>
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
 <dd><p>A model to simulate from:
-a <code>diffs_model</code>, from <code><a href="play_diffusions.html">play_diffusions()</a></code>, or a <code>netreg</code>, from
-<code><a href="regression.html">estimate_mrqap()</a></code>.
+a <code>diffs_model</code>, from <code><a href="play_diffusions.html">play_diffusions()</a></code>, or an <code>infernetMrqapFit</code>, from
+<code><a href="estimate_mrqap.html">estimate_mrqap()</a></code>.
 For <code>test_distributions()</code>, <code>object1</code> and <code>object2</code> are two <code>diffs_model</code>
 objects.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>For a <code>netreg</code>, additional arguments to be passed on to <code>FUN</code>.
+<dd><p>For an <code>infernetMrqapFit</code>, additional arguments to be passed on to <code>FUN</code>.
 Other methods do not use them.</p></dd>
 
 
 <dt id="arg-observed">observed<a class="anchor" aria-label="anchor" href="#arg-observed"></a></dt>
 <dd><p>The observed data.
-For a <code>diffs_model</code>, a <code>diff_model</code> from <code><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">manynet::as_diffusion()</a></code>,
+For a <code>diffs_model</code>, a <code>diff_model</code> from <code><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">manynet::as_diffusion()</a></code>,
 or a network with a diffusion record from <code><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">manynet::play_diffusion()</a></code>.
-For a <code>netreg</code>, the network that the model was fitted on.</p></dd>
+For an <code>infernetMrqapFit</code>, the network that the model was fitted on.</p></dd>
 
 
 <dt id="arg-fun">FUN<a class="anchor" aria-label="anchor" href="#arg-fun"></a></dt>
-<dd><p>For a <code>netreg</code>, a function of a network that returns a
+<dd><p>For an <code>infernetMrqapFit</code>, a function of a network that returns a
 number or a vector of numbers, such as <code><a href="https://stocnet.github.io/netrics/reference/measure_closure.html" class="external-link">netrics::net_by_transitivity()</a></code>.</p></dd>
 
 
 <dt id="arg-times">times<a class="anchor" aria-label="anchor" href="#arg-times"></a></dt>
-<dd><p>For a <code>netreg</code>, the number of outcomes to simulate.
+<dd><p>For an <code>infernetMrqapFit</code>, the number of outcomes to simulate.
 For <code>test_distributions()</code>, the number of permutations.
 A <code>diffs_model</code> brings its own simulations.</p></dd>
 
@@ -157,7 +158,7 @@ controls alone, so that the controls of a model can be given to a test
 whole.
 <code>ncores</code> is generally useful only when <code>times</code> &gt; 1000.
 A control that is not named keeps its default, or the value set with
-<code>control_mrqap(..., persist = TRUE)</code>, and the result records the controls
+<code><a href="control_computation.html">set_control_computation()</a></code>, and the result records the controls
 that it used as <code>control</code>.
 See <code><a href="control_mrqap.html">control_mrqap()</a></code> for each control and its default.</p></dd>
 
@@ -217,15 +218,18 @@ or no p-value can be below 0.05.</p>
     <h2 id="network-regressions">Network regressions<a class="anchor" aria-label="anchor" href="#network-regressions"></a></h2>
 
 
-<p>The <code>netreg</code> method draws each simulated outcome from the fitted model
-with <code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">stats::simulate()</a></code>, in the dyads that the model used.
+<p>The <code>infernetMrqapFit</code> method draws each simulated outcome from the fitted model
+in the dyads that the model used, as <code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate()</a></code> of the fit does
+(see <a href="simulate_mrqap.html">simulate_mrqap</a>), so a seed gives the same networks to both.
 The other cells keep their observed values: the diagonal, the fixed ties,
 and the cells that the model left out. An unobserved cell is an absent tie
 in both the observed and the simulated networks, so they do not differ
 there. An undirected network is mirrored, and the simulated network takes
 the node attributes of the observed one.</p>
-<p>The model needs its <code>simple_fit</code>, so a model fitted with
-<code>less_mem = TRUE</code> cannot be tested. A list of networks, a panel, and a
+<p>A <code>"binomial"</code> or <code>"poisson"</code> model without random or fixed effects draws
+from its coefficients. Any other model draws with <code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">stats::simulate()</a></code> of
+its <code>simple_fit</code>, so such a model fitted without <code>"model"</code> in <code>outputs</code>
+cannot be tested. A list of networks, a panel, and a
 cognitive social structure cannot be tested yet.
 Nor can a <code>gaussian</code> model: its draws are continuous, so every dyad of a
 draw would hold a tie, and the test would always reject.
@@ -242,7 +246,7 @@ what that misses.</p>
 signature, for their own fitted models.
 If more than one of these packages is attached, the one attached last
 masks the others.
-Call <code>infernet::test_gof()</code>, <code>RSiena::test_gof()</code>, or
+Call <code>infernet::test_gof()</code>, <code><a href="https://rdrr.io/pkg/RSiena/man/test_gof.html" class="external-link">RSiena::test_gof()</a></code>, or
 <code>goldfish::test_gof()</code> to choose.</p>
     </div>
     <div class="section level2">
@@ -258,17 +262,12 @@ Call <code>infernet::test_gof()</code>, <code>RSiena::test_gof()</code>, or
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other models:
-<code><a href="control_mrqap.html">control_mrqap()</a></code>,
+    <div class="dont-index"><p>Other evaluating functions:
 <code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
-<code><a href="other_results.html">other_results</a></code>,
-<code><a href="play_diffusions.html">play_diffusions()</a></code>,
-<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
-<code><a href="regression.html">regression</a></code>,
-<code><a href="specify.html">specify</a></code>,
-<code><a href="specify_terms.html">specify_terms</a></code>,
-<code><a href="terms_mrqap.html">terms_mrqap</a></code>,
-<code><a href="test_measures.html">test_measures</a></code>,
+<code><a href="diagnose_outliers.html">diagnose_outliers()</a></code>,
+<code><a href="diagnose_residuals.html">diagnose_residuals</a></code>,
+<code><a href="diagnose_time.html">diagnose_time</a></code>,
+<code><a href="evaluate_likelihood.html">evaluate_likelihood</a></code>,
 <code><a href="test_parameter.html">test_parameter()</a></code></p></div>
     </div>
 
@@ -284,12 +283,12 @@ Call <code>infernet::test_gof()</code>, <code>RSiena::test_gof()</code>, or
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper signif   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;noquote&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>      48.0      9.56    5.44 1       0.0196  *        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>      76.7      9.09    5.44 1       0.0196  *        </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 50 permutations of the pooled diffusions.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # The p-value is p.upper: only a larger statistic counts against the null.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Signif. codes: *** 0.001, ** 0.01, * 0.05, . 0.1</span>
-<span class="r-in"><span><span class="va">obs</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">as_diffusion</a></span><span class="op">(</span><span class="fu">manynet</span><span class="fu">::</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">play_diffusion</a></span><span class="op">(</span><span class="va">ison_adolescents</span>,</span></span>
+<span class="r-in"><span><span class="va">obs</span> <span class="op">&lt;-</span> <span class="fu">manynet</span><span class="fu">::</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">as_diffusion</a></span><span class="op">(</span><span class="fu">manynet</span><span class="fu">::</span><span class="fu"><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">play_diffusion</a></span><span class="op">(</span><span class="va">ison_adolescents</span>,</span></span>
 <span class="r-in"><span>                                                     transmissibility <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">test_gof</span><span class="op">(</span><span class="va">slow</span>, <span class="va">obs</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The reference holds 10 simulations, so no p-value can be below 0.05.</span>
@@ -299,13 +298,13 @@ Call <code>infernet::test_gof()</code>, <code>RSiena::test_gof()</code>, or
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   statistic null.mean null.sd p.lower p.upper signif   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;noquote&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>      50.6      47.1    53.8 0.636   0.455            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>      11.5      75.3    66.7 0.273   0.818            </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Null: 20 simulations of the model; 10 estimate the mean and covariance.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # The p-value is p.upper: only a larger statistic counts against the null.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Does an MRQAP make as many reciprocated ties as the observed network?</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="regression.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">friends</span> <span class="op">~</span> <span class="va">social</span> <span class="op">+</span> <span class="va">tasks</span>, <span class="va">ison_algebra</span>, times <span class="op">=</span> <span class="fl">20</span>,</span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="estimate_mrqap.html">estimate_mrqap</a></span><span class="op">(</span><span class="va">friends</span> <span class="op">~</span> <span class="va">social</span> <span class="op">+</span> <span class="va">tasks</span>, <span class="va">ison_algebra</span>, times <span class="op">=</span> <span class="fl">20</span>,</span></span>
 <span class="r-in"><span>                      control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>family <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">test_gof</span><span class="op">(</span><span class="va">fit</span>, <span class="va">ison_algebra</span>, <span class="va">net_by_reciprocity</span>, times <span class="op">=</span> <span class="fl">25</span>,</span></span>
 <span class="r-in"><span>         control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>

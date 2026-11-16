@@ -1,5 +1,195 @@
 # Changelog
 
+## infernet 0.7.0
+
+### Package
+
+- Improved the function overview to follow the stages of an inference
+  - Sections are Testing, Specifying, Estimating, Evaluating, and
+    Interpreting
+  - Each help page links to the other pages of its stage under “See
+    also”
+
+### Testing
+
+- Added [`summary()`](https://rdrr.io/r/base/summary.html) of a
+  `network_test`, with quantiles of the null (closes
+  [\#27](https://github.com/stocnet/infernet/issues/27))
+
+### Specifying
+
+- Added
+  [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  to set coefficients
+  - The coefficients of a fit keep the random intercepts that a control
+    turned on
+  - Without `family =`, the family is read from the outcome in `.data`
+  - Added
+    [`declare_coefs.ergm_formula()`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md)
+    to set coefficients for an ergm formula
+  - Added `declare_coefs.ergm_fit()` to set coefficients for an ergm fit
+- Added
+  [`coef.infernetMrqapCoefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  and
+  [`coef.infernetMrqapFit()`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  for plain vectors
+- Renamed
+  [`tidy.mrqap_formula()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  to `summary.mrqapFormula()` to table its terms
+- Added
+  [`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md)
+  to write a formula for
+  [`RSiena::siena()`](https://rdrr.io/pkg/RSiena/man/siena.html)
+  - Each term becomes its RSiena effect, such as `ego(sex)` as
+    `egoX(sex)`
+  - With `.data`, returns the `sienaEffects` object, with the
+    `sienadata` as its `data`
+- Improved
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  and
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
+  to read RSiena formulas and `sienaEffects` objects
+
+### Estimating
+
+- Improved
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  to read information from its inputs
+  - Now can read coefficients or a fit as its formula for
+    [`glm()`](https://rdrr.io/r/stats/glm.html) and
+    [`MASS::glm.nb()`](https://rdrr.io/pkg/MASS/man/glm.nb.html)
+  - Improved `family=` inference to read a count as `"poisson"` rather
+    than `"gaussian"`
+  - Renamed its output class to `infernetMrqapFit`
+  - Added `outputs =` for the optional parts of a fit, deprecating
+    `less_mem =`
+- Added computation controls that every `estimate_*()` and `test_*()`
+  shares (closes [\#20](https://github.com/stocnet/infernet/issues/20))
+  - [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+    sets `seed`, `ncores`, and `strategy` for the session
+  - [`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+    sets them for one call
+
+### Evaluating
+
+- Added [`anova()`](https://rdrr.io/r/stats/anova.html) of two nested
+  fits, through
+  [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+  (closes [\#23](https://github.com/stocnet/infernet/issues/23))
+  - Refuses fits whose shared columns, random intercepts, or fixed
+    effects differ
+- Fixed the node names of
+  [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md)
+  and of the random intercepts in
+  [`summary()`](https://rdrr.io/r/base/summary.html)
+  - A reporter or node with no observed cell no longer shifts the names
+    of the later ones
+  - The receivers of a two-mode network are named from its second mode
+- Improved
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  of an MRQAP to draw with the simulator of
+  [`simulate()`](https://rdrr.io/r/stats/simulate.html)
+- Added
+  [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md),
+  [`diagnose_changepoints()`](https://stocnet.github.io/infernet/reference/diagnose_time.md),
+  and
+  [`diagnose_onset()`](https://stocnet.github.io/infernet/reference/diagnose_time.md)
+  - Each is a generic with
+    [goldfish](https://stocnet.github.io/goldfish/)’s signature
+    `(x, ...)`
+  - [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md)
+    flags the dyads of an MRQAP with extreme residuals
+- Merged the two
+  [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  methods into one for an MRQAP
+- Added
+  [`diagnose_confusion.ergm()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+  for a binary network
+
+### Interpreting
+
+- Added [`simulate()`](https://rdrr.io/r/stats/simulate.html) of an
+  MRQAP from a fit, its coefficients, or a specification (closes
+  [\#24](https://github.com/stocnet/infernet/issues/24))
+  - The routes give the same networks for one seed, sequentially and in
+    parallel
+  - The result is a list of networks of the class of `.data`, or
+    `stocnet`
+- Added `[` for a `diffs_model`, so that a subset of its rows still
+  prints
+- Added
+  [`sweep_diffusion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+  and
+  [`sweep_opinion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+  to play models for each setting
+  - e.g. `vary = list(transmissibility = c(0.1, 0.5))`
+  - [`sweep_diffusion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+    returns `.diffusionSweep`, with share infected and steps until all
+    adopt
+  - [`sweep_opinion()`](https://stocnet.github.io/infernet/reference/sweep.md)
+    returns `.opinionSweep`, with opinion clusters, consensus, and
+    spread at the end
+
+### Tutorials
+
+- Improved infernet tutorials to use infernet blue
+- Fixed simulations in a learnr tutorial failing from the second
+  exercise
+- Fixed the QAP test exercise of the “Diversity and Regression” tutorial
+  - Fixed the “Diversity and Regression” tutorial to offer to install
+    [lme4](https://github.com/lme4/lme4/)
+- Renamed the “Diffusion and Learning” tutorial to “Diffusion and
+  Contagion”
+  - Compares independent cascades with thresholds, and finds wide
+    bridges
+  - Tests contagion models against the adoption times of
+    `ison_physicians`
+  - Draws the simulated diffusions as a band around the observed
+    diffusion
+  - Adds `background` as the innovation rate of the Bass model
+  - Adds own states, a voter model, `direction`, and a diffusion on a
+    panel
+  - Compares a complex contagion on clustered and random networks
+    (Centola 2010)
+  - Compares clustered and spread seeds, and finds the tipping point of
+    a committed minority
+  - Sorts network interventions into the four strategies of Valente
+    (2012)
+  - Measures thresholds and adopter categories in `ison_physicians`
+    (Valente 1995)
+  - Compares exposure through contacts and through structural
+    equivalents (Burt 1987)
+  - Corrects the reproduction number, the terms for simple and complex
+    contagion, and four quizzes
+  - Uses `threshold=` and `onset=`, the new names in
+    [manynet](https://stocnet.github.io/manynet/) 2.5.0
+  - Adds a note for analysts on what the models assume
+  - Moved its learning models to a new “Opinion and Learning” tutorial
+- Added the “Opinion and Learning” tutorial, as `infernet3`
+  - Plays DeGroot learning, stubbornness, and bounded confidence
+  - Compares maximally diverse groups from
+    [`node_in_roulette()`](https://stocnet.github.io/netrics/reference/member_cliques.html)
+    with groups of like minds
+  - Polarises `irps_wwi` by repulsion along its negative ties
+  - Compares
+    [`node_by_influence()`](https://stocnet.github.io/netrics/reference/measure_central_eigen.html)
+    with eigenvector centrality
+  - Measures the speed of a consensus with
+    [`net_by_convergence()`](https://stocnet.github.io/netrics/reference/measure_opinion.html)
+  - Adds wisdom of crowds, misinformation by zealots, and a recap of
+    equilibria
+  - Shows that talking makes a crowd wiser in an egalitarian network
+  - Adds a note for analysts on what the models assume
+  - Lets every node listen to itself in the wisdom of crowds, so that
+    the star settles
+- Improved the “Modelling with ERGMs” tutorial
+  - Explains [`plogis()`](https://rdrr.io/r/stats/Logistic.html),
+    [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md),
+    the convergence test, and `mcmc.diagnostics()`
+  - Interprets `gwesp` and `gwdegree`, including disagreement on effect
+    of its decay
+  - Moved tutorial to `infernet4`
+
 ## infernet 0.6.2
 
 ### Modelling
@@ -8,7 +198,7 @@
   [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
   to `infernetConfusion`
 - Fixed
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   p-values to count the observed statistic as a draw
   - Each is now (1 + b) / (B + 1), as Phipson and Smyth (2010) recommend
 
@@ -62,7 +252,7 @@
     [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
     reasons
 - Added benchmarks of
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   in `benchmarks/`, outside the package
 - Updated the README with an example of each family and infernet’s place
   in stocnet
@@ -124,17 +314,15 @@
   and
   [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
   as generics with the signature `(x, ...)`
-- Added
-  [`test_parameter.netreg()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
-  which tests that one or more coefficients together equal a value
+- Added `test_parameter.netreg()`, which tests that one or more
+  coefficients together equal a value
   - Uses a joint double semi-partialling, with the deviance as its
     statistic
   - Tests the levels of a categorical attribute together, from the stem
     of their names
   - Tests a value other than 0 only in a gaussian model
-- Added
-  [`test_time.netreg()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
-  which tests that coefficients are constant over the waves of a panel
+- Added `test_time.netreg()`, which tests that coefficients are constant
+  over the waves of a panel
   - Tests the interactions of each term with each later wave, with an
     intercept for each wave
   - Refuses a list of networks, since nothing says that its networks are
@@ -143,8 +331,9 @@
 ### Specifying
 
 - Improved `specify_mrqap(.data = net)`, or `advice ~ .`, to tabulate
-  all terms that suit `net` like `RSiena::getEffects()` (closes
-  [\#16](https://github.com/stocnet/infernet/issues/16))
+  all terms that suit `net` like
+  [`RSiena::getEffects()`](https://rdrr.io/pkg/RSiena/man/make_specification.html)
+  (closes [\#16](https://github.com/stocnet/infernet/issues/16))
   - Each row has available terms, their effects, and related
     layers/attributes
 - Added [`formula()`](https://rdrr.io/r/stats/formula.html) method to
@@ -164,9 +353,9 @@
   [@auzaheta](https://github.com/auzaheta))
   - `type =` still works, and warns once that it is deprecated
   - `outdeg()` reads the sender’s outdegree by default, `node = "ego"`
-  - [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  - [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
     and
-    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     read a goldfish formula’s with `type =` as `node =`
 - Added terms for the reporter of a CSS
   - Added `reporter(x, levels = NULL)` for the reporter’s value of a
@@ -177,12 +366,12 @@
     with the `"ego"`/`"alter"`
   - These terms abort on a network that is not a CSS, the last 3 for
     undirected networks, and the last for a two-mode network
-  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     drops these terms
   - A `| reporter` fixed effect absorbs `reporter()`, and names it
 - Accelerated `same()` on a two-mode network, with the same values
 - Improved
-  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
   on the formulas in goldfish’s documentation
   - Fixed a bare `indeg` or `outdeg` read as a layer; it is dropped, as
     goldfish’s outcome degree
@@ -197,7 +386,7 @@
     values as stored
 - Added `weighted =` to `inertia`, as goldfish’s `inertia()` has
 - Fixed
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
   without a network giving `inertia` the reason “needs .data”
   - Gives the same reasons as with a network, e.g. “has no ergm term”
   - Records a term rewritten on reading once, as written
@@ -211,13 +400,13 @@
 ### Regressing
 
 - Removed `net_regression()`; `migraph::net_regression()` now calls
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 - Fixed
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   failing on an interaction with
   [fixest](https://lrberge.github.io/fixest/) fixed effects
 - Improved the speed of the permutations of
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   - Permutes only the cells the model reads, and builds the data once
   - Builds the design matrix of a gaussian, binomial, or Poisson model
     once
@@ -238,7 +427,7 @@
 - Fixed [`print()`](https://rdrr.io/r/base/print.html) of a mixed model
   with `print_random = TRUE`, which errored
 - Fixed
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   permuting a predictor that has no coefficient
 - Improved the message of a panel whose missing cells fix every node
 - Added `persist =` to
@@ -289,28 +478,22 @@
   - [`AIC()`](https://rdrr.io/r/stats/AIC.html) and
     [`BIC()`](https://rdrr.io/r/stats/AIC.html) count the fixed effects
     that a gaussian model absorbs
-- Improved
-  [`tidy.netreg()`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  to give only the columns of
+- Improved `tidy.netreg()` to give only the columns of
   [`generics::tidy()`](https://generics.r-lib.org/reference/tidy.html)
-- Improved
-  [`summary.netreg()`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  to give the full report
+- Improved `summary.netreg()` to give the full report
   - Adds `p.lower`, `p.upper` to the results table
   - Prints random intercepts,
     [`glance()`](https://generics.r-lib.org/reference/glance.html),
     unobserved dyads, and dropped terms
-- Fixed
-  [`glance.netreg()`](https://stocnet.github.io/infernet/reference/netreg_results.md)
-  of a gaussian model with fixed effects
+- Fixed `glance.netreg()` of a gaussian model with fixed effects
   - `AIC`, `BIC`, `sigma`, and `df.residual` now count the absorbed
     parameters
 - Moved
-  [`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
+  [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
   for `netlm` and `netlogit` from
   [migraph](https://stocnet.github.io/migraph/)
 - Added
-  [`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
+  [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
   for a `netreg`, on the `"link"` or the `"response"` scale
   - Without `newdata`, the fitted values, with random intercepts and
     fixed effects
@@ -348,7 +531,7 @@
   - Added a section on layers and a cognitive social structure, on
     `ison_hightech`
   - Added a section on moving a formula with
-    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
   - Plots the regression result, with
     [autograph](https://stocnet.github.io/autograph/) 1.2.8
   - Runs the CUG and QAP tests with 500 simulations, so each exercise
@@ -411,9 +594,9 @@
     names
   - Added the nearest term to the error for an unknown term
 - Added
-  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
   `specify_dynam()`, and
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
   to move a formula between models
   - Reads the model a formula is for from `input =`, the formula’s
     class, or its names
@@ -423,10 +606,10 @@
     `sim()`
   - Drops each term the model cannot fit, with one warning naming each
   - Aborts only where no term is left to fit
-  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
     reads every formula with
-    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
-  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
+  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     with `.data` writes other terms as `edgecov()` of infernet’s matrix
   - Records what the model makes of every term: it fits, adapts,
     interprets, warns about, drops, or refuses it
@@ -434,7 +617,7 @@
     the result, one row for each term, which fits nothing
   - [`tidy()`](https://generics.r-lib.org/reference/tidy.html) of an
     MRQAP formula with `.data` names the columns
-    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
     builds
 - Named the other models in the term registry for the model: `dynam`,
   `saom`, and `ergm`
@@ -457,9 +640,9 @@
     one is chosen, the first chosen is
   - An unknown name aborts and lists the categories
   - Warns where a term has more than ten categories and no `levels =`
-  - [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  - [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
     reads ergm’s `levels =`, and `levels2 =` of `nodemix()`;
-    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     writes them
   - `specify_dynam()` drops a term with `levels =`, which goldfish does
     not have yet
@@ -467,7 +650,7 @@
   category changing fastest, so that a position in `levels =` is one in
   ergm’s `levels2 =`
 - Added fixed effects after a bare bar to the `specify_*()` functions
-  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  - [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     writes `| sender + receiver` as ergm’s `sender` and `receiver`
   - `specify_dynam()` drops them
 
@@ -476,8 +659,8 @@
 - Added
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
   with a help page for every control of
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
-  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  - [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
     reads a `control` list through it, so each value is checked before a
     fit
   - Converts old names, e.g. `nullhyp = "qapy"` to
@@ -501,7 +684,7 @@
     [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
     as the simpler of the two
 - Added fixed effects to
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md),
   as in [fixest](https://lrberge.github.io/fixest/):
   `y ~ x | sender + receiver` (thanks
   [@RWKrause](https://github.com/RWKrause), closes
@@ -548,7 +731,7 @@
   - Permutes the nodes the same way in every wave
   - Fits `inertia`, `recip`, and `trans` on the previous wave
 - Renamed `net_regression()` to
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   to match other stocnet packages
   - `net_regression()` still works, and warns once that it is deprecated
   - Result classes stay `netreg`, `netreg_lm`, `netreg_glm`, and
@@ -646,11 +829,8 @@
 
 ### Reporting
 
-- Moved
-  [`print.netlm()`](https://stocnet.github.io/infernet/reference/other_results.md)
-  and
-  [`print.netlogit()`](https://stocnet.github.io/infernet/reference/other_results.md)
-  from [migraph](https://stocnet.github.io/migraph/)
+- Moved `print.netlm()` and `print.netlogit()` from
+  [migraph](https://stocnet.github.io/migraph/)
 - Added [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
   [`glance()`](https://generics.r-lib.org/reference/glance.html) methods
   for `netreg` and `network_test` results

@@ -17,7 +17,7 @@ manynet::as_diffusion(), and are dropped with a warning."><meta property="og:ima
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,7 +30,8 @@ manynet::as_diffusion(), and are dropped with a warning."><meta property="og:ima
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
@@ -46,7 +47,7 @@ manynet::as_diffusion(), and are dropped with a warning."><meta property="og:ima
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Simulating many diffusions</h1>
-      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/model_diffusion.R" class="external-link"><code>R/model_diffusion.R</code></a>, <a href="https://github.com/stocnet/infernet/blob/main/R/report_models.R" class="external-link"><code>R/report_models.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/stocnet/infernet/blob/main/R/interpret_diffusions.R" class="external-link"><code>R/interpret_diffusions.R</code></a>, <a href="https://github.com/stocnet/infernet/blob/main/R/interpret_report.R" class="external-link"><code>R/interpret_report.R</code></a></small>
       <div class="d-none name"><code>play_diffusions.Rd</code></div>
     </div>
 
@@ -56,7 +57,7 @@ same network, and binds the reports of every run into one <code>diffs_model</cod
 Give the result to <code><a href="test_fit.html">test_gof()</a></code>, to compare an observed diffusion with
 it, or to <code><a href="test_fit.html">test_distributions()</a></code>, to compare it with another model.</p>
 <p>Runs in which nothing spreads beyond the seeds return no report from
-<code><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">manynet::as_diffusion()</a></code>, and are dropped with a warning.</p>
+<code><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">manynet::as_diffusion()</a></code>, and are dropped with a warning.</p>
     </div>
 
     <div class="section level2">
@@ -67,7 +68,7 @@ it, or to <code><a href="test_fit.html">test_distributions()</a></code>, to comp
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'diffs_model'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">x</span><span class="op">[</span><span class="va">i</span>, <span class="va">j</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,19 +97,23 @@ By default 5, but 1,000-10,000 simulations are recommended for a test.</p></dd>
 It reads <code>ncores</code>, <code>strategy</code>, and <code>seed</code>, and leaves the other controls
 alone. The same seed gives the same diffusions sequentially and in
 parallel. A control that is not named keeps its default, or the value
-set with <code>control_mrqap(..., persist = TRUE)</code>. The result records the
+set with <code><a href="control_computation.html">set_control_computation()</a></code>. The result records the
 controls that it used in its attribute <code>control</code>.</p></dd>
 
 
 <dt id="arg-object-x">object, x<a class="anchor" aria-label="anchor" href="#arg-object-x"></a></dt>
 <dd><p>A <code>diffs_model</code>.</p></dd>
 
+
+<dt id="arg-i-j-drop">i, j, drop<a class="anchor" aria-label="anchor" href="#arg-i-j-drop"></a></dt>
+<dd><p>As for a tibble.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>diffs_model</code>: a tibble with one row for each step of each run,
 the run in <code>sim</code>, the step in <code>time</code>, and the counts of
-<code><a href="https://stocnet.github.io/manynet/reference/coerce_graph.html" class="external-link">manynet::as_diffusion()</a></code>.
+<code><a href="https://stocnet.github.io/manynet/reference/make_play.html" class="external-link">manynet::as_diffusion()</a></code>.
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> gives the time of adoption, the number of steps until every
 node is infected, for each run.
 <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> returns <code>x</code>, invisibly.</p>
@@ -121,18 +126,12 @@ every node adopted. <code><a href="https://rdrr.io/r/base/summary.html" class="e
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>Other models:
-<code><a href="control_mrqap.html">control_mrqap()</a></code>,
-<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
-<code><a href="other_results.html">other_results</a></code>,
-<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
-<code><a href="regression.html">regression</a></code>,
-<code><a href="specify.html">specify</a></code>,
-<code><a href="specify_terms.html">specify_terms</a></code>,
-<code><a href="terms_mrqap.html">terms_mrqap</a></code>,
-<code><a href="test_fit.html">test_fit</a></code>,
-<code><a href="test_measures.html">test_measures</a></code>,
-<code><a href="test_parameter.html">test_parameter()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="sweep.html">sweep_diffusion()</a></code> to play a diffusion for each of several
+settings, and to see how the result changes with them.</p>
+<p>Other interpreting functions:
+<code><a href="predict_mrqap.html">predict_mrqap</a></code>,
+<code><a href="simulate_mrqap.html">simulate_mrqap</a></code>,
+<code><a href="sweep.html">sweep</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -141,22 +140,22 @@ every node adopted. <code><a href="https://rdrr.io/r/base/summary.html" class="e
 <span class="r-in"><span>                control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # 5 simulated SI diffusions</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 38 × 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 42 × 6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      sim  time     n     S     s     I</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>     1     0     8     7     1     1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span>     1     1     8     7     1     1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span>     1     2     8     6     3     2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>     1     3     8     4     3     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>     1     4     8     3     2     5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>     1     5     8     2     1     6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>     2     0     8     7     1     1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>     2     1     8     7     1     1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     2     2     8     6     3     2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     2     3     8     6     3     2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 28 more rows</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span>     1     2     8     7     1     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>     1     3     8     7     1     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>     1     4     8     7     1     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>     1     5     8     6     3     2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>     1     6     8     6     3     2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>     1     7     8     5     3     3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     1     8     8     4     3     4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     2     0     8     7     1     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 32 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # Steps until every node adopted: median 9, from 7 to 10.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # Steps until every node adopted: median 10, from 8 to 10.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Controls: seed = 1</span>
 </code></pre></div>
     </div>

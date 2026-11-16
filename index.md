@@ -23,12 +23,12 @@ The package has five families of functions:
   [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md).
 - **Specification** of a formula that one model can read and another can
   fit:
-  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
   and
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md).
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md).
 - **Regression** of a network on nodal and dyadic covariates, by
   multiple regression quadratic assignment procedure (MRQAP):
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   and
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md).
 - **Diffusion**, simulated many times, to test a model of diffusion
@@ -37,7 +37,7 @@ The package has five families of functions:
 - **Results**, as tidy data frames:
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
   [`glance()`](https://generics.r-lib.org/reference/glance.html), and
-  [`predict()`](https://stocnet.github.io/infernet/reference/predict.md).
+  [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md).
 
 Every function accepts the networks that
 [manynet](https://stocnet.github.io/manynet/) reads: matrices,
@@ -64,7 +64,7 @@ the other jobs to its neighbours:
 - [`{goldfish}`](https://stocnet.github.io/goldfish/) and
   [`{ergm}`](https://statnet.org) fit the models that a formula can move
   to, with
-  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+  [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
   here and `specify_dynam()` in
   [goldfish](https://stocnet.github.io/goldfish/).
 - [`{migraph}`](https://stocnet.github.io/migraph/) holds the book and
@@ -153,15 +153,15 @@ specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 #> # adapted trans -> ttriple
 ```
 
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) of a
-specification gives one row for each term, with what the model makes of
-it on a network:
+[`summary()`](https://rdrr.io/r/base/summary.html) of a specification
+gives one row for each term, with what the model makes of it on a
+network:
 
 ``` r
 
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
-tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+summary(spec, ison_hightech)[, c("term", "status", "reason")]
 #> # A tibble: 4 x 3
 #>   term           status reason                                                  
 #>   <chr>          <chr>  <chr>                                                   
@@ -172,14 +172,14 @@ tidy(spec, ison_hightech)[, c("term", "status", "reason")]
 ```
 
 With a network as `.data`,
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
 also gives the matrices of the terms that ergm has no name for, so that
 [`ergm::ergm()`](https://rdrr.io/pkg/ergm/man/ergm.html) can fit the
 formula that it returns.
 
 ## Regression
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 fits a regression to a network, and permutes the nodes to find the
 p-value of each coefficient. By default it uses Dekker, Krackhardt, and
 Snijders’ (2007) double semi-partialling, which permutes the residuals
@@ -236,7 +236,7 @@ estimate_mrqap(weight ~ sim(Citations) | sender + receiver,
 
 A cognitive social structure (CSS) records each person’s report of the
 whole network.
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 reads a CSS from the network itself, and fits one observation for each
 sender, receiver, and reporter. The `reporter` terms describe the person
 who made the report:
@@ -328,7 +328,7 @@ glance(model)[, c("r.squared", "nobs", "permute", "times")]
 #> 1    0.0674   272 predictor   200
 ```
 
-[`predict()`](https://stocnet.github.io/infernet/reference/predict.md)
+[`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md)
 gives the fitted value of each dyad, or of new data:
 
 ``` r
@@ -344,18 +344,20 @@ diffusion with [`plot()`](https://rdrr.io/r/graphics/plot.default.html).
 ## Learn more
 
 The [website](https://stocnet.github.io/infernet/) has a page for every
-function, and there are three tutorials:
+function, and there are four tutorials:
 
 - “Diversity and Regression” moves from univariate tests to network
   regression.
-- “Diffusion and Learning” simulates diffusions and tests their fit.
+- “Diffusion and Contagion” simulates diffusions and tests their fit.
+- “Opinion and Learning” plays how opinions move towards consensus or
+  apart.
 - “Modelling with ERGMs” fits, interprets, and checks exponential random
   graph models with [ergm](https://statnet.org).
 
 To run them interactively, install
 [migraph](https://stocnet.github.io/migraph/) and run
-`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
-`migraph::run_tute("ERGMs")`.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`,
+`migraph::run_tute("opinion")`, or `migraph::run_tute("ERGMs")`.
 
 ## Design principles
 
@@ -366,7 +368,7 @@ To run them interactively, install
   few arguments. For example,
   [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md)
   is named for the null distribution it draws, and
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   follows the `estimate_*()` verb of
   [goldfish](https://stocnet.github.io/goldfish/).
 - **Pleasant predictability**: users can guess a function’s behaviour
@@ -374,7 +376,7 @@ To run them interactively, install
   network, a statistic, and a number of `times`.
 - **Graceful inclusivity**: functions accept whatever network users
   bring and return something they can use. For example,
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   works on any network that
   [manynet](https://stocnet.github.io/manynet/) can convert, one-mode or
   two-mode, and keeps missing data missing.

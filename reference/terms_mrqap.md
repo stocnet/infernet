@@ -1,7 +1,7 @@
 # Terms of an MRQAP formula
 
 The terms that the right-hand side of a formula for
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 can name, what each one measures, and the equation of the matrix it
 builds. Each term builds one or more columns of the model, each a matrix
 with one cell for each dyad of the network. Every term is named here as
@@ -13,7 +13,7 @@ written out for its layers and node attributes (see
 [specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)).
 A formula written for `{ergm}` or `{goldfish}` names the terms in their
 own way; the last section gives each term's equivalent there, and
-[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
 rewrites a formula from one model for another.
 
 ## Notation
@@ -184,7 +184,7 @@ it (Krackhardt 1987).
   \\x\_{ijr} = \mathbf{1}\[a_r = a_j\]\\.
 
 See the section on cognitive social structures in
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
 
 ## Choosing categories with levels =
 
@@ -211,10 +211,12 @@ names with `:`, such as `ego_age:same_office`.
 
 ## Equivalents in other models
 
-A formula written for `{ergm}` or `{goldfish}` can be used as it is, and
-[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+A formula written for `{ergm}`, `{goldfish}`, or `{RSiena}` can be used
+as it is, and
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
 and
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md)
 rewrite a formula for each other's model. The nearest term of each is:
 
 |  |  |  |  |
@@ -232,24 +234,25 @@ rewrite a formula for each other's model. The nearest term of each is:
 | `sim(x)` | `edgecov()` | `sim(x)`, as minus the absolute difference | `simX`, centred |
 | a layer, or `tie(layer)` | `edgecov()` | `tie(layer)` | `X` |
 | `exchange(layer)` | `edgecov()` of the transpose | `recip(layer)` |  |
-| `indeg(layer)`, `outdeg(layer)` | `edgecov()` | `indeg(layer)`, `outdeg(layer, type = "ego")` |  |
+| `indeg(layer)`, `outdeg(layer)` | `edgecov()` | `indeg(layer)`, `outdeg(layer, type = "ego")` | `inPop`, `outAct`, of the outcome |
 | `tertius(layer, x)`, `tertius_diff(layer, x)` | `edgecov()` | the same, with the sender among the in-neighbours |  |
 | `global(x)` |  | `global(x)` |  |
 | `recip` | `mutual` | `recip` | `recip` |
 | `inertia` |  | `inertia` |  |
 | `trans` | `ttriple` | `trans` | `transTrip` |
+| `cycle`, `four` | `ctriple`, `cycle(4)` | `cycle`, `four` | `cycle3`, `cycle4` |
 
 `sim()` is on another scale in goldfish, which changes its coefficient
 but not its test, and goldfish's `tertius()` counts the sender among the
 in-neighbours, so
-[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md)
 names both where it reads a goldfish formula. ergm's `edges` is the
 intercept, which an MRQAP always has. The reporter terms have no
 equivalent, since no other model has a reporter. ergm's terms of the
 outcome's own structure, such as `gwesp()`, and goldfish's endogenous
 effects, such as `cycle`, have no MRQAP term, and an MRQAP drops them
 (see
-[specify](https://stocnet.github.io/infernet/reference/specify.md)).
+[specify_mrqap](https://stocnet.github.io/infernet/reference/specify_mrqap.md)).
 
 ## References
 
@@ -270,23 +273,18 @@ Computational Aspects." *Journal of Statistical Software* 24(4): 1-24.
 
 ## See also
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 fits a formula of these terms;
 [specify_terms](https://stocnet.github.io/infernet/reference/specify_terms.md)
 lists the terms that suit a network.
 
-Other models:
-[`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
-[`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+Other specifying functions:
+[`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md),
+[`declare_coefs_ergm`](https://stocnet.github.io/infernet/reference/declare_coefs_ergm.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
+[`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
+[`specify_saom()`](https://stocnet.github.io/infernet/reference/specify_saom.md),
+[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md)
 
 ## Examples
 
@@ -353,8 +351,8 @@ specify_mrqap(advice ~ ., manynet::ison_lawfirm)
 #> 54 tertius(cowork, age)                       tertius      cowork  age      
 #> 55 tertius_diff(cowork, age)                  tertius_diff cowork  age      
 #> Choose rows, and `formula()` of them gives their formula.
-tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-     manynet::ison_lawfirm)
+summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+        manynet::ison_lawfirm)
 #> # A tibble: 3 × 5
 #>   term         status as           reason columns  
 #>   <chr>        <chr>  <chr>        <chr>  <list>   

@@ -27,7 +27,7 @@ specify_mrqap() rewrites a formula from one model for another."><meta property="
 
     <a class="navbar-brand me-2" href="../index.html">infernet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +40,8 @@ specify_mrqap() rewrites a formula from one model for another."><meta property="
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/diversity-and-regression.html">Diversity and Regression</a></li>
-    <li><a class="dropdown-item" href="../articles/diffusion-and-learning.html">Diffusion and Learning</a></li>
+    <li><a class="dropdown-item" href="../articles/diffusion-and-contagion.html">Diffusion and Contagion</a></li>
+    <li><a class="dropdown-item" href="../articles/opinion-and-learning.html">Opinion and Learning</a></li>
     <li><a class="dropdown-item" href="../articles/modelling-with-ergms.html">Modelling with ERGMs</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
@@ -61,7 +62,7 @@ specify_mrqap() rewrites a formula from one model for another."><meta property="
     </div>
 
     <div class="ref-description section level2">
-    <p>The terms that the right-hand side of a formula for <code><a href="regression.html">estimate_mrqap()</a></code> can
+    <p>The terms that the right-hand side of a formula for <code><a href="estimate_mrqap.html">estimate_mrqap()</a></code> can
 name, what each one measures, and the equation of the matrix it builds.
 Each term builds one or more columns of the model, each a matrix with one
 cell for each dyad of the network.
@@ -71,7 +72,7 @@ the name of its coefficient is the name of its column, such as <code>same_dept</
 out for its layers and node attributes (see <a href="specify_terms.html">specify_terms</a>).
 A formula written for <code>{ergm}</code> or <code>{goldfish}</code> names the terms in their
 own way; the last section gives each term's equivalent there, and
-<code><a href="specify.html">specify_mrqap()</a></code> rewrites a formula from one model for another.</p>
+<code><a href="specify_mrqap.html">specify_mrqap()</a></code> rewrites a formula from one model for another.</p>
     </div>
 
 
@@ -246,7 +247,7 @@ reporter's own ties.</p></li>
 sender's category, \(x_{ijr} = \mathbf{1}[a_r = a_i]\),
 as <code>reporter_same_ego_x</code>, or the receiver's with <code>node = "alter"</code>,
 \(x_{ijr} = \mathbf{1}[a_r = a_j]\).</p></li>
-</ul><p>See the section on cognitive social structures in <code><a href="regression.html">estimate_mrqap()</a></code>.</p>
+</ul><p>See the section on cognitive social structures in <code><a href="estimate_mrqap.html">estimate_mrqap()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="choosing-categories-with-levels-">Choosing categories with levels =<a class="anchor" aria-label="anchor" href="#choosing-categories-with-levels-"></a></h2>
@@ -279,16 +280,16 @@ names with <code>:</code>, such as <code>ego_age:same_office</code>.</p>
     <h2 id="equivalents-in-other-models">Equivalents in other models<a class="anchor" aria-label="anchor" href="#equivalents-in-other-models"></a></h2>
 
 
-<p>A formula written for <code>{ergm}</code> or <code>{goldfish}</code> can be used as it is, and
-<code><a href="specify.html">specify_mrqap()</a></code> and <code><a href="specify.html">specify_ergm()</a></code> rewrite a formula for each other's
-model. The nearest term of each is:</p><table class="table table"><tr><td>infernet</td><td>ergm</td><td>goldfish</td><td>RSiena</td></tr><tr><td><code>ego(x)</code></td><td><code>nodeocov("x")</code>, <code>nodeofactor("x")</code>; <code>b1cov("x")</code> in a two-mode network; <code>nodecov("x")</code> in an undirected one</td><td><code>ego(x)</code></td><td><code>egoX</code></td></tr><tr><td><code>alter(x)</code></td><td><code>nodeicov("x")</code>, <code>nodeifactor("x")</code>; <code>b2cov("x")</code> in a two-mode network</td><td><code>alter(x)</code></td><td><code>altX</code></td></tr><tr><td><code>same(x)</code></td><td><code>nodematch("x")</code></td><td><code>same(x)</code></td><td><code>sameX</code></td></tr><tr><td><code>same(x, diff = TRUE)</code></td><td><code>nodematch("x", diff = TRUE)</code></td><td></td><td></td></tr><tr><td><code>mix(x)</code></td><td><code>nodemix("x")</code></td><td></td><td></td></tr><tr><td><code>ego(x, levels = )</code>, <code>same(x, levels = )</code></td><td><code>nodeofactor("x", levels = )</code>, <code>nodematch("x", levels = )</code></td><td></td><td></td></tr><tr><td><code>mix(x, levels = )</code></td><td><code>nodemix("x", levels2 = )</code></td><td></td><td></td></tr><tr><td><code>diff(x)</code></td><td><code>absdiff("x")</code></td><td><code>diff(x)</code></td><td><code>absDiffX</code></td></tr><tr><td><code>diff(x, transformer_fn = identity)</code></td><td><code>diff("x")</code></td><td><code>diff(x, transformer_fn = identity)</code></td><td><code>diffX</code></td></tr><tr><td><code>sim(x)</code></td><td><code>edgecov()</code></td><td><code>sim(x)</code>, as minus the absolute difference</td><td><code>simX</code>, centred</td></tr><tr><td>a layer, or <code>tie(layer)</code></td><td><code>edgecov()</code></td><td><code>tie(layer)</code></td><td><code>X</code></td></tr><tr><td><code>exchange(layer)</code></td><td><code>edgecov()</code> of the transpose</td><td><code>recip(layer)</code></td><td></td></tr><tr><td><code>indeg(layer)</code>, <code>outdeg(layer)</code></td><td><code>edgecov()</code></td><td><code>indeg(layer)</code>, <code>outdeg(layer, type = "ego")</code></td><td></td></tr><tr><td><code>tertius(layer, x)</code>, <code>tertius_diff(layer, x)</code></td><td><code>edgecov()</code></td><td>the same, with the sender among the in-neighbours</td><td></td></tr><tr><td><code>global(x)</code></td><td></td><td><code>global(x)</code></td><td></td></tr><tr><td><code>recip</code></td><td><code>mutual</code></td><td><code>recip</code></td><td><code>recip</code></td></tr><tr><td><code>inertia</code></td><td></td><td><code>inertia</code></td><td></td></tr><tr><td><code>trans</code></td><td><code>ttriple</code></td><td><code>trans</code></td><td><code>transTrip</code></td></tr></table><p><code>sim()</code> is on another scale in goldfish, which changes its coefficient
+<p>A formula written for <code>{ergm}</code>, <code>{goldfish}</code>, or <code>{RSiena}</code> can be used
+as it is, and <code><a href="specify_mrqap.html">specify_mrqap()</a></code>, <code><a href="specify_ergm.html">specify_ergm()</a></code>, and <code><a href="specify_saom.html">specify_saom()</a></code>
+rewrite a formula for each other's model. The nearest term of each is:</p><table class="table table"><tr><td>infernet</td><td>ergm</td><td>goldfish</td><td>RSiena</td></tr><tr><td><code>ego(x)</code></td><td><code>nodeocov("x")</code>, <code>nodeofactor("x")</code>; <code>b1cov("x")</code> in a two-mode network; <code>nodecov("x")</code> in an undirected one</td><td><code>ego(x)</code></td><td><code>egoX</code></td></tr><tr><td><code>alter(x)</code></td><td><code>nodeicov("x")</code>, <code>nodeifactor("x")</code>; <code>b2cov("x")</code> in a two-mode network</td><td><code>alter(x)</code></td><td><code>altX</code></td></tr><tr><td><code>same(x)</code></td><td><code>nodematch("x")</code></td><td><code>same(x)</code></td><td><code>sameX</code></td></tr><tr><td><code>same(x, diff = TRUE)</code></td><td><code>nodematch("x", diff = TRUE)</code></td><td></td><td></td></tr><tr><td><code>mix(x)</code></td><td><code>nodemix("x")</code></td><td></td><td></td></tr><tr><td><code>ego(x, levels = )</code>, <code>same(x, levels = )</code></td><td><code>nodeofactor("x", levels = )</code>, <code>nodematch("x", levels = )</code></td><td></td><td></td></tr><tr><td><code>mix(x, levels = )</code></td><td><code>nodemix("x", levels2 = )</code></td><td></td><td></td></tr><tr><td><code>diff(x)</code></td><td><code>absdiff("x")</code></td><td><code>diff(x)</code></td><td><code>absDiffX</code></td></tr><tr><td><code>diff(x, transformer_fn = identity)</code></td><td><code>diff("x")</code></td><td><code>diff(x, transformer_fn = identity)</code></td><td><code>diffX</code></td></tr><tr><td><code>sim(x)</code></td><td><code>edgecov()</code></td><td><code>sim(x)</code>, as minus the absolute difference</td><td><code>simX</code>, centred</td></tr><tr><td>a layer, or <code>tie(layer)</code></td><td><code>edgecov()</code></td><td><code>tie(layer)</code></td><td><code>X</code></td></tr><tr><td><code>exchange(layer)</code></td><td><code>edgecov()</code> of the transpose</td><td><code>recip(layer)</code></td><td></td></tr><tr><td><code>indeg(layer)</code>, <code>outdeg(layer)</code></td><td><code>edgecov()</code></td><td><code>indeg(layer)</code>, <code>outdeg(layer, type = "ego")</code></td><td><code>inPop</code>, <code>outAct</code>, of the outcome</td></tr><tr><td><code>tertius(layer, x)</code>, <code>tertius_diff(layer, x)</code></td><td><code>edgecov()</code></td><td>the same, with the sender among the in-neighbours</td><td></td></tr><tr><td><code>global(x)</code></td><td></td><td><code>global(x)</code></td><td></td></tr><tr><td><code>recip</code></td><td><code>mutual</code></td><td><code>recip</code></td><td><code>recip</code></td></tr><tr><td><code>inertia</code></td><td></td><td><code>inertia</code></td><td></td></tr><tr><td><code>trans</code></td><td><code>ttriple</code></td><td><code>trans</code></td><td><code>transTrip</code></td></tr><tr><td><code>cycle</code>, <code>four</code></td><td><code>ctriple</code>, <code>cycle(4)</code></td><td><code>cycle</code>, <code>four</code></td><td><code>cycle3</code>, <code>cycle4</code></td></tr></table><p><code>sim()</code> is on another scale in goldfish, which changes its coefficient
 but not its test, and goldfish's <code>tertius()</code> counts the sender among the
-in-neighbours, so <code><a href="specify.html">specify_mrqap()</a></code> names both where it reads a goldfish
+in-neighbours, so <code><a href="specify_mrqap.html">specify_mrqap()</a></code> names both where it reads a goldfish
 formula. ergm's <code>edges</code> is the intercept, which an MRQAP always has.
 The reporter terms have no equivalent, since no other model has a
 reporter. ergm's terms of the outcome's own structure, such as <code>gwesp()</code>,
 and goldfish's endogenous effects, such as <code>cycle</code>, have no MRQAP term,
-and an MRQAP drops them (see <a href="specify.html">specify</a>).</p>
+and an MRQAP drops them (see <a href="specify_mrqap.html">specify_mrqap</a>).</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -312,26 +313,21 @@ Computational Aspects."
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="regression.html">estimate_mrqap()</a></code> fits a formula of these terms; <a href="specify_terms.html">specify_terms</a>
+    <div class="dont-index"><p><code><a href="estimate_mrqap.html">estimate_mrqap()</a></code> fits a formula of these terms; <a href="specify_terms.html">specify_terms</a>
 lists the terms that suit a network.</p>
-<p>Other models:
-<code><a href="control_mrqap.html">control_mrqap()</a></code>,
-<code><a href="diagnose_confusion.html">diagnose_confusion()</a></code>,
-<code><a href="other_results.html">other_results</a></code>,
-<code><a href="play_diffusions.html">play_diffusions()</a></code>,
-<code><a href="netreg_results.html">print.netreg_lm()</a></code>,
-<code><a href="regression.html">regression</a></code>,
-<code><a href="specify.html">specify</a></code>,
-<code><a href="specify_terms.html">specify_terms</a></code>,
-<code><a href="test_fit.html">test_fit</a></code>,
-<code><a href="test_measures.html">test_measures</a></code>,
-<code><a href="test_parameter.html">test_parameter()</a></code></p></div>
+<p>Other specifying functions:
+<code><a href="declare_coefs.html">declare_coefs()</a></code>,
+<code><a href="declare_coefs_ergm.html">declare_coefs_ergm</a></code>,
+<code><a href="specify_ergm.html">specify_ergm()</a></code>,
+<code><a href="specify_mrqap.html">specify_mrqap()</a></code>,
+<code><a href="specify_saom.html">specify_saom()</a></code>,
+<code><a href="specify_terms.html">specify_terms</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Every term that suits a network, and the columns of some of them</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="specify.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="va">.</span>, <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_lawfirm.html" class="external-link">ison_lawfirm</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="specify_mrqap.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="va">.</span>, <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_lawfirm.html" class="external-link">ison_lawfirm</a></span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 55 terms for an MRQAP of advice</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 55 × 4</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    term                                       effect       layer   attribute</span>
@@ -392,8 +388,8 @@ lists the terms that suit a network.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">54</span> tertius(cowork, age)                       tertius      cowork  age      </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">55</span> tertius_diff(cowork, age)                  tertius_diff cowork  age      </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Choose rows, and `formula()` of them gives their formula.</span>
-<span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="fu"><a href="specify.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">age</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">office</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">age</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>     <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_lawfirm.html" class="external-link">ison_lawfirm</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="specify_mrqap.html">specify_mrqap</a></span><span class="op">(</span><span class="va">advice</span> <span class="op">~</span> <span class="fu">ego</span><span class="op">(</span><span class="va">age</span><span class="op">)</span> <span class="op">+</span> <span class="fu">same</span><span class="op">(</span><span class="va">office</span><span class="op">)</span> <span class="op">+</span> <span class="fu">sim</span><span class="op">(</span><span class="va">age</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>        <span class="fu">manynet</span><span class="fu">::</span><span class="va"><a href="https://stocnet.github.io/manynet/reference/ison_lawfirm.html" class="external-link">ison_lawfirm</a></span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   term         status as           reason columns  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>   </span>

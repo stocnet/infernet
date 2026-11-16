@@ -3,8 +3,8 @@
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
 [`glance()`](https://generics.r-lib.org/reference/glance.html) give the
 results of other packages' network models as a tibble, after `{broom}`,
-with the same columns as for a `netreg` (see
-[netreg_results](https://stocnet.github.io/infernet/reference/netreg_results.md))
+with the same columns as for a `infernetMrqapFit` (see
+[estimate_mrqap](https://stocnet.github.io/infernet/reference/estimate_mrqap.md))
 where they mean the same. So an MRQAP result can sit in one table beside
 an ERGM or a SIENA one. They cover:
 
@@ -30,12 +30,6 @@ glance(x, ...)
 
 # S3 method for class 'netlogit'
 glance(x, ...)
-
-# S3 method for class 'netlm'
-print(x, ...)
-
-# S3 method for class 'netlogit'
-print(x, ...)
 
 # S3 method for class 'ergm'
 tidy(x, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE, ...)
@@ -84,8 +78,7 @@ glance(x, ...)
 
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
 [`glance()`](https://generics.r-lib.org/reference/glance.html) return a
-tibble, and [`print()`](https://rdrr.io/r/base/print.html) returns `x`,
-invisibly.
+tibble.
 
 ## Details
 
@@ -95,18 +88,10 @@ interval around the estimate.
 
 ## See also
 
-Other models:
+Other estimating functions:
+[`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
 [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
-[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
-[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+[`print.infernetMrqapFit()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 
 ## Examples
 

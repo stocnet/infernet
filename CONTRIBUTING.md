@@ -24,6 +24,7 @@ By contributing to this project, you agree to abide by its terms.
   - [Vocabulary](#vocabulary)
 - [Package architecture](#package-architecture)
   - [Common commands](#common-commands)
+  - [The inferential pipeline](#the-inferential-pipeline)
   - [File organization](#file-organization)
   - [Input shapes](#input-shapes)
     - [Longitudinal networks](#longitudinal-networks)
@@ -34,6 +35,7 @@ By contributing to this project, you agree to abide by its terms.
     - [Multivariate](#multivariate)
     - [One engine, two shapes](#one-engine-two-shapes)
     - [Parallelism](#parallelism)
+    - [Shared model API](#shared-model-api)
     - [Console messaging](#console-messaging)
   - [Formula conventions](#formula-conventions)
     - [Rules](#rules)
@@ -135,8 +137,8 @@ not), GitHub updates the status of the issue automatically.
   rather than `Suggests` — the workflows install them via `needs:` in
   `setup-r-dependencies`.
 - A merge that touches
-  [R/model_regression.R](https://stocnet.github.io/R/model_regression.R)
-  or the `R/qap_*.R` engine files deserves a parse check before it is
+  [R/estimate_mrqap.R](https://stocnet.github.io/R/estimate_mrqap.R) or
+  the `R/qap_*.R` engine files deserves a parse check before it is
   pushed (`Rscript -e 'devtools::load_all()'`). The merge that created
   the current engine silently dropped three function headers and left an
   orphan function body, so the package did not parse at all.
@@ -215,19 +217,19 @@ Functions should do one clearly named thing with few arguments.
   rather than names built on QAP or CUG. An estimator is named
   `estimate_<model>()`, as across stocnet, so that a user who moves
   between packages finds the same verb:
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   here, and `estimate_dynam()` and `estimate_rem()` in
   [goldfish](https://stocnet.github.io/goldfish/).
 - **Few arguments per function.** Every argument is something the user
   must read about before they can trust the result, so use sensible
   defaults instead. Example:
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   takes a formula, a network, and `times`, and everything less common
   goes through its `control` list.
 - **Features are detected, not declared.** A function finds out whether
   a network is directed or two-mode, and adjusts, so the user does not
   supply an argument for it. Example:
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   reads directedness from the outcome network with
   `manynet::is_directed()`, unless `control` overrides it.
 
@@ -272,11 +274,11 @@ something they can use.
 - **Key steps are reported.** Functions say what they did at the
   verbosity the user has chosen (see [Console
   messaging](#console-messaging)). Example:
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   reports the family and the directedness it read from the outcome.
 - **Results describe themselves.** A printed result is short, and
   carries what the user needs to interpret it. Example: a printed
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   says what was permuted and how many times, how loops were treated, and
   whether the outcome was read as directed.
 
@@ -298,6 +300,8 @@ users read:
 | reporter | the person whose report a CSS slice holds, after [manynet](https://stocnet.github.io/manynet/)’s `by` column | perceiver |
 | `bv` | the reporter index in the dyad-level data, after `by` | `pv` |
 | `testdist` | a null distribution: the statistics from every permutation or simulation, on a test or a fit | `dist` |
+| coefficient | the estimated or stated value of a model’s term, in code, help pages, and messages | parameter |
+| parameter | only the unknown population quantity that a test is about, as in [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md) | — |
 
 `mode` is reserved for a nodeset, as in one-mode and two-mode, which is
 what it means everywhere else in the ecosystem. Do not use it for
@@ -305,8 +309,8 @@ directedness. `permute` replaced `method` because “method” says nothing
 about what differs; `"predictor"` and `"outcome"` name the thing that is
 actually shuffled. `data` is retired as an identifier: it named the
 network in one half of
-[R/model_regression.R](https://stocnet.github.io/R/model_regression.R)
-and the matrix list in the other, one letter away from `.data`. Reserve
+[R/estimate_mrqap.R](https://stocnet.github.io/R/estimate_mrqap.R) and
+the matrix list in the other, one letter away from `.data`. Reserve
 `data =` for the argument a model fitter takes.
 
 When writing documentation or NEWS items, prefer breaking lines at
@@ -326,10 +330,13 @@ items:
   internal helper instead, e.g. `.helper_function()`.
 - Name a new class in camelCase, after the package plus a noun,
   e.g. `infernetConfusion`, so that a class does not look like a
-  snake_case function. See “Class names across the stocnet ecosystem” in
-  the [autograph](https://stocnet.github.io/autograph/) contributing
-  guide. Older names, such as `network_test`, stay until they can be
-  renamed with an alias.
+  snake_case function. Write an acronym as a word,
+  e.g. `infernetMrqapFit`, not `infernetMRQAPFit`. The nouns in use are
+  `Fit`, `Summary`, `Spec`, `Coefs`, and `Confusion`. See “Class names
+  across the stocnet ecosystem” in the
+  [autograph](https://stocnet.github.io/autograph/) contributing guide.
+  Older names, such as `network_test`, stay until they can be renamed
+  with an alias.
 
 ## Package architecture
 
@@ -355,9 +362,9 @@ root (or via `Rscript -e`).
 - Lint:
   [`lintr::lint_package()`](https://lintr.r-lib.org/reference/lint.html)
 - Spell check:
-  [`spelling::spell_check_package()`](https://docs.ropensci.org/spelling//reference/spell_check_package.html)
+  [`spelling::spell_check_package()`](https://docs.ropensci.org/spelling/reference/spell_check_package.html)
 - Code coverage:
-  [`covr::package_coverage()`](http://covr.r-lib.org/reference/package_coverage.md)
+  [`covr::package_coverage()`](https://covr.r-lib.org/reference/package_coverage.html)
 - Rebuild `README.md` from `README.Rmd`:
   [`devtools::build_readme()`](https://devtools.r-lib.org/reference/build_readme.html)
 - Check every topic is in the pkgdown index:
@@ -370,40 +377,94 @@ configured with `markdown = TRUE`; `NAMESPACE` and all `man/*.Rd` files
 are generated — never hand-edit them. Likewise `README.md` is generated
 from `README.Rmd` — edit the `.Rmd` and re-knit.
 
+### The inferential pipeline
+
+The package follows the stages of an inference.
+
+| Stage | Question | Functions |
+|----|----|----|
+| Testing | Is this one statistic more than chance? | [`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md), [`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md), [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md) |
+| Specifying | Which terms, and with which coefficients? | `specify_*()`, [`specify_terms()`](https://stocnet.github.io/infernet/reference/specify_terms.md), `terms_mrqap`, and [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md), with [`coef()`](https://rdrr.io/r/stats/coef.html) of a fit |
+| Estimating | What are the coefficients? | `estimate_*()`, `control_*()`, and `other_results` for the fits of other packages |
+| Evaluating | Can I trust this fit? Does the model fit the network, and which terms does it need? | `diagnose_*()`, [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) and [`residuals()`](https://rdrr.io/r/stats/residuals.html) of a fit; and [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md), [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md), [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md), [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md), [`anova()`](https://rdrr.io/r/stats/anova.html), and [`nobs()`](https://rdrr.io/r/stats/nobs.html), [`logLik()`](https://rdrr.io/r/stats/logLik.html), and [`deviance()`](https://rdrr.io/r/stats/deviance.html) of a fit |
+| Interpreting | What does a coefficient mean for the network? | [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md), [`formula()`](https://rdrr.io/r/stats/formula.html) and [`terms()`](https://rdrr.io/r/stats/terms.html) of a fit, [`simulate()`](https://rdrr.io/r/stats/simulate.html), and [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md) |
+
+The stage names are gerunds, and they are used in three places:
+
+- the sections of the function overview, in `pkgdown/_pkgdown.yml`;
+- the `##` headings of each version in `NEWS.md`, from 0.7.0;
+- the prefix of each file in `R/` and in `tests/testthat/`.
+
+Evaluating has two kinds of page, and their names keep them apart. A
+`diagnose_` page looks for issues inside one fit, such as outliers,
+changepoints, or residuals. An `evaluate_` or `test_` page judges the
+fit as a whole, against its simulations, against a hypothesis, or
+against another fit. The website and `NEWS.md` put the two kinds under
+one heading.
+
+A new function goes in the stage whose question it answers. Reporting is
+not a stage: each stage returns an object, and the methods that report
+that object go with the function that makes it. The other methods of an
+object go to the stage whose question they answer, such as
+[`residuals()`](https://rdrr.io/r/stats/residuals.html) to Evaluating
+(see [Documentation](#documentation)). The `test_` functions are in two
+stages.
+[`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+[`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md),
+and
+[`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md)
+test a statistic before there is a model, and
+[`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md),
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
+and
+[`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+evaluate a model. Their names follow
+[RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and
+[goldfish](https://stocnet.github.io/goldfish/), so they stay.
+
 ### File organization
 
-`R/` files are grouped by theme rather than one file per function. The
-user-facing files are named `test_*.R` for the `test_*()` functions,
-`specify_*.R` for the formula, its terms, and the `specify_*()`
-functions, `diagnose_*.R` for the `diagnose_*()` functions, `report_*.R`
-for every [`print()`](https://rdrr.io/r/base/print.html),
+`R/` files are grouped by stage rather than one file per function. A
+file that holds exported functions starts with its stage: `test_*.R` for
+Testing, `specify_*.R` for Specifying, `estimate_*.R` for Estimating,
+`diagnose_*.R` and `evaluate_*.R` for Evaluating, and `interpret_*.R`
+for Interpreting. The methods of the objects of a stage, such as
+[`print()`](https://rdrr.io/r/base/print.html),
 [`summary()`](https://rdrr.io/r/base/summary.html),
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
-[`glance()`](https://generics.r-lib.org/reference/glance.html) method,
-and `model_*.R` for the rest; the internal engine ported from `MrQAP` is
-named `qap_*.R`.
+[`glance()`](https://generics.r-lib.org/reference/glance.html), are in
+the `<stage>_report.R` file of that stage. `report_print.R` holds what
+every print shares, and the internal engine ported from `MrQAP` is named
+`qap_*.R`.
 
 | File | Contains |
 |----|----|
 | `test_measures.R` | the test family: [`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md) (CUG), [`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md), [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md) (QAP), and the null distribution of each |
-| `test_fit.R` | [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md) and [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md), generics with a method for each model they can simulate from, and the simulated p-value they share |
-| `test_parameter.R` | the generics [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md) and [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md), which [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and [goldfish](https://stocnet.github.io/goldfish/) share, their methods for a `netreg`, and the joint double semi-partialling they share |
-| `model_diffusion.R` | [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md), which simulates the diffusions of a `diffs_model` |
-| `model_regression.R` | [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md) and the list path |
-| `model_predict.R` | [`predict()`](https://stocnet.github.io/infernet/reference/predict.md) for a `netreg`, and for the `netlm` and `netlogit` results of [migraph](https://stocnet.github.io/migraph/) before 2.0.0 |
-| `model_control.R` | [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md), which names, defaults, and checks every control of [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md); the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`); and the persistent controls in `options(infernet.control)` (`.persisted_controls()`) |
-| `report_models.R` | two help pages: `netreg_results`, with the [`print()`](https://rdrr.io/r/base/print.html) of each `netreg` class, [`summary()`](https://rdrr.io/r/base/summary.html) and its print, [`tidy()`](https://generics.r-lib.org/reference/tidy.html), [`glance()`](https://generics.r-lib.org/reference/glance.html), and the accessors of a `netreg` ([`nobs()`](https://rdrr.io/r/stats/nobs.html), [`logLik()`](https://rdrr.io/r/stats/logLik.html), [`deviance()`](https://rdrr.io/r/stats/deviance.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`residuals()`](https://rdrr.io/r/stats/residuals.html), [`formula()`](https://rdrr.io/r/stats/formula.html), [`terms()`](https://rdrr.io/r/stats/terms.html)), each read from the observed model; and `other_results`, for the [migraph](https://stocnet.github.io/migraph/), [ergm](https://statnet.org), and [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) results; and the [`print()`](https://rdrr.io/r/base/print.html) and [`summary()`](https://rdrr.io/r/base/summary.html) of a `diffs_model` |
-| `report_tests.R` | the `report_tests` help page, with [`print()`](https://rdrr.io/r/base/print.html), [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and [`glance()`](https://generics.r-lib.org/reference/glance.html) of a `network_test` |
-| `report_diagnose.R` | [`print()`](https://rdrr.io/r/base/print.html), [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and [`glance()`](https://generics.r-lib.org/reference/glance.html) of the result of [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md) |
-| `report_specify.R` | [`print()`](https://rdrr.io/r/base/print.html) and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) of a formula from `specify_*()`, of the term table from [`specify_terms()`](https://stocnet.github.io/infernet/reference/specify_terms.md), and of [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md) |
-| `report_print.R` | what every print shares: the `#` title, sections, and footer, the p-values and their marks, the controls that differ from the default, and the verbosity at which a footer names more methods |
-| `diagnose_confusion.R` | [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md), with a method for each `netreg` of a binary outcome, the probabilistic confusion matrix, and the ROC curve and AUC |
+| `test_report.R` | [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rdrr.io/r/base/summary.html), [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and [`glance()`](https://generics.r-lib.org/reference/glance.html) of a `network_test`, on the `test_measures` help page |
+| `specify_formula.R` | [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md) and [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md), on the `specify_mrqap` and `specify_ergm` help pages: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish’s writer is goldfish’s own `specify_dynam()` |
+| `specify_coefs.R` | the generic [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md), its methods for a specification and for an `infernetMrqapFit`, [`print()`](https://rdrr.io/r/base/print.html) and [`coef()`](https://rdrr.io/r/stats/coef.html) of an `infernetMrqapCoefs`, and [`coef()`](https://rdrr.io/r/stats/coef.html) of an `infernetMrqapFit`; and its methods for an ergm formula and an `ergm`, with [`print()`](https://rdrr.io/r/base/print.html), [`coef()`](https://rdrr.io/r/stats/coef.html), and [`simulate()`](https://rdrr.io/r/stats/simulate.html) of an `infernetErgmCoefs` |
+| `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as [`RSiena::getEffects()`](https://rdrr.io/pkg/RSiena/man/make_specification.html) does, on the `specify_terms` help page, and its [`formula()`](https://rdrr.io/r/stats/formula.html) method |
 | `specify_registry.R` | the term registry `.formula_terms()` and goldfish’s terms that an MRQAP drops, `.dynam_terms()`; and the `terms_mrqap` help page, which gives each term’s equation |
 | `specify_builders.R` | the builder of each term, which makes its matrices for one network |
 | `specify_parse.R` | the formula front end: `.specify()`, `.evaluate_spec()`, the term table of a fit, and `specificationAdvice()` |
-| `specify_formula.R` | [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md) and [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md), on the `specify` help page: one reader of a formula written for any model, one writer for each model, and the record of what each model makes of each term; goldfish’s writer is goldfish’s own `specify_dynam()` |
-| `specify_terms.R` | the table of every term for a network that `specify_*()` gives without a formula, as `RSiena::getEffects()` does, on the `specify_terms` help page, and its [`formula()`](https://rdrr.io/r/stats/formula.html) method |
-| `specify_ergm.R` | the `to_ergm` writer of each term, which [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md) calls |
+| `specify_ergm.R` | the `to_ergm` writer of each term, which [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md) calls |
+| `specify_report.R` | [`print()`](https://rdrr.io/r/base/print.html) and [`summary()`](https://rdrr.io/r/base/summary.html) of a formula from `specify_*()`, with [`summary()`](https://rdrr.io/r/base/summary.html) on the page of its `specify_*()` function, and the deprecated [`tidy()`](https://generics.r-lib.org/reference/tidy.html); of the term table from [`specify_terms()`](https://stocnet.github.io/infernet/reference/specify_terms.md); and the print of [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md) |
+| `estimate_mrqap.R` | [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md) and the list path |
+| `estimate_control.R` | [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md), which names, defaults, and checks every control of [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md); the old names it converts (`.control_renames()`) and the options of other models it drops (`.control_foreign()`); the persistent controls in `options(infernet.control)` (`.persisted_controls()`); and [`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md) and [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md) |
+| `estimate_report.R` | the methods that report an `infernetMrqapFit`, on the `estimate_mrqap` help page: [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rdrr.io/r/base/summary.html) and its print, [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and [`glance()`](https://generics.r-lib.org/reference/glance.html); the helpers that the methods of a fit on other pages share, `.observed_model()` and `.refit_abort()`; and the `other_results` help page, for the [migraph](https://stocnet.github.io/migraph/), [ergm](https://statnet.org), and [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) results |
+| `diagnose_outliers.R` | the generic [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md), which [goldfish](https://stocnet.github.io/goldfish/) registers methods on, and its method for an `infernetMrqapFit` |
+| `diagnose_time.R` | the generics [`diagnose_changepoints()`](https://stocnet.github.io/infernet/reference/diagnose_time.md) and [`diagnose_onset()`](https://stocnet.github.io/infernet/reference/diagnose_time.md), which [goldfish](https://stocnet.github.io/goldfish/) registers methods on, and the abort that every default of a `diagnose_*()` generic shares |
+| `diagnose_confusion.R` | [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md), with methods for an `infernetMrqapFit` of a binary outcome and for an `ergm` of a binary network, the probabilistic confusion matrix, and the ROC curve and AUC |
+| `diagnose_report.R` | [`print()`](https://rdrr.io/r/base/print.html), [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and [`glance()`](https://generics.r-lib.org/reference/glance.html) of the result of [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md); and [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) and [`residuals()`](https://rdrr.io/r/stats/residuals.html) of an `infernetMrqapFit`, on the `diagnose_residuals` help page |
+| `evaluate_fit.R` | [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md) and [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md), generics with a method for each model they can simulate from, and the simulated p-value they share |
+| `evaluate_parameter.R` | the generics [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md) and [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md), which [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and [goldfish](https://stocnet.github.io/goldfish/) share, their methods for an `infernetMrqapFit`, the joint double semi-partialling they share, and [`anova()`](https://rdrr.io/r/stats/anova.html) of two nested fits |
+| `evaluate_report.R` | [`nobs()`](https://rdrr.io/r/stats/nobs.html), [`logLik()`](https://rdrr.io/r/stats/logLik.html), and [`deviance()`](https://rdrr.io/r/stats/deviance.html) of an `infernetMrqapFit`, on the `evaluate_likelihood` help page, so that [`AIC()`](https://rdrr.io/r/stats/AIC.html) and [`BIC()`](https://rdrr.io/r/stats/AIC.html) compare fits |
+| `interpret_predict.R` | [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md) for an `infernetMrqapFit`, and for the `netlm` and `netlogit` results of [migraph](https://stocnet.github.io/migraph/) before 2.0.0; and [`formula()`](https://rdrr.io/r/stats/formula.html) and [`terms()`](https://rdrr.io/r/stats/terms.html) of an `infernetMrqapFit`; on the `predict_mrqap` help page |
+| `interpret_simulate.R` | [`simulate()`](https://rdrr.io/r/stats/simulate.html) of an `infernetMrqapFit`, an `infernetMrqapCoefs`, and an `mrqap_formula`, on the `simulate_mrqap` help page, and the simulator that [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md) shares |
+| `interpret_diffusions.R` | [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md), which simulates the diffusions of a `diffs_model` |
+| `interpret_report.R` | [`print()`](https://rdrr.io/r/base/print.html), [`summary()`](https://rdrr.io/r/base/summary.html), and `[` of a `diffs_model`, on the `play_diffusions` help page |
+| `report_print.R` | what every print shares: the `#` title, sections, and footer, the p-values and their marks, the controls that differ from the default, and the verbosity at which a footer names more methods |
 | `qap_engine.R` | `QAPengine()` and `QAPPermEst()` — the one matrix-level engine, for both a dyadic network and a cognitive social structure |
 | `qap_shapes.R` | the four things the two shapes do differently, and nothing else |
 | `qap_draws.R` | the draw plan: the cells a model reads, the values a draw permutes, and the design that a linear model or a glm solves once |
@@ -412,11 +473,11 @@ named `qap_*.R`.
 | `infernet-package.R` | package-level doc, global variables, and the shim silencing R CMD check’s unused-import note |
 | `zzz.R` | the attach-time greeting and the cached stocnet version check |
 
-Only `test_*.R`, `specify_*.R`, `diagnose_*.R`, `report_*.R`, and
-`model_*.R` hold exported functions. Everything in `qap_*.R` is
-internal, and carries `@keywords internal` and `@noRd`. Keep it that
-way: the engine’s argument names are the `MrQAP` ones, and exporting
-them would freeze an interface we still intend to tidy.
+Only the files that start with a stage hold exported functions.
+Everything in `qap_*.R` and `report_print.R` is internal, and carries
+`@keywords internal` and `@noRd`. Keep it that way: the engine’s
+argument names are the `MrQAP` ones, and exporting them would freeze an
+interface we still intend to tidy.
 
 ### Input shapes
 
@@ -534,7 +595,7 @@ returns the array the engine fits. Do not build CSS arrays here:
 
 - **Detected, not declared.** `convertToMatrixList()` reads the
   outcome’s matrix and passes `css = TRUE` where it has three axes.
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   reports the detection and the number of reporters.
 - **Read all three axes.** A one-mode CSS from
   [manynet](https://stocnet.github.io/manynet/) has a slice for every
@@ -605,12 +666,12 @@ method and no new test.
 [goldfish](https://stocnet.github.io/goldfish/) export generics with the
 same name and signature, `test_gof(object, ...)`, so keep the signature:
 put `observed` and any other argument in the method, not in the generic.
-Until the packages share one generic (D17 of the roadmap), the package
-that is attached last masks the others;
+Until the packages share one generic, the package that is attached last
+masks the others;
 [`infernet::test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
 always reaches this one. The same holds for `test_parameter(x, ...)` and
 `test_time(x, ...)`, in
-[R/test_parameter.R](https://stocnet.github.io/R/test_parameter.R):
+[R/evaluate_parameter.R](https://stocnet.github.io/R/evaluate_parameter.R):
 their first argument is `x`, not `object`, as in
 [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and
 [goldfish](https://stocnet.github.io/goldfish/). Each method follows the
@@ -640,7 +701,7 @@ a permutation test of which model each simulation came from. It
 dispatches on the first model; a method checks that the second is of the
 same class. A worker of a parallel plan may load an installed copy of
 the package, so give it the internal helpers it calls by value, as
-[`test_gof.netreg()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+[`test_gof.infernetMrqapFit()`](https://stocnet.github.io/infernet/reference/test_fit.md)
 does.
 
 #### Tests of parameters
@@ -648,11 +709,11 @@ does.
 [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
 and
 [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
-test hypotheses about a fitted model’s coefficients. Their methods for a
-`netreg` share `.joint_test()`:
+test hypotheses about a fitted model’s coefficients. Their methods for
+an `infernetMrqapFit` share `.joint_test()`:
 
-1.  Take the dyads from `x$pred`, which every fit keeps, even with
-    `less_mem`, so the network is not needed again.
+1.  Take the dyads from `x$pred`, which every fit keeps, whatever its
+    `outputs`, so the network is not needed again.
 2.  Residualise the tested predictors on the untested ones, as one
     matrix. With gaussian fixed effects, demean first, as the engine
     does.
@@ -680,58 +741,61 @@ permutation has no clear meaning.
 
 #### Multivariate
 
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
-([R/model_regression.R](https://stocnet.github.io/R/model_regression.R))
-is the single regression entry point. Its control flow is:
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+([R/estimate_mrqap.R](https://stocnet.github.io/R/estimate_mrqap.R)) is
+the single regression entry point. Its control flow is:
 
 1.  Read the user’s `control` through
     [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
     so a control that is not named keeps its default, each value is
     checked, and an old name or another model’s option is converted or
     dropped before anything is fitted.
+
 2.  Read the formula with
-    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
     which rewrites the terms of other models, drops the terms an MRQAP
     cannot fit, and names each one.
+
 3.  Dispatch on the input shape. A single network goes to
     `convertToMatrixList()`, which parses the formula with `.specify()`
     and builds its matrices with `.evaluate_spec()`; a list of networks
     goes to `.prepare_list_of_graphs()`, which converts each network,
     drops the ones that are missing a predictor with a warning, and
     pools the rest.
-4.  Resolve `family = "auto"` against the dependent variable (binomial
-    for a 0/1 outcome, gaussian otherwise), and resolve `directed` and
-    `loops` from the network with `manynet::is_directed()` and
-    [`manynet::is_complex()`](https://stocnet.github.io/manynet/reference/mark_format_tie.html).
+
+4.  Resolve `family = NULL` against the dependent variable, with
+    `.auto_family()` (binomial for a 0/1 outcome, poisson for a count,
+    gaussian otherwise), and resolve `directed` and `loops` from the
+    network with `manynet::is_directed()` and
+    [`manynet::is_complex()`](https://stocnet.github.io/manynet/reference/defunct.html).
     Report each resolution with `snet_info()` so that the user can
     describe these (default) choices in a paper.
+
 5.  Call `QAPengine()`, which parses the formula, fits the baseline
     model once via `fit_qap_model()`, then runs `times` permutations and
     aggregates them.
+
 6.  Attach a probabilistic confusion matrix where the outcome is binary,
     as
     [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
     makes it.
+
 7.  Attach the term table, `fit$terms`, from the parts that
     `.evaluate_spec()` records for each column, in the order of the
     coefficients.
 
-The result is a `netreg`, with more specific classes in front of it:
+8.  Keep the optional parts that `outputs =` names: `simple_fit` for
+    `"model"`, `confusion_matrix` for `"confusion"`, and `draws` for
+    `"draws"`.
 
-| Result           | Class                                       |
-|------------------|---------------------------------------------|
-| gaussian         | `c("netreg_lm", "netreg")`                  |
-| any other family | `c("netreg_glm", "netreg")`                 |
-| a CSS            | `c("netreg_css", <family class>, "netreg")` |
-
-Write a method at the level where behaviour actually differs, and let S3
-fall back for the rest: [`print()`](https://rdrr.io/r/base/print.html)
-has a method for each of the three specific classes, while
+The result is a `c("infernetMrqapFit", "netreg")` of every family and
+shape (see [Shared model API](#shared-model-api)). A method reads
+`x$family`, `x$css`, and `x$panel` where its behaviour differs, as
+[`glance()`](https://generics.r-lib.org/reference/glance.html) and
+[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md)
+do, and is never written on a family.
 [autograph](https://stocnet.github.io/autograph/) needs only
-`plot.netreg()` until a CSS wants a plot of its own. The names say what
-the result is, not the procedure that made it, so they carry no `qap`,
-and none repeats a function’s name. A new kind of result gets a new
-specific class in front of `netreg`.
+`plot.netreg()` in 0.7.x.
 
 Inside `QAPengine()` the `permute` control names what the null
 distribution permutes: `"outcome"` permutes the dependent matrix only,
@@ -874,7 +938,7 @@ A parallel run pays only where each draw is costly. Starting a plan of
 two workers takes about half a second, and each worker then loads the
 package; switching to another plan and back starts the workers again.
 These are the times of
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 with `times = 500`, sequentially and with `ncores = 2`:
 
 | Network   | Family   | Sequential | `ncores = 2` |
@@ -905,6 +969,108 @@ and in the tutorials, is:
 Progress reporting is not a separate argument. It is read from
 `options(snet_verbosity)`, so that one option governs how talkative
 every stocnet package is.
+
+#### Shared model API
+
+Every `estimate_*()` function, here and in
+[goldfish](https://stocnet.github.io/goldfish/), shares one API, decided
+on 6 and 7 November 2026 for 0.7.0.
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+is its first user and `estimate_nem()` its second.
+[goldfish](https://stocnet.github.io/goldfish/) changes in lockstep: it
+imports infernet and registers its methods on infernet’s generics.
+
+- **Classes.** A fit is `infernet<Model>Fit`, as `infernetMrqapFit` and
+  `infernetNemFit`, with `infernetMrqapSummary`, `infernetMrqapSpec`,
+  and `infernetMrqapCoefs` beside it. Dispatch on the model, never on
+  the family: put the family, a CSS, or a panel in a field (`x$family`,
+  `x$css`, `x$panel`), since a nem model is a glm too. In 0.7.x a fit
+  keeps `netreg` as its second class, for
+  [autograph](https://stocnet.github.io/autograph/) and
+  [migraph](https://stocnet.github.io/migraph/). `netlm` and `netlogit`
+  are [migraph](https://stocnet.github.io/migraph/)’s old classes, which
+  we read but never make.
+- **Computation controls.** `seed`, `ncores`, and `strategy` are the
+  only controls that persist.
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  writes them to `options(snet_computation)` for the session, changes
+  only the controls it is given, removes one given as `NULL`, clears
+  them all with `persist = FALSE`, and returns the old values invisibly.
+  [`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  gives them to one call, as
+  `control = c(control_mrqap(...), control_computation(...))`. The call
+  wins, then
+  [`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
+  then the option, then the default. `times` is an argument, not a
+  control. Read the option only through `.resolve_control()`. An example
+  or a test that sets it clears it again, with base R.
+- **Outputs.** `outputs =` names the optional parts of a fit only. For
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  these are “model”, “confusion”, and “draws”, and the default,
+  `c("model", "confusion")`, keeps a fit as it was. The `@return`
+  section lists the required elements first, then each optional element
+  with the value that adds it. Use the same word for the same part in
+  every estimator (“model”, “data”, “draws”).
+- **Coefficients.**
+  [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md)
+  is a generic that makes an `infernet<Model>Coefs` from a specification
+  (with `family =`, and `sigma =` for a gaussian model) or from a fit.
+  It is a named vector, with the specification, the family, and `sigma`
+  as attributes, and `NA` for a value that is not stated. The names are
+  those of the columns that the specification builds, as the
+  coefficients of a fit; with `.data`, the method for a specification
+  checks them and gives a column without a value `NA`. Its
+  `family = NULL`, the default, reads the family from the outcome in
+  `.data` with `.auto_family()`, as
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  does (binomial for 0/1, poisson for whole numbers of 0 or more with
+  one above 1, gaussian otherwise), and aborts without `.data`;
+  [`simulate()`](https://rdrr.io/r/stats/simulate.html) of a
+  specification does the same, unless its coefficients carry a family.
+  [`coef()`](https://rdrr.io/r/stats/coef.html) always gives a plain
+  named vector.
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+  reads a set of coefficients or a fit in place of its formula, and its
+  values are initial values only where an estimator iterates
+  ([`glm()`](https://rdrr.io/r/stats/glm.html) and
+  [`MASS::glm.nb()`](https://rdrr.io/pkg/MASS/man/glm.nb.html)); every
+  other estimator says that it does not use them.
+- **Simulation.** Each model has three
+  [`stats::simulate()`](https://rdrr.io/r/stats/simulate.html) methods:
+  on a fit, on its coefficients, and on its specification with `coefs =`
+  (named, since the second argument of the generic is `nsim`). The
+  default `seed` is `getOption("snet_computation")$seed`. The
+  coefficients and the specification need `.data`, since the predictors
+  are built from it. The result is always a list of `nsim` networks, of
+  the class of `.data`, or `stocnet` without it. Give each draw its own
+  random stream with `future.seed = TRUE`, as `.simulate_statistic()`
+  does, so that the result does not depend on the plan. For an MRQAP,
+  all three routes and
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)
+  draw through `.mrqap_simulator()` or `.coefs_simulator()` in
+  `R/interpret_simulate.R`. A gaussian, binomial, or poisson model
+  without random or fixed effects draws from its coefficients, with the
+  same calls to the generator as
+  [`stats::simulate()`](https://rdrr.io/r/stats/simulate.html) of the
+  same [`lm()`](https://rdrr.io/r/stats/lm.html) or
+  [`glm()`](https://rdrr.io/r/stats/glm.html), so a fit and its
+  coefficients give the same networks. Any other fit draws with
+  [`stats::simulate()`](https://rdrr.io/r/stats/simulate.html) of its
+  `simple_fit`. A fit keeps `dims` and `twomode`, so that it can place a
+  draw without `.data`.
+- **Shared generics.**
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md),
+  [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
+  [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
+  [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md),
+  [`diagnose_changepoints()`](https://stocnet.github.io/infernet/reference/diagnose_time.md),
+  and
+  [`diagnose_onset()`](https://stocnet.github.io/infernet/reference/diagnose_time.md)
+  live here, with [goldfish](https://stocnet.github.io/goldfish/)’s
+  signatures, and their first argument is `x` (or `object` for
+  [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md)).
+  Do not change a signature without
+  [goldfish](https://stocnet.github.io/goldfish/).
 
 #### Console messaging
 
@@ -1060,16 +1226,16 @@ might correspond to those in other packages.
     formula written for another model should still run here, without the
     terms this model cannot fit, so that it does not stop the
     investigation.
-    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify.md),
+    [`specify_mrqap()`](https://stocnet.github.io/infernet/reference/specify_mrqap.md),
     which
-    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
     calls on every formula, drops them with one warning that names each
     term and the reason, and the rest is fitted. It rewrites a term that
     has an MRQAP equivalent, such as ergm’s `nodematch("dept")` as
     `same(dept)`, and names a term that means something different here,
     such as goldfish’s `sim()`, with `snet_info()`. An interaction with
     such a term is dropped whole.
-    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+    [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
     does the same for ergm, and goldfish’s own `specify_dynam()` for
     goldfish. Each reads the formula into infernet’s terms, and then
     writes them for its model, so a new model needs one reader and one
@@ -1136,7 +1302,7 @@ might correspond to those in other packages.
 #### The dictionary
 
 The MRQAP column is what
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 does with the term: it **fits** it, it fits it and **warns**, it
 **drops** it and fits the rest, or it **refuses** the formula. The
 registry `.formula_terms()` holds the same for each term (`mrqap`), with
@@ -1156,8 +1322,9 @@ status of every registered term in every model.
 
 Without a formula, or with `.` as the whole right-hand side
 (`advice ~ .`), each `specify_*()` function gives a table of every term
-that its model can take for `.data`, as `RSiena::getEffects()` does.
-`.term_candidates()` in
+that its model can take for `.data`, as
+[`RSiena::getEffects()`](https://rdrr.io/pkg/RSiena/man/make_specification.html)
+does. `.term_candidates()` in
 [R/specify_terms.R](https://stocnet.github.io/R/specify_terms.R) writes
 out each registered term for the network’s layers and node attributes,
 by the shape of the network: `same()` and `mix()` for a categorical
@@ -1177,7 +1344,7 @@ layer or an attribute, and a test in `test-specify_terms.R`.
 their formula, through the same `specify_*()`.
 
 The ergm column is also what
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md)
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md)
 writes each term as, through the term’s `to_ergm` function in the
 registry: the first ergm term named, or else `edgecov` of the matrix
 that infernet builds. An undirected network reads `ego()` and `alter()`
@@ -1247,7 +1414,7 @@ registry: several ergm terms read as one infernet term, by the network’s
 shape, and most of ergm’s terms have no infernet term. A test in
 `test-specify_ergm.R` reads each ergm term that has an infernet
 equivalent, writes it back with
-[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md),
+[`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md),
 and checks that it comes back as itself, so that the reader and the
 writers agree.
 
@@ -1291,7 +1458,7 @@ writers agree.
     what it measures, the equation of its cell `x_ij` as the builder
     computes it, its column names, and its equivalents in other models;
     and add its name to the list in the `formula` parameter of
-    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
 
 ## Preparing Contributions
 
@@ -1305,35 +1472,43 @@ start first.
 
 #### File structure
 
-The test files mirror `R/`. `test-test_*.R`, `test-specify_*.R`, and
-`test-model_*.R` test the exported functions of `R/test_*.R`,
-`R/specify_*.R`, and `R/model_*.R`, and `test-qap_*.R` tests the
-contracts of the engine in `R/qap_*.R`. A file name says where to look
-when a test fails, and a test name says what failed: write it as a
-statement of what is true, such as “a two-mode network contributes every
-cell of the incidence matrix”, not “two-mode works”.
+The test files mirror `R/`: `test-<file>.R` tests `R/<file>.R`. So the
+test files of the exported functions start with their stage too, such as
+`test-estimate_mrqap.R` and `test-evaluate_parameter.R`, and
+`test-qap_*.R` tests the contracts of the engine in `R/qap_*.R`.
+`test-specify_record.R`, `test-functional.R`, `test-parallel.R`, and
+`test-tutorials.R` test what runs across files. A file name says where
+to look when a test fails, and a test name says what failed: write it as
+a statement of what is true, such as “a two-mode network contributes
+every cell of the incidence matrix”, not “two-mode works”.
 
 | File | Asserts |
 |----|----|
 | `test-test_measures.R` | [`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md), [`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md), and [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md): the statistic, its draws, both tails, and the controls they read |
-| `test-test_fit.R` | [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md) and [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md): each method, and what they refuse |
-| `test-test_parameter.R` | [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md) and [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md): the signature of the generics of [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and [goldfish](https://stocnet.github.io/goldfish/), and the dyads of the model in every shape |
-| `test-model_diffusion.R` | [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md) and its old arguments |
-| `test-model_regression.R` | what [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md) returns: the classes of a result, and what each print method reports |
-| `test-model_predict.R` | [`predict()`](https://stocnet.github.io/infernet/reference/predict.md) of each family, against the fitted values of the equivalent standard fit |
-| `test-model_control.R` | [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md), the persistent controls, the choice of null hypothesis, and the messages that report what the model resolved |
-| `test-model_results.R` | [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and [`glance()`](https://generics.r-lib.org/reference/glance.html), on hand-built results, on fits, and on the results of [migraph](https://stocnet.github.io/migraph/) and [ergm](https://statnet.org); the stored null distribution, `testdist`; and the methods of a `netreg`, against the values of the equivalent [`lm()`](https://rdrr.io/r/stats/lm.html) or [`glm()`](https://rdrr.io/r/stats/glm.html), with fixed effects, fixed ties, and `less_mem` |
+| `test-evaluate_fit.R` | [`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md) and [`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md): each method, and what they refuse |
+| `test-evaluate_parameter.R` | [`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md) and [`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md): the signature of the generics of [RSiena](https://www.stats.ox.ac.uk/~snijders/siena/) and [goldfish](https://stocnet.github.io/goldfish/), and the dyads of the model in every shape; and [`anova()`](https://rdrr.io/r/stats/anova.html) of two nested fits |
+| `test-specify_coefs.R` | [`declare_coefs()`](https://stocnet.github.io/infernet/reference/declare_coefs.md): the names against the columns of a fit, the coefficients of a fit, the print, and what it refuses |
+| `test-interpret_simulate.R` | [`simulate()`](https://rdrr.io/r/stats/simulate.html): the same networks by every route for one seed, the draw of [`stats::simulate()`](https://rdrr.io/r/stats/simulate.html), the class of the result, and what it refuses |
+| `test-interpret_diffusions.R` | [`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md), its old arguments, and `[` of a `diffs_model` |
+| `test-estimate_mrqap.R` | what [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md) returns: the class of a result, what its print reports, and each value of `outputs` |
+| `test-interpret_predict.R` | [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md) of each family, against the fitted values of the equivalent standard fit; and [`formula()`](https://rdrr.io/r/stats/formula.html) and [`terms()`](https://rdrr.io/r/stats/terms.html) of an `infernetMrqapFit` |
+| `test-estimate_control.R` | [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md), the persistent controls, the choice of null hypothesis, and the messages that report what the model resolved |
+| `test-estimate_report.R` | [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and [`glance()`](https://generics.r-lib.org/reference/glance.html), on hand-built results, on fits, and on the results of [migraph](https://stocnet.github.io/migraph/) and [ergm](https://statnet.org); the stored null distribution, `testdist`; and the coefficients of an `infernetMrqapFit`, against the equivalent [`lm()`](https://rdrr.io/r/stats/lm.html) or [`glm()`](https://rdrr.io/r/stats/glm.html) |
+| `test-diagnose_report.R` | [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) and [`residuals()`](https://rdrr.io/r/stats/residuals.html) of an `infernetMrqapFit`, against the equivalent [`lm()`](https://rdrr.io/r/stats/lm.html) or [`glm()`](https://rdrr.io/r/stats/glm.html), with fixed effects and no `outputs` |
+| `test-evaluate_report.R` | [`nobs()`](https://rdrr.io/r/stats/nobs.html), [`logLik()`](https://rdrr.io/r/stats/logLik.html), and [`deviance()`](https://rdrr.io/r/stats/deviance.html) of an `infernetMrqapFit`, against the equivalent [`lm()`](https://rdrr.io/r/stats/lm.html) or [`glm()`](https://rdrr.io/r/stats/glm.html), with fixed effects, fixed ties, and no `outputs` |
 | `test-report_print.R` | the print of every result and of [`summary()`](https://rdrr.io/r/base/summary.html), as snapshots |
+| `test-diagnose_outliers.R` | [`diagnose_outliers()`](https://stocnet.github.io/infernet/reference/diagnose_outliers.md): [goldfish](https://stocnet.github.io/goldfish/)’s signature, and its method for an MRQAP |
+| `test-diagnose_time.R` | [`diagnose_changepoints()`](https://stocnet.github.io/infernet/reference/diagnose_time.md) and [`diagnose_onset()`](https://stocnet.github.io/infernet/reference/diagnose_time.md): [goldfish](https://stocnet.github.io/goldfish/)’s signature, and the abort with no method |
 | `test-diagnose_confusion.R` | [`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md): the metrics and the AUC against a hand count, the models it refuses, and its print |
 | `test-specify_parse.R` | the grammar: named arguments, interactions of any order, the outcome, and refused formulas |
 | `test-specify_builders.R` | each term’s matrix against a value computed by hand, or by a loop over the equation on `terms_mrqap`, and the dictionary |
 | `test-specify_formula.R` | what the terms of each model become in each `specify_*()` function, and how the model a formula was written for is read |
-| `test-specify_record.R` | the status that each model gives each registered term, and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) of the record |
-| `test-specify_ergm.R` | [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify.md) with a network, and an ergm fit of the result |
+| `test-specify_record.R` | the status that each model gives each registered term, and [`summary()`](https://rdrr.io/r/base/summary.html) of the record |
+| `test-specify_ergm.R` | [`specify_ergm()`](https://stocnet.github.io/infernet/reference/specify_ergm.md) with a network, and an ergm fit of the result |
 | `test-specify_terms.R` | the table of every term for each shape of network, and [`formula()`](https://rdrr.io/r/stats/formula.html) of its rows |
 | `test-qap_estimators.R` | each `family` and random-effect combination, against the equivalent standard fit |
 | `test-qap_shapes.R` | the dyads that reach the model, for each shape of network, and the engine’s own checks |
-| `test-qap_css.R` | the CSS shape: the engine on hand-built arrays, then [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md) on [manynet](https://stocnet.github.io/manynet/) networks |
+| `test-qap_css.R` | the CSS shape: the engine on hand-built arrays, then [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md) on [manynet](https://stocnet.github.io/manynet/) networks |
 | `test-qap_missing.R` | that every permutation keeps the missing cells, and so the dyads, of the observed model, and the `missing` control |
 | `test-qap_panel.R` | a longitudinal network as a panel: the waves, the lagged terms, and one permutation for every wave |
 | `test-qap_fixed.R` | fixed effects, against [`lm()`](https://rdrr.io/r/stats/lm.html) with dummies and [fixest](https://lrberge.github.io/fixest/) |
@@ -1512,7 +1687,7 @@ Note that `options(snet_verbosity)` is unset under `R CMD check`,
 because manynet’s `.onAttach` only sets it in an interactive session.
 Never write a test that depends on `snet_info()` output unless it sets
 `snet_verbosity = "verbose"` itself, as the messages in
-`test-model_control.R` do.
+`test-estimate_control.R` do.
 
 A fitter’s warning raised inside the permutation loop is held back,
 since it would print once per draw; `aggregate_perm_results()` reports
@@ -1520,7 +1695,7 @@ the number of draws that failed outright. A test therefore should not
 expect a convergence warning from a permutation, only from the baseline.
 
 Cover each change with tests. Measure the coverage with
-[`covr::package_coverage()`](http://covr.r-lib.org/reference/package_coverage.md)
+[`covr::package_coverage()`](https://covr.r-lib.org/reference/package_coverage.html)
 before a release, and close the gaps in error paths, messages, and the
 two-mode and CSS paths first. `# nocov start` and `# nocov end` can
 exclude lines that cannot be reached from a test.
@@ -1534,8 +1709,52 @@ after changing any roxygen comment.
 
 - Related functions share one roxygen block via `@name`/`@rdname`,
   matching the file organisation above.
+
+- Name each help page `<verb>_<object>`, where the verb is the prefix of
+  the functions on it, such as `estimate_mrqap`, `diagnose_outliers`, or
+  `test_parameter`. Then a section of the function overview can select
+  its pages with `starts_with()`. When you rename a page, keep the old
+  name as an `@aliases`, and add the old address to `redirects:` in
+  `pkgdown/_pkgdown.yml`.
+
+- Put a method on the help page of the stage whose question it answers.
+  A method that only reports its object, such as
+  [`print()`](https://rdrr.io/r/base/print.html),
+  [`summary()`](https://rdrr.io/r/base/summary.html),
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html), or
+  [`glance()`](https://generics.r-lib.org/reference/glance.html), goes
+  on the page of the function that makes the object: the methods that
+  report an `infernetMrqapFit` are on `estimate_mrqap`, those of a
+  `network_test` are on `test_measures`, and those of a `diffs_model`
+  are on `play_diffusions`. Other methods go to their stage, even when
+  the object is a fit:
+
+  | Methods of an `infernetMrqapFit` | Stage | Page |
+  |----|----|----|
+  | [`coef()`](https://rdrr.io/r/stats/coef.html) | Specifying | `declare_coefs` |
+  | [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`residuals()`](https://rdrr.io/r/stats/residuals.html) | Evaluating | `diagnose_residuals` |
+  | [`nobs()`](https://rdrr.io/r/stats/nobs.html), [`logLik()`](https://rdrr.io/r/stats/logLik.html), [`deviance()`](https://rdrr.io/r/stats/deviance.html) | Evaluating | `evaluate_likelihood` |
+  | [`anova()`](https://rdrr.io/r/stats/anova.html) | Evaluating | `test_parameter` |
+  | [`predict()`](https://stocnet.github.io/infernet/reference/predict_mrqap.md), [`formula()`](https://rdrr.io/r/stats/formula.html), [`terms()`](https://rdrr.io/r/stats/terms.html) | Interpreting | `predict_mrqap` |
+
+  A page that holds only methods takes the prefix of its stage, such as
+  `diagnose_residuals`, so that its section still selects it. The page
+  of the function that makes the object lists every method, with a link
+  to its page. The fits of other packages are on `other_results`.
+
+- Give each help page the `@family` of its stage, so that its “See also”
+  links to the other pages of that stage: `testing functions`,
+  `specifying functions`, `estimating functions`,
+  `evaluating functions`, or `interpreting functions`. A page that only
+  another page’s `@rdname` holds needs no `@family`.
+
+- Give a [`print()`](https://rdrr.io/r/base/print.html) method a help
+  entry only when it has an argument of its own. Otherwise give it
+  `@export` and `@noRd`, and describe the print on the help page of the
+  function that makes the object.
+
 - Document each argument once.
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
   takes its options through a `control` list, and each control is a
   formal argument of
   [`control_mrqap()`](https://stocnet.github.io/infernet/reference/control_mrqap.md),
@@ -1545,18 +1764,22 @@ after changing any roxygen comment.
   for something that is no longer a formal argument is an R CMD check
   warning, and the duplicated blocks that the engine merge introduced
   were exactly that.
+
 - Every exported function needs a runnable `@examples` block: examples
   are run by R CMD check, and they are also the fastest documentation
   for users. Prefer the bundled `ison_*`/`fict_*` networks from
   [manynet](https://stocnet.github.io/manynet/) over ad hoc
   constructions, and keep `times` small so the example is fast.
+
 - Use the native pipe `|>` in examples, never `%>%`.
   [migraph](https://stocnet.github.io/migraph/) shipped examples that
   called `%>%` after the re-export was removed, and every one of them
   failed R CMD check.
+
 - Cite the source of a method with `@references` in the ecosystem’s
   format (authors, year, title, journal, and `\doi{}` where available),
   so that users can trace an implementation back to its definition.
+
 - Documented behaviour and implemented behaviour must agree. When you
   change a default, search the roxygen for it too.
 
@@ -1584,7 +1807,14 @@ pkgdown::build_site(preview = FALSE)  # everything else
 The most common failure is a new exported function that is not picked up
 under the function overview (the `reference:` section of `_pkgdown.yml`)
 — pkgdown requires *every* exported topic to appear there exactly once,
-or it will not build. A helper that users are not meant to call takes
+or it will not build. The sections are the stages of [the inferential
+pipeline](#the-inferential-pipeline), in order, and most select their
+pages with `starts_with()`, so a page that is named for its stage needs
+no change to `_pkgdown.yml`. Testing and Evaluating both hold `test_`
+pages, so these two sections name their pages. Add a selector, such as
+`starts_with("declare_")` or `starts_with("simulate")`, when the first
+page that it selects exists: a selector that selects nothing is an
+error. A helper that users are not meant to call takes
 `@keywords internal` instead. These `reference:` titles are also the
 headings used in `NEWS.md` (see below), so keep the two in step.
 
@@ -1592,11 +1822,25 @@ headings used in `NEWS.md` (see below), so keep the two in step.
 
 `NEWS.md` groups each version’s changes under `##` headings that mirror
 the website function overview (`pkgdown/_pkgdown.yml` `reference:`
-titles). Lead with `## Package` (package-wide/website/infrastructure
-changes), then `## Tests` (the `test_*()` family) and `## Regression`
-([`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
-and the engine behind it). Each heading appears at most once per
-version.
+titles). From 0.7.0, these headings are the stages of [the inferential
+pipeline](#the-inferential-pipeline), in this order:
+
+1.  `## Package`, for changes to the whole package, the website, and the
+    infrastructure
+2.  `## Testing`
+3.  `## Specifying`
+4.  `## Estimating`, which includes the engine behind
+    [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
+5.  `## Evaluating`, which includes the `diagnose_*()` functions
+6.  `## Interpreting`
+7.  `## Tutorials`
+
+Put a change under the stage of the function that it changes, not of the
+file. For example, a change to
+[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+goes under `## Evaluating`. Leave out a heading that has no changes.
+Each heading appears at most once per version. Versions before 0.7.0
+keep their old headings.
 
 Start each bullet with a verb matching the change type:
 
@@ -1661,16 +1905,13 @@ function documentation, if necessary.
 
 For example, instead of:
 
-> Fixed a bug where, in some cases,
-> [`print.network_test()`](https://stocnet.github.io/infernet/reference/report_tests.md)
-> was not returning its input invisibly, which meant that
-> `x <- print(test)` assigned NULL.
+> Fixed a bug where, in some cases, `print.network_test()` was not
+> returning its input invisibly, which meant that `x <- print(test)`
+> assigned NULL.
 
 write:
 
-> Fixed
-> [`print.network_test()`](https://stocnet.github.io/infernet/reference/report_tests.md)
-> to return its input invisibly
+> Fixed `print.network_test()` to return its input invisibly
 
 and instead of:
 

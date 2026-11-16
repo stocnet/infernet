@@ -1,9 +1,9 @@
 # Controls for an MRQAP
 
 `control_mrqap()` sets the controls of
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md),
 checks each one, and returns them as an object of class `mrqap_control`.
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 passes its `control` argument through this function, so
 `control = list(family = "poisson")` and
 `control = control_mrqap(family = "poisson")` fit the same model.
@@ -11,7 +11,11 @@ Calling `control_mrqap()` first shows the full set of controls, and
 finds a mistake before a long run starts. The tests, such as
 [`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md),
 read `ncores`, `strategy`, and `seed` from the same object, so one set
-of controls serves a model and a test alike.
+of controls serves a model and a test alike. These three computation
+controls can also be set for the session with
+[`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
+or for one call with
+[`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md).
 
 A control that is not named keeps its default. A name that infernet used
 before is converted to its current name, with a warning. An option of
@@ -26,7 +30,7 @@ Any other name aborts, and the nearest control is suggested.
 ``` r
 control_mrqap(
   permute = c("predictor", "outcome"),
-  family = c("auto", "gaussian", "binomial", "poisson", "negbin", "zip"),
+  family = NULL,
   directed = NULL,
   loops = NULL,
   seed = NULL,
@@ -43,9 +47,6 @@ control_mrqap(
   persist = FALSE,
   ...
 )
-
-# S3 method for class 'mrqap_control'
-print(x, ...)
 ```
 
 ## Arguments
@@ -61,11 +62,15 @@ print(x, ...)
 
 - family:
 
-  The family of the model. `"auto"` (the default) reads it from the
-  outcome: `"binomial"` for a binary outcome, otherwise `"gaussian"`,
-  and says which. The others are `"gaussian"`, `"binomial"`,
-  `"poisson"`, `"negbin"` (with `{MASS}`), and `"zip"`, a zero-inflated
-  Poisson (with `{pscl}`).
+  The family of the model. `NULL` (the default) reads it from the
+  outcome's observed values, and says which: `"binomial"` for 0/1
+  values; `"poisson"` for whole numbers of 0 or more, with at least one
+  above 1; and `"gaussian"` otherwise. A rating or a rank on a scale of
+  whole numbers also reads as a count, so name the family of such an
+  outcome. `"auto"`, its name before infernet 0.7.0, still works and
+  warns. The others are `"gaussian"`, `"binomial"`, `"poisson"`,
+  `"negbin"` (with `{MASS}`), and `"zip"`, a zero-inflated Poisson (with
+  `{pscl}`).
 
 - directed:
 
@@ -82,7 +87,9 @@ print(x, ...)
 
   A number to set the random seed with before the permutations, so that
   a fit can be reproduced. `NULL` (the default) leaves the seed as it
-  is. The same seed gives the same result on any `strategy`.
+  is, unless a seed is set with
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md).
+  The same seed gives the same result on any `strategy`.
 
 - groups:
 
@@ -102,7 +109,9 @@ print(x, ...)
   with 1,000 or more `times`. Elsewhere the start of the workers costs
   more than it saves: a gaussian model solves its design once, so each
   permutation is cheap. Give `ncores` rather than
-  `strategy = "multisession"`, which starts a worker on every core.
+  `strategy = "multisession"`, which starts a worker on every core. Set
+  it for the session with
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md).
 
 - strategy:
 
@@ -137,74 +146,54 @@ print(x, ...)
   that every permutation is fitted on the same dyads as the observed
   model. `"fail"` stops instead, and names how many dyads are unobserved
   on each variable. See the section on missing data in
-  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md).
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md).
 
 - less_mem:
 
-  Logical, whether to leave the observed model object out of the result,
-  to save memory on a large network. `FALSE` by default.
+  Deprecated. Use `outputs =` of
+  [`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md):
+  `less_mem = TRUE` leaves `"model"` out of `outputs`, so that the
+  result keeps no observed model object.
 
 - persist:
 
-  Logical, whether the controls given in this call become the defaults
-  of the session. See the section on persistent controls. `FALSE` by
-  default, which changes nothing. Given as `persist = FALSE`, it clears
-  the persistent controls.
+  Deprecated. Use
+  [`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+  instead. See the section on persistent controls.
 
 - ...:
 
   Controls by another name: a name that infernet used before, or an
   option of another model. See the description.
 
-- x:
-
-  An object of class `mrqap_control`.
-
 ## Value
 
 An object of class `mrqap_control`: a list with one element for each
-control. Its attribute `source` says whether each control was `"given"`,
-comes from an `"option"`, or keeps its `"default"`.
-[`print()`](https://rdrr.io/r/base/print.html) returns `x`, invisibly.
+control. Its attribute `source` says whether each control was `"given"`
+(in the call or by
+[`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)),
+comes from an `"option"`, or keeps its `"default"`. The print shows each
+control and where its value comes from.
 
 ## Persistent controls
 
-`control_mrqap(ncores = 2, missing = "fail", persist = TRUE)` writes the
-controls that it is given to `options(infernet.control)`, after it
-checks them. Each later call of
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md),
-[`test_random()`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_configuration()`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_permutation()`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_gof()`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_distributions()`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
-[`test_time()`](https://stocnet.github.io/infernet/reference/test_parameter.md),
-and
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md)
-then uses them as defaults, and says so with
-`options(snet_verbosity = "verbose")`.
+[`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md)
+sets `seed`, `ncores`, and `strategy` for the session, and each call of
+`control_mrqap()` then uses them where they are not given. A control
+given in the call takes priority, then one from
+[`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
+then the option, then the default. `control_mrqap()` marks each control
+that comes from an option with `(option)`. It reads the options when it
+is called, so its result keeps the same controls if the options change
+later.
 
-- A control given in a call takes priority over a persistent one. Give
-  `strategy = NULL` in a call to use the plan of
-  [`future::plan()`](https://future.futureverse.org/reference/plan.html)
-  where a `strategy` or `ncores` persists.
-
-- A second call with `persist = TRUE` adds to the persistent controls,
-  and replaces a control that it gives again. A control given as `NULL`,
-  such as `control_mrqap(ncores = NULL, persist = TRUE)`, is removed.
-
-- `control_mrqap(persist = FALSE)` clears all of them.
-
-- `control_mrqap()` shows the controls in force, and marks each one that
-  comes from the persistent controls with `(option)`.
-
-- `control_mrqap()` reads the persistent controls when it is called, so
-  its result keeps the same controls if the options change later.
-
-A `seed` can persist. Each call then sets the same seed, and so draws
-the same random numbers, which reproduces each result. The print of a
-result gives the seed that it used.
+`persist = TRUE` is deprecated, and warns once in a session. It still
+writes the computation controls that it is given with
+[`set_control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
+and the other controls to `options(infernet.control)`. That option is
+read until infernet 0.8.0, and a computation control in
+`options(snet_computation)` takes priority over it. `persist = FALSE`
+clears both options.
 
 Every result records the controls that it used, as `control` (an
 attribute of a `diffs_model`). Give that record as `control` to fit the
@@ -219,18 +208,10 @@ conditions." *Psychometrika* 72(4): 563-581.
 
 ## See also
 
-Other models:
-[`diagnose_confusion()`](https://stocnet.github.io/infernet/reference/diagnose_confusion.md),
+Other estimating functions:
+[`control_computation()`](https://stocnet.github.io/infernet/reference/control_computation.md),
 [`other_results`](https://stocnet.github.io/infernet/reference/other_results.md),
-[`play_diffusions()`](https://stocnet.github.io/infernet/reference/play_diffusions.md),
-[`print.netreg_lm()`](https://stocnet.github.io/infernet/reference/netreg_results.md),
-[`regression`](https://stocnet.github.io/infernet/reference/regression.md),
-[`specify`](https://stocnet.github.io/infernet/reference/specify.md),
-[`specify_terms`](https://stocnet.github.io/infernet/reference/specify_terms.md),
-[`terms_mrqap`](https://stocnet.github.io/infernet/reference/terms_mrqap.md),
-[`test_fit`](https://stocnet.github.io/infernet/reference/test_fit.md),
-[`test_measures`](https://stocnet.github.io/infernet/reference/test_measures.md),
-[`test_parameter()`](https://stocnet.github.io/infernet/reference/test_parameter.md)
+[`print.infernetMrqapFit()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 
 ## Examples
 
@@ -243,25 +224,15 @@ control_mrqap(family = "poisson", seed = 1)
 # A name that infernet used before is converted, with a warning
 control_mrqap(nullhyp = "qapy")
 #> Warning: `nullhyp = "qapy"` is now `permute = "outcome"`.
-#> The control was renamed in infernet 0.2.0.
+#> ℹ The control was renamed in infernet 0.2.0.
+#> ℹ See `help('defunct', package = 'manynet')`.
 #> # Controls for an MRQAP: 1 set, 14 at their defaults
 #> 
 #>   permute  "outcome"
-# Controls that later calls use as defaults
-control_mrqap(missing = "fail", seed = 1, persist = TRUE)
+# Computation controls for this call only
+c(control_mrqap(family = "poisson"), control_computation(seed = 2))
 #> # Controls for an MRQAP: 2 set, 13 at their defaults
 #> 
-#>   seed     1
-#>   missing  "fail"
-control_mrqap()
-#> # Controls for an MRQAP: 2 set, 13 at their defaults
-#> 
-#>   seed     1  (option)
-#>   missing  "fail"  (option)
-#> 
-#> # (option) persists from control_mrqap(..., persist = TRUE);
-#> #   control_mrqap(persist = FALSE) clears it.
-control_mrqap(persist = FALSE)
-#> # Controls for an MRQAP: 0 set, 15 at their defaults
-#> 
+#>   family  "poisson"
+#>   seed    2
 ```

@@ -22,7 +22,7 @@ and one-mode or two-mode networks alike. Plotting results belongs in
 [autograph](https://stocnet.github.io/autograph/).
 
 Full package documentation — common dev commands, file organization, the
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)
 pipeline, function body and parallelism conventions, console messaging,
 dependency practice, test conventions, `NEWS.md` conventions, and
 branching/CI — lives in
@@ -37,7 +37,7 @@ Note that from [migraph](https://stocnet.github.io/migraph/) 2.0.0, its
 [`test_fit()`](https://stocnet.github.io/infernet/reference/test_fit.md)
 are shims that call [infernet](https://stocnet.github.io/infernet/)
 (`net_regression()` calls
-[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/regression.md)),
+[`estimate_mrqap()`](https://stocnet.github.io/infernet/reference/estimate_mrqap.md)),
 and warn once that they are deprecated. Make a fix here;
 [migraph](https://stocnet.github.io/migraph/) needs no port.
 
