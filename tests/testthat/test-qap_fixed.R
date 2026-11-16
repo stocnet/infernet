@@ -30,11 +30,11 @@ test_that("a bare bar that cannot be read aborts and says why", {
 test_that("each model's formula says what it makes of a fixed effect", {
   f <- specify_mrqap(advice ~ same(dept) | sender + receiver)
   expect_equal(deparse(f[[3]]), "same(dept) | sender + receiver")
-  expect_equal(tidy(f)$status, c("fits", "fits", "fits"))
+  expect_equal(summary(f)$status, c("fits", "fits", "fits"))
 
   e <- specify_ergm(advice ~ same(dept) | sender + receiver)
   expect_true(all(c("sender", "receiver") %in% all.vars(e)))
-  expect_equal(tidy(e)$as[tidy(e)$term == "| sender"], "sender")
+  expect_equal(summary(e)$as[summary(e)$term == "| sender"], "sender")
 })
 
 # ---- gaussian: absorbed once ---------------------------------------------------
@@ -138,7 +138,7 @@ test_that("a cognitive social structure absorbs a reporter fixed effect", {
   fit <- estimate_mrqap(advice ~ same(dept) + reports | reporter,
                         manynet::ison_hightech, times = 5,
                         control = list(seed = 1, family = "gaussian"))
-  expect_s3_class(fit, "netreg_css")
+  expect_true(fit$css)
   expect_equal(fit$fixed_effects, "reporter")
   expect_output(print(fit), "with reporter fixed effects")
 })
@@ -188,7 +188,7 @@ test_that("an interaction fits with a reporter fixed effect on a CSS", {
       advice ~ friends + ego(level) + friends:ego(level) | reporter,
       manynet::ison_hightech, times = 5,
       control = list(seed = 1, family = family))
-    expect_s3_class(fit, "netreg_css")
+    expect_true(fit$css)
     expect_equal(names(fit$coefficients),
                  c("(Intercept)", "friends", "ego_level", "friends:ego_level"))
     expect_false(anyNA(fit$coefficients[-1]))

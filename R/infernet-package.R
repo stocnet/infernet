@@ -7,20 +7,6 @@
 ## usethis namespace: end
 NULL
 
-# Checks for a package in Suggests, and aborts with the install command where it
-# is missing. Deliberately not a prompt: `utils::askYesNo()` reads from stdin,
-# and a permutation run started from a script would stall on it.
-#' @keywords internal
-#' @noRd
-thisRequires <- function(pkgname, why) {
-  if (!requireNamespace(pkgname, quietly = TRUE)) {
-    manynet::snet_abort(
-      c(paste0("The {.pkg ", pkgname, "} package is required ", why, "."),
-        i = paste0("Install it with {.run install.packages(\"", pkgname, "\")}.")))
-  }
-  invisible(TRUE)
-}
-
 # Suppress R CMD check note
 # Namespace in Imports field not imported from: PKG
 #   All declared Imports should be used.
@@ -30,5 +16,15 @@ ignore_unused_imports <- function() {
   netrics::net_by_heterophily
   NULL
 }
+
+# Load `{future}` and `{future.apply}` with infernet, not at their first use.
+# `{future}` sets its default options, such as "future.globals.method.default",
+# only when it loads. A learnr tutorial removes every option that an exercise
+# added, so where `{future}` first loaded inside an exercise, its defaults went
+# with it, and the next exercise that used it stopped with "Internal R options
+# 'future.globals.method.default' is corrupt: NULL".
+#' @importFrom future plan
+#' @importFrom future.apply future_lapply
+NULL
 
 # nocov end

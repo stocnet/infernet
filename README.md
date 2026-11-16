@@ -140,13 +140,13 @@ specify_ergm(advice ~ ego(age) + same(dept) + recip + trans)
 #> # adapted trans -> ttriple
 ```
 
-`tidy()` of a specification gives one row for each term, with what the
+`summary()` of a specification gives one row for each term, with what the
 model makes of it on a network:
 
 ``` r
 spec <- specify_mrqap(advice ~ ego(age) + same(dept) + recip(friends) + inertia,
                       ison_hightech)
-tidy(spec, ison_hightech)[, c("term", "status", "reason")]
+summary(spec, ison_hightech)[, c("term", "status", "reason")]
 #> # A tibble: 4 x 3
 #>   term           status reason                                                  
 #>   <chr>          <chr>  <chr>                                                   
@@ -303,17 +303,19 @@ predict(model, data.frame(ego_Citations = 10, alter_Citations = 50,
 ## Learn more
 
 The [website](https://stocnet.github.io/infernet/) has a page for every
-function, and there are three tutorials:
+function, and there are four tutorials:
 
 - “Diversity and Regression” moves from univariate tests to network
   regression.
-- “Diffusion and Learning” simulates diffusions and tests their fit.
+- “Diffusion and Contagion” simulates diffusions and tests their fit.
+- “Opinion and Learning” plays how opinions move towards consensus or
+  apart.
 - “Modelling with ERGMs” fits, interprets, and checks exponential random
   graph models with `{ergm}`.
 
 To run them interactively, install `{migraph}` and run
-`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`, or
-`migraph::run_tute("ERGMs")`.
+`migraph::run_tute("diversity")`, `migraph::run_tute("diffusion")`,
+`migraph::run_tute("opinion")`, or `migraph::run_tute("ERGMs")`.
 
 ## Design principles
 

@@ -1,5 +1,5 @@
 # What each model makes of each term: the record that every `specify_*()`
-# function keeps, and `tidy()` of it. These tests hold the status of every
+# function keeps, and `summary()` of it. These tests hold the status of every
 # registered term in every model, so a new term fails here until its status in
 # each model is written down.
 
@@ -11,11 +11,11 @@
 status_in <- function(specify, label, g, tidied = FALSE) {
   f <- suppressWarnings(suppressMessages(
     specify(stats::as.formula(paste("a ~", label, "+ ego(x)")), g)))
-  record <- if (tidied) suppressWarnings(tidy(f, g)) else attr(f, "record")
+  record <- if (tidied) suppressWarnings(summary(f, g)) else attr(f, "record")
   unique(record$status[record$term == label])
 }
 
-# mrqap is the record; tidied is `tidy()` with the network, which builds each
+# mrqap is the record; tidied is `summary()` with the network, which builds each
 # term. ergm names the term in its own formula, and the registry's `ergm` says
 # which term that is.
 expected_status <- utils::read.table(header = TRUE, stringsAsFactors = FALSE, text = "
@@ -136,11 +136,11 @@ test_that("an ergm formula read for an MRQAP records each ergm term", {
   expect_equal(record$as[record$term == "net"], ".")
 })
 
-# ---- tidy() ----------------------------------------------------------------------
+# ---- summary() -------------------------------------------------------------------
 
-test_that("tidy() returns the record as a tibble, with the same columns for each model", {
+test_that("summary() returns the record as a tibble, with the same columns for each model", {
   f <- suppressWarnings(specify_mrqap(a ~ inertia + ego(x) + sim(x)))
-  t <- tidy(f)
+  t <- summary(f)
   expect_s3_class(t, "tbl_df")
   expect_named(t, c("term", "status", "as", "reason", "columns"))
   expect_equal(t$status, c("drops", "fits", "interpreted"))
@@ -149,15 +149,15 @@ test_that("tidy() returns the record as a tibble, with the same columns for each
   # Without the network, nothing is built.
   expect_equal(lengths(t$columns), c(0, 0, 0))
   e <- suppressMessages(specify_ergm(a ~ ego(x) + same(grp)))
-  expect_named(tidy(e), c("term", "status", "as", "reason"))
-  expect_equal(tidy(e)$as, c("nodeocov(\"x\")", "nodematch(\"grp\")"))
+  expect_named(summary(e), c("term", "status", "as", "reason"))
+  expect_equal(summary(e)$as, c("nodeocov(\"x\")", "nodematch(\"grp\")"))
 })
 
-test_that("tidy() with the network names the columns estimate_mrqap() builds", {
+test_that("summary() with the network names the columns estimate_mrqap() builds", {
   g <- formula_net()
   f <- suppressWarnings(specify_mrqap(
     a ~ ego(x) + same(grp, diff = TRUE) + indeg(b, node = "ego") + ego(x):same(grp) + b + inertia, g))
-  t <- suppressWarnings(tidy(f, g))
+  t <- suppressWarnings(summary(f, g))
   # `stats::terms()` puts an interaction after the terms of lower order.
   expect_equal(t$term[6], "ego(x):same(grp)")
   expect_equal(t$columns,
@@ -168,19 +168,19 @@ test_that("tidy() with the network names the columns estimate_mrqap() builds", {
   expect_equal(names(fit$coefficients)[-1], unlist(t$columns))
 })
 
-test_that("tidy() with the network refuses a term whose matrix cannot be built", {
+test_that("summary() with the network refuses a term whose matrix cannot be built", {
   g <- formula_net()
   f <- specify_mrqap(a ~ ego(x) + global(gdp))
-  t <- tidy(f, g)
+  t <- summary(f, g)
   expect_equal(t$status, c("fits", "refuses"))
   expect_false(is.na(t$reason[2]))
   expect_length(t$columns[[2]], 0)
 })
 
-test_that("tidy() of an ergm read of a rewritten term names each ergm term", {
+test_that("summary() of an ergm read of a rewritten term names each ergm term", {
   g <- formula_net()
   f <- suppressWarnings(specify_mrqap(net ~ edges + nodecov("x"), g))
-  t <- tidy(f, g)
+  t <- summary(f, g)
   expect_equal(t$as[t$term == "nodecov(\"x\")"], "ego(x) + alter(x)")
   expect_equal(t$columns[[which(t$term == "nodecov(\"x\")")]], c("ego_x", "alter_x"))
 })
@@ -214,22 +214,22 @@ test_that("formulas from goldfish's documentation are read without aborting", {
       `offset(recip, coef = 0)` = "drops"),
     c(inertia = "drops", `ego(actors$floor)` = "adapted"))
   for (k in seq_along(formulas)) {
-    t <- suppressWarnings(suppressMessages(tidy(specify_mrqap(formulas[[k]]))))
+    t <- suppressWarnings(suppressMessages(summary(specify_mrqap(formulas[[k]]))))
     expect_equal(stats::setNames(t$status, t$term), expected[[k]],
                  info = deparse(formulas[[k]]))
   }
   # goldfish's `~ indeg` reads the outcome's own degree, and is dropped, where
   # naming the outcome is refused.
-  t <- suppressWarnings(tidy(specify_mrqap(calls ~ indeg(calls) + tie(friendship))))
+  t <- suppressWarnings(summary(specify_mrqap(calls ~ indeg(calls) + tie(friendship))))
   expect_equal(t$status[1], "refuses")
   expect_error(suppressWarnings(specify_mrqap(calls ~ 1 + indeg + outdeg)),
                "No term.*indeg.*outdeg")
-  t <- suppressWarnings(tidy(specify_mrqap(calls ~ ego(actors$floor))))
+  t <- suppressWarnings(summary(specify_mrqap(calls ~ ego(actors$floor))))
   expect_equal(t$as, "ego(floor)")
 })
 
 test_that("goldfish's formulas are written for ergm as they should be", {
-  e <- suppressWarnings(suppressMessages(tidy(specify_ergm(
+  e <- suppressWarnings(suppressMessages(summary(specify_ergm(
     calls ~ inertia + indeg + offset(recip, coef = 0) + ego(actors$floor)))))
   expect_equal(stats::setNames(e$reason, e$term),
                c(inertia = "has no ergm term",
@@ -244,9 +244,20 @@ test_that("the offsets of an ergm formula are kept for ergm", {
   expect_match(paste(deparse(f[[3]]), collapse = ""), "offset(mutual)", fixed = TRUE)
 })
 
-test_that("tidy() gives each reason as text, without cli markup", {
-  e <- suppressWarnings(suppressMessages(tidy(specify_ergm(
+test_that("summary() gives each reason as text, without cli markup", {
+  e <- suppressWarnings(suppressMessages(summary(specify_ergm(
     a ~ ego(x) + sim(x) + indeg(b)))))
   expect_false(any(grepl("{", e$reason, fixed = TRUE)))
   expect_match(e$reason[e$term == "sim(x)"], "needs .data", fixed = TRUE)
+})
+
+test_that("tidy() of a specification is deprecated, warns once, and gives the summary", {
+  f <- specify_mrqap(a ~ ego(x) + same(grp))
+  e <- specify_ergm(a ~ ego(x) + same(grp))
+  old <- .infernet_state$warned_tidy_spec
+  on.exit(.infernet_state$warned_tidy_spec <- old)
+  .infernet_state$warned_tidy_spec <- NULL
+  expect_snet_warning(out <- tidy(f), "deprecated")
+  expect_equal(out, summary(f))
+  expect_no_warning(expect_equal(tidy(e), summary(e)))
 })

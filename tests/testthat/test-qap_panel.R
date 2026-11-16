@@ -19,7 +19,7 @@ test_that("a longitudinal network is read as a panel", {
 })
 
 test_that("inertia, recip, and trans read the previous wave", {
-  waves <- manynet::to_waves(qap_net_panel(n = 10))
+  waves <- manynet::to_times(qap_net_panel(n = 10))
   ml <- convertToMatrixList(. ~ inertia + recip + trans, waves[[2]],
                             advise = FALSE, previous = waves[[1]])
   prev <- manynet::as_matrix(waves[[1]])
@@ -31,7 +31,7 @@ test_that("inertia, recip, and trans read the previous wave", {
 })
 
 test_that("a cross-sectional network drops inertia and trans, with a warning", {
-  one <- manynet::to_wave(qap_net_panel(n = 10), 2)
+  one <- manynet::to_time(qap_net_panel(n = 10), 2)
   expect_false(.is_panel(one))
   expect_warning(
     fit <- estimate_mrqap(. ~ inertia + trans + ego(age), one, times = 5,
@@ -47,14 +47,14 @@ test_that("a panel records each lagged term as fitted, and as an MRQAP term", {
   on.exit(options(old), add = TRUE)
   expect_no_message(f <- specify_mrqap(. ~ inertia + trans + ego(age), g),
                     message = "written for")
-  rec <- tidy(f, .data = g)
+  rec <- summary(f, .data = g)
   expect_equal(rec$status, rep("fits", 3))
   expect_equal(unlist(rec$columns), c("inertia", "trans", "ego_age"))
   expect_equal(attr(f, "input"), "mrqap")
 })
 
 test_that("a list of waves is read as independent networks, not as a panel", {
-  waves <- manynet::to_waves(qap_net_panel(n = 10))
+  waves <- manynet::to_times(qap_net_panel(n = 10))
   expect_false(.is_panel(waves))
   fit <- estimate_mrqap(. ~ ego(age), waves, times = 5, control = list(seed = 1))
   expect_false(fit$panel)
@@ -97,7 +97,7 @@ test_that("the blocks of a panel keep every wave's missing cells in place", {
 
 test_that("a panel with missing data uses the observed dyads in every draw", {
   g <- qap_net_panel(n = 12, waves = 3)
-  waves <- manynet::to_waves(g)
+  waves <- manynet::to_times(g)
   ml <- lapply(2:3, function(t) {
     convertToMatrixList(. ~ inertia + ego(age), waves[[t]], advise = FALSE,
                         previous = waves[[t - 1]])$mydata
@@ -168,7 +168,7 @@ test_that("a 0/1 lagged term on a complete ranking is refused by name", {
 })
 
 test_that("inertia(weighted = TRUE) reads the value of the previous tie", {
-  waves <- manynet::to_waves(ranking_panel())
+  waves <- manynet::to_times(ranking_panel())
   ml <- convertToMatrixList(. ~ inertia(weighted = TRUE), waves[[2]],
                             advise = FALSE, previous = waves[[1]])
   expect_equal(unname(ml$mydata$inertia), unname(manynet::as_matrix(waves[[1]])))

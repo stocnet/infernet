@@ -1,3 +1,101 @@
+# infernet 0.7.0
+
+## Package
+
+- Improved the function overview to follow the stages of an inference
+  - Sections are Testing, Specifying, Estimating, Evaluating, and Interpreting
+  - Each help page links to the other pages of its stage under "See also"
+
+## Testing
+
+- Added `summary()` of a `network_test`, with quantiles of the null (closes #27)
+
+## Specifying
+
+- Added `declare_coefs()` to set coefficients 
+  - The coefficients of a fit keep the random intercepts that a control turned on
+  - Without `family =`, the family is read from the outcome in `.data`
+  - Added `declare_coefs.ergm_formula()` to set coefficients for an ergm formula
+  - Added `declare_coefs.ergm_fit()` to set coefficients for an ergm fit 
+- Added `coef.infernetMrqapCoefs()` and `coef.infernetMrqapFit()` for plain vectors
+- Renamed `tidy.mrqap_formula()` to `summary.mrqapFormula()` to table its terms
+- Added `specify_saom()` to write a formula for `RSiena::siena()`
+  - Each term becomes its RSiena effect, such as `ego(sex)` as `egoX(sex)`
+  - With `.data`, returns the `sienaEffects` object, with the `sienadata` as its `data`
+- Improved `specify_mrqap()` and `specify_ergm()` to read RSiena formulas and `sienaEffects` objects
+
+## Estimating
+
+- Improved `estimate_mrqap()` to read information from its inputs
+  - Now can read coefficients or a fit as its formula for `glm()` and `MASS::glm.nb()`
+  - Improved `family=` inference to read a count as `"poisson"` rather than `"gaussian"`
+  - Renamed its output class to `infernetMrqapFit`
+  - Added `outputs =` for the optional parts of a fit, deprecating `less_mem =`
+- Added computation controls that every `estimate_*()` and `test_*()` shares (closes #20)
+  - `set_control_computation()` sets `seed`, `ncores`, and `strategy` for the session
+  - `control_computation()` sets them for one call
+
+## Evaluating
+
+- Added `anova()` of two nested fits, through `test_parameter()` (closes #23)
+  - Refuses fits whose shared columns, random intercepts, or fixed effects differ
+- Fixed the node names of `diagnose_outliers()` and of the random intercepts in `summary()`
+  - A reporter or node with no observed cell no longer shifts the names of the later ones
+  - The receivers of a two-mode network are named from its second mode
+- Improved `test_gof()` of an MRQAP to draw with the simulator of `simulate()`
+- Added `diagnose_outliers()`, `diagnose_changepoints()`, and `diagnose_onset()`
+  - Each is a generic with `{goldfish}`'s signature `(x, ...)`
+  - `diagnose_outliers()` flags the dyads of an MRQAP with extreme residuals
+- Merged the two `diagnose_confusion()` methods into one for an MRQAP
+- Added `diagnose_confusion.ergm()` for a binary network
+
+## Interpreting
+
+- Added `simulate()` of an MRQAP from a fit, its coefficients, or a specification (closes #24)
+  - The routes give the same networks for one seed, sequentially and in parallel
+  - The result is a list of networks of the class of `.data`, or `stocnet`
+- Added `[` for a `diffs_model`, so that a subset of its rows still prints
+- Added `sweep_diffusion()` and `sweep_opinion()` to play models for each setting
+  - e.g. `vary = list(transmissibility = c(0.1, 0.5))`
+  - `sweep_diffusion()` returns `.diffusionSweep`, with share infected and steps until all adopt
+  - `sweep_opinion()` returns `.opinionSweep`, with opinion clusters, consensus, and spread at the end
+
+## Tutorials
+
+- Improved infernet tutorials to use infernet blue
+- Fixed simulations in a learnr tutorial failing from the second exercise
+- Fixed the QAP test exercise of the "Diversity and Regression" tutorial
+  - Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
+- Renamed the "Diffusion and Learning" tutorial to "Diffusion and Contagion"
+  - Compares independent cascades with thresholds, and finds wide bridges
+  - Tests contagion models against the adoption times of `ison_physicians`
+  - Draws the simulated diffusions as a band around the observed diffusion
+  - Adds `background` as the innovation rate of the Bass model
+  - Adds own states, a voter model, `direction`, and a diffusion on a panel
+  - Compares a complex contagion on clustered and random networks (Centola 2010)
+  - Compares clustered and spread seeds, and finds the tipping point of a committed minority
+  - Sorts network interventions into the four strategies of Valente (2012)
+  - Measures thresholds and adopter categories in `ison_physicians` (Valente 1995)
+  - Compares exposure through contacts and through structural equivalents (Burt 1987)
+  - Corrects the reproduction number, the terms for simple and complex contagion, and four quizzes
+  - Uses `threshold=` and `onset=`, the new names in `{manynet}` 2.5.0
+  - Adds a note for analysts on what the models assume
+  - Moved its learning models to a new "Opinion and Learning" tutorial
+- Added the "Opinion and Learning" tutorial, as `infernet3`
+  - Plays DeGroot learning, stubbornness, and bounded confidence
+  - Compares maximally diverse groups from `node_in_roulette()` with groups of like minds
+  - Polarises `irps_wwi` by repulsion along its negative ties
+  - Compares `node_by_influence()` with eigenvector centrality
+  - Measures the speed of a consensus with `net_by_convergence()`
+  - Adds wisdom of crowds, misinformation by zealots, and a recap of equilibria
+  - Shows that talking makes a crowd wiser in an egalitarian network
+  - Adds a note for analysts on what the models assume
+  - Lets every node listen to itself in the wisdom of crowds, so that the star settles
+- Improved the "Modelling with ERGMs" tutorial
+  - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
+  - Interprets `gwesp` and `gwdegree`, including disagreement on effect of its decay
+  - Moved tutorial to `infernet4`
+
 # infernet 0.6.2
 
 ## Modelling

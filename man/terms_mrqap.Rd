@@ -229,9 +229,9 @@ names with \code{:}, such as \code{ego_age:same_office}.
 
 \section{Equivalents in other models}{
 
-A formula written for \code{{ergm}} or \code{{goldfish}} can be used as it is, and
-\code{\link[=specify_mrqap]{specify_mrqap()}} and \code{\link[=specify_ergm]{specify_ergm()}} rewrite a formula for each other's
-model. The nearest term of each is:\tabular{llll}{
+A formula written for \code{{ergm}}, \code{{goldfish}}, or \code{{RSiena}} can be used
+as it is, and \code{\link[=specify_mrqap]{specify_mrqap()}}, \code{\link[=specify_ergm]{specify_ergm()}}, and \code{\link[=specify_saom]{specify_saom()}}
+rewrite a formula for each other's model. The nearest term of each is:\tabular{llll}{
    infernet \tab ergm \tab goldfish \tab RSiena \cr
    \code{ego(x)} \tab \code{nodeocov("x")}, \code{nodeofactor("x")}; \code{b1cov("x")} in a two-mode network; \code{nodecov("x")} in an undirected one \tab \code{ego(x)} \tab \code{egoX} \cr
    \code{alter(x)} \tab \code{nodeicov("x")}, \code{nodeifactor("x")}; \code{b2cov("x")} in a two-mode network \tab \code{alter(x)} \tab \code{altX} \cr
@@ -245,12 +245,13 @@ model. The nearest term of each is:\tabular{llll}{
    \code{sim(x)} \tab \code{edgecov()} \tab \code{sim(x)}, as minus the absolute difference \tab \code{simX}, centred \cr
    a layer, or \code{tie(layer)} \tab \code{edgecov()} \tab \code{tie(layer)} \tab \code{X} \cr
    \code{exchange(layer)} \tab \code{edgecov()} of the transpose \tab \code{recip(layer)} \tab  \cr
-   \code{indeg(layer)}, \code{outdeg(layer)} \tab \code{edgecov()} \tab \code{indeg(layer)}, \code{outdeg(layer, type = "ego")} \tab  \cr
+   \code{indeg(layer)}, \code{outdeg(layer)} \tab \code{edgecov()} \tab \code{indeg(layer)}, \code{outdeg(layer, type = "ego")} \tab \code{inPop}, \code{outAct}, of the outcome \cr
    \code{tertius(layer, x)}, \code{tertius_diff(layer, x)} \tab \code{edgecov()} \tab the same, with the sender among the in-neighbours \tab  \cr
    \code{global(x)} \tab  \tab \code{global(x)} \tab  \cr
    \code{recip} \tab \code{mutual} \tab \code{recip} \tab \code{recip} \cr
    \code{inertia} \tab  \tab \code{inertia} \tab  \cr
    \code{trans} \tab \code{ttriple} \tab \code{trans} \tab \code{transTrip} \cr
+   \code{cycle}, \code{four} \tab \code{ctriple}, \code{cycle(4)} \tab \code{cycle}, \code{four} \tab \code{cycle3}, \code{cycle4} \cr
 }
 
 
@@ -261,14 +262,14 @@ formula. ergm's \code{edges} is the intercept, which an MRQAP always has.
 The reporter terms have no equivalent, since no other model has a
 reporter. ergm's terms of the outcome's own structure, such as \code{gwesp()},
 and goldfish's endogenous effects, such as \code{cycle}, have no MRQAP term,
-and an MRQAP drops them (see \link{specify}).
+and an MRQAP drops them (see \link{specify_mrqap}).
 }
 
 \examples{
 # Every term that suits a network, and the columns of some of them
 specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-     manynet::ison_lawfirm)
+summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+        manynet::ison_lawfirm)
 }
 \references{
 Haunss, Sebastian, and James Hollway. 2023.
@@ -292,17 +293,12 @@ Computational Aspects."
 \code{\link[=estimate_mrqap]{estimate_mrqap()}} fits a formula of these terms; \link{specify_terms}
 lists the terms that suit a network.
 
-Other models:
-\code{\link[=control_mrqap]{control_mrqap()}},
-\code{\link[=diagnose_confusion]{diagnose_confusion()}},
-\code{\link{other_results}},
-\code{\link[=play_diffusions]{play_diffusions()}},
-\code{\link[=print.netreg_lm]{print.netreg_lm()}},
-\code{\link{regression}},
-\code{\link{specify}},
-\code{\link{specify_terms}},
-\code{\link{test_fit}},
-\code{\link{test_measures}},
-\code{\link[=test_parameter]{test_parameter()}}
+Other specifying functions:
+\code{\link[=declare_coefs]{declare_coefs()}},
+\code{\link{declare_coefs_ergm}},
+\code{\link[=specify_ergm]{specify_ergm()}},
+\code{\link[=specify_mrqap]{specify_mrqap()}},
+\code{\link[=specify_saom]{specify_saom()}},
+\code{\link{specify_terms}}
 }
-\concept{models}
+\concept{specifying functions}

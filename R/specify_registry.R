@@ -204,9 +204,9 @@
 #'   names with `:`, such as `ego_age:same_office`.
 #'
 #' @section Equivalents in other models:
-#'   A formula written for `{ergm}` or `{goldfish}` can be used as it is, and
-#'   [specify_mrqap()] and [specify_ergm()] rewrite a formula for each other's
-#'   model. The nearest term of each is:
+#'   A formula written for `{ergm}`, `{goldfish}`, or `{RSiena}` can be used
+#'   as it is, and [specify_mrqap()], [specify_ergm()], and [specify_saom()]
+#'   rewrite a formula for each other's model. The nearest term of each is:
 #'
 #'   | infernet | ergm | goldfish | RSiena |
 #'   |---|---|---|---|
@@ -222,12 +222,13 @@
 #'   | `sim(x)` | `edgecov()` | `sim(x)`, as minus the absolute difference | `simX`, centred |
 #'   | a layer, or `tie(layer)` | `edgecov()` | `tie(layer)` | `X` |
 #'   | `exchange(layer)` | `edgecov()` of the transpose | `recip(layer)` | |
-#'   | `indeg(layer)`, `outdeg(layer)` | `edgecov()` | `indeg(layer)`, `outdeg(layer, type = "ego")` | |
+#'   | `indeg(layer)`, `outdeg(layer)` | `edgecov()` | `indeg(layer)`, `outdeg(layer, type = "ego")` | `inPop`, `outAct`, of the outcome |
 #'   | `tertius(layer, x)`, `tertius_diff(layer, x)` | `edgecov()` | the same, with the sender among the in-neighbours | |
 #'   | `global(x)` | | `global(x)` | |
 #'   | `recip` | `mutual` | `recip` | `recip` |
 #'   | `inertia` | | `inertia` | |
 #'   | `trans` | `ttriple` | `trans` | `transTrip` |
+#'   | `cycle`, `four` | `ctriple`, `cycle(4)` | `cycle`, `four` | `cycle3`, `cycle4` |
 #'
 #'   `sim()` is on another scale in goldfish, which changes its coefficient
 #'   but not its test, and goldfish's `tertius()` counts the sender among the
@@ -236,7 +237,7 @@
 #'   The reporter terms have no equivalent, since no other model has a
 #'   reporter. ergm's terms of the outcome's own structure, such as `gwesp()`,
 #'   and goldfish's endogenous effects, such as `cycle`, have no MRQAP term,
-#'   and an MRQAP drops them (see [specify]).
+#'   and an MRQAP drops them (see [specify_mrqap]).
 #'
 #' @references
 #'   Haunss, Sebastian, and James Hollway. 2023.
@@ -258,12 +259,12 @@
 #' @seealso [estimate_mrqap()] fits a formula of these terms; [specify_terms]
 #'   lists the terms that suit a network.
 #' @name terms_mrqap
-#' @family models
+#' @family specifying functions
 #' @examples
 #' # Every term that suits a network, and the columns of some of them
 #' specify_mrqap(advice ~ ., manynet::ison_lawfirm)
-#' tidy(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
-#'      manynet::ison_lawfirm)
+#' summary(specify_mrqap(advice ~ ego(age) + same(office) + sim(age)),
+#'         manynet::ison_lawfirm)
 NULL
 
 # ---- the term registry -------------------------------------------------------
@@ -294,7 +295,8 @@ NULL
 # there is none. `to_ergm` converts the term for `specify_ergm()`,
 # in specify_ergm.R: to the named ergm term, or to `edgecov()` of the
 # matrix `build` makes. A term with an `ergm` name and no `to_ergm` is not yet
-# converted.
+# converted. `to_saom` converts the term for `specify_saom()`, in
+# specify_saom.R, to the RSiena effect that `saom` names.
 #' @keywords internal
 #' @noRd
 .formula_terms <- function() {
@@ -304,39 +306,39 @@ NULL
       formals = alist(x = , levels = NULL), kind = "attribute", build = .build_ego,
       mrqap = "fits", dynam = "ego", saom = "egoX",
       ergm = "nodeocov, or nodeofactor for a categorical attribute",
-      to_ergm = .ergm_ego),
+      to_ergm = .ergm_ego, to_saom = .saom_ego),
     alter = list(
       title = "the receiver's value of the attribute",
       formals = alist(x = , levels = NULL), kind = "attribute", build = .build_alter,
       mrqap = "fits", dynam = "alter", saom = "altX",
       ergm = "nodeicov, or nodeifactor for a categorical attribute",
-      to_ergm = .ergm_alter),
+      to_ergm = .ergm_alter, to_saom = .saom_alter),
     same = list(
       title = "whether the sender and the receiver share a category",
       formals = alist(x = , diff = FALSE, levels = NULL), kind = "attribute",
       build = .build_same, mrqap = "fits",
       dynam = "same, without diff = TRUE", saom = "sameX, without diff = TRUE",
       ergm = "nodematch, with the same diff",
-      to_ergm = .ergm_same),
+      to_ergm = .ergm_same, to_saom = .saom_same),
     diff = list(
       title = "the difference between the sender's and the receiver's values",
       formals = alist(x = , transformer_fn = abs), kind = "attribute",
       build = .build_diff, mrqap = "fits", dynam = "diff",
       saom = "absDiffX, or diffX with transformer_fn = identity",
       ergm = "absdiff, or diff with transformer_fn = identity",
-      to_ergm = .ergm_diff),
+      to_ergm = .ergm_diff, to_saom = .saom_diff),
     dist = list(
       title = "the difference between the sender's and the receiver's values",
       formals = alist(x = ), kind = "attribute", build = .build_dist,
       mrqap = "warns", reason = "is a deprecated alias of diff()",
       dynam = "diff", saom = "absDiffX", ergm = "absdiff",
-      to_ergm = .ergm_dist),
+      to_ergm = .ergm_dist, to_saom = .saom_dist),
     sim = list(
       title = "the similarity of the sender's and the receiver's values",
       formals = alist(x = ), kind = "attribute", build = .build_sim,
       mrqap = "fits", dynam = "sim, as a negative difference",
       saom = "simX, centred", ergm = "edgecov",
-      to_ergm = .ergm_built),
+      to_ergm = .ergm_built, to_saom = .saom_sim),
     match = list(
       title = "whether the sender and the receiver share each category",
       formals = alist(x = ), kind = "attribute", build = .build_match,
@@ -356,7 +358,7 @@ NULL
       formals = alist(layer = , weighted = FALSE), kind = "layer",
       build = .build_tie, outcome = "refuse",
       mrqap = "fits", dynam = "tie", saom = "X", ergm = "edgecov",
-      to_ergm = .ergm_built),
+      to_ergm = .ergm_built, to_saom = .saom_tie),
     recip = list(
       title = "the reverse tie",
       formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
@@ -365,7 +367,7 @@ NULL
       outcome = "warn", mrqap = "warns", reason = .outcome_reason(),
       dynam = "recip", saom = "recip",
       ergm = "mutual, or edgecov of the transpose",
-      to_ergm = .ergm_recip),
+      to_ergm = .ergm_recip, to_saom = .saom_recip),
     exchange = list(
       title = "the reverse tie in another layer",
       formals = alist(layer = , weighted = NULL), kind = "layer", build = .build_recip,
@@ -378,16 +380,18 @@ NULL
       title = "the number of incoming ties in a layer",
       formals = alist(layer = , node = "alter", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_indeg, outcome = "refuse", bare = TRUE,
-      mrqap = "fits", dynam = "indeg", saom = NA_character_,
+      mrqap = "fits", dynam = "indeg",
+      saom = "inPop, or inAct with node = \"ego\", of the outcome",
       ergm = "edgecov, or nodeicov of the degree",
-      to_ergm = .ergm_built),
+      to_ergm = .ergm_built, to_saom = .saom_degree),
     outdeg = list(
       title = "the number of outgoing ties in a layer",
       formals = alist(layer = , node = "ego", weighted = FALSE, type = NULL),
       kind = "layer", build = .build_outdeg, outcome = "refuse", bare = TRUE,
-      mrqap = "fits", dynam = "outdeg", saom = NA_character_,
+      mrqap = "fits", dynam = "outdeg",
+      saom = "outAct, or outPop with node = \"alter\", of the outcome",
       ergm = "edgecov, or nodeocov of the degree",
-      to_ergm = .ergm_built),
+      to_ergm = .ergm_built, to_saom = .saom_degree),
     tertius = list(
       title = "the attribute of the receiver's other in-neighbours",
       formals = alist(layer = , x = , summarizer_fn = "mean"),
@@ -448,10 +452,11 @@ NULL
 #' @keywords internal
 #' @noRd
 .dynam_terms <- function() {
-  endogenous <- function(saom, ergm, to_ergm = NULL, kind = "endogenous") {
+  endogenous <- function(saom, ergm, to_ergm = NULL, kind = "endogenous",
+                         to_saom = NULL) {
     list(formals = alist(layer = , ... = ), kind = kind, bare = TRUE,
          mrqap = "drops", reason = .endogenous_reason(),
-         saom = saom, ergm = ergm, to_ergm = to_ergm)
+         saom = saom, ergm = ergm, to_ergm = to_ergm, to_saom = to_saom)
   }
   mixed <- function(ergm = NA_character_) {
     list(formals = alist(layer = , ... = ), kind = "mixed",
@@ -475,18 +480,24 @@ NULL
     entry
   }
   terms <- list(
-    inertia         = lagged(endogenous(NA_character_, NA_character_),
+    inertia         = lagged(endogenous(NA_character_, NA_character_,
+                                        to_saom = .saom_inertia),
                              .build_inertia,
                              formals = alist(layer = , weighted = FALSE, ... = )),
     trans           = lagged(endogenous("transTrip", "ttriple, or dgwesp(type = \"OTP\")",
-                                        .ergm_endogenous("ttriple", "triangle")),
+                                        .ergm_endogenous("ttriple", "triangle"),
+                                        to_saom = .saom_endogenous("transTrip")),
                              .build_trans),
     cycle           = endogenous("cycle3", "ctriple, or dgwesp(type = \"ITP\")",
-                                 .ergm_endogenous("ctriple")),
-    common_sender   = endogenous("gwespBF, nearest", "dgwesp(type = \"ISP\")"),
-    common_receiver = endogenous("gwespFB, nearest", "dgwesp(type = \"OSP\")"),
+                                 .ergm_endogenous("ctriple"),
+                                 to_saom = .saom_endogenous("cycle3")),
+    common_sender   = endogenous("gwespBF, nearest", "dgwesp(type = \"ISP\")",
+                                 to_saom = .saom_endogenous("gwespBF", nearest = TRUE)),
+    common_receiver = endogenous("gwespFB, nearest", "dgwesp(type = \"OSP\")",
+                                 to_saom = .saom_endogenous("gwespFB", nearest = TRUE)),
     four            = endogenous("cycle4", "cycle(4)",
-                                 .ergm_endogenous("cycle(4)", "cycle(4)")),
+                                 .ergm_endogenous("cycle(4)", "cycle(4)"),
+                                 to_saom = .saom_endogenous("cycle4")),
     triangle        = endogenous(NA_character_, "triangle",
                                  .ergm_endogenous("triangle", "triangle")),
     node_trans      = endogenous(NA_character_, NA_character_),
@@ -498,7 +509,8 @@ NULL
     ego_alter_interaction = list(
       formals = alist(x = , ... = ), kind = "interaction",
       mrqap = "drops", reason = "is written {.code ego(x):alter(y)} here",
-      saom = "egoXaltX", ergm = "nodeocov(x):nodeicov(y)"),
+      saom = "egoXaltX", ergm = "nodeocov(x):nodeicov(y)",
+      to_saom = .saom_ego_alter),
     alterdeg  = groups(), alterpop = groups(), egodeg = groups(),
     egopop    = groups(), dyad     = groups(), dyadXdiff = groups(),
     dyadXego  = groups(), size     = groups(), sizeXdiff = groups(),

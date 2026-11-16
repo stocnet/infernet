@@ -1,0 +1,864 @@
+#' Regression for network data
+#'
+#' @description
+#' Fits a regression model to one (or a list of) manynet-compatible network(s)
+#' using the multiple regression quadratic assignment procedure (MRQAP).
+#'
+#' The formula front end is the familiar
+#' `y ~ ego(attr) + alter(attr) + same(attr) + diff(attr)` syntax, plus terms
+#' computed on other layers of the network, such as `recip(friends)`, and plain
+#' references to those layers. Its terms follow `{goldfish}`'s where the two
+#' packages share them. Internally the response and predictors are packed into
+#' matrices and handed to a QAP engine (ported from MrQAP) that supports:
+#'
+#' - gaussian, binomial, poisson, negative binomial, and zero-inflated
+#'   Poisson families;
+#' - two permutation schemes: `"predictor"` (Dekker's double semi-partialling)
+#'   and `"outcome"`;
+#' - random intercepts (lme4), and fixed effects, absorbed as in `{fixest}`;
+#' - robust (HC3) standard errors;
+#' - lists of networks, in which graphs that are missing any predictor are
+#'   dropped with a warning and the remaining networks are pooled;
+#' - cognitive social structures, detected rather than declared (see below).
+#'
+#' @section Cognitive social structures:
+#'   A cognitive social structure (CSS) records each person's report of the
+#'   whole network (Krackhardt 1987). `{manynet}` holds one as a network whose
+#'   ties carry a `by` column naming the reporter, and `manynet::is_cognitive()`
+#'   says whether a network is one. Where the outcome is a CSS, the model is
+#'   fitted on every reported dyad: one observation for each sender, receiver,
+#'   and reporter, rather than for each sender and receiver.
+#'
+#'   - A nodal term such as `ego(age)` is the same in every report.
+#'   - A layer that is itself a CSS, such as another relation that every
+#'     reporter described, enters as each reporter's own report of it.
+#'   - A layer that is not a CSS, such as a formal reporting structure, enters
+#'     as one matrix that every report shares.
+#'   - `tertius()`, `recip()`, `indeg()`, and `outdeg()` on a CSS layer are
+#'     computed within each report, since each reporter sees different ties.
+#'
+#'   The `reporter` terms describe the reporter of each report, since a
+#'   report about one's own ties can differ from a report about the ties of
+#'   others (Krackhardt 1987):
+#'
+#'   - `reporter(age)` is the reporter's age, the same over their whole report;
+#'   - `reporter_ego` is 1 in a report about the reporter's own outgoing tie,
+#'     and `reporter_alter` in a report about a tie to the reporter;
+#'   - `reporter_same(dept, node = "alter")` is 1 where the reporter is of the
+#'     receiver's department.
+#'
+#'   `reporter_ego`, `reporter_alter`, and `reporter_same()` need a directed or
+#'   a two-mode network, since an undirected tie has no sender or receiver.
+#'   In a two-mode CSS the column nodes report after the row nodes, and
+#'   `reporter_same()` is not yet available. An attribute that only one mode
+#'   holds gives `reporter()` an `NA` for every report of the other mode,
+#'   so those reports are dropped.
+#'   On a network that is not a CSS, a `reporter` term aborts.
+#'   ergm has no reporter, so [specify_ergm()] drops these terms, and so does
+#'   goldfish's `specify_dynam()`.
+#'
+#'   A permutation relabels the nodes, and a reporter is a node, so the senders,
+#'   receivers, and reporters are relabelled together.
+#'   `(1 | reporter)` in the formula adds a random intercept for each reporter.
+#'   A `| reporter` fixed effect absorbs `reporter()`, which is then refused,
+#'   but not `reporter_ego` or `reporter_alter`, which vary within a report.
+#'
+#'   A person who was not asked has a report of zeros unless the network marks
+#'   them as missing, for example with
+#'   `manynet::mutate_nodes(net, na = label %in% c(...))`.
+#'   Their reports are then dropped. A report of zeros that is not so marked is
+#'   kept, and named in a warning, since it may be either.
+#'
+#' @section Missing data:
+#'   An unobserved dyad is an `NA` in the outcome or in a predictor, never a
+#'   zero tie. `{manynet}` records unobserved ties, and a CSS reporter who was
+#'   not asked, and `manynet::as_matrix()` turns both into `NA`.
+#'   By default (`control = list(missing = "available")`), the model drops each
+#'   unobserved dyad and says how many it dropped on each variable.
+#'
+#'   A permutation must then be fitted on the same dyads as the observed model,
+#'   or the null distribution rests on more data than the estimate it is
+#'   compared with. So nodes are permuted only among nodes with the same
+#'   unobserved cells: a node that did not report, a node that nobody reported
+#'   on, a reporter who was not asked, and a fully observed node are each
+#'   exchanged only with nodes of their own kind. A node with scattered
+#'   unobserved cells stays in place. This restricts the null hypothesis to
+#'   exchangeability within those blocks, and with many fixed nodes it leaves
+#'   few distinct permutations, which is reported with a warning.
+#'
+#'   `control = list(missing = "fail")` stops instead, for a user who wants no
+#'   dyad dropped without their decision.
+#'   Multiple imputation is not yet available.
+#'
+#'   A tie that `{manynet}` marks as fixed, in its `fixed` tie column, was set
+#'   by the design rather than chosen, so it is no observation of the process.
+#'   It is left out of the model, counted apart from the unobserved dyads, and
+#'   kept in place under permutation, as an unobserved dyad is. `"fail"` does
+#'   not stop on it.
+#'
+#'   A cell that cannot hold a tie, such as a tie between two levels of a
+#'   multilevel network that the design rules out, is a structural zero rather
+#'   than missing data. `{manynet}` does not yet mark such cells, so they enter
+#'   the model as observed zeros. Remove them, or set them to `NA`, before
+#'   fitting.
+#'
+#' @section Longitudinal networks:
+#'   A longitudinal network, one that `manynet::is_longitudinal()` says has
+#'   more than one wave, is fitted as a panel. Each wave but the first is an
+#'   outcome, and the waves are pooled, so the network index is the wave.
+#'   One permutation relabels the nodes the same way in every wave, so that
+#'   each node keeps its own trajectory under the null hypothesis.
+#'
+#'   Three of goldfish's effects then read the outcome's previous wave, as
+#'   goldfish and RSiena read the state of the network before each change:
+#'
+#'   - `inertia`, the tie from i to j in the previous wave, as 0/1, or its
+#'     value with `inertia(weighted = TRUE)`, as on a complete ranking, where
+#'     every dyad holds a tie;
+#'   - `recip`, the tie from j to i in the previous wave;
+#'   - `trans`, the number of two-paths i -> k -> j in the previous wave,
+#'     counting only observed ties.
+#'
+#'   On a cross-sectional network, `inertia` and `trans` are dropped with a
+#'   warning, since they could only read the outcome's own ties, and `recip`
+#'   reads the outcome's reverse tie, with a warning.
+#'   Every other term, including a layer such as `tie(friends)` and a node
+#'   attribute, reads the same wave as the outcome; see stocnet/infernet#18.
+#'   Every wave must hold the same nodes: mark a node that is absent from a wave
+#'   as missing there. A list of networks is read as independent networks, not
+#'   as a panel, even where it holds the waves of one network.
+#'
+#' @section Fixed effects:
+#'   A bar outside parentheses absorbs a fixed effect for each group named after
+#'   it, as in `{fixest}`: `weight ~ sim(age) | sender + receiver`.
+#'   The groups are `sender`, `receiver`, `reporter` for a cognitive social
+#'   structure, and `network` for a list of networks. In a pooled list each
+#'   node's group is within its own network; in a panel a node keeps one group
+#'   across the waves, and `network` is one effect for each wave.
+#'   The intercept is one of the absorbed effects, so its estimate is `NA`.
+#'
+#'   A gaussian model is demeaned once by the fixed effects, and each
+#'   permutation fits a plain model of the demeaned variables. A node
+#'   permutation maps senders onto senders and receivers onto receivers, and
+#'   every permutation fits the dyads of the observed model, so this gives the
+#'   same estimates as a dummy for every group (the Frisch-Waugh-Lovell
+#'   theorem), at the cost of a model without them. Its R-squared is the within
+#'   R-squared. Any other family is fitted with `fixest::feglm()`, or
+#'   `fixest::fenegbin()` for `"negbin"`, in every permutation, which needs
+#'   `{fixest}`. That leaves out the dyads of a group whose outcome has one
+#'   value, and says how many.
+#'
+#'   A predictor that does not vary within the groups, such as `ego(age)` with
+#'   a sender effect, is absorbed by them, and aborts with its name.
+#'   An undirected network has no senders or receivers, so it drops those
+#'   effects with a warning, as it does those random intercepts. A two-mode
+#'   network keeps both, since its rows and columns are different nodes.
+#'   Fixed effects cannot yet be combined with random intercepts, robust
+#'   standard errors, or the `"zip"` family.
+#'
+#' @section Multiplex networks:
+#'   The left-hand side of the formula can name a layer of a multiplex network,
+#'   and the right-hand side can name other layers as dyadic covariates,
+#'   e.g. `advice ~ friends + reports` on `manynet::ison_hightech`.
+#'   A network that declares a focal layer, as `info$focal`, takes it as the
+#'   outcome of `. ~`, and says so. A named left-hand side takes priority.
+#'   A multiplex network whose layers cannot be combined into one matrix,
+#'   such as one with a CSS layer, must name its outcome layer or declare one.
+#'
+#'   A term built from a layer must not read the outcome's own ties, since
+#'   permuting the outcome does not permute such a predictor with it.
+#'   `tie()`, `indeg()`, and `outdeg()` refuse the outcome layer.
+#'   `recip()`, `tertius()`, and `tertius_diff()` without a layer read the
+#'   outcome, and warn.
+#'
+#' @section Initial values:
+#'   A set of coefficients from [declare_coefs()], or an earlier fit, gives the
+#'   initial values of the observed model.
+#'   Only an estimator that iterates uses them: `stats::glm()` for a
+#'   `"binomial"` or `"poisson"` model, and `MASS::glm.nb()` for `"negbin"`.
+#'   A converged estimate does not depend on them, and the permutations do not
+#'   use them.
+#'   A `"gaussian"` model, a `"zip"` model, and a model with random or fixed
+#'   effects do not use them, and say so, as does a set with a value that is
+#'   not stated.
+#'   Each column of the model needs one value, named as its coefficient.
+#'
+#' @param formula A formula describing the model.  The left-hand side is the
+#'   dependent network: a layer, a tie attribute such as `weight`, or `.` for
+#'   the network's focal layer or the whole network.
+#'   The right-hand side accepts these terms, whose arguments can be given by
+#'   position or by name. [terms_mrqap] says what each one measures, with its
+#'   equation, and [specify_terms] lists those that suit a network.
+#'   - of node attributes: `ego(x)`, `alter(x)`, `same(x)`, `mix(x)`,
+#'     `diff(x)`, and `sim(x)`;
+#'   - of other layers: `tie(layer)`, or the layer named on its own,
+#'     `exchange(layer)`, `indeg(layer)`, and `outdeg(layer)`;
+#'   - of others' attributes: `tertius(layer, x)` and `tertius_diff(layer, x)`;
+#'   - of the outcome's previous wave, on a longitudinal network: `inertia`,
+#'     `recip`, and `trans`;
+#'   - of a list of networks: `global(x)`;
+#'   - of the reporter of a cognitive social structure: `reporter(x)`,
+#'     `reporter_ego`, `reporter_alter`, and `reporter_same(x)`, for which
+#'     see the section on cognitive social structures.
+#'
+#'   `:` and `*` give interactions of any order, as the product of the terms.
+#'   `match(x)` and `dist(x)` are deprecated aliases of `same(x, diff = TRUE)`
+#'   and `diff(x)`.
+#'
+#'   A formula written for `{goldfish}` or `{ergm}` can be used as it is.
+#'   It is first read by [specify_mrqap()], which rewrites each term that has
+#'   an MRQAP equivalent, such as ergm's `nodematch("dept")` as `same(dept)`,
+#'   and drops each term that an MRQAP cannot fit, such as goldfish's
+#'   `inertia` or ergm's `gwesp()`, which read the outcome's own ties.
+#'   One warning names each dropped term and the reason, and the rest of the
+#'   model is fitted.
+#'   A name that no model knows aborts and suggests the nearest term,
+#'   as does a formula with no term left to fit.
+#'
+#'   A bar adds a random intercept, as in `{lme4}`: `(1 | sender)`,
+#'   `(1 | receiver)`, `(1 | reporter)` for a cognitive social structure, or
+#'   `(1 | network)` for a list of networks. Each sets the same switch as its
+#'   `random_intercept_*` control. Random slopes are not supported.
+#'
+#'   A bar outside parentheses absorbs fixed effects, as in `{fixest}`:
+#'   `y ~ x | sender + receiver` (see the section on fixed effects).
+#'
+#'   In place of a formula, `formula` can also be a set of coefficients from
+#'   [declare_coefs()], or an earlier fit. The model then fits their
+#'   specification, with their family where `control` names none, and takes
+#'   their values as initial values (see the section on initial values).
+#' @param .data A manynet-consistent network (see
+#'   [manynet::as_tidygraph()]), or a list of such networks.  When a list is
+#'   supplied the model is fit jointly; graphs missing any predictor are
+#'   dropped with a warning.
+#' @param times Integer.  Number of permutations for the null distribution.
+#'   1000 is the default; publication-ready work usually needs 1000-10000.
+#' @param control The controls of the model, as the result of
+#'   [control_mrqap()] or a named list of its arguments, such as
+#'   `list(family = "poisson", seed = 1)`. A control that is not named keeps
+#'   its default, or the value set with [set_control_computation()].
+#'   See [control_mrqap()] for each control, its default, and the
+#'   names it converts from other models and earlier versions.
+#'   The result records the controls that it used as `control`.
+#' @param outputs The optional parts of the result, as a character vector
+#'   of any of:
+#'   - `"model"`, the observed model object, as `simple_fit`, which
+#'     [simulate()] and [test_gof()] draw from where a model has random or
+#'     fixed effects, or a `"negbin"` or `"zip"` family;
+#'   - `"confusion"`, the probabilistic confusion matrix of a binary outcome,
+#'     as `confusion_matrix`;
+#'   - `"draws"`, the coefficient of each permutation, as `draws`.
+#'
+#'   The default, `c("model", "confusion")`, keeps what a result kept before
+#'   infernet 0.7.0. Leave out `"model"` and `"confusion"` to save memory on a
+#'   large network: every method still reads the baseline fit in `base`, and
+#'   [diagnose_confusion()] makes the confusion matrix again.
+#' @return An object of class `c("infernetMrqapFit", "netreg")`.
+#'   `netreg` is kept for `{autograph}` and `{migraph}` in infernet 0.7.x,
+#'   and goes in 0.8.0.
+#'   The family, a cognitive social structure, and a panel are not classes,
+#'   but the elements `family`, `css`, and `panel`.
+#'   It always has these elements:
+#'   - `coefficients` and `obs`, the estimates and the observed test
+#'     statistics of the model;
+#'   - `lower`, `larger`, and `abs`, the share of permutations whose
+#'     coefficient (first row) or test statistic (second row) is at or below,
+#'     at or above, or beyond the observed one;
+#'   - `testdist`, the permuted test statistics themselves, as a matrix of one
+#'     row per permutation and one column per coefficient. The shares in
+#'     `lower`, `larger`, and `abs` are read from it. Under
+#'     `permute = "predictor"` each column comes from its own set of
+#'     permutations, so rows pair columns only by position, and the intercept
+#'     column is `NA`. A permutation that failed leaves its row `NA`.
+#'   - `family`, the family that was fitted; `css`, whether the outcome is a
+#'     cognitive social structure; and `panel`, whether the network was
+#'     fitted as a panel of its waves.
+#'   - `missing`, a list of the treatment of unobserved dyads, the number of
+#'     dyads the model could use (`possible`) and did use (`used`), the number
+#'     unobserved on each variable (`unobserved`), the number of fixed ties left
+#'     out (`fixed_ties`), and the number of nodes that
+#'     stayed in place in each permutation set (`fixed_nodes`).
+#'   - `fixed_effects`, the groups whose fixed effects were absorbed;
+#'   - `pred`, the dyad-level data, with the observed values even where a
+#'     gaussian model was fitted to demeaned ones;
+#'   - `terms`, a tibble of one row for each coefficient, with the parts that
+#'     its name joins: `term`, the coefficient's name; `effect`, the formula
+#'     term it comes from, such as `"ego"` or `"same"`, or `"intercept"` or
+#'     `"interaction"`; its `layer` and `attribute`; its `category` and the
+#'     `reference` category it is compared with, where the term is
+#'     categorical; and for an interaction, its `operands`, the names of the
+#'     columns it multiplies. `summary()` adds these columns to the estimates.
+#'   - `call`, `formula`, and `model_formula`: the call, the formula as
+#'     [specify_mrqap()] read it, and the formula of the columns that were
+#'     fitted. `update()`, `formula()`, and `terms()` read them
+#'     (see [estimate_mrqap]).
+#'   - `fixed_df`, the number of coefficients that a gaussian model absorbed
+#'     by demeaning, or `NULL`.
+#'   - `node_names`, the names of the nodes, which name the random
+#'     intercepts; `control`, the controls as the fit resolved them;
+#'     `outputs`, the optional parts that it keeps; and
+#'     `record`, what [specify_mrqap()] made of each term. `print()` and
+#'     `summary()` read them.
+#'   - `dims` and `twomode`, the dimensions of the outcome matrix and whether
+#'     the network is two-mode, which [simulate()] reads without the network;
+#'     they are `NULL` for a list of networks or a panel.
+#'   - `start`, the initial values that the estimator used, or `NULL`.
+#'
+#'   Each value of `outputs` adds one element:
+#'   - `"model"` adds `simple_fit`, the observed `lm`, `glm`, or other model
+#'     object.
+#'   - `"confusion"` adds `confusion_matrix` where the outcome is binary,
+#'     either with `family = "binomial"` or with `"gaussian"` and a 0/1
+#'     outcome. It is the result of [diagnose_confusion()] with 1000 draws and
+#'     the seed of the fit. For the gaussian case the linear probability
+#'     fitted values are clamped to 0/1 before the draws.
+#'   - `"draws"` adds `draws`, the permuted coefficients, as a matrix with
+#'     the rows and columns of `testdist`.
+#' @name estimate_mrqap
+#' @aliases regression
+#' @family estimating functions
+#' @references
+#'   Krackhardt, David. 1987.
+#'   "Cognitive Social Structures."
+#'   _Social Networks_ 9(2): 109-134.
+#'   \doi{10.1016/0378-8733(87)90009-8}.
+#'
+#'   Krackhardt, David. 1988.
+#'   "Predicting with Networks: Nonparametric Multiple Regression Analysis
+#'   of Dyadic Data."
+#'   _Social Networks_ 10(4):359-81.
+#'   \doi{10.1016/0378-8733(88)90004-4}.
+#'
+#'   Haunss, Sebastian, and James Hollway. 2023.
+#'   "Multimodal mechanisms of political discourse dynamics and the case of
+#'   Germany's nuclear energy phase-out."
+#'   _Network Science_ 11(2): 205-223.
+#'   \doi{10.1017/nws.2022.31}.
+#'
+#'   Dekker, David, David Krackhardt, and Tom A. B. Snijders. 2007.
+#'   "Sensitivity of MRQAP tests to collinearity and autocorrelation
+#'   conditions."
+#'   _Psychometrika_ 72(4): 563-581.
+#'   \doi{10.1007/s11336-007-9016-1}.
+#'
+#'   Phipson, Belinda, and Gordon K. Smyth. 2010.
+#'   "Permutation P-values Should Never Be Zero: Calculating Exact P-values
+#'   When Permutations Are Randomly Drawn."
+#'   _Statistical Applications in Genetics and Molecular Biology_ 9(1): 39.
+#'   \doi{10.2202/1544-6115.1585}.
+#' @examples
+#' networkers <- manynet::ison_networkers |>
+#'   manynet::to_subgraph(Discipline == "Sociology")
+#' model1 <- estimate_mrqap(
+#'   weight ~ ego(Citations) + alter(Citations) + sim(Citations),
+#'   networkers, times = 20)
+#' print(model1)
+#' # A cognitive social structure: each of 21 managers' report of who goes to
+#' # whom for advice, against the formal reporting structure that all share.
+#' css_model <- estimate_mrqap(advice ~ same(dept) + reports,
+#'                             manynet::ison_hightech, times = 5)
+#' # Whether a manager reports their own advice ties differently, and whether
+#' # senior managers report more advice.
+#' css_reporter <- estimate_mrqap(
+#'   advice ~ reporter(tenure) + reporter_ego + reporter_alter + friends,
+#'   manynet::ison_hightech, times = 5)
+#' # A fit, refitted from the initial values of an earlier fit
+#' counts <- estimate_mrqap(friends ~ social + tasks, ison_algebra, times = 5,
+#'                          control = list(family = "poisson"))
+#' again <- estimate_mrqap(counts, ison_algebra, times = 5)
+#' @export
+estimate_mrqap <- function(formula,
+                           .data,
+                           times   = 1000,
+                           control = list(),
+                           outputs = c("model", "confusion")) {
+
+  call <- match.call()
+  # A set of coefficients or a fit gives its specification, and its values as
+  # the initial values of an estimator that iterates.
+  start <- .read_start(formula)
+  formula <- start$formula
+  ctrl <- .resolve_control(control)
+  if (is.null(ctrl$family) && !is.null(start$family)) {
+    ctrl$family <- start$family
+    manynet::snet_info(
+      "Fitting a {.val {ctrl$family}} model, the family of the coefficients.")
+  }
+  outputs <- .check_outputs(outputs, c("model", "confusion", "draws"))
+  if (isTRUE(ctrl$less_mem)) outputs <- setdiff(outputs, "model")
+  # A formula written for another model is read as an MRQAP reads it, and the
+  # terms it cannot fit are dropped and named.
+  formula <- specify_mrqap(formula, .data)
+  record <- attr(formula, "record")
+  specified <- .plain_formula(formula)
+  # `(1 | sender)` in the formula sets the same switch as its control, and
+  # `| sender` after a bare bar absorbs a fixed effect.
+  spec <- .specify(formula)
+  for (group in spec$random) {
+    ctrl[[.random_groups()[[group]]]] <- TRUE
+  }
+
+  panel <- .is_panel(.data)
+  if (panel || .is_list_of_graphs(.data)) {
+    prepared <- if (panel) .prepare_panel(formula, .data) else
+      .prepare_list_of_graphs(formula, .data)
+    matlist     <- prepared$matlist
+    formula     <- prepared$formula
+    first_graph <- prepared$first_graph
+    css         <- prepared$css
+    terms       <- prepared$terms
+  } else {
+    ml <- convertToMatrixList(formula, .data)
+    matlist     <- ml$mydata
+    formula     <- ml$formula
+    first_graph <- manynet::as_tidygraph(.data)
+    css         <- ml$css
+    terms       <- ml$terms
+  }
+
+  dep <- .dep_name(formula)
+
+  # A cognitive social structure is detected from the network, as directedness
+  # is, rather than declared: `{manynet}` records who reported each tie in a
+  # `by` column, and the outcome then arrives with a slice for each reporter.
+  if (css) {
+    .report_css(matlist[[dep]])
+  }
+
+  # Each of these is resolved from the data rather than stated by the user, so
+  # each is reported. A defaulted family or a fallback that nobody sees is a
+  # model the user cannot describe in a paper.
+  if (is.null(ctrl$family)) {
+    ctrl$family <- .auto_family(matlist[[dep]])
+    manynet::snet_info(
+      "Treating the outcome as {.val {ctrl$family}}, from its values.")
+  }
+  user_requested_gaussian_binary <-
+    identical(ctrl$family, "gaussian") && .is_binary_outcome(matlist[[dep]])
+
+  if (is.null(ctrl$directed)) {
+    ctrl$directed <- manynet::is_directed(first_graph)
+    # `{cli}` reads a brace expression beginning with a dot as a style, so a
+    # call to a dot-prefixed function has to be resolved before interpolation.
+    direction <- .directed_label(ctrl$directed)
+    manynet::snet_info("Reading the network as {.val {direction}}.")
+  }
+  if (is.null(ctrl$loops)) {
+    ctrl$loops <- isTRUE(manynet::is_looped(first_graph))
+  }
+
+  start <- .use_start(start$values, ctrl, spec)
+
+  fit <- QAPengine(
+    formula   = formula,
+    matlist   = matlist,
+    css       = css,
+    family    = ctrl$family,
+    directed  = ctrl$directed,
+    loops     = ctrl$loops,
+    permute   = ctrl$permute,
+    times      = times,
+    seed      = ctrl$seed,
+    groups    = ctrl$groups,
+    strategy  = ctrl$strategy,
+    ncores    = ctrl$ncores,
+    random_intercept_nets     = ctrl$random_intercept_nets,
+    random_intercept_sender   = ctrl$random_intercept_sender,
+    random_intercept_receiver = ctrl$random_intercept_receiver,
+    random_intercept_reporter = ctrl$random_intercept_reporter,
+    use_robust_errors = ctrl$use_robust_errors,
+    missing  = ctrl$missing,
+    panel    = panel,
+    fixed_effects = spec$fixed,
+    outputs  = outputs,
+    start    = start
+  )
+
+  if (user_requested_gaussian_binary && "confusion" %in% outputs) {
+    fit$confusion_matrix <- .lpm_confusion(fit, seed = ctrl$seed)
+  }
+  fit$terms <- .coef_terms(names(fit$coefficients), terms)
+  # `update()` refits from the call and the formula as the user's terms give
+  # it; `terms()` reads the formula of the columns that were fitted.
+  fit$call <- call
+  fit$formula <- specified
+  fit$model_formula <- formula
+  # What a print says of the fit: the network as `{manynet}` describes it,
+  # the controls as resolved, and what the reading of the formula changed.
+  fit$node_names <- .node_names(.data)
+  # What `simulate()` needs to place a draw without the network.
+  if (!panel && !is.list(matlist[[dep]])) {
+    fit$dims <- dim(matlist[[dep]])[1:2]
+    fit$twomode <- isTRUE(manynet::is_twomode(first_graph))
+  }
+  fit$start <- fit$base$start
+  # As used: a permutation of the predictors falls back to the outcome where
+  # the engine cannot residualise them.
+  ctrl$permute <- fit$permute
+  fit$control <- ctrl
+  fit$record <- record
+  fit$outputs <- outputs
+  if (!is.null(fit$confusion_matrix)) {
+    fit$confusion_matrix <- .confusion_model(fit$confusion_matrix, fit)
+  }
+
+  fit
+}
+
+# The first argument of `estimate_mrqap()`: a formula, a specification, a set
+# of coefficients from `declare_coefs()`, or a fit. The last two give their
+# specification, their values, and their family.
+#' @keywords internal
+#' @noRd
+.read_start <- function(x) {
+  if (inherits(x, "infernetMrqapFit")) x <- declare_coefs(x)
+  if (inherits(x, "infernetMrqapCoefs")) {
+    spec <- attr(x, "spec")
+    if (is.null(spec)) {
+      manynet::snet_abort("The coefficients have no specification to fit.")
+    }
+    return(list(formula = spec, values = stats::coef(x), family = attr(x, "family")))
+  }
+  list(formula = x, values = NULL, family = NULL)
+}
+
+# Initial values matter only to an estimator that iterates: `glm()` for a
+# binomial or a poisson model, and `MASS::glm.nb()`. A converged estimate does
+# not depend on them. Every other estimator says that it does not use them.
+#' @keywords internal
+#' @noRd
+.use_start <- function(values, ctrl, spec) {
+  if (is.null(values)) return(NULL)
+  random <- any(unlist(ctrl[c("random_intercept_nets", "random_intercept_sender",
+                              "random_intercept_receiver",
+                              "random_intercept_reporter")]))
+  why <- if (length(spec$fixed) > 0) {
+    "a model with fixed effects is fitted by {.pkg fixest}"
+  } else if (random) {
+    "a model with random intercepts is fitted by {.pkg lme4}"
+  } else if (identical(ctrl$family, "gaussian")) {
+    "a gaussian model is fitted by least squares, which does not iterate"
+  } else if (identical(ctrl$family, "zip")) {
+    "a zero-inflated model needs initial values for its zero part too"
+  }
+  if (!is.null(why)) {
+    manynet::snet_info("The initial values are not used: {why}.")
+    return(NULL)
+  }
+  if (anyNA(values)) {
+    unstated <- names(values)[is.na(values)]
+    manynet::snet_info(
+      "The initial values are not used: {.val {unstated}} {?is/are} not stated.")
+    return(NULL)
+  }
+  values
+}
+
+# The optional parts of a result, checked as every `estimate_*()` checks
+# them: a character vector of the values that the estimator knows, in any
+# order, with each named once. `character(0)` keeps none.
+#' @keywords internal
+#' @noRd
+.check_outputs <- function(outputs, choices) {
+  if (is.null(outputs)) return(character(0))
+  if (!is.character(outputs) || anyNA(outputs)) {
+    manynet::snet_abort(
+      c("{.arg outputs} must be a character vector.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unknown <- setdiff(outputs, choices)
+  if (length(unknown) > 0) {
+    manynet::snet_abort(
+      c("{.arg outputs} has {length(unknown)} unknown value{?s}: {.val {unknown}}.",
+        i = "Choose from {.val {choices}}."))
+  }
+  unique(outputs)
+}
+
+# ---- permutation schemes and missing data --------------------------------------
+
+# What the permutation scheme permutes, which is the only thing that separates
+# the two. "predictor" is Dekker et al's double semi-partialling: each main
+# predictor is residualised against the others and that residual is permuted.
+# "outcome" permutes the dependent matrix and leaves the predictors alone.
+#' @keywords internal
+#' @noRd
+.permute_schemes <- function() c("predictor", "outcome")
+
+#' @keywords internal
+#' @noRd
+.permute_label <- function(permute) {
+  switch(permute,
+         predictor = "each predictor's residuals (Dekker's double semi-partialling)",
+         outcome   = "the outcome only")
+}
+
+# The treatments of unobserved dyads. Multiple imputation is planned, but
+# pooling permutation p-values over imputations needs its own design first.
+#' @keywords internal
+#' @noRd
+.missing_treatments <- function() c("available", "fail")
+
+#' @keywords internal
+#' @noRd
+.check_missing_control <- function(missing) {
+  if (identical(missing, "impute")) {
+    manynet::snet_abort(
+      c("{.code missing = \"impute\"} is not yet available.",
+        i = "Use {.val available} to drop unobserved dyads, or {.val fail} to stop on them."))
+  }
+  if (!(is.character(missing) && length(missing) == 1 &&
+        missing %in% .missing_treatments())) {
+    choices <- .missing_treatments()
+    manynet::snet_abort(
+      "{.arg missing} must be one of {.val {choices}}.")
+  }
+  invisible(missing)
+}
+
+
+# ---- input dispatch --------------------------------------------------------
+
+.is_list_of_graphs <- function(x) {
+  if (!is.list(x)) return(FALSE)
+  # A 'stocnet' is itself a list, of its nodes, ties, and so on, so it has to
+  # be recognised as one network before it is mistaken for a list of them.
+  if (inherits(x, c("igraph", "tbl_graph", "network", "data.frame", "stocnet")))
+    return(FALSE)
+  if (length(x) == 0) return(FALSE)
+  first <- x[[1]]
+  inherits(first, c("igraph", "tbl_graph", "network", "stocnet")) ||
+    is.matrix(first)
+}
+
+
+.prepare_list_of_graphs <- function(formula, glist) {
+  ml_list <- vector("list", length(glist))
+  fail_idx <- integer(0)
+  fail_reason <- character(0)
+
+  for (i in seq_along(glist)) {
+    res <- tryCatch(
+      convertToMatrixList(formula, glist[[i]], advise = FALSE, pooled = TRUE),
+      error = function(e) list(error = conditionMessage(e))
+    )
+    if (!is.null(res$error)) {
+      fail_idx <- c(fail_idx, i)
+      fail_reason <- c(fail_reason, res$error)
+      ml_list[[i]] <- NULL
+    } else {
+      ml_list[[i]] <- res
+    }
+  }
+
+  keep <- setdiff(seq_along(glist), fail_idx)
+  if (length(keep) == 0) {
+    manynet::snet_abort(
+      c("None of the supplied networks could be converted for this formula.",
+        stats::setNames(unique(fail_reason), rep("x", length(unique(fail_reason))))))
+  }
+
+  ref_names <- names(ml_list[[keep[1]]]$mydata)
+  mismatched <- integer(0)
+  for (i in keep) {
+    if (!setequal(names(ml_list[[i]]$mydata), ref_names)) {
+      mismatched <- c(mismatched, i)
+    }
+  }
+  dropped <- sort(unique(c(fail_idx, mismatched)))
+  keep <- setdiff(seq_along(glist), dropped)
+
+  if (length(dropped) > 0) {
+    nms <- names(glist)
+    dropped_labels <- if (!is.null(nms) && all(nzchar(nms[dropped]))) {
+      nms[dropped]
+    } else {
+      paste0("[", dropped, "]")
+    }
+    manynet::snet_warn(
+      "Dropping {length(dropped)} network{?s} missing one or more predictors: {.val {dropped_labels}}.")
+  }
+  if (length(keep) == 0) {
+    manynet::snet_abort("All the supplied networks were dropped for missing predictors.")
+  }
+
+  kept_mls <- ml_list[keep]
+  ref_names <- names(kept_mls[[1]]$mydata)
+
+  matlist <- vector("list", length(ref_names))
+  names(matlist) <- ref_names
+  for (nm in ref_names) {
+    matlist[[nm]] <- lapply(kept_mls, function(ml) ml$mydata[[nm]])
+  }
+
+  first_graph <- manynet::as_tidygraph(glist[[keep[1]]])
+  specificationAdvice(.specify(formula), first_graph)
+
+  # A pooled model fits one kind of observation. A dyad in a network and a dyad
+  # in one person's report of a network are different observations, so a list
+  # cannot mix the two.
+  css <- vapply(kept_mls, function(ml) isTRUE(ml$css), logical(1))
+  if (length(unique(css)) > 1) {
+    manynet::snet_abort(
+      c("Cannot pool cognitive social structures with networks that are not.",
+        i = "Networks {.val {which(css)}} are cognitive social structures; the others are not."))
+  }
+
+  list(
+    matlist     = matlist,
+    formula     = kept_mls[[1]]$formula,
+    terms       = kept_mls[[1]]$terms,
+    first_graph = first_graph,
+    css         = all(css)
+  )
+}
+
+
+# ---- helpers ---------------------------------------------------------------
+
+.dep_name <- function(formula) {
+  v <- all.vars(formula)
+  if (length(v) == 0) return(NA_character_)
+  v[1]
+}
+
+
+# ============================================================================
+# Formula -> matrix-list front end
+# ============================================================================
+
+# The formula is parsed in `R/specify_parse.R`, and its terms are built in
+# `R/specify_builders.R`. This keeps the shape the engine and the list path
+# read: the matrices, the formula over their column names, and whether the
+# outcome is a cognitive social structure.
+#' @keywords internal
+#' @noRd
+convertToMatrixList <- function(formula, .data, advise = TRUE, pooled = FALSE,
+                                previous = NULL) {
+  .evaluate_spec(.specify(formula), .data, advise = advise, pooled = pooled,
+                 previous = previous)
+}
+
+# A longitudinal network of more than one wave is a panel: the same nodes,
+# observed again. A list of networks is not, even where it holds the waves of
+# one network, since nothing then says that its nodes are the same.
+#' @keywords internal
+#' @noRd
+.is_panel <- function(.data) {
+  if (is.null(.data) || .is_list_of_graphs(.data)) return(FALSE)
+  tryCatch(isTRUE(manynet::is_longitudinal(.data)) &&
+             isTRUE(manynet::net_waves(.data) > 1),
+           error = function(e) FALSE)
+}
+
+# A panel is fitted on every wave but the first, each against the wave before
+# it, which `inertia`, `recip`, and `trans` read. The waves are pooled, so the
+# network index of the dyad-level data is the wave, and `QAPengine()` draws one
+# permutation of the nodes for every wave.
+#' @keywords internal
+#' @noRd
+.prepare_panel <- function(formula, .data) {
+  waves <- manynet::to_times(.data)
+  n_waves <- length(waves)
+  mls <- lapply(seq(2, n_waves), function(t) {
+    convertToMatrixList(formula, waves[[t]], advise = FALSE, pooled = TRUE,
+                        previous = waves[[t - 1]])
+  })
+  if (any(vapply(mls, function(ml) isTRUE(ml$css), logical(1)))) {
+    manynet::snet_abort(
+      "A longitudinal cognitive social structure is not yet supported.")
+  }
+  dep <- names(mls[[1]]$mydata)[1]
+  dims <- lapply(mls, function(ml) dim(ml$mydata[[dep]]))
+  if (length(unique(dims)) > 1) {
+    manynet::snet_abort(
+      c("The waves of the network have different numbers of nodes.",
+        i = "A panel needs the same nodes in every wave. Mark a node that is absent from a wave as missing there."))
+  }
+  ref_names <- names(mls[[1]]$mydata)
+  matlist <- stats::setNames(lapply(ref_names, function(nm) {
+    lapply(mls, function(ml) ml$mydata[[nm]])
+  }), ref_names)
+  first_graph <- manynet::as_tidygraph(waves[[2]])
+  specificationAdvice(.specify(formula), first_graph)
+  fitted <- n_waves - 1
+  manynet::snet_info(
+    "Reading the network as a panel of {n_waves} waves:",
+    "each of the last {fitted} wave{?s} is fitted against the wave before it.")
+  list(matlist     = matlist,
+       formula     = mls[[1]]$formula,
+       terms       = mls[[1]]$terms,
+       first_graph = first_graph,
+       css         = FALSE)
+}
+
+# Says what was detected, and warns about the one thing a CSS array cannot say
+# for itself. `{manynet}` fills the slice of a node with zeros where that node
+# reported no ties, and also where that node was never asked, unless the network
+# records the second case as missing: a node whose `na` attribute is TRUE gets a
+# slice of NA. A slice of zeros therefore enters the model as a report of no
+# ties, which is wrong for someone who did not report.
+#' @keywords internal
+#' @noRd
+.report_css <- function(y) {
+  arrays <- if (is.list(y)) y else list(y)
+  reporters <- sum(vapply(arrays, function(a) dim(a)[3], integer(1)))
+  manynet::snet_info(
+    "Reading the outcome as a cognitive social structure, with {reporters} reporter{?s}.")
+  empty <- unlist(lapply(arrays, function(a) {
+    which(apply(a, 3, function(slice) !anyNA(slice) && all(slice == 0)))
+  }))
+  if (length(empty) > 0) {
+    labels <- names(empty)
+    who <- if (!is.null(labels) && all(nzchar(labels))) labels else unname(empty)
+    manynet::snet_warn(
+      c("{length(empty)} reporter{?s} named no ties: {.val {who}}.",
+        i = "If they were not asked, mark them so their reports are dropped rather than read as reporting no ties.",
+        i = "For example: {.code manynet::mutate_nodes(net, na = label %in% c(...))}."))
+  }
+  invisible(NULL)
+}
+
+# The layers of a multiplex network, which a formula can name as its outcome or
+# as a dyadic covariate. A network with one layer has none to name.
+#' @keywords internal
+#' @noRd
+.layer_names <- function(net) {
+  if (!isTRUE(manynet::is_multiplex(net))) return(character(0))
+  out <- tryCatch(manynet::layer_names(net), error = function(e) character(0))
+  as.character(out)
+}
+
+# A predictor of a CSS model needs the outcome's three axes. A nodal term, or a
+# layer that is not itself a CSS, is the same for every reporter, so its matrix
+# is repeated along the third axis. A CSS layer already has the axis, and only
+# has to agree with the outcome.
+#' @keywords internal
+#' @noRd
+.lift_to_css <- function(x, DV) {
+  d <- dim(DV)
+  if (length(dim(x)) == 3) {
+    if (!identical(dim(x), d))
+      manynet::snet_abort(
+        c("A CSS predictor has dimensions {dim(x)}, but the outcome has {d}.",
+          i = "Both must have the same senders, receivers, and reporters."))
+    return(x)
+  }
+  if (!identical(dim(x), d[1:2]))
+    manynet::snet_abort(
+      "A predictor has dimensions {dim(x)}, but each report of the outcome has {d[1:2]}.")
+  array(x, dim = d, dimnames = dimnames(DV))
+}
+
+# Columns the engine builds for every dyad, rather than reads off the network.
+#' @keywords internal
+#' @noRd
+.structural_vars <- function() c("sv", "rv", "nv", "bv")
+
+
+#' @keywords internal
+#' @noRd
+getDependentName <- function(formula) {
+  dep <- list(formula[[2]])
+  unlist(lapply(dep, deparse))
+}

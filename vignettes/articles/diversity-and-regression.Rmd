@@ -12,6 +12,10 @@ description: >
 library(manynet)
 library(autograph)
 library(infernet)
+# {infernet} only suggests {lme4}, which the random intercepts need.
+# Naming it here lets `learnr::run_tutorial()` offer to install it at the start,
+# because an exercise cannot install a package itself.
+requireNamespace("lme4", quietly = TRUE)
 ```
 
 ```{r setup, include = FALSE, purl=FALSE, eval=TRUE}
@@ -46,10 +50,34 @@ learnr::random_phrases_add(language = "en",
                                       "Bravo!",
                                       "Super!"),
                            encouragement = "Bon effort")
-marvel_friends <- to_unsigned(to_uniplex(fict_marvel, "relationship"), keep = "positive")
+marvel_friends <- to_unsigned(to_layer(fict_marvel, "relationship"), keep = "positive")
 marvel_friends <- to_giant(marvel_friends)
 marvel_friends <- marvel_friends |> to_subgraph(Appearances >= mean(Appearances))
 ```
+
+<style>
+html { font-size: 115%; }
+.callout {
+  border-left: 3px solid #5775B1;
+  padding: 0.1em 1em;
+  margin: 1.2em 0;
+}
+.callout-label { color: #5775B1; }
+.page-toc { font-style: italic; }
+.page-toc-link { color: #5775B1; cursor: pointer; text-decoration: underline; }
+.tutorialTitle { color: #5775B1 !important; }
+#tutorial-topic .nav-link { color: #5775B1 !important; }
+.section a:not(.btn) { color: #5775B1; }
+.section a:not(.btn):hover { color: #465E8E; }
+.btn-tutorial-run,
+.btn-tutorial-run:hover,
+.btn-tutorial-run:focus,
+.btn-tutorial-run:active {
+  background-color: #5775B1;
+  border-color: #5775B1;
+  color: #fff;
+}
+</style>
 
 
 ::: {.callout}
@@ -424,7 +452,7 @@ So far each model has used its default controls.
 Its result goes to the `control =` argument of `estimate_mrqap()`.
 The most useful controls are:
 
-- `family`: `"auto"` reads it from the outcome (`"binomial"` for a binary outcome, otherwise `"gaussian"`).
+- `family`: `NULL`, the default, reads it from the outcome (`"binomial"` for a binary outcome, `"poisson"` for a count, otherwise `"gaussian"`).
   The message counts here might also be fitted as `"poisson"` or `"negbin"`.
 - `permute`: `"predictor"` (Dekker's double semi-partialling, the default) or `"outcome"`.
 - `seed`: a number, so that the same permutations, and so the same p-values, come back each time.
@@ -518,7 +546,7 @@ and a `| sender` fixed effect as ergm's `sender` term,
 and each term that the other model cannot fit is dropped and named.
 Give the network as well,
 so that a categorical attribute is written as a categorical term.
-`tidy()` of the result has one row for each term,
+`summary()` of the result has one row for each term,
 with what the other model makes of it.
 
 Rewrite a model of `ison_networkers` for ergm, and check each term.

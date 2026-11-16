@@ -1,7 +1,7 @@
 # Making sure the tests family of functions works as intended.
 # Ported from {migraph}, which these functions supersede.
 
-marvel_friends <- manynet::to_uniplex(manynet::fict_marvel, "relationship") |>
+marvel_friends <- manynet::to_layer(manynet::fict_marvel, "relationship") |>
   manynet::to_giant() |> manynet::to_unsigned() |>
   manynet::to_subgraph(PowerOrigin == "Human")
 
@@ -169,4 +169,19 @@ test_that("strategy and ncores given by name still work, with a warning", {
                 attribute = "Attractive", times = 5, ncores = 1,
                 control = list(ncores = 2))),
     "both")
+})
+
+test_that("summary() of a network_test gives quantiles of the null distribution", {
+  res <- test_permutation(manynet::ison_adolescents, netrics::net_by_degree,
+                          times = 20, control = list(seed = 1))
+  out <- summary(res)
+  expect_s3_class(out, "infernetTestSummary")
+  expect_named(out, c("statistic", "null.2.5%", "null.50%", "null.97.5%",
+                      "p.lower", "p.upper"))
+  expect_equal(out$statistic, as.numeric(res$testval))
+  expect_equal(out[["null.50%"]], stats::median(res$testdist))
+  expect_equal(out$p.upper, res$pgteobs)
+  expect_output(print(out), "Quantiles of the null distribution, from 20 draws")
+  expect_named(summary(res, probs = 0.9), c("statistic", "null.90%",
+                                            "p.lower", "p.upper"))
 })
