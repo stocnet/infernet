@@ -1,0 +1,1034 @@
+---
+title: "Opinion and Learning"
+author: "by James Hollway"
+output:
+  learnr::tutorial:
+    theme: flatly
+runtime: shiny_prerendered
+description: >
+  In this tutorial you will learn how to simulate how opinions change
+  when people listen to those they are tied to,
+  whether the opinions reach a consensus,
+  how stubbornness, bounded confidence, and repulsion keep disagreement alive,
+  which nodes have the most influence on where opinions end,
+  and what that means for the wisdom of crowds and for misinformation.
+---
+
+```{r pkgs, include = FALSE}
+library(manynet)
+library(netrics)
+library(autograph)
+library(infernet)
+```
+
+```{r setup, include = FALSE, purl=FALSE, eval=TRUE}
+library(manynet)
+library(netrics)
+library(autograph)
+library(infernet)
+library(learnr)
+knitr::opts_chunk$set(echo = FALSE)
+manynet::clear_glossary()
+learnr::random_phrases_add(language = "fr",
+                           praise = c("C'est génial!",
+                                      "Beau travail",
+                                      "Excellent travail!",
+                                      "Bravo!",
+                                      "Super!",
+                                      "Bien fait",
+                                      "Bien joué",
+                                      "Tu l'as fait!",
+                                      "Je savais que tu pouvais le faire.",
+                                      "Ça a l'air facile!",
+                                      "C'était un travail de première classe.",
+                                      "C'est ce que j'appelle un bon travail!"),
+                          encouragement = c("Bon effort",
+                                            "Vous l'avez presque maîtrisé!",
+                                            "Ça avance bien.",
+                                            "Continuez comme ça.",
+                                            "Continuez à travailler dur!",
+                                            "Vous apprenez vite!",
+                                            "Vous faites un excellent travail aujourd'hui."))
+learnr::random_phrases_add(language = "en",
+                           praise = c("C'est génial!",
+                                      "Beau travail!",
+                                      "Bravo!",
+                                      "Super!"),
+                           encouragement = "Bon effort")
+```
+
+<style>
+html { font-size: 115%; }
+.callout {
+  border-left: 3px solid #5775B1;
+  padding: 0.1em 1em;
+  margin: 1.2em 0;
+}
+.callout-label { color: #5775B1; }
+.page-toc { font-style: italic; }
+.page-toc-link { color: #5775B1; cursor: pointer; text-decoration: underline; }
+.tutorialTitle { color: #5775B1 !important; }
+#tutorial-topic .nav-link { color: #5775B1 !important; }
+.section a:not(.btn) { color: #5775B1; }
+.section a:not(.btn):hover { color: #465E8E; }
+.btn-tutorial-run,
+.btn-tutorial-run:hover,
+.btn-tutorial-run:focus,
+.btn-tutorial-run:active {
+  background-color: #5775B1;
+  border-color: #5775B1;
+  color: #fff;
+}
+</style>
+
+## This tutorial
+
+The "Diffusion and Contagion" tutorial follows states that nodes adopt or not,
+such as an infection or an innovation.
+This tutorial follows opinions that are numbers,
+such as the probability that someone puts on a statement being true,
+or their position on a scale from left to right.
+Here a node does not adopt an opinion from one neighbour:
+it moves its opinion towards the opinions of the nodes it listens to.
+
+<img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3bXdtbGs1azJnZWUzdGZycTRsMGg0a2twM2RxYjdveWtuNzV3eWo1MiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xjQfDCSRr2jkH3SPab/giphy.gif" alt="learn every day gif" width = "500"/>
+
+By the end of this tutorial, you will be able to:
+
+- [ ] &nbsp; 'play' a DeGroot learning model over a network, and plot the result
+- [ ] &nbsp; say when a network will reach a consensus, and how fast
+- [ ] &nbsp; understand how stubbornness keeps disagreement alive
+- [ ] &nbsp; understand bounded confidence, and the clusters of opinion it makes
+- [ ] &nbsp; see how maximally diverse groups learn differently from groups of like minds
+- [ ] &nbsp; understand repulsion, and how a balanced signed network polarises
+- [ ] &nbsp; find the nodes with the most influence on the opinions at the end
+- [ ] &nbsp; say when a crowd stays wise, when talking makes it wiser, and where misinformation does most harm
+- [ ] &nbsp; show how a zealot can move the window of opinions that others will listen to
+- [ ] &nbsp; tell the equilibria of these models apart, and when there is none
+
+## Learning models
+
+The simplest learning model is the DeGroot model.
+At each step, every node takes the average of the opinions
+of the nodes it listens to.
+A tie from one node to another means that the first node listens to the second.
+A node divides its attention among the nodes it listens to,
+in proportion to the tie weights (their absolute values, for a signed network).
+`to_influence()` shows these shares as a matrix.
+Under DeGroot, a node does not count its own opinion,
+unless the network has a tie from the node to itself.
+All nodes update at once at each step,
+and the ties do not change, whatever the opinions do.
+A question often asked of these models is whether,
+from different first opinions, the opinions converge through
+(network) interaction.
+A network that is strongly connected and aperiodic
+converges to a consensus of (any) opinions entered.
+
+### Expectations of convergence and consensus
+
+Let's try this out on the `ison_networkers` dataset of communication
+among network academics.
+Perhaps we wish to get them to change their local networks/behaviour,
+but they have different beliefs about whether this will make a difference.
+To see whether this network will converge to consensus,
+check whether the network is `r gloss("connected")` and `r gloss("aperiodic")`:
+
++ `is_connected()` marks whether every node can reach every other node.
+On a directed network, it follows the direction of the ties by default (strong connectivity);
+add `connectivity = "weak"` to ignore their direction.
++ `is_aperiodic()` marks whether network is aperiodic, meaning there is no integer k > 1 that divides the length of every cycle of the graph.
+
+```{r aperiod, exercise = TRUE, purl = FALSE}
+
+```
+
+```{r aperiod-hint, purl = FALSE}
+# By default is_connected() will check whether a directed network
+# is strongly connected.
+```
+
+```{r aperiod-solution}
+is_connected(ison_networkers)
+is_aperiodic(ison_networkers)
+```
+
+```{r consens-interp, echo = FALSE, purl = FALSE}
+question("Based on these results, would you expect this network to converge to a consensus?",
+  answer("No"),
+  answer("Yes", correct = TRUE, message = "A strongly connected, aperiodic network will converge to a single consensus."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE
+)
+```
+
+```{r aperiod-interp, echo = FALSE, purl = FALSE}
+question("If every component were aperiodic, but there were two or more strongly connected components, what would happen?",
+  answer("There would be no convergence",
+         message = "Each component still settles."),
+  answer("There would be convergence to a single consensus",
+         message = "Not in general: each group that listens to no one outside it settles on its own value."),
+  answer("There would be convergence", correct = TRUE),
+  answer("Each group that listens only to itself would reach its own consensus, and the others would end in between",
+         correct = TRUE,
+         message = "A group that listens to no one outside it is a closed class, as in a Markov chain. Each closed class settles on its own value, and the other nodes settle on a mix of these values."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE
+)
+```
+
+### Playing the DeGroot learning model
+
+Now let's see whether you are right.
+We want to see whether some random distribution of beliefs converges
+to a consensus in this network (`ison_networkers`).
+Let's play the DeGroot learning model on this network
+with a vector of random beliefs
+(the same length as the nodes in the network)
+drawn from the binomial distribution with **probability 0.25**.
+Create the distribution of **beliefs** and graph the network
+to show where they have been distributed.
+Then play the learning model with `play_opinion()` and these beliefs,
+and plot the result.
+
+```{r degroot, exercise = TRUE, purl = FALSE, fig.width=9}
+
+```
+
+```{r degroot-hint, purl = FALSE}
+beliefs <- rbinom(net_nodes(____), 1, prob = 0.25)
+____ |> mutate_nodes(____ = beliefs) |> graphr(node_color = "____")
+netlearn <- play_opinion(____, ____)
+plot(____)
+```
+
+```{r degroot-solution}
+beliefs <- rbinom(net_nodes(ison_networkers), 1, prob = 0.25)
+ison_networkers |> mutate_nodes(beliefs = beliefs) |> graphr(node_color = "beliefs")
+(netlearn <- play_opinion(ison_networkers, beliefs))
+plot(netlearn)
+```
+
+Each line in this plot represents the belief trajectory of a single node
+at each step.
+About a quarter of the nodes begin believing,
+and the other three quarters do not.
+Then we can see how responsive these nodes are to the random distribution
+of beliefs across the network.
+Some revise their beliefs more significantly than others.
+To see the opinion of each node at each step as a table,
+use `as_opinion()`.
+`play_opinion()` stops when no opinion moves by more than `tolerance`,
+so the last step is very near to the end, but not exactly at it.
+
+```{r degroot-interp, echo = FALSE, purl = FALSE}
+question("What are some true statements about these results?",
+  answer("Some nodes revise their beliefs more than others.",
+         correct = TRUE),
+  answer("There seems to be a consensus.",
+         correct = TRUE),
+  answer("It takes more than two steps to reach consensus.",
+         correct = TRUE),
+  answer("One node never updates their belief beyond their initial belief.",
+         message = "All nodes in this network eventually update their beliefs."),
+  answer("I would get the same shared belief if I reran the code.",
+         message = "If you reran the code, a different random belief vector would be created and more or less influential nodes might believe or not."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE
+)
+```
+
+### How fast is a consensus?
+
+Whether a network reaches a consensus is one question;
+how fast it reaches it is another.
+`net_by_convergence()` from `{netrics}` measures the share of the distance
+to the opinions at the end that is closed at each step, in the long run.
+A value of 1 settles in one step, and a value of 0 never settles.
+It needs only the network, not a played model.
+Compare the networkers with a complete network of the same size (32 nodes),
+and with two rings: one of 31 nodes and one of 32 nodes.
+
+```{r convergence, exercise = TRUE, purl = FALSE}
+
+```
+
+```{r convergence-solution}
+net_by_convergence(ison_networkers)
+net_by_convergence(create_filled(32))
+net_by_convergence(create_ring(31))
+net_by_convergence(create_ring(32))
+```
+
+```{r convergence-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("In a complete network, every node listens to every other node, so the opinions settle almost at once.",
+         correct = TRUE),
+  answer("On a ring of 31, each node listens only to its two neighbours, so an opinion takes many steps to travel around it.",
+         correct = TRUE),
+  answer("On a ring of 32, the opinions can swing back and forth for ever, because every cycle has an even length.",
+         correct = TRUE,
+         message = "Such a network is periodic, so DeGroot learning need not settle."),
+  answer("A ring is not connected.",
+         message = "A ring is connected: every node can reach every other node."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+## Stubbornness
+
+In the DeGroot model, a strongly connected, aperiodic network always ends in a consensus.
+But many disagreements last.
+One reason is that people hold on to their first opinion.
+In the Friedkin–Johnsen model,
+each node has a `r gloss("stubbornness")` from 0 to 1:
+how much it keeps its first opinion, compared with what the network says.
+A stubbornness of 0 is DeGroot's model,
+and a stubbornness of 1 is a node that never moves.
+Note that a stubborn node is pulled back to its _first_ opinion,
+not to the opinion it held at the last step.
+That first opinion never changes.
+
+### A path of three
+
+Let us make the smallest example: a path A–B–C,
+where A starts at 0, B at 0.5, and C at 1.
+`create_explicit()` makes the path from a formula.
+Play the opinions with no stubbornness,
+and then with a `stubbornness` of 0.5 for every node.
+Use `as_opinion()` to see the opinions at each step.
+
+```{r path, exercise = TRUE}
+path <- create_explicit(A-B-C)
+graphr(path)
+```
+
+```{r path-hint, purl = FALSE}
+as_opinion(play_opinion(path, c(0, 0.5, 1)))
+as_opinion(play_opinion(path, c(0, 0.5, 1), stubbornness = ____))
+```
+
+```{r path-solution}
+path <- create_explicit(A-B-C)
+as_opinion(play_opinion(path, c(0, 0.5, 1)))
+as_opinion(play_opinion(path, c(0, 0.5, 1), stubbornness = 0.5))
+```
+
+```{r path-interp, echo = FALSE, purl = FALSE}
+question("Where do the opinions end with a stubbornness of 0.5 for every node?",
+  answer("0.25, 0.5, and 0.75", correct = TRUE,
+         message = "Each end node is pulled half to B and half to its own first opinion."),
+  answer("0.5, 0.5, and 0.5",
+         message = "That is where they end with no stubbornness."),
+  answer("0, 0.5, and 1",
+         message = "That would be a stubbornness of 1, where no node moves."),
+  allow_retry = TRUE)
+```
+
+Note that with stubbornness the opinions still settle,
+but they settle apart.
+Partly stubborn nodes are enough to keep a disagreement alive.
+
+### Stubborn networkers
+
+Now let only the networker with the highest eigenvector centrality be stubborn,
+with a stubbornness of 1,
+and start them at an opinion of 1 while all others start at 0.
+Then let all networkers be a little stubborn (0.1),
+and compare the two plots.
+
+```{r stubborn, exercise = TRUE, fig.width=9}
+
+```
+
+```{r stubborn-hint, purl = FALSE}
+lead <- node_is_max(node_by_eigenvector(ison_networkers))
+first <- ifelse(lead, 1, 0)
+plot(play_opinion(ison_networkers, first, stubbornness = ifelse(lead, ____, 0)))
+plot(play_opinion(ison_networkers, first, stubbornness = ____))
+```
+
+```{r stubborn-solution}
+lead <- node_is_max(node_by_eigenvector(ison_networkers))
+first <- ifelse(lead, 1, 0)
+plot(play_opinion(ison_networkers, first, stubbornness = ifelse(lead, 1, 0)))
+plot(play_opinion(ison_networkers, first, stubbornness = 0.1))
+```
+
+```{r stubborn-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("One fully stubborn node pulls everyone else to its first opinion.",
+         correct = TRUE),
+  answer("Where every node is a little stubborn, the opinions settle apart.",
+         correct = TRUE),
+  answer("Stubbornness stops the opinions from settling.",
+         message = "The opinions still settle, but not always at one consensus."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+## Bounded confidence
+
+Another reason that disagreements last is that people listen only to
+those whose opinions are near enough to their own.
+(If you have ever made excuses to leave a dinner party early, you know this model:
+some people are just too different.)
+These are models of `r gloss("bounded confidence")`.
+`confidence` says how far apart two opinions can be
+for one node still to listen to the other.
+Two rules use it:
+
+- `rule = "hegselmann_krause"`: all nodes at once take the average of the
+opinions of only those nodes they listen to whose opinions are within
+`confidence` of their own.
+Unlike DeGroot, each node always counts its own opinion here.
+This rule is deterministic.
+- `rule = "deffuant"`: at each step, one node is drawn at random,
+and it draws one of the nodes it listens to.
+If their opinions are within `confidence`, each moves halfway towards the other.
+This rule is random, and it changes only one pair at each step,
+so it needs many more `steps`.
+
+### Clusters of opinion
+
+Draw the first opinions of the networkers at random, from 0 to 1.
+Play the Hegselmann–Krause rule with a `confidence` of 0.1, and plot it.
+
+Then see how the clusters change with the `confidence`.
+`sweep_opinion()` plays the rule for each setting that you give it in `vary`,
+here for each `confidence` from 0.05 to 0.5,
+and counts the clusters of opinion at the end of each.
+Give it 100 `steps`, so that the opinions have time to settle.
+
+```{r hk, exercise = TRUE, fig.width=9}
+set.seed(1)
+first <- runif(net_nodes(ison_networkers))
+```
+
+```{r hk-hint, purl = FALSE}
+plot(play_opinion(ison_networkers, first, rule = "____", confidence = ____))
+hk <- sweep_opinion(ison_networkers, first, rule = "____", steps = 100,
+                    vary = list(confidence = seq(____, ____, 0.05)))
+```
+
+```{r hk-solution}
+set.seed(1)
+first <- runif(net_nodes(ison_networkers))
+plot(play_opinion(ison_networkers, first, rule = "hegselmann_krause",
+                  confidence = 0.1))
+hk <- sweep_opinion(ison_networkers, first, rule = "hegselmann_krause",
+                    steps = 100, vary = list(confidence = seq(0.05, 0.5, 0.05)))
+hk
+plot(hk)
+```
+
+```{r hk-interp, echo = FALSE, purl = FALSE}
+question("What does a narrower confidence do?",
+  answer("It splits the opinions into more clusters, which no longer listen to each other.",
+         correct = TRUE),
+  answer("It makes the opinions reach one consensus faster.",
+         message = "A wider confidence lets more nodes listen to each other."),
+  allow_retry = TRUE)
+```
+
+### Random encounters
+
+Think of the Deffuant rule as a series of coffee breaks:
+two colleagues meet, and if they are not too far apart, they meet in the middle.
+Now play the Deffuant rule on the same first opinions,
+with a `confidence` of 0.1 and 2000 `steps`.
+This rule is random, so each time it is played, its result can differ.
+So sweep it 10 times for each `confidence` from 0.1 to 0.5,
+and set a seed in `control` so that you can repeat the result.
+
+```{r deffuant, exercise = TRUE, exercise.setup = "hk", fig.width=9}
+
+```
+
+```{r deffuant-solution}
+set.seed(1)
+first <- runif(net_nodes(ison_networkers))
+plot(play_opinion(ison_networkers, first, rule = "deffuant",
+                  confidence = 0.1, steps = 2000))
+deffuant <- sweep_opinion(ison_networkers, first, rule = "deffuant",
+                          steps = 2000, times = 10, control = list(seed = 2),
+                          vary = list(confidence = seq(0.1, 0.5, 0.1)))
+deffuant
+plot(deffuant)
+```
+
+```{r deffuant-interp, echo = FALSE, purl = FALSE}
+question("How does the Deffuant rule differ from the Hegselmann–Krause rule?",
+  answer("Only one pair of nodes meets at each step, so it takes many more steps.",
+         correct = TRUE),
+  answer("The result can change each time it is played, unless a seed is set.",
+         correct = TRUE,
+         message = "So the plot shows a band over the 10 runs of each setting."),
+  answer("It does not use `confidence`.",
+         message = "Both rules use `confidence`."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+### Diverse groups
+
+Bounded confidence also matters for how we make groups,
+whether committees, seminar groups, or juries.
+`node_in_roulette()` from `{netrics}` puts the nodes into groups that are
+as diverse as possible on an attribute, such as their first opinions.
+Let us compare such maximally diverse groups with groups of like minds,
+where each group holds the nodes whose first opinions are nearest to one another.
+In each group, every member listens to every other member,
+which `create_components()` makes from a membership.
+
+```{r diverse, exercise = TRUE, fig.width=9}
+set.seed(1)
+first <- runif(net_nodes(ison_networkers))
+diverse <- node_in_roulette(ison_networkers, groups = 4,
+                            attribute = first, balance = 1)
+alike <- ceiling(rank(first) / 8)
+diverse_groups <- create_components(32, membership = diverse)
+alike_groups <- create_components(32, membership = alike)
+```
+
+```{r diverse-hint, purl = FALSE}
+# Play the DeGroot model in each kind of group, and average the end by group
+ends <- unlist(tail(as_opinion(play_opinion(diverse_groups, first)), 1))
+tapply(ends, diverse, mean)
+```
+
+```{r diverse-solution}
+set.seed(1)
+first <- runif(net_nodes(ison_networkers))
+diverse <- node_in_roulette(ison_networkers, groups = 4,
+                            attribute = first, balance = 1)
+alike <- ceiling(rank(first) / 8)
+diverse_groups <- create_components(32, membership = diverse)
+alike_groups <- create_components(32, membership = alike)
+# DeGroot: the opinion that each group ends with
+ends <- unlist(tail(as_opinion(play_opinion(diverse_groups, first)), 1))
+tapply(ends, diverse, mean)
+ends <- unlist(tail(as_opinion(play_opinion(alike_groups, first)), 1))
+tapply(ends, alike, mean)
+# Bounded confidence: the number of clusters at the end
+sweep_opinion(diverse_groups, first, rule = "hegselmann_krause",
+              vary = list(confidence = c(0.15, 0.3)))
+sweep_opinion(alike_groups, first, rule = "hegselmann_krause",
+              vary = list(confidence = c(0.15, 0.3)))
+```
+
+```{r diverse-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("With DeGroot learning, the diverse groups reach about the same conclusion as each other.",
+         correct = TRUE,
+         message = "Each diverse group averages a wide range of opinions, so each ends near the mean of all."),
+  answer("With DeGroot learning, the groups of like minds each keep a different conclusion.",
+         correct = TRUE),
+  answer("With bounded confidence, the diverse groups break into many clusters.",
+         correct = TRUE,
+         message = "Members of a diverse group are too far apart to listen to each other. A wider confidence brings some of them back together."),
+  answer("Diversity always helps a group to agree.",
+         message = "It helps only where the members listen to opinions far from their own."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+Diversity spreads the information that each group holds,
+but it helps only where members listen to opinions far from their own.
+
+## Repulsion
+
+So far, every tie pulls a node towards the opinions of the nodes it listens to.
+But we may also move away from the opinions of those we dislike:
+if _they_ are for it, I must be against it.
+In a signed network, a negative tie can stand for such repulsion:
+the node moves towards the opposite of the other node's opinion.
+Opposite opinions are then opposite signs,
+so the opinions are on a scale centred on 0, from -1 to 1.
+
+A signed network is `r gloss("structurally balanced", "balance")` where its nodes
+split into two camps, with positive ties inside each camp
+and negative ties between them.
+Where it is balanced, repulsion splits the opinions into two camps of opposite signs.
+Where it is not, the opinions are pulled towards 0.
+
+### The road to war
+
+`irps_wwi` holds the alliances (positive) and enmities (negative)
+of six European powers from 1872 to 1918.
+`to_time()` gives the network in one year.
+Play the same first opinions on the network in 1890 and in 1914,
+and check the balance of each with `net_by_balance()`.
+
+```{r wwi, exercise = TRUE, fig.width=9}
+first <- c(0.5, 0.2, 0.1, -0.1, -0.3, 0.4)
+graphr(to_time(irps_wwi, 1914))
+```
+
+```{r wwi-hint, purl = FALSE}
+as_opinion(play_opinion(to_time(irps_wwi, ____), first, steps = 500))
+net_by_balance(to_time(irps_wwi, ____))
+```
+
+```{r wwi-solution}
+first <- c(0.5, 0.2, 0.1, -0.1, -0.3, 0.4)
+tail(as_opinion(play_opinion(to_time(irps_wwi, 1890), first, steps = 500)), 1)
+net_by_balance(to_time(irps_wwi, 1890))
+tail(as_opinion(play_opinion(to_time(irps_wwi, 1914), first, steps = 500)), 1)
+net_by_balance(to_time(irps_wwi, 1914))
+```
+
+```{r wwi-interp, echo = FALSE, purl = FALSE}
+question("Why do the opinions split into two camps in 1914, but not in 1890?",
+  answer("In 1914 the powers form two blocs, with alliances inside and enmities between, so the network is balanced.",
+         correct = TRUE),
+  answer("In 1914 there are more negative ties.",
+         message = "The number of negative ties is not what matters, but whether they divide the network into two camps."),
+  answer("In 1890 the powers had no enmities.",
+         message = "Look at the ties of 1890: there are enmities, but they do not divide the powers into two camps."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+Note that only the DeGroot rule can use negative ties currently.
+
+## Who has influence?
+
+Where the opinions reach a consensus,
+the consensus is a weighted mean of the first opinions.
+The weight of each node is its influence:
+`node_by_influence()` from `{netrics}` measures it.
+Without stubbornness, it is the left eigenvector of the influence matrix
+from `to_influence()`, where each row says whom a node listens to.
+This is also called the social power of a node.
+`node_by_influence()` and `node_by_opinion()` compute the exact end,
+not a played one, so they need no `steps`.
+If the network is periodic, the opinions swing for ever,
+and these functions give the mean of the swing.
+
+### Influence and eigenvector centrality
+
+It is often said that the most influential nodes in a network are those
+with the highest eigenvector centrality.
+Compare `node_by_influence()` with `node_by_eigenvector()` for the networkers.
+
+```{r influence, exercise = TRUE, fig.width=9}
+
+```
+
+```{r influence-solution}
+node_by_influence(ison_networkers)
+node_by_eigenvector(ison_networkers)
+cor(node_by_influence(ison_networkers), node_by_eigenvector(ison_networkers))
+ison_networkers |>
+  mutate_nodes(influence = node_by_influence(ison_networkers)) |>
+  graphr(node_size = "influence")
+```
+
+```{r influence-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("The two measures agree closely, and give the same most central node.",
+         correct = TRUE),
+  answer("The two measures can order the other nodes differently.",
+         correct = TRUE),
+  answer("The two measures are the same.",
+         message = "Eigenvector centrality uses the adjacency matrix; influence uses the matrix of whom each node listens to, where each row sums to 1."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+### Free play: Networkers
+
+Which networkers would you try to convince first,
+so that the whole network comes to agree with you?
+Give an opinion of 1 to the node with the highest influence and 0 to all others,
+play the DeGroot model, and compare the consensus with its influence share,
+`node_by_influence(ison_networkers, normalized = FALSE)`.
+
+```{r eigen, exercise = TRUE, purl=FALSE, fig.width=9}
+
+```
+
+```{r eigen-hint}
+who <- node_is_max(node_by_influence(ison_networkers))
+ison_networkers |>
+  mutate_nodes(who_to_convince = who) |>
+  graphr(node_color = who_to_convince)
+beliefs2 <- ifelse(who, 1, 0)
+(netlearn2 <- play_opinion(ison_networkers, beliefs2))
+plot(netlearn2)
+node_by_influence(ison_networkers, normalized = FALSE)[who]
+```
+
+## Wisdom of crowds
+
+Imagine that each networker makes an estimate of some true value,
+for example the number of papers in a journal, with some error.
+The mean of all their estimates is often close to the truth,
+since the errors cancel out: the `r gloss("wisdom of crowds")`.
+Francis Galton found that the crowd at a country fair guessed the weight of an ox
+to within one percent, better than most of the experts there.
+But what if they talk first, and then agree on one consensus?
+The consensus is the mean of their first estimates,
+weighted by the influence of each node.
+Such a crowd stays wise
+only where no node has too much influence.
+
+### Does talking make the crowd wiser?
+
+Let the true value be 50, and let each estimate miss it by an error
+with a standard deviation of 10.
+The `normalized = FALSE` influence of each node is its weight in the consensus,
+so `sum(w * errors)` is the error of the consensus.
+Draw the errors 1000 times for the networkers, a star, and a complete network,
+and compare the spread of the error of the consensus.
+
+One catch: a star is periodic, so its opinions would swing between the centre and the leaves for ever
+(remember the rings above?).
+So let every node also listen a little to itself, with `to_looped()`.
+That is realistic anyway: few of us drop our own estimate entirely.
+
+```{r wisdom, exercise = TRUE}
+set.seed(1)
+estimates <- 50 + rnorm(32, 0, 10)
+consensus <- play_opinion(ison_networkers, estimates)
+tail(as_opinion(consensus), 1)
+mean(estimates)
+```
+
+```{r wisdom-hint, purl = FALSE}
+w <- node_by_influence(to_looped(ison_networkers), normalized = FALSE)
+max(w)
+sd(replicate(1000, sum(w * rnorm(32, 0, 10))))
+```
+
+```{r wisdom-solution}
+for(net in list(ison_networkers, create_star(32), create_filled(32))){
+  w <- node_by_influence(to_looped(net), normalized = FALSE)
+  print(c(largest_influence = max(w),
+          error_of_consensus = sd(replicate(1000, sum(w * rnorm(32, 0, 10))))))
+}
+```
+
+```{r wisdom-interp, echo = FALSE, purl = FALSE}
+question("Which crowd is the wisest after it talks?",
+  answer("The complete network, because every node has the same small influence.",
+         correct = TRUE),
+  answer("The star, because the centre hears every estimate.",
+         message = "The centre has about a third of all influence, so its own error counts for a third of the error of the consensus."),
+  answer("All three, because they all reach a consensus.",
+         message = "They all reach a consensus, but not one equally close to the truth."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+### When does talking help?
+
+In the DeGroot model, talking cannot make the crowd wiser _on average_:
+the consensus weights the estimates unequally,
+and the plain mean, with equal weights, has the smallest expected error.
+But in experiments, Becker, Brackbill and Centola (2017) found that
+talking made crowds wiser, if their network was egalitarian:
+if no node had much more influence than the others.
+One reason is that people whose first estimate is near the truth
+tend to revise it less.
+So the accurate people are more stubborn.
+
+Let the stubbornness of each node be 1 minus its error,
+as a share of the largest error.
+Then the most accurate node is a zealot, and the least accurate is not stubborn at all.
+`node_by_opinion()` gives the opinion of each node at the end,
+from the nodal attributes "opinions" and "stubbornness".
+Compare the error of the mean before and after the nodes talk,
+200 times, in a random network, a star, and the networkers,
+each with `to_looped()` as before.
+
+```{r egalitarian, exercise = TRUE}
+set.seed(1)
+estimates <- 50 + rnorm(32, 0, 10)
+error <- abs(estimates - 50)
+crowd <- to_looped(generate_random(32, 0.2)) |>
+  mutate_nodes(opinions = estimates, stubbornness = 1 - error / max(error))
+ends <- node_by_opinion(crowd)
+c(before = abs(mean(estimates) - 50), after = abs(mean(ends) - 50))
+```
+
+```{r egalitarian-solution}
+set.seed(1)
+nets <- list(random = generate_random(32, 0.2), star = create_star(32),
+             networkers = ison_networkers)
+for(name in names(nets)){
+  wiser <- replicate(200, {
+    estimates <- 50 + rnorm(32, 0, 10)
+    error <- abs(estimates - 50)
+    crowd <- to_looped(nets[[name]]) |>
+      mutate_nodes(opinions = estimates, stubbornness = 1 - error / max(error))
+    ends <- node_by_opinion(crowd)
+    abs(mean(ends) - 50) < abs(mean(estimates) - 50)
+  })
+  print(c(network = name, wiser = mean(wiser)))
+}
+```
+
+```{r egalitarian-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("In the random network, the crowd is wiser after it talks more often than not.",
+         correct = TRUE),
+  answer("In the star, the crowd is wiser after it talks less often than not.",
+         correct = TRUE,
+         message = "The centre has most of the influence, so the crowd follows it, whether it is accurate or not."),
+  answer("Where the accurate nodes are stubborn, talking always helps.",
+         message = "It helps only where no node has too much influence."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+## Misinformation
+
+What happens when some nodes spread a false opinion and never change it?
+(Every group chat seems to have one.)
+Such a fully stubborn node is sometimes called a `r gloss("zealot")`.
+In the DeGroot model, one zealot in a strongly connected network
+pulls every other node to its opinion in the end.
+Where the others are also a little stubborn,
+the pull is partial, and it depends on where the zealot sits.
+
+Spreading a false claim and believing it are two different processes.
+Passing a story on is a diffusion:
+each node has heard the story or not,
+as in the "Diffusion and Contagion" tutorial.
+Believing it is learning:
+how much a node believes the story moves towards what the nodes it listens to believe.
+A story can reach everyone and convince no one,
+or reach only a few and still shift what the whole network believes.
+This section is about belief.
+
+### Where does misinformation do most harm?
+
+Let the truth be 0, and let the networkers start near it.
+Then let one node be a zealot at 1,
+and all others hold on to their first opinion with a stubbornness of 0.3.
+Compare a zealot with the highest influence and one with the lowest,
+by the mean opinion at the end.
+
+```{r zealot, exercise = TRUE, fig.width=9}
+set.seed(2)
+first <- rnorm(32, 0, 0.1)
+influence <- node_by_influence(ison_networkers)
+```
+
+```{r zealot-hint, purl = FALSE}
+zealot <- which.max(influence)
+opinions <- first
+opinions[zealot] <- 1
+stubborn <- rep(0.3, 32)
+stubborn[zealot] <- ____
+ends <- tail(as_opinion(play_opinion(ison_networkers, opinions,
+                                     stubbornness = stubborn, steps = 500)), 1)
+mean(unlist(ends))
+```
+
+```{r zealot-solution}
+set.seed(2)
+first <- rnorm(32, 0, 0.1)
+influence <- node_by_influence(ison_networkers)
+for(zealot in c(which.max(influence), which.min(influence))){
+  opinions <- first
+  opinions[zealot] <- 1
+  stubborn <- rep(0.3, 32)
+  stubborn[zealot] <- 1
+  ends <- tail(as_opinion(play_opinion(ison_networkers, opinions,
+                                       stubbornness = stubborn, steps = 500)), 1)
+  print(c(zealot = node_labels(ison_networkers)[zealot],
+          mean_opinion = round(mean(unlist(ends)), 3)))
+}
+```
+
+```{r zealot-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("A zealot with more influence moves the network further from the truth.",
+         correct = TRUE),
+  answer("A zealot with little influence does almost no harm here.",
+         correct = TRUE),
+  answer("Where no other node is stubborn, a zealot has no effect.",
+         message = "Where no other node is stubborn, one zealot pulls every node to its opinion in the end."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+What could stop a zealot?
+Try a second zealot at the truth, 0, as a fact-checker,
+and move it to different places in the network.
+
+```{r factcheck, exercise = TRUE, exercise.setup = "zealot", fig.width=9}
+
+```
+
+### Moving the window
+
+A zealot whose opinion is far from everyone else's has no pull
+where people listen only to opinions near their own.
+Joseph Overton described a "window" of the policies that the public will accept
+at a given time.
+A policy outside the window is unthinkable, whoever argues for it.
+But the window can move.
+In a model of bounded confidence, each node's `confidence` is such a window,
+centred on its own opinion.
+
+Let the networkers start between 0 and 0.4,
+and let the node with the most influence be a zealot.
+Play the Hegselmann–Krause rule with a `confidence` of 0.2.
+First, let the zealot jump straight to 1.
+Then let the zealot move in small steps of 0.1, from 0.3 to 1,
+and let each step start from the opinions at the end of the step before.
+
+```{r overton, exercise = TRUE, fig.width=9}
+set.seed(1)
+first <- runif(32, 0, 0.4)
+zealot <- which.max(node_by_influence(ison_networkers))
+stubborn <- ifelse(seq_len(32) == zealot, 1, 0)
+```
+
+```{r overton-hint, purl = FALSE}
+# One jump
+jump <- first
+jump[zealot] <- 1
+ends <- tail(as_opinion(play_opinion(ison_networkers, jump, rule = "hegselmann_krause",
+                                     confidence = ____, stubbornness = stubborn,
+                                     steps = 100)), 1)
+mean(unlist(ends)[-zealot])
+
+# Small steps
+opinions <- first
+for(step in seq(0.3, 1, ____)){
+  opinions[zealot] <- step
+  opinions <- unlist(tail(as_opinion(play_opinion(ison_networkers, ____,
+                                                  rule = "hegselmann_krause",
+                                                  confidence = 0.2,
+                                                  stubbornness = stubborn,
+                                                  steps = 100)), 1))
+  print(c(zealot = step, others = round(mean(opinions[-zealot]), 2)))
+}
+```
+
+```{r overton-solution}
+set.seed(1)
+first <- runif(32, 0, 0.4)
+zealot <- which.max(node_by_influence(ison_networkers))
+stubborn <- ifelse(seq_len(32) == zealot, 1, 0)
+# One jump
+jump <- first
+jump[zealot] <- 1
+ends <- tail(as_opinion(play_opinion(ison_networkers, jump, rule = "hegselmann_krause",
+                                     confidence = 0.2, stubbornness = stubborn,
+                                     steps = 100)), 1)
+mean(unlist(ends)[-zealot])
+# Small steps
+opinions <- first
+for(step in seq(0.3, 1, 0.1)){
+  opinions[zealot] <- step
+  opinions <- unlist(tail(as_opinion(play_opinion(ison_networkers, opinions,
+                                                  rule = "hegselmann_krause",
+                                                  confidence = 0.2,
+                                                  stubbornness = stubborn,
+                                                  steps = 100)), 1))
+  print(c(zealot = step, others = round(mean(opinions[-zealot]), 2)))
+}
+```
+
+```{r overton-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("A zealot that jumps to 1 is outside every window, so no one moves.",
+         correct = TRUE),
+  answer("A zealot that moves in small steps stays inside the window, and the window follows it.",
+         correct = TRUE),
+  answer("The others end at 1 because they are stubborn.",
+         message = "Only the zealot is stubborn here. The others follow because each step is within their confidence."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+So an opinion that no one will hear today can become acceptable tomorrow,
+if the opinions in between are heard first.
+Try a wider or a narrower `confidence`, or larger steps.
+How large can a step be before the window stops following?
+
+## Equilibria and disequilibria
+
+Each model in this tutorial settles in its own way, or does not settle at all:
+
+| Outcome | What gives it | Where we saw it |
+|---|---|---|
+| Consensus | A strongly connected, aperiodic network, with no stubbornness | DeGroot on `ison_networkers` |
+| Lasting disagreement | Stubbornness, which pulls each node back to its first opinion | The path A–B–C |
+| Fragmentation | Bounded confidence, which cuts the ties between distant opinions | Hegselmann–Krause and Deffuant |
+| Polarisation | Repulsion on a balanced signed network | `irps_wwi` in 1914 |
+| Capture | One zealot in a network with no other stubborn node | Misinformation |
+| No equilibrium | A periodic network, where opinions can swing for ever | A ring with an even number of nodes |
+
+The last is a `r gloss("disequilibrium", "periodic")`.
+On a ring of four nodes, each node averages its two neighbours.
+Start with opinions of 1, 0, 1, and 0,
+and see what happens at each step.
+Then try a ring of five, with 1, 0, 1, 0, and 0.
+
+```{r swing, exercise = TRUE}
+
+```
+
+```{r swing-solution}
+as_opinion(play_opinion(create_ring(4), c(1, 0, 1, 0), steps = 6))
+is_aperiodic(create_ring(4))
+as_opinion(play_opinion(create_ring(5), c(1, 0, 1, 0, 0), steps = 50))
+is_aperiodic(create_ring(5))
+```
+
+```{r swing-interp, echo = FALSE, purl = FALSE}
+question("Why do the opinions on the ring of four never settle?",
+  answer("Every cycle of the ring of four has an even length, so the opinions swap between the two halves at each step.",
+         correct = TRUE),
+  answer("The ring of four is not connected.",
+         message = "It is connected, but it is not aperiodic."),
+  answer("The opinions are too far apart.",
+         message = "The DeGroot rule has no bounded confidence."),
+  allow_retry = TRUE)
+```
+
+A real group may still settle on such a network,
+because people also listen to themselves.
+A self-weight, a self-loop in the network, breaks the swing.
+Try `play_opinion(to_looped(create_ring(4)), c(1, 0, 1, 0))`,
+and see `to_influence()` for how the self-weight is set.
+
+## Glossary
+
+Where opinions end up depends on whom each node listens to, and how much.
+In the DeGroot model, a network that is strongly connected and aperiodic
+always reaches a consensus, and how fast it gets there depends on its structure.
+Stubbornness keeps a disagreement alive,
+because each node is pulled back towards its first opinion.
+Bounded confidence breaks a group into clusters of opinion,
+since nodes stop listening to opinions too far from their own,
+so diverse groups learn from one another only where their members listen widely.
+Repulsion on a balanced signed network polarises opinions into two camps.
+The nodes with the most influence on the end are close to,
+but not the same as, those with the highest eigenvector centrality.
+Talking can make a crowd wiser, but only where no node has too much influence,
+and a zealot does most harm where it has most influence.
+A zealot too far from the others is not heard,
+but one that moves in small steps can move the whole window of acceptable opinions.
+Finally, not every network settles:
+on a periodic network, opinions can swing for ever.
+
+Here are some of the terms that we have covered in this module:
+
+`r print_glossary()`
+
+### Next: Modelling with ERGMs
+
+In this tutorial and the last, the network was given,
+and we asked what spreads or settles on it.
+But ties also form for reasons,
+for example because people choose others with opinions like their own.
+The "Modelling with ERGMs" tutorial models the ties themselves,
+with exponential random graph models.

@@ -62,6 +62,7 @@
 
 ## Tutorials
 
+- Improved infernet tutorials to use infernet blue
 - Fixed simulations in a learnr tutorial failing from the second exercise
 - Fixed the QAP test exercise of the "Diversity and Regression" tutorial
   - Fixed the "Diversity and Regression" tutorial to offer to install `{lme4}`
@@ -80,9 +81,19 @@
   - Uses `threshold=` and `onset=`, the new names in `{manynet}` 2.5.0
   - Adds a note for analysts on what the models assume
   - Moved its learning models to a new "Opinion and Learning" tutorial
+- Added the "Opinion and Learning" tutorial, as `infernet3`
+  - Plays DeGroot learning, stubbornness, and bounded confidence
+  - Compares maximally diverse groups from `node_in_roulette()` with groups of like minds
+  - Polarises `irps_wwi` by repulsion along its negative ties
+  - Compares `node_by_influence()` with eigenvector centrality
+  - Measures the speed of a consensus with `net_by_convergence()`
+  - Adds wisdom of crowds, misinformation by zealots, and a recap of equilibria
+  - Shows that talking makes a crowd wiser in an egalitarian network
+  - Adds a note for analysts on what the models assume
+  - Lets every node listen to itself in the wisdom of crowds, so that the star settles
 - Improved the "Modelling with ERGMs" tutorial
   - Explains `plogis()`, `predict()`, the convergence test, and `mcmc.diagnostics()`
-  - Interprets `gwesp` and `gwdegree`, with the disagreement on `gwdegree` and the effect of its decay
+  - Interprets `gwesp` and `gwdegree`, including disagreement on effect of its decay
   - Moved tutorial to `infernet4`
 
 # infernet 0.6.2

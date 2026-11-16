@@ -34,6 +34,8 @@ navbar:
         href: articles/diversity-and-regression.html
       - text: Diffusion and Contagion
         href: articles/diffusion-and-contagion.html
+      - text: Opinion and Learning
+        href: articles/opinion-and-learning.html
       - text: Modelling with ERGMs
         href: articles/modelling-with-ergms.html
     news:
@@ -53,13 +55,16 @@ articles:
       Static, read-only versions of the interactive `learnr` tutorials
       bundled with the package. 
       To run them, install `{migraph}` and run `migraph::run_tute("diversity")`,
-      `migraph::run_tute("diffusion")`, or `migraph::run_tute("ERGMs")`
+      `migraph::run_tute("diffusion")`, `migraph::run_tute("opinion")`,
+      or `migraph::run_tute("ERGMs")`
       for the full interactive experience.
     contents:
       - "`articles/diversity-and-regression`"
       - "`articles/diffusion-and-contagion`"
+      - "`articles/opinion-and-learning`"
       - "`articles/modelling-with-ergms`"
 redirects:
+  - ["articles/diffusion-and-learning.html", "articles/diffusion-and-contagion.html"]
   - ["reference/regression.html", "reference/estimate_mrqap.html"]
   - ["reference/netreg_results.html", "reference/estimate_mrqap.html"]
   - ["reference/report_tests.html", "reference/test_measures.html"]

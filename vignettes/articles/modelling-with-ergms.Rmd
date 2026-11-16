@@ -1,10 +1,7 @@
 ---
 title: "Modelling with ERGMs"
 author: "by James Hollway, inspired by ERGM package vignettes"
-output: 
-  learnr::tutorial:
-    theme: flatly
-runtime: shiny_prerendered
+output: rmarkdown::html_document
 description: >
   This tutorial aims to teach you how to model network structure using
   exponential random graph models (ERGMs).
@@ -56,6 +53,30 @@ learnr::random_phrases_add(language = "en",
                                       "Super!"),
                            encouragement = "Bon effort")
 ```
+
+<style>
+html { font-size: 115%; }
+.callout {
+  border-left: 3px solid #5775B1;
+  padding: 0.1em 1em;
+  margin: 1.2em 0;
+}
+.callout-label { color: #5775B1; }
+.page-toc { font-style: italic; }
+.page-toc-link { color: #5775B1; cursor: pointer; text-decoration: underline; }
+.tutorialTitle { color: #5775B1 !important; }
+#tutorial-topic .nav-link { color: #5775B1 !important; }
+.section a:not(.btn) { color: #5775B1; }
+.section a:not(.btn):hover { color: #465E8E; }
+.btn-tutorial-run,
+.btn-tutorial-run:hover,
+.btn-tutorial-run:focus,
+.btn-tutorial-run:active {
+  background-color: #5775B1;
+  border-color: #5775B1;
+  color: #fff;
+}
+</style>
 
 
 ::: {.callout}

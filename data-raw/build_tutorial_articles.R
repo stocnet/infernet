@@ -196,7 +196,11 @@ build_article(
   "vignettes/articles/diffusion-and-contagion.Rmd"
 )
 build_article(
-  "inst/tutorials/infernet3/ergm.Rmd",
+  "inst/tutorials/infernet3/opinion.Rmd",
+  "vignettes/articles/opinion-and-learning.Rmd"
+)
+build_article(
+  "inst/tutorials/infernet4/ergm.Rmd",
   "vignettes/articles/modelling-with-ergms.Rmd"
 )
 
