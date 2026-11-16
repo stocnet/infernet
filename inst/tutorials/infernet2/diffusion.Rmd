@@ -332,6 +332,15 @@ A contagion that needs two or more contacts like this is a
 `r gloss("complex contagion")`:
 the contacts must reinforce one another.
 
+This is why the second adopter matters so much.
+Under a threshold of 2, one seed alone, however keen, convinces no one.
+A second seed next to it turns a lone eccentric into a group,
+and every node that shares both as contacts now has the two it needs.
+So the first follower, not the leader, is what starts a movement.
+Derek Sivers makes this point with a classic video of one man dancing alone at a festival:
+[First Follower: Leadership Lessons from Dancing Guy](https://www.youtube.com/watch?v=fW8amMCVAJQ).
+Watch when the crowd starts to join, and count the dancers there before it does.
+
 ### Varying degrees
 
 In a ring network, all nodes have the same degree.
@@ -1265,6 +1274,101 @@ We can see that we more rapidly reach a situation in which vaccinated and
 naturally recovered nodes protect many more susceptible nodes.
 (Your results may vary a bit since these are stochastic models).
 
+### Whom to vaccinate?
+
+So far we have vaccinated nodes 2 to 9, but which nodes should we vaccinate?
+Recall that $\kappa$, the mean excess degree, is larger where degrees are unequal,
+because a tie is more likely to lead to a node with many ties.
+The same fact gives the _friendship paradox_:
+on average, your contacts have more contacts than you do.
+So on a network with hubs, a contagion that travels along ties soon reaches the hubs,
+and an outbreak can grow at rates that would die out
+on a network where every node has the mean degree.
+
+Make a scale-free network of 300 nodes with a `p` of 1,
+which gives a stronger preference for nodes with many ties
+than the `p` of 0.025 that we used earlier, and so clearer hubs.
+Compare the mean degree of its nodes with the mean degree of their contacts,
+from `node_by_neighbours_degree()`.
+
+```{r paradox, exercise = TRUE}
+set.seed(1)
+sf300 <- generate_scalefree(300, 1)
+degree <- node_by_degree(sf300, normalized = FALSE)
+```
+
+```{r paradox-solution}
+set.seed(1)
+sf300 <- generate_scalefree(300, 1)
+degree <- node_by_degree(sf300, normalized = FALSE)
+mean(degree)
+mean(node_by_neighbours_degree(sf300))
+```
+
+So the best nodes to vaccinate are the hubs.
+But to find the hubs, we need to know the whole network, and we rarely do.
+_Acquaintance immunisation_ needs only what each person knows:
+ask people at random to name one of their contacts, and vaccinate the contact.
+Because of the friendship paradox,
+the contacts that people name tend to have more ties than the people who name them.
+
+Compare four strategies on this network, each vaccinating 30 nodes:
+none, 30 nodes at random, 30 acquaintances, and the 30 nodes with the highest degree.
+Start each diffusion from five nodes that no strategy vaccinates,
+and give the strategies to `vary` as a list for `immune`.
+
+```{r acquaintance, exercise = TRUE, exercise.setup = "paradox-solution", fig.width=9}
+# A random contact of a node
+contact_of <- function(node){
+  contacts <- which(node_is_neighbor(sf300, node))
+  contacts[sample.int(length(contacts), 1)]
+}
+random <- sample(300, 30)
+acquaintances <- unique(sapply(sample(300), contact_of))[1:30]
+hubs <- order(degree, decreasing = TRUE)[1:30]
+seeds <- setdiff(sample(300), c(random, acquaintances, hubs))[1:5]
+```
+
+```{r acquaintance-hint, purl = FALSE}
+strategies <- sweep_diffusion(sf300, seeds = seeds, transmissibility = 0.5,
+                              recovery = 0.1, times = 20, control = list(seed = 1),
+                              vary = list(immune = list(none = NULL, random = ____,
+                                                        acquaintances = ____,
+                                                        hubs = ____)))
+plot(strategies)
+```
+
+```{r acquaintance-solution}
+contact_of <- function(node){
+  contacts <- which(node_is_neighbor(sf300, node))
+  contacts[sample.int(length(contacts), 1)]
+}
+random <- sample(300, 30)
+acquaintances <- unique(sapply(sample(300), contact_of))[1:30]
+hubs <- order(degree, decreasing = TRUE)[1:30]
+seeds <- setdiff(sample(300), c(random, acquaintances, hubs))[1:5]
+c(random = mean(degree[random]), acquaintances = mean(degree[acquaintances]),
+  hubs = mean(degree[hubs]))
+strategies <- sweep_diffusion(sf300, seeds = seeds, transmissibility = 0.5,
+                              recovery = 0.1, times = 20, control = list(seed = 1),
+                              vary = list(immune = list(none = NULL, random = random,
+                                                        acquaintances = acquaintances,
+                                                        hubs = hubs)))
+strategies
+plot(strategies)
+```
+
+```{r acquaintance-interp, echo = FALSE, purl = FALSE}
+question("Which statements are true?",
+  answer("Vaccinating the hubs stops the most infections.", correct = TRUE),
+  answer("Acquaintances do better than random nodes, without a map of the network.",
+         correct = TRUE),
+  answer("Every strategy vaccinates a different number of nodes.",
+         message = "Each strategy vaccinates 30 nodes, so the comparison is fair."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
 ### Free play: Grey's Anatomy
 
 Let's try this out on the `fict_greys` dataset,
@@ -1382,6 +1486,50 @@ question("Hundreds of blogs switch, but the shares of the two leanings change li
   random_answer_order = TRUE,
   allow_retry = TRUE)
 ```
+
+In a _majority model_, by contrast,
+a node takes a state only where more than half of its contacts hold it.
+Write it with `exposure = "threshold"` and a `threshold` of 0.51,
+so that a node whose contacts are split half and half does not switch.
+Play it on the blogs, and count the blogs that switch in each model.
+
+```{r majority, exercise = TRUE, exercise.setup = "voter-solution", fig.width=9}
+majority <- data.frame(from = c("Liberal", "Conservative"),
+                       to = c("Conservative", "Liberal"),
+                       rate = 1,
+                       source = c("Conservative", "Liberal"),
+                       exposure = "threshold",
+                       threshold = 0.51)
+```
+
+```{r majority-solution}
+majority <- data.frame(from = c("Liberal", "Conservative"),
+                       to = c("Conservative", "Liberal"),
+                       rate = 1,
+                       source = c("Conservative", "Liberal"),
+                       exposure = "threshold",
+                       threshold = 0.51)
+majority_diff <- play_diffusion(irps_blogs, attribute = "Leaning",
+                                transitions = majority, steps = 10)
+plot(majority_diff)
+length(unique(as_changelist(blogs_diff)$node))
+length(unique(as_changelist(majority_diff)$node))
+```
+
+```{r majority-interp, echo = FALSE, purl = FALSE}
+question("Why do so few blogs switch in the majority model?",
+  answer("Most blogs are linked mostly by blogs of their own leaning, so no majority pulls them away.",
+         correct = TRUE),
+  answer("The majority model is slower, so it needs more steps.",
+         message = "Try more steps: the count hardly grows, because the blogs have settled."),
+  answer("A blog in the majority model can switch only once.",
+         message = "A blog can switch at any step where most of its contacts hold the other leaning."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE)
+```
+
+So the same network can churn under one rule and freeze under another.
+Under a majority rule, a network of like-minded groups holds each group in place.
 
 ### Which ties expose a node?
 
@@ -1781,6 +1929,8 @@ but a complex contagion needs its seeds together in one neighbourhood,
 and a committed minority tips a group only once it passes a tipping point.
 - Compartmental models add recovery, waning immunity, and a latent period,
 and an epidemic stops once enough nodes are immune to pass the herd immunity threshold.
+Hubs make an outbreak easier to start and easier to stop:
+vaccinating them, or the acquaintances that people name, works better than vaccinating at random.
 - Finally, we can write models of our own,
 test whether two models differ or whether a model fits an observed diffusion,
 and measure exposure, thresholds, and adopter categories in observed data.
